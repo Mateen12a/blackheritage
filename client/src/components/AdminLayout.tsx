@@ -11,8 +11,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       <AdminSidebar />
       <main 
         className={cn(
-          "flex-1 transition-all duration-300 relative z-50",
-          isMobile ? "ml-16" : "ml-64"
+          "flex-1 transition-all duration-300 relative z-10",
+          isMobile ? "ml-0" : "ml-64"
         )}
       >
         <div className="p-4 md:p-8 max-w-7xl mx-auto">

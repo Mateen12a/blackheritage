@@ -29,10 +29,10 @@ export default defineConfig({
   },
   define: {
     "process.env.VITE_PAYSTACK_PUBLIC_KEY": JSON.stringify(
-      process.env.PAYSTACK_PUBLIC_KEY,
+      process.env.VITE_PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_PUBLIC_KEY,
     ),
     "import.meta.env.VITE_PAYSTACK_PUBLIC_KEY": JSON.stringify(
-      process.env.PAYSTACK_PUBLIC_KEY,
+      process.env.VITE_PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_PUBLIC_KEY,
     ),
   },
 });

@@ -88,9 +88,14 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
       return;
     }
 
-    const paystackKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || (window as any).VITE_PAYSTACK_PUBLIC_KEY || "pk_test_a094523c72b2545084931a23354b38346e01765c";
-    
+    const paystackKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || (window as any).VITE_PAYSTACK_PUBLIC_KEY;
     const PaystackPop = (window as any).PaystackPop;
+    
+    if (!paystackKey || paystackKey === "UNDEFINED") {
+      alert("Payment configuration is missing. Please ensure VITE_PAYSTACK_PUBLIC_KEY is set in your environment variables.");
+      return;
+    }
+    
     if (!PaystackPop) {
       alert("Payment service is loading. Please wait a few seconds and try again.");
       return;

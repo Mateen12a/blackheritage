@@ -10,7 +10,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Globe
+  Globe,
+  X
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -18,23 +19,38 @@ import { cn } from "@/lib/utils";
 export function AdminSidebar() {
   const [location] = useLocation();
   const { logout } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const menuItems = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/events", label: "Events Management", icon: CalendarDays },
+    { href: "/admin/events", label: "Events", icon: CalendarDays },
     { href: "/admin/bookings", label: "Bookings", icon: Ticket },
     { href: "/admin/sponsors", label: "Sponsors", icon: Users },
     { href: "/admin/vendors", label: "Vendors / Sellers", icon: Store },
   ];
 
   return (
-    <aside 
-      className={cn(
-        "fixed left-0 top-0 h-screen bg-card border-r border-white/5 transition-all duration-300 z-50 flex flex-col",
-        isCollapsed ? "w-16" : "w-64"
+    <>
+      {/* Mobile Toggle Button */}
+      {!isCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+          onClick={() => setIsCollapsed(true)} 
+        />
       )}
-    >
+      <button 
+        className="fixed top-4 left-4 z-[60] md:hidden bg-primary text-background p-2 rounded-lg shadow-lg"
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
+        {isCollapsed ? <ChevronRight size={24} /> : <X size={24} />}
+      </button>
+
+      <aside 
+        className={cn(
+          "fixed left-0 top-0 h-screen bg-card border-r border-white/5 transition-all duration-300 z-50 flex flex-col",
+          isCollapsed ? "-translate-x-full md:translate-x-0 md:w-16" : "translate-x-0 w-64"
+        )}
+      >
       <div className="p-4 flex items-center justify-between border-b border-white/5 h-20">
         {!isCollapsed && (
           <span className="font-display font-bold text-primary tracking-wider uppercase truncate">
