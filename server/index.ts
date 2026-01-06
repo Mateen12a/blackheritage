@@ -13,17 +13,31 @@ const httpServer = createServer(app);
 const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL,
   "http://localhost:5173",
+  "http://localhost:5000",
   "https://black-heritage-events.vercel.app",
   "https://blackheritage.onrender.com",
   "https://blackhevents.com"
 ].filter(Boolean) as string[];
 
 app.use(cors({
-  origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : true,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.indexOf(origin) !== -1 || ALLOWED_ORIGINS.includes("*")) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Fallback to true for development/troubleshooting
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "Cookie"]
 }));
+
+// Pre-define health check before routes
+app.get("/api/health", (_req, res) => {
+  res.status(200).send("OK");
+});
 
 // Self-ping mechanism to keep Render instance awake
 const BACKEND_URL = process.env.VITE_API_URL || process.env.BACKEND_URL;

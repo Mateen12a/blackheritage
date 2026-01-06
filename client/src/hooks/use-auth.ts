@@ -2,14 +2,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
 
+const BASE_URL = "https://blackheritage.onrender.com";
+
 export function useAuth() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data: user, isLoading } = useQuery<any>({
-    queryKey: ["/api/auth/user"],
+    queryKey: [`${BASE_URL}/api/auth/user`],
     queryFn: async () => {
-      const res = await fetch("/api/auth/user");
+      const res = await fetch(`${BASE_URL}/api/auth/user`, {
+        credentials: "include"
+      });
       if (!res.ok) return null;
       return res.json();
     },
@@ -19,10 +23,11 @@ export function useAuth() {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: any) => {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch(`${BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials)
+        body: JSON.stringify(credentials),
+        credentials: "include"
       });
       if (!res.ok) {
         const err = await res.json();
@@ -31,16 +36,17 @@ export function useAuth() {
       return res.json();
     },
     onSuccess: (user) => {
-      queryClient.setQueryData(["/api/auth/user"], user);
+      queryClient.setQueryData([`${BASE_URL}/api/auth/user`], user);
     }
   });
 
   const registerMutation = useMutation({
     mutationFn: async (credentials: any) => {
-      const res = await fetch("/api/auth/register", {
+      const res = await fetch(`${BASE_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials)
+        body: JSON.stringify(credentials),
+        credentials: "include"
       });
       if (!res.ok) {
         const err = await res.json();
@@ -49,16 +55,19 @@ export function useAuth() {
       return res.json();
     },
     onSuccess: (user) => {
-      queryClient.setQueryData(["/api/auth/user"], user);
+      queryClient.setQueryData([`${BASE_URL}/api/auth/user`], user);
     }
   });
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch(`${BASE_URL}/api/auth/logout`, { 
+        method: "POST",
+        credentials: "include"
+      });
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.setQueryData([`${BASE_URL}/api/auth/user`], null);
     }
   });
 
