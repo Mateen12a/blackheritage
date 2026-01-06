@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "tsx server/index.ts & vite",
     "build": "vite build && npm run backend:build",
-    "start": "NODE_ENV=production node dist/index.js",
+    "start": "NODE_ENV=production node dist/index.cjs",
     "backend:dev": "NODE_ENV=development tsx server/index.ts",
-    "backend:build": "esbuild server/index.ts --bundle --platform=node --target=node20 --outfile=dist/index.js --format=esm --external:pg-native",
-    "backend:start": "NODE_ENV=production node dist/index.js",
+    "backend:build": "esbuild server/index.ts --bundle --platform=node --target=node20 --outfile=dist/index.cjs --format=cjs --external:pg-native",
+    "backend:start": "NODE_ENV=production node dist/index.cjs",
     "frontend:dev": "vite",
     "frontend:build": "vite build",
     "check": "tsc",
