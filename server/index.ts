@@ -1,12 +1,39 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { serveStatic } from "./static";
 import { createServer } from "http";
 import { connectDB } from "./db";
 import { setupAuth } from "./auth";
+import https from "https";
+import cors from "cors";
 
 const app = express();
 const httpServer = createServer(app);
+
+// Update CORS to allow requests from your frontend domains
+const ALLOWED_ORIGINS = [
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+  "https://black-heritage-events.vercel.app" // Add your actual Vercel URL
+].filter(Boolean) as string[];
+
+app.use(cors({
+  origin: ALLOWED_ORIGINS.length > 0 ? ALLOWED_ORIGINS : true,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "Cookie"]
+}));
+
+// Self-ping mechanism to keep Render instance awake
+const BACKEND_URL = process.env.VITE_API_URL || process.env.BACKEND_URL;
+if (BACKEND_URL) {
+  setInterval(() => {
+    https.get(BACKEND_URL, (res) => {
+      log(`Self-ping to ${BACKEND_URL}: status ${res.statusCode}`);
+    }).on('error', (err) => {
+      log(`Self-ping error: ${err.message}`);
+    });
+  }, 10 * 60 * 1000); // Ping every 10 minutes
+}
 
 declare module "http" {
   interface IncomingMessage {
@@ -71,23 +98,10 @@ app.use((req, res, next) => {
     const message = err.message || "Internal Server Error";
 
     res.status(status).json({ message });
-    throw err;
   });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (process.env.NODE_ENV === "production") {
-    serveStatic(app);
-  } else {
-    const { setupVite } = await import("./vite");
-    await setupVite(httpServer, app);
-  }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(
     {

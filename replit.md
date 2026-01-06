@@ -2,7 +2,7 @@
 
 ## Overview
 
-Black Heritage Events is a Nigerian-focused event ticketing platform that allows users to discover, browse, and purchase tickets for cultural events, parties, and shows. The application features a modern dark-themed UI with gold accents, event calendar integration, user authentication via Replit Auth, and payment processing capabilities through Stripe integration.
+Black Heritage Events is a Nigerian-focused event ticketing platform that enables users to discover, browse, and purchase tickets for cultural events, parties, and shows. The platform includes a public-facing website for event discovery and ticket purchases, plus an admin portal for event organizers to manage their events, bookings, and business partnerships (sponsors/vendors).
 
 ## User Preferences
 
@@ -18,57 +18,68 @@ Preferred communication style: Simple, everyday language.
 - **Animations**: Framer Motion for page transitions and interactive elements
 - **UI Components**: Radix UI primitives wrapped with shadcn/ui styling
 - **Build Tool**: Vite with custom plugins for Replit integration
+- **Calendar**: react-big-calendar for event calendar display
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript
-- **API Design**: RESTful endpoints defined in shared route schemas with Zod validation
-- **Database ORM**: MongoDB with Mongoose
-- **Authentication**: Replit Auth integration using OpenID Connect (OIDC)
+- **API Design**: RESTful endpoints with Zod validation for input/output schemas
+- **Database ORM**: MongoDB with Mongoose for primary data storage
+- **Session Storage**: MongoDB sessions via connect-mongo (or PostgreSQL via connect-pg-simple for Replit Auth scenarios)
+- **Authentication**: Passport.js with local strategy (username/password)
 
 ### Data Storage
-- **Database**: MongoDB (required via MONGODB_URI environment variable)
-- **Schema Location**: `server/models/index.ts` with Mongoose model definitions
-- **Models**: Events, Bookings, Users, and BusinessBookings collections
+- **Primary Database**: MongoDB (configured via MONGODB_URI environment variable)
+- **Schema Definitions**: 
+  - Mongoose models in `server/models/index.ts` for runtime operations
+  - Drizzle schemas in `shared/schema.ts` for type definitions and potential PostgreSQL usage
+- **Collections**: Users, Events, Bookings, BusinessBookings, Sessions
 
 ### Authentication Flow
-- **Provider**: Replit Auth (OIDC-based)
-- **Session Storage**: PostgreSQL via connect-pg-simple
-- **User Management**: Automatic user upsert on authentication with profile data syncing
-- **Protected Routes**: Middleware-based route protection for authenticated endpoints
+- **Strategy**: Local authentication with Passport.js
+- **Password Hashing**: bcryptjs for secure password storage
+- **Session Management**: Express sessions stored in MongoDB
+- **Role System**: Three roles - user, organizer, admin
+- **Protected Routes**: Middleware-based route protection requiring authentication
+
+### Payment Integration
+- **Provider**: Paystack for Nigerian Naira payments
+- **Client Integration**: Paystack inline JavaScript SDK loaded in HTML
+- **Fallback**: Stripe integration available but Paystack is primary
+
+### Email Notifications
+- **Provider**: Resend for transactional emails
+- **Use Cases**: Booking confirmations, admin notifications for new registrations
 
 ### Shared Code Structure
 - **Location**: `shared/` directory contains schemas and route definitions
 - **Validation**: Zod schemas for input validation on both client and server
 - **Type Safety**: Shared TypeScript types between frontend and backend via path aliases
+- **Path Aliases**: `@/` for client source, `@shared/` for shared code
 
 ### Build Configuration
 - **Client Build**: Vite outputs to `dist/public`
-- **Server Build**: esbuild bundles server with selective dependency bundling
-- **Path Aliases**: `@/` for client source, `@shared/` for shared code
+- **Server Build**: esbuild bundles server with selective dependency bundling for faster cold starts
+- **Development**: tsx for running TypeScript directly
 
 ## External Dependencies
 
 ### Payment Processing
-- **Stripe**: Server-side Stripe SDK for payment intent creation (requires STRIPE_SECRET_KEY)
-- **Client SDK**: @stripe/stripe-js and @stripe/react-stripe-js for frontend integration
-- **Note**: Payment flows gracefully mock when Stripe keys are not configured
+- **Paystack**: Primary payment gateway for Nigerian market (requires `PAYSTACK_SECRET_KEY` and `VITE_PAYSTACK_PUBLIC_KEY`)
+- **Stripe**: Secondary payment option (requires `STRIPE_SECRET_KEY`)
+
+### Email Service
+- **Resend**: Transactional email delivery (requires `RESEND_API_KEY`)
 
 ### Database
-- **PostgreSQL**: Required database with connection via DATABASE_URL environment variable
-- **Migrations**: Drizzle Kit for schema migrations stored in `migrations/` directory
+- **MongoDB**: Primary data store (requires `MONGODB_URI`)
+- **PostgreSQL**: Available for session storage and potential Drizzle migrations (requires `DATABASE_URL`)
 
-### Authentication
-- **Replit Auth**: OIDC provider at replit.com/oidc requiring REPL_ID and SESSION_SECRET environment variables
-- **Session Store**: PostgreSQL-backed sessions requiring a `sessions` table
-
-### Environment Variables Required
-- `DATABASE_URL`: PostgreSQL connection string
-- `SESSION_SECRET`: Secret for session encryption
-- `STRIPE_SECRET_KEY`: Optional Stripe API key for payments
-- `ISSUER_URL`: Optional custom OIDC issuer (defaults to Replit)
-
-### Key NPM Packages
-- **Calendar**: react-big-calendar with date-fns localizer
-- **Date Handling**: date-fns for formatting and manipulation
-- **Form Validation**: react-hook-form with @hookform/resolvers for Zod integration
-- **HTTP Client**: Native fetch with TanStack Query for caching
+### Deployment Configuration
+- **Backend**: Render.com with build command `npm install && npm run build` and start command `npm start`
+- **Frontend**: Vercel static hosting with API rewrites to backend
+- **Required Environment Variables**:
+  - `MONGODB_URI` - MongoDB connection string
+  - `SESSION_SECRET` - Express session secret
+  - `PAYSTACK_SECRET_KEY` - Paystack server-side key
+  - `RESEND_API_KEY` - Resend email API key
+  - `VITE_PAYSTACK_PUBLIC_KEY` - Paystack client-side key
