@@ -31,6 +31,10 @@ export async function apiRequest(
     credentials: "include",
   });
 
+  if (res.status === 401) {
+    return res;
+  }
+
   await throwIfResNotOk(res);
   return res;
 }
@@ -49,8 +53,11 @@ export const getQueryFn: <T>(options: {
       credentials: "include",
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    if (res.status === 401) {
+      if (unauthorizedBehavior === "returnNull") {
+        return null as any;
+      }
+      throw new Error("401: Unauthorized");
     }
 
     await throwIfResNotOk(res);

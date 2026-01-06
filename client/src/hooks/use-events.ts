@@ -3,11 +3,15 @@ import { api, buildUrl } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
+const BASE_URL = "https://blackheritage.onrender.com";
+
 export function useEvents() {
   return useQuery({
-    queryKey: [api.events.list.path],
+    queryKey: [`${BASE_URL}${api.events.list.path}`],
     queryFn: async () => {
-      const res = await fetch(api.events.list.path);
+      const res = await fetch(`${BASE_URL}${api.events.list.path}`, {
+        credentials: "include"
+      });
       if (!res.ok) throw new Error("Failed to fetch events");
       const data = await res.json();
       return api.events.list.responses[200].parse(data);
@@ -17,10 +21,12 @@ export function useEvents() {
 
 export function useEvent(id: string) {
   return useQuery({
-    queryKey: [api.events.get.path, id],
+    queryKey: [`${BASE_URL}${api.events.get.path}`, id],
     queryFn: async () => {
-      const url = buildUrl(api.events.get.path, { id: id as any });
-      const res = await fetch(url);
+      const url = `${BASE_URL}${buildUrl(api.events.get.path, { id: id as any })}`;
+      const res = await fetch(url, {
+        credentials: "include"
+      });
       if (res.status === 404) return null;
       if (!res.ok) throw new Error("Failed to fetch event");
       const data = await res.json();
@@ -36,10 +42,11 @@ export function useCreateEvent() {
 
   return useMutation({
     mutationFn: async (eventData: any) => {
-      const res = await fetch(api.events.create.path, {
+      const res = await fetch(`${BASE_URL}${api.events.create.path}`, {
         method: api.events.create.method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(eventData),
+        credentials: "include"
       });
 
       if (!res.ok) {
@@ -52,7 +59,7 @@ export function useCreateEvent() {
       return api.events.create.responses[201].parse(await res.json());
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.events.list.path] });
+      queryClient.invalidateQueries({ queryKey: [`${BASE_URL}${api.events.list.path}`] });
       toast({
         title: "Success",
         description: "Event created successfully",
