@@ -77,46 +77,56 @@ export default function Home() {
       </section>
 
       {/* Featured Events Section */}
-      <section className="py-24 container mx-auto px-4">
-        <div className="flex flex-col md:flex-row items-end justify-between mb-12 gap-4">
-          <div>
-            <h2 className="text-3xl md:text-4xl font-display font-bold mb-3">
-              Hot Events
-            </h2>
-            <p className="text-muted-foreground">
-              The best events happening right now.
-            </p>
+      <section className="py-24">
+        <div className="container mx-auto px-4 md:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-end justify-between mb-12 gap-4">
+            <div className="w-full text-center md:text-left">
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold mb-4 text-white">
+                Hot Events
+              </h2>
+              <p className="text-lg md:text-xl text-muted-foreground font-medium">
+                The best events happening right now.
+              </p>
+            </div>
+            <Link href="/events" className="hidden md:block">
+              <Button
+                variant="ghost"
+                className="text-primary hover:text-white font-bold group"
+              >
+                See All Events{" "}
+                <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
           </div>
-          <Link href="/events">
-            <Button
-              variant="ghost"
-              className="text-primary hover:text-primary/80 p-0 group"
-            >
-              See All Events{" "}
-              <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </Link>
+
+          {isLoading ? (
+            <div className="flex justify-center py-20">
+              <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+              {featuredEvents?.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+          )}
+
+          {!isLoading && (!featuredEvents || featuredEvents.length === 0) && (
+            <div className="text-center py-20 bg-card rounded-2xl border border-white/5">
+              <p className="text-muted-foreground">
+                No upcoming featured events at the moment.
+              </p>
+            </div>
+          )}
+          
+          <div className="mt-8 text-center md:hidden">
+            <Link href="/events">
+              <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
+                See All Events
+              </Button>
+            </Link>
+          </div>
         </div>
-
-        {isLoading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-10 h-10 animate-spin text-primary" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-            {featuredEvents?.map((event) => (
-              <EventCard key={event.id} event={event} />
-            ))}
-          </div>
-        )}
-
-        {!isLoading && (!featuredEvents || featuredEvents.length === 0) && (
-          <div className="text-center py-20 bg-card rounded-2xl border border-white/5">
-            <p className="text-muted-foreground">
-              No upcoming featured events at the moment.
-            </p>
-          </div>
-        )}
       </section>
 
       {/* Mission/Promo Section */}

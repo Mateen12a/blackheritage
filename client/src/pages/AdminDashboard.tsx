@@ -50,16 +50,16 @@ export default function AdminDashboard() {
 
   return (
     <div className="pb-20">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-display font-bold text-white">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 pt-2">
+        <h1 className="text-3xl md:text-4xl font-display font-bold text-white">
           {isDashboard ? "Dashboard" : 
-           isEvents ? "Events Management" :
+           isEvents ? "Events" :
            isBookings ? "Bookings" :
            isSponsors ? "Sponsors" :
-           isVendors ? "Vendors / Sellers" : "Admin"}
+           isVendors ? "Vendors" : "Admin"}
         </h1>
         <Link href="/admin/events/new">
-          <Button className="bg-primary text-background hover:bg-white font-bold">
+          <Button className="w-full sm:w-auto bg-primary text-background hover:bg-white font-bold">
             <Plus className="w-4 h-4 mr-2" /> Create New Event
           </Button>
         </Link>
@@ -68,44 +68,44 @@ export default function AdminDashboard() {
       {(isDashboard || isEvents) && (
         <>
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 mb-8 md:mb-12">
             <Card className="bg-card border-white/5">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground uppercase">Total Events</CardTitle>
-                <Calendar className="h-4 w-4 text-primary" />
+              <CardHeader className="flex flex-row items-center justify-between pb-1 md:pb-2 p-3 md:p-6">
+                <CardTitle className="text-[10px] md:text-sm font-medium text-muted-foreground uppercase">Events</CardTitle>
+                <Calendar className="h-3 w-3 md:h-4 md:w-4 text-primary" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-white">{stats?.totalEvents || 0}</div>
+              <CardContent className="p-3 md:p-6 pt-0 md:pt-0">
+                <div className="text-lg md:text-2xl font-bold text-white">{stats?.totalEvents || 0}</div>
               </CardContent>
             </Card>
             <Card className="bg-card border-white/5">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground uppercase">Tickets Sold</CardTitle>
-                <Users className="h-4 w-4 text-primary" />
+              <CardHeader className="flex flex-row items-center justify-between pb-1 md:pb-2 p-3 md:p-6">
+                <CardTitle className="text-[10px] md:text-sm font-medium text-muted-foreground uppercase">Sold</CardTitle>
+                <Users className="h-3 w-3 md:h-4 md:w-4 text-primary" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-white">{stats?.totalTicketsSold || 0}</div>
+              <CardContent className="p-3 md:p-6 pt-0 md:pt-0">
+                <div className="text-lg md:text-2xl font-bold text-white">{stats?.totalTicketsSold || 0}</div>
               </CardContent>
             </Card>
-            <Card className="bg-card border-white/5">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground uppercase">Total Revenue</CardTitle>
-                <DollarSign className="h-4 w-4 text-primary" />
+            <Card className="bg-card border-white/5 col-span-2 md:col-span-1">
+              <CardHeader className="flex flex-row items-center justify-between pb-1 md:pb-2 p-3 md:p-6">
+                <CardTitle className="text-[10px] md:text-sm font-medium text-muted-foreground uppercase">Revenue</CardTitle>
+                <DollarSign className="h-3 w-3 md:h-4 md:w-4 text-primary" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-white">₦{(stats?.totalRevenue / 100 || 0).toLocaleString()}</div>
+              <CardContent className="p-3 md:p-6 pt-0 md:pt-0">
+                <div className="text-lg md:text-2xl font-bold text-white truncate">₦{(stats?.totalRevenue / 100 || 0).toLocaleString()}</div>
               </CardContent>
             </Card>
           </div>
 
           {/* Events Table */}
-          <Card className="bg-card border-white/5 overflow-hidden mb-12">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-xl font-display text-white">Recent Events</CardTitle>
+          <Card className="bg-card border-white/5 overflow-hidden mb-8 md:mb-12">
+            <CardHeader className="flex flex-row items-center justify-between p-4 md:p-6">
+              <CardTitle className="text-lg md:text-xl font-display text-white">Recent Events</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
+              <div className="overflow-x-auto scrollbar-hide">
+                <table className="w-full text-left min-w-[500px] md:min-w-full">
                   <thead>
                     <tr className="border-b border-white/5 bg-white/5">
                       <th className="px-6 py-4 text-xs font-bold text-white uppercase tracking-wider">Event</th>

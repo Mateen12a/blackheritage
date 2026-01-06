@@ -39,10 +39,13 @@ export function AdminSidebar() {
         />
       )}
       <button 
-        className="fixed top-4 left-4 z-[60] md:hidden bg-primary text-background p-2 rounded-lg shadow-lg"
+        className={cn(
+          "fixed bottom-6 right-6 z-[60] md:hidden bg-primary text-background p-4 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95",
+          !isCollapsed ? "opacity-0 pointer-events-none scale-0" : "opacity-100 scale-100"
+        )}
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
-        {isCollapsed ? <ChevronRight size={24} /> : <X size={24} />}
+        <LayoutDashboard size={24} />
       </button>
 
       <aside 
@@ -60,10 +63,10 @@ export function AdminSidebar() {
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={() => setIsCollapsed(true)}
           className="text-muted-foreground hover:text-white ml-auto"
         >
-          {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          {isCollapsed ? <ChevronRight size={20} /> : <X size={20} />}
         </Button>
       </div>
 
@@ -115,5 +118,6 @@ export function AdminSidebar() {
         </Button>
       </div>
     </aside>
+    </>
   );
 }

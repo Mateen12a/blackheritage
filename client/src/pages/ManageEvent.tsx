@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Trash2, Edit } from "lucide-react";
+import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Trash2, Edit, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRoute, Link, useLocation } from "wouter";
 import { format, isPast } from "date-fns";
@@ -106,36 +106,44 @@ export default function ManageEvent() {
 
   return (
     <div className="pb-20">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+        <div className="w-full">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
             <Link href="/admin">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-white">← Back</Button>
+              <Button variant="outline" size="sm" className="w-fit border-white/10 text-muted-foreground hover:text-white hover:bg-white/5 transition-all">
+                <ChevronLeft className="w-4 h-4 mr-1" /> Back to Dashboard
+              </Button>
             </Link>
-            <h1 className="text-3xl font-display font-bold text-white">{event.title}</h1>
-            {isExpired && (
-              <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-500 border border-red-500/20 text-xs font-bold uppercase">
-                Expired
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl md:text-3xl font-display font-bold text-white leading-tight break-words">{event.title}</h1>
+              {isExpired && (
+                <span className="shrink-0 px-2 py-0.5 rounded bg-red-500/10 text-red-500 border border-red-500/20 text-[10px] font-bold uppercase tracking-wider">
+                  Expired
+                </span>
+              )}
+            </div>
           </div>
-          <p className="text-muted-foreground">
-            {event.location} • {format(new Date(event.date), "PPP")} 
-            {event.organizerName && <span className="ml-2 italic text-xs">• Published by {event.organizerName}</span>}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {event.location}</span>
+            <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {format(new Date(event.date), "PPP")}</span>
+            {event.organizerName && <span className="italic text-xs opacity-60">Published by {event.organizerName}</span>}
+          </div>
         </div>
         
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <Button 
             variant="outline" 
-            className="border-white/10"
+            className="flex-1 md:flex-none border-white/10 h-10 px-4"
             onClick={() => {/* Mock edit */ toast({ title: "Edit coming soon" })}}
           >
             <Edit className="w-4 h-4 mr-2" /> Edit
           </Button>
           <Button 
             variant={event.status === 'published' ? 'outline' : 'default'}
-            className={event.status === 'published' ? 'border-yellow-500/20 text-yellow-500 hover:bg-yellow-500/10' : 'bg-primary text-background'}
+            className={cn(
+              "flex-1 md:flex-none h-10 px-4",
+              event.status === 'published' ? 'border-yellow-500/20 text-yellow-500 hover:bg-yellow-500/10' : 'bg-primary text-background'
+            )}
             onClick={() => updateStatusMutation.mutate(event.status === 'published' ? 'unpublished' : 'published')}
             disabled={updateStatusMutation.isPending}
           >
@@ -143,6 +151,7 @@ export default function ManageEvent() {
           </Button>
           <Button 
             variant="destructive" 
+            className="h-10 px-3"
             onClick={() => {
               if (confirm("Are you sure you want to delete this event?")) {
                 deleteEventMutation.mutate();
