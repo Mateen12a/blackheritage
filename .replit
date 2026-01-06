@@ -1,0 +1,70 @@
+modules = ["nodejs-20"]
+[nix]
+channel = "stable-25_05"
+packages = ["unzip"]
+
+[agent]
+expertMode = true
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "backend-server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "frontend-only"
+
+[[workflows.workflow]]
+name = "backend-server"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run backend:dev"
+waitForPort = 3001
+
+[[workflows.workflow]]
+name = "frontend-only"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run frontend:dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 5001
+externalPort = 3001
+
+[userenv]
+
+[userenv.shared]
+BACKEND_URL = "https://e1f27991-52c6-49e2-8d0d-1e4d91199919-00-1r9xuclz8bt78.worf.replit.dev:3001"
+VITE_API_URL = "http://localhost:3001/api"
+MONGODB_URI = "mongodb+srv://mateen:mateen@cluster0.ydjp5.mongodb.net/BlacHeritage?retryWrites=true&w=majority"

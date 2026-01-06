@@ -65,10 +65,15 @@ export default function MyTickets() {
                 <div className="h-2 bg-gradient-to-r from-primary to-yellow-200" />
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-4">
-                    <span className="px-3 py-1 bg-green-500/10 text-green-400 text-xs font-bold rounded-full uppercase tracking-wide border border-green-500/20">
-                      Confirmed
-                    </span>
-                    <span className="text-white/40 text-sm">#{booking.id.toString().padStart(6, '0')}</span>
+                    <div className="flex flex-col gap-1">
+                      <span className="px-3 py-1 bg-green-500/10 text-green-400 text-xs font-bold rounded-full uppercase tracking-wide border border-green-500/20 w-fit">
+                        Confirmed
+                      </span>
+                      <span className="text-[10px] text-primary font-bold uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded border border-primary/10 w-fit">
+                        Ticket ID: {booking.id.toString().slice(-8).toUpperCase()}
+                      </span>
+                    </div>
+                    <span className="text-white/40 text-[10px] font-mono">REF: {booking.paymentReference?.slice(0, 10)}...</span>
                   </div>
 
                   <h3 className="text-xl font-bold font-display text-white mb-2">{booking.event.title}</h3>

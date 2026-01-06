@@ -161,11 +161,18 @@ export async function registerRoutes(
       const typeIndex = ticketTypes.findIndex((t: any) => t.name === (ticketType || 'Regular'));
       
       if (typeIndex !== -1) {
-        if (ticketTypes[typeIndex].capacity && (ticketTypes[typeIndex].sold + quantity > ticketTypes[typeIndex].capacity)) {
-          return res.status(400).json({ message: "Ticket type capacity reached" });
+        const requestedQuantity = Number(quantity);
+        if (ticketTypes[typeIndex].capacity && (Number(ticketTypes[typeIndex].sold || 0) + requestedQuantity > Number(ticketTypes[typeIndex].capacity))) {
+          return res.status(400).json({ message: `Only ${ticketTypes[typeIndex].capacity - (ticketTypes[typeIndex].sold || 0)} tickets left for ${ticketTypes[typeIndex].name}` });
         }
-        ticketTypes[typeIndex].sold = (ticketTypes[typeIndex].sold || 0) + quantity;
-        await storage.updateEvent(eventId, { ticketTypes: JSON.stringify(ticketTypes) });
+        ticketTypes[typeIndex].sold = Number(ticketTypes[typeIndex].sold || 0) + requestedQuantity;
+        
+        // Also update global capacity
+        const newCapacity = Number(event.capacity) - requestedQuantity;
+        await storage.updateEvent(eventId, { 
+          ticketTypes: JSON.stringify(ticketTypes),
+          capacity: Math.max(0, newCapacity)
+        });
       }
 
       const booking = await storage.createBooking({
@@ -176,7 +183,7 @@ export async function registerRoutes(
         name: name || "Anonymous User",
         email: email || "no-email@provided.com",
         status: "paid",
-        paymentReference,
+        paymentReference: paymentReference || `REF-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
         ticketType: ticketType || 'Regular'
       });
 

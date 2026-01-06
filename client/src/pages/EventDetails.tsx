@@ -110,8 +110,24 @@ export default function EventDetails() {
                     <Users className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-white text-lg">Capacity</h3>
-                    <p className="text-muted-foreground">Limited to {event.capacity} guests</p>
+                    <h3 className="font-bold text-white text-lg">Tickets Available</h3>
+                    <div className="flex flex-col gap-1 mt-1">
+                      {(() => {
+                        try {
+                          const types = JSON.parse(event.ticketTypes || '[]');
+                          if (types.length === 0) {
+                            return <p className="text-muted-foreground">{event.capacity} Regular tickets remaining</p>;
+                          }
+                          return types.map((type: any) => (
+                            <p key={type.name} className="text-muted-foreground">
+                              <span className="text-primary font-bold">{type.capacity - (type.sold || 0)}</span> {type.name} tickets left
+                            </p>
+                          ));
+                        } catch (e) {
+                          return <p className="text-muted-foreground">{event.capacity} tickets remaining</p>;
+                        }
+                      })()}
+                    </div>
                   </div>
                 </div>
               </div>

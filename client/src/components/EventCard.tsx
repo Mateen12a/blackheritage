@@ -53,16 +53,44 @@ export function EventCard({ event }: EventCardProps) {
             <span className="truncate font-medium">{event.location}</span>
           </div>
 
-          <div className="mt-auto flex items-center justify-between pt-5 border-t border-white/10">
-            <div className="flex items-center gap-2 text-white/60">
-              <Users className="w-5 h-5" />
-              <span className="font-medium text-base">{event.capacity} left</span>
+          <div className="mt-auto flex flex-col pt-5 border-t border-white/10">
+            <div className="flex flex-wrap gap-2 mb-3">
+              {(() => {
+                try {
+                  const types = JSON.parse(event.ticketTypes || '[]');
+                  if (types.length === 0) {
+                    return (
+                      <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md border border-white/10">
+                        <Users className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-[10px] font-bold text-white uppercase tracking-tighter">
+                          {event.capacity} Regular Left
+                        </span>
+                      </div>
+                    );
+                  }
+                  return types.slice(0, 3).map((type: any) => (
+                    <div key={type.name} className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md border border-white/10">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      <span className="text-[10px] font-bold text-white uppercase tracking-tighter">
+                        {type.capacity - (type.sold || 0)} {type.name} Left
+                      </span>
+                    </div>
+                  ));
+                } catch (e) {
+                  return null;
+                }
+              })()}
             </div>
-            <div className="flex flex-col items-end">
-              <span className="text-primary font-black text-lg group-hover:translate-x-1 transition-transform">
-                Get Ticket →
-              </span>
-              <span className="text-[10px] text-white/40 uppercase tracking-tighter">Click to book</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-white/60">
+                <Users className="w-5 h-5" />
+                <span className="font-medium text-base">{event.capacity} Total</span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-primary font-black text-lg group-hover:translate-x-1 transition-transform">
+                  Get Ticket →
+                </span>
+              </div>
             </div>
           </div>
         </div>

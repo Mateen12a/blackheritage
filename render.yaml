@@ -1,19 +1,17 @@
 services:
   - type: web
-    name: black-heritage-events
+    name: black-heritage-backend
     env: node
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    buildCommand: npm install && npm run backend:build
+    startCommand: npm run backend:start
     envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 5000
       - key: MONGODB_URI
-        fromConfig: true
+        sync: false
       - key: SESSION_SECRET
-        generateValue: true
+        sync: false
       - key: PAYSTACK_SECRET_KEY
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      - key: PORT
+        value: 10000

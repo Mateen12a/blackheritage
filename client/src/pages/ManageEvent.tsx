@@ -163,6 +163,42 @@ export default function ManageEvent() {
         </TabsList>
 
         <TabsContent value="attendees">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {(() => {
+              try {
+                const types = JSON.parse(event.ticketTypes || '[]');
+                if (types.length === 0) {
+                  const sold = bookings?.reduce((acc, b) => acc + b.quantity, 0) || 0;
+                  return (
+                    <Card className="bg-card border-white/5">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground uppercase">Regular Tickets</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold text-white">{event.capacity - sold} / {event.capacity}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Remaining availability</p>
+                      </CardContent>
+                    </Card>
+                  );
+                }
+                return types.map((type: any) => (
+                  <Card key={type.name} className="bg-card border-white/5">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground uppercase">{type.name} Tickets</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-white">
+                        {type.capacity - (type.sold || 0)} / {type.capacity}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Remaining availability</p>
+                    </CardContent>
+                  </Card>
+                ));
+              } catch (e) {
+                return null;
+              }
+            })()}
+          </div>
           <Card className="bg-card border-white/5">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>

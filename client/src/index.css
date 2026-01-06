@@ -1,47 +1,60 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap');
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+@plugin "@tailwindcss/typography";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-:root {
-  /* HSL Color Space */
-  --background: 0 0% 15%; /* #262626 - 85% Black */
-  --foreground: 0 0% 100%; /* #FFFFFF */
-  
-  --card: 0 0% 10%; /* #1a1a1a - Slightly darker for depth */
-  --card-foreground: 0 0% 98%;
-  
-  --popover: 0 0% 10%;
-  --popover-foreground: 0 0% 98%;
-  
-  --primary: 48 100% 50%; /* #FFD700 - Yellow */
-  --primary-foreground: 0 0% 9%;
-  
-  --secondary: 0 0% 25%;
-  --secondary-foreground: 0 0% 98%;
-  
-  --muted: 0 0% 25%;
-  --muted-foreground: 0 0% 65%;
-  
-  --accent: 48 100% 50%;
-  --accent-foreground: 0 0% 9%;
-  
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 0 0% 98%;
-
-  --border: 0 0% 25%;
-  --input: 0 0% 25%;
-  --ring: 48 100% 50%;
-  
-  --radius: 0.5rem;
-
-  /* Custom Fonts */
+@theme {
   --font-display: 'Playfair Display', serif;
   --font-body: 'DM Sans', sans-serif;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
 }
 
 @layer base {
+  :root {
+    --background: 0 0% 15%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 10% ;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 48 100% 50%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 25%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 25%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 48 100% 50%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 25%;
+    --input: 0 0% 25%;
+    --ring: 48 100% 50%;
+    --radius: 0.5rem;
+  }
+
   * {
     @apply border-border;
   }
@@ -49,42 +62,20 @@
     @apply bg-background text-foreground antialiased selection:bg-primary/30 selection:text-primary-foreground;
     font-family: var(--font-body);
   }
-  
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     @apply font-bold tracking-tight;
   }
 }
 
-@layer utilities {
-  .text-shadow {
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-  }
-  
-  .glass-card {
-    @apply bg-card/80 backdrop-blur-md border border-white/10 shadow-xl;
-  }
-  
-  .gold-gradient {
-    @apply bg-gradient-to-r from-primary via-[#FFE55C] to-primary;
-  }
-  
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70;
-  }
-  
-  .gold-text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-[#FFE55C] to-primary;
-  }
+@utility glass-card {
+  @apply bg-card/80 backdrop-blur-md border border-white/10 shadow-xl;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 10px;
+@utility gold-gradient {
+  @apply bg-gradient-to-r from-primary via-[#FFE55C] to-primary;
 }
-::-webkit-scrollbar-track {
-  @apply bg-background;
-}
-::-webkit-scrollbar-thumb {
-  @apply bg-white/20 rounded-full hover:bg-primary/50 transition-colors;
+
+@utility gold-text-gradient {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-[#FFE55C] to-primary;
 }
