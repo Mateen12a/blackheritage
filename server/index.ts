@@ -13,7 +13,9 @@ const httpServer = createServer(app);
 const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL,
   "http://localhost:5173",
-  "https://black-heritage-events.vercel.app" // Add your actual Vercel URL
+  "https://black-heritage-events.vercel.app",
+  "https://blackheritage.onrender.com",
+  "https://blackhevents.com"
 ].filter(Boolean) as string[];
 
 app.use(cors({

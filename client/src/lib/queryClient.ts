@@ -7,7 +7,12 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-const BASE_URL = import.meta.env.VITE_API_URL || "";
+const BASE_URL = "https://blackheritage.onrender.com";
+
+// Wake up the backend immediately when this file is loaded
+fetch(`${BASE_URL}/api/health`).catch(() => {
+  // Silent fail, just a ping to wake up Render free tier
+});
 
 export async function apiRequest(
   method: string,
@@ -21,7 +26,6 @@ export async function apiRequest(
     method,
     headers: {
       ...(data ? { "Content-Type": "application/json" } : {}),
-      // Ensure cross-origin requests work correctly if BASE_URL is set
     },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",

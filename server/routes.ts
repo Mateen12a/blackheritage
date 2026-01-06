@@ -11,6 +11,11 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Health check for Render wake up
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok" });
+  });
+  
   // Initialize Stripe (if key is present, otherwise mock)
   const stripe = process.env.STRIPE_SECRET_KEY
     ? new Stripe(process.env.STRIPE_SECRET_KEY)
