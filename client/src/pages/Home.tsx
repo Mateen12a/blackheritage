@@ -103,9 +103,11 @@ export default function Home() {
             <Loader2 className="w-10 h-10 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {featuredEvents?.map((event) => (
-              <EventCard key={event.id} event={event} />
+              <div key={event.id} className="flex justify-center">
+                <EventCard event={event} />
+              </div>
             ))}
           </div>
         )}

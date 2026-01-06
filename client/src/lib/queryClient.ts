@@ -14,10 +14,15 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const fullUrl = url.startsWith("http") ? url : `${BASE_URL}${url}`;
+  const isExternal = url.startsWith("http");
+  const fullUrl = isExternal ? url : `${BASE_URL}${url}`;
+  
   const res = await fetch(fullUrl, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      // Ensure cross-origin requests work correctly if BASE_URL is set
+    },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -33,7 +38,9 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const url = queryKey[0] as string;
-    const fullUrl = url.startsWith("http") ? url : `${BASE_URL}${url}`;
+    const isExternal = url.startsWith("http");
+    const fullUrl = isExternal ? url : `${BASE_URL}${url}`;
+    
     const res = await fetch(fullUrl, {
       credentials: "include",
     });

@@ -122,14 +122,10 @@ export function Navbar() {
                 </Link>
               ))}
               <div className="h-px bg-white/10 my-2" />
-              {user ? (
+              {user && (
                 <Button variant="ghost" className="w-full text-white justify-start" onClick={() => { logout(); setIsMobileMenuOpen(false); }}>
                   <LogOut className="w-4 h-4 mr-2" /> Logout
                 </Button>
-              ) : (
-                <Link href="/auth">
-                  <Button variant="ghost" className="w-full text-white justify-start" onClick={() => setIsMobileMenuOpen(false)}>Login</Button>
-                </Link>
               )}
               <Link href="/events">
                 <Button className="w-full bg-primary text-background font-bold" onClick={() => setIsMobileMenuOpen(false)}>
