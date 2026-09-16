@@ -7,7 +7,9 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-const BASE_URL = "https://blackheritage.onrender.com";
+// Same-origin API in dev/preview (vite proxies /api → localhost:3001);
+// production can override with VITE_API_URL. See vite.config.ts proxy.
+const BASE_URL = import.meta.env.VITE_API_URL || "";
 
 // Wake up the backend immediately when this file is loaded
 fetch(`${BASE_URL}/api/health`).catch(() => {

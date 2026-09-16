@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertEventSchema, insertBookingSchema, events, bookings } from './schema';
+import { insertEventSchema, insertBookingSchema, insertVendorSchema, events, bookings, vendors } from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -84,6 +84,43 @@ export const api = {
       path: '/api/bookings/search',
       responses: {
         200: z.array(z.custom<typeof bookings.$inferSelect & { event: typeof events.$inferSelect }>()),
+      },
+    },
+  },
+  vendors: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/vendors',
+      responses: {
+        200: z.array(z.custom<typeof vendors.$inferSelect>()),
+      },
+    },
+    get: {
+      method: 'GET' as const,
+      path: '/api/vendors/:id',
+      responses: {
+        200: z.custom<typeof vendors.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/vendors',
+      input: insertVendorSchema,
+      responses: {
+        201: z.custom<typeof vendors.$inferSelect>(),
+        400: errorSchemas.validation,
+        403: errorSchemas.notFound,
+      },
+    },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/vendors/:id',
+      input: insertVendorSchema.partial(),
+      responses: {
+        200: z.custom<typeof vendors.$inferSelect>(),
+        400: errorSchemas.validation,
+        404: errorSchemas.notFound,
       },
     },
   },

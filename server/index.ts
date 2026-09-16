@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { createServer } from "http";
 import { connectDB } from "./db";
 import { setupAuth } from "./auth";
+import { setupGoogleAuth } from "./google-auth";
 import https from "https";
 import cors from "cors";
 
@@ -107,6 +108,7 @@ app.use((req, res, next) => {
 (async () => {
   await connectDB();
   setupAuth(app);
+  setupGoogleAuth(app);
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

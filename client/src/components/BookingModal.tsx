@@ -50,7 +50,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
     }
   }, [ticketTypes, selectedTicketType]);
 
-  const currentType = ticketTypes.find(t => t.name === selectedTicketType) || ticketTypes[0];
+  const currentType = ticketTypes.find((t: any) => t.name === selectedTicketType) || ticketTypes[0];
   const price = currentType.price / 100;
   const total = price * quantity;
 

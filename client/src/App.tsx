@@ -1,4 +1,4 @@
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -9,46 +9,80 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Events from "@/pages/Events";
 import EventDetails from "@/pages/EventDetails";
+import Vendors from "@/pages/Vendors";
+import VendorDetails from "@/pages/VendorDetails";
+import VendorAccount from "@/pages/VendorAccount";
 import CalendarPage from "@/pages/Calendar";
 import MyTickets from "@/pages/MyTickets";
 import AuthPage from "@/pages/Auth";
 import AdminDashboard from "@/pages/AdminDashboard";
+import AttendeeDashboard from "@/pages/AttendeeDashboard";
+import VendorDashboard from "@/pages/VendorDashboard";
 import ManageEvent from "@/pages/ManageEvent";
 import NewEvent from "@/pages/NewEvent";
 import { PublicLayout } from "@/components/PublicLayout";
 import { AdminLayout } from "@/components/AdminLayout";
+import { MotionProvider } from "@/components/motion";
 
-function ProtectedRoute({ 
-  component: Component, 
-  requireAdmin = false 
-}: { 
-  component: React.ComponentType, 
-  requireAdmin?: boolean 
+function ProtectedRoute({
+  component: Component,
+}: {
+  component: React.ComponentType;
 }) {
   const { user, isLoading } = useAuth();
+  const [path] = useLocation();
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
       </div>
     );
   }
 
   if (!user) {
-    return <Redirect to="/auth" />;
+    return (
+      <Redirect to={"/auth?returnTo=" + encodeURIComponent(path)} />
+    );
   }
-
-  if (requireAdmin && user.role !== 'admin' && user.role !== 'organizer' && !user.isAdmin) {
-    return <Redirect to="/" />;
-  }
-
-  const Layout = (user.role === 'admin' || user.role === 'organizer' || user.isAdmin) ? AdminLayout : PublicLayout;
 
   return (
-    <Layout>
+    <PublicLayout>
       <Component />
-    </Layout>
+    </PublicLayout>
+  );
+}
+
+function AdminRoute({
+  component: Component,
+}: {
+  component: React.ComponentType;
+}) {
+  const { user, isLoading } = useAuth();
+  const [path] = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Redirect to={"/auth?returnTo=" + encodeURIComponent(path)} />
+    );
+  }
+
+  if (user.role !== "admin" && user.role !== "organizer" && !user.isAdmin) {
+    return <Redirect to="/dashboard" />;
+  }
+
+  return (
+    <AdminLayout>
+      <Component />
+    </AdminLayout>
   );
 }
 
@@ -79,6 +113,20 @@ function Router() {
           </PublicLayout>
         )}
       </Route>
+      <Route path="/vendors">
+        {() => (
+          <PublicLayout>
+            <Vendors />
+          </PublicLayout>
+        )}
+      </Route>
+      <Route path="/vendors/:id">
+        {() => (
+          <PublicLayout>
+            <VendorDetails />
+          </PublicLayout>
+        )}
+      </Route>
       <Route path="/calendar">
         {() => (
           <PublicLayout>
@@ -86,58 +134,80 @@ function Router() {
           </PublicLayout>
         )}
       </Route>
-      
-      {/* Auth Page - No Shared Layout or Custom */}
+
+      {/* Auth Page */}
       <Route path="/auth">
         {() => {
           if (user) {
-            return <Redirect to={user.role === 'admin' || user.role === 'organizer' || user.isAdmin ? "/admin" : "/"} />;
+            const isOrg =
+              user.role === "admin" ||
+              user.role === "organizer" ||
+              user.isAdmin;
+            return (
+              <Redirect to={isOrg ? "/admin" : "/dashboard"} />
+            );
           }
           return <AuthPage />;
         }}
       </Route>
 
-      {/* Admin Auth Page - For Organizers */}
       <Route path="/admin/login">
         {() => {
           if (user) {
-            return <Redirect to={user.role === 'admin' || user.role === 'organizer' || user.isAdmin ? "/admin" : "/"} />;
+            const isOrg =
+              user.role === "admin" ||
+              user.role === "organizer" ||
+              user.isAdmin;
+            return (
+              <Redirect to={isOrg ? "/admin" : "/dashboard"} />
+            );
           }
-          return <AuthPage />;
+          return <Redirect to="/auth" />;
         }}
       </Route>
 
-      {/* Protected User Routes */}
+      {/* Attendee Dashboard */}
+      <Route path="/dashboard">
+        {() => <ProtectedRoute component={AttendeeDashboard} />}
+      </Route>
       <Route path="/my-tickets">
         {() => <ProtectedRoute component={MyTickets} />}
       </Route>
-      
-      {/* Admin/Organizer Routes */}
+
+      {/* Vendor Dashboard */}
+      <Route path="/vendor-dashboard">
+        {() => <ProtectedRoute component={VendorDashboard} />}
+      </Route>
+      <Route path="/vendor-signup">
+        {() => <ProtectedRoute component={VendorAccount} />}
+      </Route>
+
+      {/* Organizer / Admin Routes */}
       <Route path="/admin">
-        {() => <ProtectedRoute component={AdminDashboard} requireAdmin />}
+        {() => <AdminRoute component={AdminDashboard} />}
       </Route>
       <Route path="/admin/events">
-        {() => <ProtectedRoute component={AdminDashboard} requireAdmin />}
+        {() => <AdminRoute component={AdminDashboard} />}
       </Route>
       <Route path="/admin/bookings">
-        {() => <ProtectedRoute component={AdminDashboard} requireAdmin />}
+        {() => <AdminRoute component={AdminDashboard} />}
       </Route>
       <Route path="/admin/sponsors">
-        {() => <ProtectedRoute component={AdminDashboard} requireAdmin />}
+        {() => <AdminRoute component={AdminDashboard} />}
       </Route>
       <Route path="/admin/vendors">
-        {() => <ProtectedRoute component={AdminDashboard} requireAdmin />}
+        {() => <AdminRoute component={AdminDashboard} />}
       </Route>
       <Route path="/admin/events/new">
-        {() => <ProtectedRoute component={NewEvent} requireAdmin />}
+        {() => <AdminRoute component={NewEvent} />}
       </Route>
       <Route path="/admin/events/:id">
-        {() => <ProtectedRoute component={ManageEvent} requireAdmin />}
+        {() => <AdminRoute component={ManageEvent} />}
       </Route>
       <Route path="/admin/events/:id/bookings">
-        {() => <ProtectedRoute component={ManageEvent} requireAdmin />}
+        {() => <AdminRoute component={ManageEvent} />}
       </Route>
-      
+
       {/* Catch-all */}
       <Route>
         {() => (
@@ -153,10 +223,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <MotionProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </MotionProvider>
     </QueryClientProvider>
   );
 }

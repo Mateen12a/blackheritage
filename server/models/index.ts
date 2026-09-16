@@ -4,7 +4,7 @@ export interface IUser extends Document {
   username: string;
   email: string;
   password?: string;
-  role: 'organizer' | 'admin';
+  role: 'user' | 'organizer' | 'admin';
   createdAt: Date;
 }
 
@@ -12,7 +12,7 @@ const UserSchema: Schema = new Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['organizer', 'admin'], default: 'organizer' },
+  role: { type: String, enum: ['user', 'organizer', 'admin'], default: 'organizer' },
   createdAt: { type: Date, default: Date.now }
 }, {
   id: false // Disable the id virtual to avoid unique index conflict with null
@@ -90,6 +90,38 @@ const BookingSchema: Schema = new Schema({
 });
 
 export const BookingModel = mongoose.models.Booking || model<IBooking>("Booking", BookingSchema);
+
+export interface IVendor extends Document {
+  businessName: string;
+  category: string;
+  bio: string;
+  gallery: string; // JSON string: string[] of image URLs
+  city?: string;
+  serviceArea?: string;
+  phone?: string;
+  whatsapp?: string;
+  status: 'draft' | 'published' | 'unpublished';
+  ownerId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const VendorSchema: Schema = new Schema({
+  businessName: { type: String, required: true },
+  category: { type: String, enum: ['DJ', 'MC', 'Caterer', 'Decorator', 'Photographer', 'Live Band', 'Other'], default: 'Other' },
+  bio: { type: String, required: true },
+  gallery: { type: String, default: '[]' },
+  city: { type: String },
+  serviceArea: { type: String },
+  phone: { type: String },
+  whatsapp: { type: String },
+  status: { type: String, enum: ['draft', 'published', 'unpublished'], default: 'published' },
+  ownerId: { type: String },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+export const VendorModel = mongoose.models.Vendor || model<IVendor>("Vendor", VendorSchema);
 
 export interface IBusinessBooking extends Document {
   eventId: mongoose.Types.ObjectId;

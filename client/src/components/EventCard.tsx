@@ -1,100 +1,75 @@
 import { Event } from "@shared/schema";
 import { Link } from "wouter";
-import { CalendarDays, MapPin, Users } from "lucide-react";
-import { motion } from "framer-motion";
+import { MapPin } from "lucide-react";
+import { FadeImg } from "@/components/motion";
 import { format } from "date-fns";
 
 interface EventCardProps {
   event: Event;
 }
 
+/**
+ * Editorial event card: the flyer is the hero (full-bleed, portrait),
+ * hairline border, no card shadow, hover = photo scale + title color only.
+ * See DESIGN.md.
+ */
 export function EventCard({ event }: EventCardProps) {
-  return (
-    <Link href={`/events/${event.id}`}>
-      <motion.div 
-        whileHover={{ y: -5 }}
-        className="group relative overflow-hidden rounded-2xl bg-card border border-white/5 hover:border-primary/50 transition-all duration-300 cursor-pointer h-full flex flex-col shadow-lg hover:shadow-primary/10"
-      >
-        {/* Image Container */}
-        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10" />
-          <img 
-            src={event.imageUrl} 
-            alt={event.title}
-            loading="lazy"
-            decoding="async"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-          
-          {/* Price Tag */}
-          <div className="absolute top-4 right-4 z-20 bg-primary text-black font-black px-4 py-2 rounded-xl text-lg shadow-2xl border border-white/20">
-            ₦{(event.price / 100).toLocaleString()}
-          </div>
+  const ticketTypes = (() => {
+    try {
+      const parsed = JSON.parse(event.ticketTypes || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  })();
 
-          {/* Date Badge */}
-          <div className="absolute bottom-4 left-4 z-20 flex flex-col items-center bg-white/20 backdrop-blur-md border border-white/30 rounded-xl px-4 py-2 text-white shadow-xl">
-            <span className="text-sm font-bold uppercase tracking-widest">
-              {format(new Date(event.date), "MMM")}
-            </span>
-            <span className="text-3xl font-black font-display leading-none">
-              {format(new Date(event.date), "dd")}
-            </span>
-          </div>
+  const availability = (() => {
+    if (ticketTypes.length > 0) {
+      const type = ticketTypes[0];
+      return type.capacity - (type.sold || 0) + " " + type.name + " left";
+    }
+    return event.capacity + " capacity";
+  })();
+
+  const price =
+    event.price > 0 ? "₦" + (event.price / 100).toLocaleString() : "Free";
+
+  return (
+    <Link href={"/events/" + event.id}>
+      <article className="group relative overflow-hidden rounded-md bg-surface border border-hairline hover:border-white/20 transition-colors duration-200 h-full flex flex-col cursor-pointer">
+        {/* The flyer is the hero */}
+        <div className="relative aspect-[3/4] overflow-hidden bg-surface-2">
+          <FadeImg
+            src={event.imageUrl}
+            alt={event.title}
+            data-motion="scale-on-hover"
+            className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-gradient-to-t from-background via-background/10 to-transparent"
+          />
+          <span className="absolute bottom-3 left-4 text-[11px] font-bold tracking-[0.18em] uppercase text-ink/80">
+            {format(new Date(event.date), "EEE d MMM")}
+          </span>
         </div>
 
         {/* Content */}
-        <div className="p-6 flex flex-col flex-grow">
-          <h3 className="text-2xl font-bold font-display mb-3 text-white group-hover:text-primary transition-colors line-clamp-2 leading-tight">
+        <div className="flex flex-col flex-grow p-5">
+          <h3 className="font-display text-xl font-bold leading-snug text-ink line-clamp-2 transition-colors duration-200 group-hover:text-gold">
             {event.title}
           </h3>
-          
-          <div className="flex items-center gap-2 text-white/80 text-lg mb-6">
-            <MapPin className="w-5 h-5 text-primary shrink-0" />
-            <span className="truncate font-medium">{event.location}</span>
+          <div className="mt-2 flex items-center gap-2 text-sm text-muted-ink">
+            <MapPin className="w-3.5 h-3.5 text-gold shrink-0" />
+            <span className="truncate">{event.location}</span>
           </div>
 
-          <div className="mt-auto flex flex-col pt-5 border-t border-white/10">
-            <div className="flex flex-wrap gap-2 mb-3">
-              {(() => {
-                try {
-                  const types = JSON.parse(event.ticketTypes || '[]');
-                  if (types.length === 0) {
-                    return (
-                      <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md border border-white/10">
-                        <Users className="w-3.5 h-3.5 text-primary" />
-                        <span className="text-[10px] font-bold text-white uppercase tracking-tighter">
-                          {event.capacity} Regular Left
-                        </span>
-                      </div>
-                    );
-                  }
-                  return types.slice(0, 3).map((type: any) => (
-                    <div key={type.name} className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md border border-white/10">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                      <span className="text-[10px] font-bold text-white uppercase tracking-tighter">
-                        {type.capacity - (type.sold || 0)} {type.name} Left
-                      </span>
-                    </div>
-                  ));
-                } catch (e) {
-                  return null;
-                }
-              })()}
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-white/60">
-                <Users className="w-5 h-5" />
-                <span className="font-medium text-base">{event.capacity} Total</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-primary font-black text-lg group-hover:translate-x-1 transition-transform">
-                  Get Ticket →
-                </span>
-              </div>
-            </div>
+          <div className="mt-auto pt-4 border-t border-hairline flex items-baseline justify-between gap-3">
+            <span className="font-display text-lg text-ink">{price}</span>
+            <span className="eyebrow">{availability}</span>
           </div>
         </div>
-      </motion.div>
+      </article>
     </Link>
   );
 }

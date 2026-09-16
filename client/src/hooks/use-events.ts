@@ -3,7 +3,9 @@ import { api, buildUrl } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-const BASE_URL = "https://blackheritage.onrender.com";
+// Same-origin API in dev/preview (vite proxies /api → localhost:3001);
+// production can override with VITE_API_URL.
+const BASE_URL = import.meta.env.VITE_API_URL || "";
 
 export function useEvents() {
   return useQuery({

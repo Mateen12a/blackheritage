@@ -2,7 +2,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
 
-const BASE_URL = "https://blackheritage.onrender.com";
+// Same-origin API in dev/preview (vite proxies /api → localhost:3001);
+// production can override with VITE_API_URL.
+const BASE_URL = import.meta.env.VITE_API_URL || "";
 
 export function useAuth() {
   const queryClient = useQueryClient();

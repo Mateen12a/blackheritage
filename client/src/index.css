@@ -2,57 +2,106 @@
 @plugin "tailwindcss-animate";
 @plugin "@tailwindcss/typography";
 
+/*
+ * BLACK HERITAGE — DESIGN TOKENS
+ * The direction is locked in DESIGN.md (repo root): deep indigo-black base,
+ * ONE warm gold accent used sparingly, Playfair Display for display type and
+ * DM Sans for everything else. Do not add new colors, fonts, or motion here
+ * without updating DESIGN.md first.
+ */
 @theme {
   --font-display: 'Playfair Display', serif;
   --font-body: 'DM Sans', sans-serif;
 
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
+  /* Brand palette */
+  --color-background: #0F0F14;   /* indigo-black base */
+  --color-surface: #19191F;      /* raised surface */
+  --color-surface-2: #1F1F26;    /* recessed surface (wells, inputs) */
+  --color-ink: #F7F5EF;          /* primary text */
+  --color-muted-ink: #9EA0AD;    /* secondary text */
+  --color-gold: #E3B23C;         /* THE accent, from the logo mark */
+  --color-gold-soft: #F2CE72;    /* gold hover state only */
+  --color-hairline: #31313A;     /* borders */
+  --color-gold-well: #12100B;    /* text on gold */
 
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+  /* shadcn/radix legacy names mapped onto the brand palette */
+  --color-foreground: #F7F5EF;
+  --color-card: #19191F;
+  --color-card-foreground: #F7F5EF;
+  --color-popover: #19191F;
+  --color-popover-foreground: #F7F5EF;
+  --color-primary: #E3B23C;
+  --color-primary-foreground: #12100B;
+  --color-secondary: #1F1F26;
+  --color-secondary-foreground: #F7F5EF;
+  --color-muted: #1F1F26;
+  --color-muted-foreground: #9EA0AD;
+  --color-accent: #E3B23C;
+  --color-accent-foreground: #12100B;
+  --color-destructive: #B42318;
+  --color-destructive-foreground: #F7F5EF;
+  --color-border: #31313A;
+  --color-input: #31313A;
+  --color-ring: #E3B23C;
+  --color-sidebar: #19191F;
+  --color-sidebar-foreground: #F7F5EF;
+  --color-sidebar-border: #31313A;
+
+  --radius: 0.375rem;
+
+  /* Signature moment #2: the slow hero push-in (Home.tsx). */
+  --animate-kenburns: kenburns 20s ease-out forwards;
+
+  @keyframes kenburns {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.06);
+    }
+  }
+
+  /* Living gradient: slow-moving warm glow that shifts behind the hero photo.
+     Gives the hero energy without particles or AI slop — just a subtle
+     radial gradient that drifts position over 12 seconds. */
+  --animate-hero-glow: hero-glow 12s ease-in-out infinite alternate;
+
+  @keyframes hero-glow {
+    0% {
+      transform: translate(0%, 0%) scale(1);
+    }
+    50% {
+      transform: translate(10%, -8%) scale(1.1);
+    }
+    100% {
+      transform: translate(-5%, 5%) scale(0.95);
+    }
+  }
 }
 
 @layer base {
   :root {
-    --background: 0 0% 15%;
-    --foreground: 0 0% 100%;
-    --card: 0 0% 10% ;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 48 100% 50%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 25%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 25%;
-    --muted-foreground: 0 0% 65%;
-    --accent: 48 100% 50%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 25%;
-    --input: 0 0% 25%;
-    --ring: 48 100% 50%;
-    --radius: 0.5rem;
+    /* Raw HSL channels for legacy `hsl(var(--*))` consumers (radius etc.) */
+    --background: 240 14% 7%;
+    --foreground: 45 33% 95%;
+    --card: 240 11% 11%;
+    --card-foreground: 45 33% 95%;
+    --popover: 240 11% 11%;
+    --popover-foreground: 45 33% 95%;
+    --primary: 41 75% 56%;
+    --primary-foreground: 45 22% 6%;
+    --secondary: 240 11% 14%;
+    --secondary-foreground: 45 33% 95%;
+    --muted: 240 11% 14%;
+    --muted-foreground: 233 8% 65%;
+    --accent: 41 75% 56%;
+    --accent-foreground: 45 22% 6%;
+    --destructive: 4 77% 40%;
+    --destructive-foreground: 45 33% 95%;
+    --border: 240 8% 21%;
+    --input: 240 8% 21%;
+    --ring: 41 75% 56%;
+    --radius: 0.375rem;
   }
 
   * {
@@ -66,16 +115,58 @@
     font-family: var(--font-display);
     @apply font-bold tracking-tight;
   }
+
+  /* Keyboard focus must always be visible (DESIGN.md accessibility rule) */
+  :focus-visible {
+    outline: 2px solid #E3B23C;
+    outline-offset: 2px;
+  }
+
+  /* Motion discipline: TWO signature moments (the nav underline, the hero
+     ken-burns) plus quiet Reveal/FadeImg/press helpers. All of it collapses
+     for reduced-motion users. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    [data-motion="scale-on-hover"] {
+      transform: none !important;
+    }
+    [data-motion="kenburns"] {
+      animation: none !important;
+      transform: none !important;
+    }
+    .animate-hero-glow {
+      animation: none !important;
+      transform: none !important;
+    }
+  }
 }
 
-@utility glass-card {
-  @apply bg-card/80 backdrop-blur-md border border-white/10 shadow-xl;
+@utility eyebrow {
+  /* The single sanctioned small label: DM Sans, caps, muted. Metadata only —
+     never headings, never buttons. */
+  @apply text-[11px] font-bold tracking-[0.18em] uppercase text-muted-foreground;
 }
 
-@utility gold-gradient {
-  @apply bg-gradient-to-r from-primary via-[#FFE55C] to-primary;
+@utility rule-gold {
+  /* The one underline treatment: 2px gold, left-anchored. */
+  @apply border-t-2 border-t-primary;
 }
 
+@utility press {
+  /* Button press feedback: subtle scale while active. No bounce. */
+  @apply transition-transform duration-150 active:scale-[0.98];
+}
+
+/* Retired gradient utilities — kept as solid-gold aliases so any straggler
+   class still renders correctly. Do not use them in new code. */
 @utility gold-text-gradient {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-[#FFE55C] to-primary;
+  @apply text-primary;
+}
+@utility gold-gradient {
+  @apply bg-primary;
 }

@@ -75,9 +75,35 @@ export const businessBookingsRelations = relations(businessBookings, ({ one }) =
   }),
 }));
 
+export const vendorCategories = ["DJ", "MC", "Caterer", "Decorator", "Photographer", "Live Band", "Other"] as const;
+export type VendorCategory = typeof vendorCategories[number];
+
+export const vendors = pgTable("vendors", {
+  id: text("id").primaryKey(),
+  businessName: text("business_name").notNull(),
+  category: text("category").notNull().default("Other"), // DJ, MC, Caterer, Decorator, Photographer, Live Band, Other
+  bio: text("bio").notNull(),
+  gallery: text("gallery").default("[]"), // JSON string: string[] of image URLs
+  city: text("city"),
+  serviceArea: text("service_area"),
+  phone: text("phone"),
+  whatsapp: text("whatsapp"),
+  status: text("status").notNull().default("published"), // draft, published, unpublished
+  ownerId: text("owner_id"), // user account that owns this profile
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const eventsRelations = relations(events, ({ many }) => ({
   bookings: many(bookings),
   businessBookings: many(businessBookings),
+}));
+
+export const vendorsRelations = relations(vendors, ({ one }) => ({
+  owner: one(users, {
+    fields: [vendors.ownerId],
+    references: [users.id],
+  }),
 }));
 
 export const insertEventSchema = createInsertSchema(events).omit({ id: true });
@@ -90,3 +116,14 @@ export type Booking = typeof bookings.$inferSelect;
 export type InsertBooking = z.infer<typeof insertBookingSchema>;
 export type BusinessBooking = typeof businessBookings.$inferSelect;
 export type InsertBusinessBooking = z.infer<typeof insertBusinessBookingSchema>;
+
+export const insertVendorSchema = createInsertSchema(vendors)
+  .omit({ id: true, createdAt: true, updatedAt: true })
+  .extend({
+    category: z.enum(vendorCategories, {
+      errorMap: () => ({ message: "Select a category" }),
+    }),
+  });
+
+export type Vendor = typeof vendors.$inferSelect;
+export type InsertVendor = z.infer<typeof insertVendorSchema>;

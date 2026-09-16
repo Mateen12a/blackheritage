@@ -53,7 +53,7 @@ export default function EventDetails() {
           <Button 
             variant="outline" 
             size="icon" 
-            className="absolute top-24 left-4 z-20 rounded-full bg-black/50 border-white/10 text-white hover:bg-primary hover:text-black hover:border-primary transition-colors"
+            className="absolute top-28 left-4 z-20 rounded-full bg-black/50 border-white/10 text-white hover:bg-primary hover:text-black hover:border-primary transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -143,7 +143,7 @@ export default function EventDetails() {
 
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            <div className="sticky top-24 space-y-4">
+            <div className="sticky top-28 space-y-4">
               <div className="bg-card border border-white/5 rounded-2xl p-6 shadow-xl">
                 <h3 className="text-xl font-display font-bold text-white mb-2">Price</h3>
                 <div className="flex items-end gap-2 mb-6">
@@ -155,11 +155,12 @@ export default function EventDetails() {
                   onClick={() => setIsBookingOpen(true)}
                   className="w-full bg-primary text-background hover:bg-white font-bold py-6 text-lg mb-4 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all"
                 >
-                  Buy Ticket Now
+                  Get Tickets
                 </Button>
                 
                 <p className="text-xs text-center text-muted-foreground mb-4">
-                  Pay easily with your Card or Bank Transfer
+                  Secure Paystack checkout: card, transfer, or USSD. Your
+                  e-ticket arrives instantly.
                 </p>
 
                 <Button 
@@ -185,8 +186,11 @@ export default function EventDetails() {
               {/* Sponsor & Vendor Section */}
               <div className="bg-card border border-white/5 rounded-2xl p-6 shadow-xl space-y-4 text-center">
                 <div className="space-y-1">
-                  <h4 className="font-bold text-white text-base">Want to promote your business?</h4>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">For brands, vendors, and businesses only</p>
+                  <h4 className="font-bold text-white text-base">Reach everyone at this event</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Sponsors and vendors get direct visibility in front of the
+                    whole crowd.
+                  </p>
                 </div>
                 
                 <Button 

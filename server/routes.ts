@@ -240,6 +240,91 @@ export async function registerRoutes(
     }
   });
 
+  // Vendors API
+  app.get(api.vendors.list.path, async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (req.isAuthenticated() && req.query.mine === 'true') {
+        const all = await storage.getAllVendors();
+        return res.json(all.filter((v) => v.ownerId === user._id.toString()));
+      }
+      const category = typeof req.query.category === 'string' ? req.query.category : undefined;
+      const vendors = await storage.getVendors(category);
+      res.json(vendors);
+    } catch (err) {
+      console.error("Vendors error:", err);
+      res.status(500).json({ message: "Failed to fetch vendors" });
+    }
+  });
+
+  app.get(api.vendors.get.path, async (req, res) => {
+    try {
+      const vendor = await storage.getVendor(req.params.id);
+      if (!vendor) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+      // Draft/unpublished profiles stay private to their owner and admins
+      const user = req.user as any;
+      const isOwner = req.isAuthenticated() && vendor.ownerId === user._id.toString();
+      const isAdmin = req.isAuthenticated() && user.role === 'admin';
+      if (vendor.status !== 'published' && !isOwner && !isAdmin) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+      res.json(vendor);
+    } catch (err) {
+      console.error("Vendor error:", err);
+      res.status(500).json({ message: "Failed to fetch vendor" });
+    }
+  });
+
+  app.post(api.vendors.create.path, async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role === 'user') {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    try {
+      const input = api.vendors.create.input.parse(req.body);
+      const vendor = await storage.createVendor({
+        ...input,
+        ownerId: (req.user as any)._id.toString(),
+      });
+      res.status(201).json(vendor);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      throw err;
+    }
+  });
+
+  app.patch(api.vendors.update.path, async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role === 'user') {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const vendor = await storage.getVendor(req.params.id);
+    if (!vendor) return res.status(404).json({ message: "Not found" });
+
+    if ((req.user as any).role !== 'admin' && vendor.ownerId !== (req.user as any)._id.toString()) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    try {
+      const input = api.vendors.update.input.parse(req.body);
+      const updated = await storage.updateVendor(vendor.id, input);
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      throw err;
+    }
+  });
+
   // Payments API
   app.post(api.payments.createIntent.path, async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -313,6 +398,107 @@ async function seedAdmin() {
 
 async function seedDatabase() {
   const events = await storage.getEvents();
+  const vendors = await storage.getVendors();
+  if (vendors.length === 0) {
+    console.log("Seeding vendor directory...");
+    const sampleVendors = [
+      {
+        businessName: "DJ Zoro Naija",
+        category: "DJ",
+        bio: "Lagos-based party rocker with over a decade of experience hyping crowds at weddings, shows, and street carnivals. Specialises in Afrobeats, Amapiano, and old-school Naija jams with live MC hyping.",
+        gallery: JSON.stringify([
+          "https://images.unsplash.com/photo-1571266028243-3716f02d2d2e?q=80&w=1600&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1600&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?q=80&w=1600&auto=format&fit=crop",
+        ]),
+        city: "Lagos",
+        serviceArea: "Lagos, Ogun, Oyo states",
+        phone: "+234 801 234 5678",
+        whatsapp: "2348012345678",
+        status: "published",
+      },
+      {
+        businessName: "Grill & Grace Catering",
+        category: "Caterer",
+        bio: "Premium small chops, grilled delicacies, and native pots for weddings and corporate events. Our suya bar and jollof station are always the first thing to finish.",
+        gallery: JSON.stringify([
+          "https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=1600&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=1600&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1551024506-0bccd828d307?q=80&w=1600&auto=format&fit=crop",
+        ]),
+        city: "Lagos",
+        serviceArea: "Lagos mainland & island",
+        phone: "+234 802 345 6789",
+        whatsapp: "2348023456789",
+        status: "published",
+      },
+      {
+        businessName: "The Pearls Photography",
+        category: "Photographer",
+        bio: "Documentary-style event photography that captures the real joy of your day. Same-week sneak peeks, full galleries delivered within 14 days, photo booth available on request.",
+        gallery: JSON.stringify([
+          "https://images.unsplash.com/photo-1520390138845-fd2d229dd553?q=80&w=1600&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1600&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?q=80&w=1600&auto=format&fit=crop",
+        ]),
+        city: "Abuja",
+        serviceArea: "Abuja, Nasarawa, Kaduna",
+        phone: "+234 803 456 7890",
+        whatsapp: "2348034567890",
+        status: "published",
+      },
+      {
+        businessName: "Ewè Band",
+        category: "Live Band",
+        bio: "An 8-piece highlife and Afrobeats band bringing brass, talking drums, and four-part harmonies to your stage. Full band, acoustic trio, or DJ + sax packages available.",
+        gallery: JSON.stringify([
+          "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1600&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1501612780327-45045538702b?q=80&w=1600&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?q=80&w=1600&auto=format&fit=crop",
+        ]),
+        city: "Port Harcourt",
+        serviceArea: "Nationwide (travel fees apply)",
+        phone: "+234 804 567 8901",
+        whatsapp: "2348045678901",
+        status: "published",
+      },
+      {
+        businessName: "Ambience by Ada",
+        category: "Decorator",
+        bio: "Transforming halls into dreamscapes with drapery, florals, and lighting design. From intimate traditional engagements to 1,000-guest receptions.",
+        gallery: JSON.stringify([
+          "https://images.unsplash.com/photo-1478146896981-b80fe463b330?q=80&w=1600&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1510076857177-7470076d4098?q=80&w=1600&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?q=80&w=1600&auto=format&fit=crop",
+        ]),
+        city: "Enugu",
+        serviceArea: "South East & South South",
+        phone: "+234 805 678 9012",
+        whatsapp: "2348056789012",
+        status: "published",
+      },
+      {
+        businessName: "MC Smooth Voice",
+        category: "MC",
+        bio: "Bilingual MC (English & Pidgin) keeping programmes flowing and guests laughing. 500+ events hosted, from church harvests to beach parties.",
+        gallery: JSON.stringify([
+          "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?q=80&w=1600&auto=format&fit=crop",
+          "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1600&auto=format&fit=crop",
+        ]),
+        city: "Ibadan",
+        serviceArea: "Oyo, Lagos, Ogun",
+        phone: "+234 806 789 0123",
+        whatsapp: "2348067890123",
+        status: "published",
+      },
+    ];
+
+    for (const vendor of sampleVendors) {
+      await storage.createVendor(vendor as any);
+    }
+    console.log("Vendor directory seeded!");
+  }
+
   if (events.length === 0) {
     console.log("Seeding database...");
     const sampleEvents = [
