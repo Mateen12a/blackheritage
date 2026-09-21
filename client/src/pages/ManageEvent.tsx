@@ -2,13 +2,14 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { api, buildUrl } from "@shared/routes";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Trash2, Edit, ChevronLeft, Tag, UserPlus, MailPlus, Undo2, Activity, TrendingUp } from "lucide-react";
+import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Trash2, Edit, ChevronLeft, Tag, UserPlus, MailPlus, Undo2, Activity, TrendingUp, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRoute, Link, useLocation } from "wouter";
 import { format, isPast } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookingLinkPanel } from "@/components/BookingLinkPanel";
+import { ShareFlyerModal } from "@/components/ShareFlyerModal";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -91,6 +92,7 @@ export default function ManageEvent() {
   const id = params?.id;
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [isFlyerModalOpen, setIsFlyerModalOpen] = useState(false);
 
   const { data: event, isLoading: eventLoading } = useQuery<any>({
     queryKey: [buildUrl(api.events.get.path, { id: id as string })],
@@ -218,6 +220,13 @@ export default function ManageEvent() {
             onClick={() => {/* Mock edit */ toast({ title: "Edit coming soon" })}}
           >
             <Edit className="w-4 h-4 mr-2" /> Edit
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex-1 md:flex-none border-hairline text-ink hover:text-gold hover:border-gold/40 h-10 px-4"
+            onClick={() => setIsFlyerModalOpen(true)}
+          >
+            <ImageIcon className="w-4 h-4 mr-2 text-gold" /> Flyers &amp; Stories
           </Button>
           <Button 
             variant={event.status === 'published' ? 'outline' : 'default'}
@@ -457,6 +466,12 @@ export default function ManageEvent() {
           <WaitlistPanel eventId={String(event.id)} />
         </TabsContent>
       </Tabs>
+
+      <ShareFlyerModal
+        open={isFlyerModalOpen}
+        onClose={() => setIsFlyerModalOpen(false)}
+        event={event}
+      />
     </div>
   );
 }

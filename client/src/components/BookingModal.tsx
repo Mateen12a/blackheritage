@@ -446,6 +446,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
         tickets={revealedTickets ?? []}
         accentHex={(event as any).branding?.accentHex || null}
         logoUrl={(event as any).branding?.logoUrl || null}
+        event={event}
       />
     </Dialog>
   );

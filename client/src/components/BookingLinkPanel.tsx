@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Check, Copy, ExternalLink, Loader2 } from "lucide-react";
+import { Check, Copy, ExternalLink, Loader2, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { queryClient } from "@/lib/queryClient";
 import { ThemePresetCard, themePresetList, type PickerBranding } from "@/components/ThemePicker";
 import { accentOverrides, getPreset } from "@shared/themes";
 import { SlugField, BrandingInputs, PreviewFrame, slugify } from "@/components/LinkStudio";
+import { ShareFlyerModal } from "@/components/ShareFlyerModal";
 
 interface BookingLinkPanelProps {
   event: any;
@@ -28,6 +29,7 @@ export function BookingLinkPanel({ event }: BookingLinkPanelProps) {
   const [theme, setTheme] = useState<string | null>((event as any).theme || null);
   const [branding, setBranding] = useState<PickerBranding>((event as any).branding || {});
   const [copied, setCopied] = useState(false);
+  const [isFlyerModalOpen, setIsFlyerModalOpen] = useState(false);
 
   const shareUrl = useMemo(() => {
     const s = slug || slugify(event.title || "event");
@@ -138,6 +140,14 @@ export function BookingLinkPanel({ event }: BookingLinkPanelProps) {
                 Open page
               </Button>
             </a>
+            <Button
+              variant="outline"
+              className="press border-hairline text-ink hover:text-gold hover:border-gold/40"
+              onClick={() => setIsFlyerModalOpen(true)}
+            >
+              <ImageIcon className="w-4 h-4 mr-2 text-gold" />
+              Flyer Studio
+            </Button>
             <span className="text-xs text-muted-ink truncate max-w-full sm:max-w-[280px]">{shareUrl}</span>
           </div>
           <p className="text-xs text-muted-foreground">
@@ -203,6 +213,17 @@ export function BookingLinkPanel({ event }: BookingLinkPanelProps) {
           </Button>
         </CardContent>
       </Card>
+
+      <ShareFlyerModal
+        open={isFlyerModalOpen}
+        onClose={() => setIsFlyerModalOpen(false)}
+        event={{
+          ...event,
+          slug,
+          theme,
+          branding,
+        }}
+      />
     </div>
   );
 }

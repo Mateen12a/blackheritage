@@ -1,5 +1,6 @@
 import { useEvent } from "@/hooks/use-events";
 import { BookingModal } from "@/components/BookingModal";
+import { ShareFlyerModal } from "@/components/ShareFlyerModal";
 import { Button } from "@/components/ui/button";
 import { useRoute } from "wouter";
 import { Loader2, Calendar, MapPin, Users, Share2, ArrowLeft, Tag, Clock } from "lucide-react";
@@ -44,6 +45,7 @@ export default function EventDetails() {
   const { data: event, isLoading } = useEvent(id as any);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
+  const [isFlyerModalOpen, setIsFlyerModalOpen] = useState(false);
   const [publicPromos, setPublicPromos] = useState<PublicPromo[]>([]);
   const { toast } = useToast();
 
@@ -72,38 +74,9 @@ export default function EventDetails() {
     return () => { alive = false; };
   }, [(event as any)?.id]);
 
-  const handleShare = async () => {
+  const handleShare = () => {
     if (!event) return;
-    // The pretty link is the canonical share URL.
-    const slug = (event as any).slug;
-    const url = slug
-      ? `${window.location.origin}/e/${slug}`
-      : window.location.href;
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: event.title,
-          text: "Check out this event: " + event.title,
-          url,
-        });
-      } catch {
-        /* user dismissed the share sheet */
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(url);
-        toast({
-          title: "Link copied",
-          description: "Send it to the group chat.",
-        });
-      } catch {
-        toast({
-          variant: "destructive",
-          title: "Couldn't copy the link",
-          description: "Copy it from the address bar instead.",
-        });
-      }
-    }
+    setIsFlyerModalOpen(true);
   };
 
   if (isLoading) {
@@ -367,6 +340,15 @@ export default function EventDetails() {
                   Get Tickets
                 </Button>
 
+                <Button
+                  variant="outline"
+                  onClick={() => setIsFlyerModalOpen(true)}
+                  className="press hidden lg:inline-flex mt-2.5 w-full h-11 border-hairline text-ink hover:text-gold hover:border-gold/40 font-medium rounded-md items-center justify-center gap-2"
+                >
+                  <Share2 className="w-4 h-4 text-gold" />
+                  Share &amp; Create Flyers
+                </Button>
+
                 {waitlistEnabled && soldOut && (
                   <WaitlistInline eventId={String(event.id)} />
                 )}
@@ -405,11 +387,20 @@ export default function EventDetails() {
         className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-hairline bg-background/95 backdrop-blur-xl px-4 pt-3"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="min-w-0">
             <p className="eyebrow">From</p>
             <p className="font-display text-xl font-bold text-ink leading-none mt-0.5">{price}</p>
           </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setIsFlyerModalOpen(true)}
+            aria-label="Create event flyer or share"
+            className="press h-12 w-12 shrink-0 border-hairline text-ink hover:text-gold"
+          >
+            <Share2 className="w-5 h-5" />
+          </Button>
           <Button
             onClick={() => setIsBookingOpen(true)}
             className="press flex-1 h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md"
@@ -430,6 +421,12 @@ export default function EventDetails() {
         event={event}
         isOpen={isBusinessModalOpen}
         onClose={() => setIsBusinessModalOpen(false)}
+      />
+
+      <ShareFlyerModal
+        open={isFlyerModalOpen}
+        onClose={() => setIsFlyerModalOpen(false)}
+        event={event}
       />
     </div>
   );
