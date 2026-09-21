@@ -25,7 +25,7 @@ export default function CalendarPage() {
 
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto px-4 pt-16 pb-24">
+      <div className="container mx-auto px-4 pt-6 pb-24">
         {/* Editorial header */}
         <Reveal className="max-w-3xl mb-10">
           <p className="eyebrow">Lagos &amp; beyond</p>

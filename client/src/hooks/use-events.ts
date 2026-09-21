@@ -25,9 +25,15 @@ export function useEvent(id: string) {
   return useQuery({
     queryKey: [`${BASE_URL}${api.events.get.path}`, id],
     queryFn: async () => {
-      const url = `${BASE_URL}${buildUrl(api.events.get.path, { id: id as any })}`;
+      // /e/:slug pages pass the slug; the id route passes a raw id. Both hit
+      // the same shape of payload; the slug endpoint reads the same rows.
+      const isSlug = !/^[0-9a-fA-F]{24}$/.test(id) && !/^event-/.test(id);
+      const url = isSlug
+        ? `${BASE_URL}/api/events/by-slug/${encodeURIComponent(id)}`
+        : `${BASE_URL}${buildUrl(api.events.get.path, { id: id as any })}`;
       const res = await fetch(url, {
-        credentials: "include"
+        credentials: "include",
+        headers: { Accept: "application/json" },
       });
       if (res.status === 404) return null;
       if (!res.ok) throw new Error("Failed to fetch event");

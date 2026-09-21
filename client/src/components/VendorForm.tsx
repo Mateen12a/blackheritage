@@ -25,8 +25,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Image as ImageIcon, X, Plus, Loader2 } from "lucide-react";
+import {
+  Image as ImageIcon,
+  X,
+  Plus,
+  Loader2,
+  Link2,
+  Video,
+  UploadCloud,
+} from "lucide-react";
 import { CategoryIcon } from "./vendor-categories";
+import { useToast } from "@/hooks/use-toast";
+import {
+  parseGallery,
+  parseSocials,
+  socialMeta,
+  normalizeSocialUrl,
+  videoView,
+  type VendorSocials,
+} from "@/lib/media";
 
 interface VendorFormProps {
   initialData?: Partial<InsertVendor>;
@@ -39,6 +56,7 @@ export function VendorForm({
   onSubmit,
   isLoading,
 }: VendorFormProps) {
+  const { toast } = useToast();
   const form = useForm<InsertVendor>({
     resolver: zodResolver(insertVendorSchema),
     defaultValues: {
@@ -50,28 +68,69 @@ export function VendorForm({
       serviceArea: "",
       phone: "",
       whatsapp: "",
+      videos: "[]",
+      socials: "{}",
       status: "published",
+      categoryLabel: "",
       ...initialData,
     } as InsertVendor,
   });
+  const category = form.watch("category");
 
-  const [gallery, setGallery] = useState<string[]>(
-    initialData?.gallery ? JSON.parse(initialData.gallery) : []
+  const [gallery, setGallery] = useState<string[]>(parseGallery(initialData?.gallery));
+  const [videos, setVideos] = useState<string[]>(parseGallery(initialData?.videos));
+  const [socials, setSocials] = useState<VendorSocials>(parseSocials(initialData?.socials));
+  const [socialDrafts, setSocialDrafts] = useState<Record<string, string>>(
+    Object.fromEntries(Object.entries(socials).map(([k, v]) => [k, v || ""])),
   );
 
-  const addGalleryImage = (url: string) => {
-    if (!url.trim()) return;
-    setGallery([...gallery, url.trim()]);
-  };
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [linkDraft, setLinkDraft] = useState("");
+  const [videoDraft, setVideoDraft] = useState("");
 
-  const removeGalleryImage = (index: number) => {
-    setGallery(gallery.filter((_, i) => i !== index));
+  const addToGallery = (urls: string[]) => setGallery((g) => [...g, ...urls].slice(0, 20));
+
+  const uploadFiles = async (files: FileList) => {
+    setUploadError(null);
+    const urls: string[] = [];
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const body = new FormData();
+        body.append("file", file);
+        const res = await fetch("/api/uploads/portfolio", {
+          method: "POST",
+          credentials: "include",
+          body,
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          throw new Error(data?.message || "Upload failed");
+        }
+        const { url } = await res.json();
+        urls.push(url);
+      }
+      addToGallery(urls);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Upload failed";
+      setUploadError(message);
+      toast({ title: "Upload failed", description: message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleFormSubmit = (data: InsertVendor) => {
     onSubmit({
       ...data,
       gallery: JSON.stringify(gallery),
+      videos: JSON.stringify(videos),
+      socials: JSON.stringify(
+        Object.fromEntries(
+          Object.entries(socials).filter(([, v]) => !!v),
+        ),
+      ),
     });
   };
 
@@ -138,6 +197,29 @@ export function VendorForm({
             )}
           />
 
+          {category === "Other" && (
+            <FormField
+              control={form.control}
+              name="categoryLabel"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-ink font-bold text-sm">
+                    Describe your service
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder="e.g. Saxophonist, Makeup Artist, Grill Master"
+                      className="h-12 bg-surface-2 border-hairline text-ink rounded-md focus-visible:border-gold focus-visible:ring-0"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
           <FormField
             control={form.control}
             name="city"
@@ -158,6 +240,48 @@ export function VendorForm({
               </FormItem>
             )}
           />
+        </div>
+
+        {/* Socials */}
+        <div className="space-y-3">
+          <h3 className="text-ink font-bold text-sm">Social profiles</h3>
+          <p className="text-xs text-muted-ink -mt-1">
+            Handles or full links. Shown on your public profile as icons.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {(Object.keys(socialMeta) as Array<keyof typeof socialMeta>).map((key) => (
+              <div key={key} className="relative">
+                <Link2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-ink pointer-events-none" />
+                <Input
+                  value={socialDrafts[key] ?? ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSocialDrafts((d) => ({ ...d, [key]: value }));
+                    setSocials((s) => ({
+                      ...s,
+                      [key]: normalizeSocialUrl(key, value) || "",
+                    }));
+                  }}
+                  placeholder={socialMeta[key].placeholder}
+                  aria-label={socialMeta[key].label + " profile link"}
+                  className="h-11 pl-9 pr-9 bg-surface-2 border-hairline text-ink rounded-md focus-visible:border-gold focus-visible:ring-0 text-sm"
+                />
+                {socialDrafts[key] && (
+                  <button
+                    type="button"
+                    aria-label={"Clear " + socialMeta[key].label}
+                    onClick={() => {
+                      setSocialDrafts((d) => ({ ...d, [key]: "" }));
+                      setSocials((s) => ({ ...s, [key]: "" }));
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-ink hover:text-ink"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -199,7 +323,8 @@ export function VendorForm({
                   />
                 </FormControl>
                 <FormDescription className="text-xs text-muted-ink">
-                  Digits only with country code, e.g. 2348012345678
+                  Optional fallback for clients who prefer WhatsApp. In-app
+                  messages arrive in your Chats tab.
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -228,18 +353,34 @@ export function VendorForm({
           )}
         />
 
-        {/* Gallery */}
+        {/* Portfolio — photos */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-ink font-bold text-sm">
-              Photo Gallery
+            <h3 className="text-ink font-bold text-sm flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-gold" aria-hidden="true" />
+              Photos
             </h3>
             <span className="text-xs text-muted-ink">
-              {gallery.length} photo{gallery.length === 1 ? "" : "s"}
+              {gallery.length}/20
             </span>
           </div>
 
-          <GalleryInput onAdd={addGalleryImage} />
+          <MediaInput
+            onFiles={uploadFiles}
+            uploading={uploading}
+            onLink={() => {
+              if (linkDraft.trim()) {
+                addToGallery([linkDraft.trim()]);
+                setLinkDraft("");
+              }
+            }}
+            linkValue={linkDraft}
+            onLinkChange={setLinkDraft}
+            accept="image/*,video/mp4,video/webm,video/quicktime"
+          />
+          {uploadError && (
+            <p className="text-xs text-red-400" role="alert">{uploadError}</p>
+          )}
 
           {gallery.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -250,21 +391,95 @@ export function VendorForm({
                 >
                   <img
                     src={url}
-                    alt={`Gallery ${index + 1}`}
+                    alt={`Portfolio photo ${index + 1}`}
                     className="w-full h-full object-cover"
                   />
                   <Button
                     type="button"
                     variant="destructive"
                     size="icon"
-                    className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => removeGalleryImage(index)}
+                    aria-label={"Remove photo " + (index + 1)}
+                    className="absolute top-2 right-2 h-7 w-7 rounded-full"
+                    onClick={() => setGallery(gallery.filter((_, i) => i !== index))}
                   >
                     <X className="w-3 h-3" />
                   </Button>
                 </div>
               ))}
             </div>
+          )}
+        </div>
+
+        {/* Portfolio — videos */}
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-ink font-bold text-sm flex items-center gap-2">
+              <Video className="w-4 h-4 text-gold" aria-hidden="true" />
+              Videos
+            </h3>
+            <span className="text-xs text-muted-ink">{videos.length}/6</span>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center bg-surface-2 border border-hairline rounded-md p-3">
+            <Video className="hidden sm:block w-4 h-4 text-muted-ink sm:absolute sm:ml-3 pointer-events-none" aria-hidden="true" />
+            <Input
+              value={videoDraft}
+              onChange={(e) => setVideoDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (videoDraft.trim() && videos.length < 6) {
+                    setVideos([...videos, videoDraft.trim()]);
+                    setVideoDraft("");
+                  }
+                }
+              }}
+              placeholder="Paste a YouTube or video file link, then press Enter…"
+              aria-label="Add a video link"
+              className="w-full pl-3 sm:pl-9 h-10 bg-surface border-hairline text-ink rounded-md focus-visible:border-gold focus-visible:ring-0 text-sm"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 border-hairline text-ink hover:bg-surface hover:text-gold shrink-0"
+              onClick={() => {
+                if (videoDraft.trim() && videos.length < 6) {
+                  setVideos([...videos, videoDraft.trim()]);
+                  setVideoDraft("");
+                }
+              }}
+            >
+              <Plus className="w-4 h-4 mr-1.5" aria-hidden="true" />
+              Add
+            </Button>
+          </div>
+
+          {videos.length > 0 && (
+            <ul className="space-y-2">
+              {videos.map((url, index) => {
+                const view = videoView(url);
+                return (
+                  <li
+                    key={index}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-md border border-hairline bg-surface"
+                  >
+                    <Video className="w-4 h-4 text-gold shrink-0" aria-hidden="true" />
+                    <span className="text-sm text-ink truncate flex-1 min-w-0">
+                      {view.kind === "iframe" ? "YouTube video" : url.split("/").pop()}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={"Remove video " + (index + 1)}
+                      className="h-7 w-7 text-muted-ink hover:text-ink"
+                      onClick={() => setVideos(videos.filter((_, i) => i !== index))}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
 
@@ -303,45 +518,71 @@ export function VendorForm({
   );
 }
 
-function GalleryInput({ onAdd }: { onAdd: (url: string) => void }) {
-  const [urlValue, setUrlValue] = React.useState("");
-
+/**
+ * Portfolio file/link input: real server uploads with progress feedback,
+ * or paste an external image URL.
+ */
+function MediaInput({
+  onFiles,
+  uploading,
+  onLink,
+  linkValue,
+  onLinkChange,
+  accept,
+}: {
+  onFiles: (files: FileList) => void;
+  uploading: boolean;
+  onLink: () => void;
+  linkValue: string;
+  onLinkChange: (v: string) => void;
+  accept: string;
+}) {
   return (
-    <div className="flex flex-col sm:flex-row gap-3 items-center bg-surface-2 border border-hairline rounded-md p-3">
+    <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center bg-surface-2 border border-hairline rounded-md p-3">
       <div className="flex-grow relative w-full">
         <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-ink w-4 h-4 pointer-events-none" />
         <Input
-          value={urlValue}
-          onChange={(e) => setUrlValue(e.target.value)}
+          value={linkValue}
+          onChange={(e) => onLinkChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              onAdd(urlValue);
-              setUrlValue("");
+              onLink();
             }
           }}
-          placeholder="Paste a photo URL and press Enter..."
+          placeholder="Paste an image URL and press Enter…"
           className="w-full pl-11 h-10 bg-surface border-hairline text-ink rounded-md focus-visible:border-gold focus-visible:ring-0 text-sm"
         />
       </div>
-      <label className="w-full sm:w-auto">
+      <label className="w-full sm:w-auto shrink-0">
         <input
           type="file"
-          accept="image/*"
+          accept={accept}
+          multiple
           className="hidden"
+          disabled={uploading}
           onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                onAdd(reader.result as string);
-              };
-              reader.readAsDataURL(file);
-            }
+            if (e.target.files?.length) onFiles(e.target.files);
+            e.target.value = ""; // allow re-selecting the same file
           }}
         />
-        <span className="flex items-center justify-center gap-2 h-10 px-5 rounded-md border border-gold text-gold hover:bg-gold hover:text-gold-well transition-colors cursor-pointer font-medium text-sm">
-          <Plus className="w-4 h-4" /> Upload Photo
+        <span
+          className={
+            "flex items-center justify-center gap-2 h-10 px-5 rounded-md border font-medium text-sm transition-colors cursor-pointer " +
+            (uploading
+              ? "border-hairline text-muted-ink"
+              : "border-gold text-gold hover:bg-gold hover:text-gold-well")
+          }
+        >
+          {uploading ? (
+            <>
+              <UploadCloud className="w-4 h-4 animate-pulse" /> Uploading…
+            </>
+          ) : (
+            <>
+              <Plus className="w-4 h-4" /> Upload files
+            </>
+          )}
         </span>
       </label>
     </div>

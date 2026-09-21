@@ -21,7 +21,25 @@ interface DevUser {
 const devUsersByUsername = new Map<string, DevUser>();
 const devUsersById = new Map<string, DevUser>();
 
-const usingDevStore = () => mongoose.connection.readyState !== 1;
+export const usingDevStore = () => mongoose.connection.readyState !== 1;
+
+/**
+ * Look up a user by id in whichever store is live. Lives here because the
+ * dev user map is private to this module. Always resolves to undefined for
+ * unknown ids — never throws (guards Mongoose ObjectId cast errors).
+ */
+export async function findUserById(id: string): Promise<any> {
+  if (!id) return undefined;
+  if (usingDevStore()) {
+    return devUsersById.get(String(id));
+  }
+  if (!mongoose.Types.ObjectId.isValid(String(id))) return undefined;
+  try {
+    return await User.findById(String(id));
+  } catch {
+    return undefined;
+  }
+}
 
 function safeUser(user: any) {
   const obj = typeof user?.toObject === "function" ? user.toObject() : user;
@@ -30,9 +48,43 @@ function safeUser(user: any) {
   return rest;
 }
 
+// Fixed-window rate limiter for credential endpoints. In-memory is correct
+// for a single server instance; move to a shared store only if the API ever
+// runs multi-instance.
+const attemptCounts = new Map<string, { count: number; windowStart: number }>();
+function rateLimit(max: number, windowMs: number) {
+  return (req: any, res: any, next: any) => {
+    const key = String(req.ip || "unknown");
+    const now = Date.now();
+    const entry = attemptCounts.get(key);
+    if (!entry || now - entry.windowStart > windowMs) {
+      attemptCounts.set(key, { count: 1, windowStart: now });
+      return next();
+    }
+    entry.count += 1;
+    if (attemptCounts.size > 5000) {
+      Array.from(attemptCounts.entries()).forEach(([k, v]) => {
+        if (now - v.windowStart > windowMs) attemptCounts.delete(k);
+      });
+    }
+    if (entry.count > max) {
+      return res.status(429).json({ message: "Too many attempts. Try again in a few minutes." });
+    }
+    next();
+  };
+}
+
 export function setupAuth(app: Express) {
+  // Session cookies are signed with this secret. Production must set
+  // SESSION_SECRET, otherwise cookies can be forged by anyone who guesses
+  // the fallback.
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret && process.env.NODE_ENV === "production") {
+    console.error("SESSION_SECRET is required in production. Set it and restart.");
+    process.exit(1);
+  }
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "blackheritage-secret",
+    secret: sessionSecret || "blackheritage-dev-secret",
     resave: false,
     saveUninitialized: false,
     store: process.env.MONGODB_URI ? MongoStore.create({
@@ -73,19 +125,32 @@ export function setupAuth(app: Express) {
     done(null, user._id);
   });
 
+  // Deserialize through findUserById: a session cookie can outlive the
+  // process (in-memory store restarts) or hold a malformed id. Resolve to
+  // "no user" so the request gets a clean 401 instead of a 500.
   passport.deserializeUser(async (id, done) => {
     try {
-      const user = usingDevStore()
-        ? devUsersById.get(String(id))
-        : await User.findById(id);
+      const user = await findUserById(id as string);
       done(null, user);
     } catch (err) {
       done(err);
     }
   });
 
-  app.post("/api/auth/register", async (req, res) => {
-    const { username, email, password, role } = req.body;
+  app.post("/api/auth/register", rateLimit(20, 15 * 60 * 1000), async (req, res) => {
+    const { username, email, password } = req.body;
+    // Role is limited to self-serve signup choices. admin is never
+    // assignable here; platform admins are created by the seed only.
+    const role = req.body.role === "organizer" ? "organizer" : "user";
+    if (typeof username !== "string" || username.trim().length < 3) {
+      return res.status(400).json({ message: "Username must be at least 3 characters" });
+    }
+    if (typeof email !== "string" || !email.includes("@")) {
+      return res.status(400).json({ message: "Enter a valid email address" });
+    }
+    if (typeof password !== "string" || password.length < 8) {
+      return res.status(400).json({ message: "Password must be at least 8 characters" });
+    }
     try {
       const existing = usingDevStore()
         ? devUsersByUsername.get(String(username).toLowerCase()) ||
@@ -103,7 +168,7 @@ export function setupAuth(app: Express) {
           username,
           email,
           password: hashedPassword,
-          role: role || "organizer",
+          role: role || "user",
           createdAt: new Date(),
         };
         devUsersByUsername.set(username.toLowerCase(), user);
@@ -117,9 +182,17 @@ export function setupAuth(app: Express) {
         username,
         email,
         password: hashedPassword,
-        role: role || "organizer",
+        role: role || "user",
       });
       await user.save();
+      // Welcome email is fire-and-forget: signup must never wait on email.
+      if (process.env.RESEND_API_KEY) {
+        import("./emails")
+          .then(({ sendWelcomeEmail }) =>
+            sendWelcomeEmail({ name: String(username), email: String(email) }),
+          )
+          .catch((e) => console.error("Welcome email failed:", e));
+      }
       req.login(user, (err) => {
         if (err) return res.status(500).json({ message: "Login failed after registration" });
         res.status(201).json(safeUser(user));
@@ -129,7 +202,7 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/auth/login", passport.authenticate("local"), (req, res) => {
+  app.post("/api/auth/login", rateLimit(30, 15 * 60 * 1000), passport.authenticate("local"), (req, res) => {
     res.json(safeUser(req.user));
   });
 

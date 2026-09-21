@@ -4,10 +4,16 @@ import { useVendors } from "@/hooks/use-vendors";
 import { useManagedEvents } from "@/hooks/use-managed-events";
 import { Reveal } from "@/components/motion";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  StatSkeletons,
+  TableSkeleton,
+  HeaderSkeleton,
+  LoadError,
+} from "@/components/AsyncStates";
 import { Link, useLocation } from "wouter";
 import { format, isPast } from "date-fns";
 import {
-  Loader2,
   Calendar,
   Users,
   DollarSign,
@@ -27,19 +33,35 @@ export default function AdminDashboard() {
   const [location] = useLocation();
   const isAdmin = user?.role === "admin";
 
-  const { data: stats, isLoading: statsLoading } = useQuery<any>({
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    isError: statsError,
+    refetch: refetchStats,
+  } = useQuery<any>({
     queryKey: ["/api/admin/stats"],
     queryFn: async () => {
       const res = await fetch("/api/admin/stats", { credentials: "include" });
-      if (!res.ok) return null;
+      if (!res.ok) throw new Error("Could not load platform stats");
       return res.json();
     },
     enabled: isAdmin,
+    retry: 1,
   });
 
-  const { data: events, isLoading: eventsLoading } = useManagedEvents();
+  const {
+    data: events,
+    isLoading: eventsLoading,
+    isError: eventsError,
+    refetch: refetchEvents,
+  } = useManagedEvents();
 
-  const { data: vendors, isLoading: vendorsLoading } = useVendors();
+  const {
+    data: vendors,
+    isLoading: vendorsLoading,
+    isError: vendorsError,
+    refetch: refetchVendors,
+  } = useVendors();
 
   const exportToCSV = (data: any[], filename: string) => {
     if (!data || data.length === 0) return;
@@ -57,14 +79,6 @@ export default function AdminDashboard() {
     document.body.removeChild(link);
   };
 
-  if (statsLoading || eventsLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-gold" />
-      </div>
-    );
-  }
-
   const isDashboard = location === "/admin";
   const isEvents = location === "/admin/events";
   const isVendors = location === "/admin/vendors";
@@ -80,30 +94,34 @@ export default function AdminDashboard() {
         : "Dashboard";
 
   return (
-    <div className="pb-20">
+    <div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10 pt-2">
-        <Reveal>
-          <div>
-            <p className="eyebrow">
-              {isAdmin ? "Admin" : "Organizer"} portal
-            </p>
-            <h1 className="mt-2 font-display text-3xl md:text-4xl font-bold text-ink tracking-tight">
-              {pageTitle}
-            </h1>
-            <div className="mt-3 h-0.5 w-16 bg-gold" aria-hidden="true" />
-            <p className="mt-3 text-muted-ink text-sm">
-              {isDashboard &&
-                (isAdmin
-                  ? "Platform-wide stats at a glance"
-                  : "Your events and ticketing overview")}
-              {isEvents &&
-                `${events?.length || 0} event${events?.length === 1 ? "" : "s"} total`}
-              {isVendors &&
-                `${vendors?.length || 0} vendor${vendors?.length === 1 ? "" : "s"} across Lagos`}
-            </p>
-          </div>
-        </Reveal>
+        {eventsLoading ? (
+          <HeaderSkeleton bare />
+        ) : (
+          <Reveal>
+            <div>
+              <p className="eyebrow">
+                {isAdmin ? "Admin" : "Organizer"} portal
+              </p>
+              <h1 className="mt-2 font-display text-3xl md:text-4xl font-bold text-ink tracking-tight">
+                {pageTitle}
+              </h1>
+              <div className="mt-3 h-0.5 w-16 bg-gold" aria-hidden="true" />
+              <p className="mt-3 text-muted-ink text-sm">
+                {isDashboard &&
+                  (isAdmin
+                    ? "Everything on the platform, counted"
+                    : "Your events, sales, and ticketing in one place")}
+                {isEvents &&
+                  `${events?.length || 0} event${events?.length === 1 ? "" : "s"} total`}
+                {isVendors &&
+                  `${vendors?.length || 0} vendor${vendors?.length === 1 ? "" : "s"} across Lagos`}
+              </p>
+            </div>
+          </Reveal>
+        )}
 
         <Link href="/admin/events/new">
           <Button className="press w-full sm:w-auto bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md">
@@ -116,7 +134,27 @@ export default function AdminDashboard() {
       {(isDashboard || isEvents) && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-            {isAdmin && stats ? (
+            {statsLoading ? (
+              <>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="border border-hairline rounded-md bg-surface p-4 md:p-5"
+                  >
+                    <StatSkeletonsStat />
+                  </div>
+                ))}
+              </>
+            ) : statsError ? (
+              <div className="col-span-2 md:col-span-4">
+                <LoadError
+                  compact
+                  title="Couldn't load platform stats"
+                  message="The rest of the dashboard still works."
+                  onRetry={() => refetchStats()}
+                />
+              </div>
+            ) : isAdmin && stats ? (
               <>
                 <DashStat
                   icon={Calendar}
@@ -171,6 +209,15 @@ export default function AdminDashboard() {
           </div>
 
           {/* Events Table */}
+          {eventsError ? (
+            <LoadError
+              title="Couldn't load your events"
+              message="Check your connection and try again."
+              onRetry={() => refetchEvents()}
+            />
+          ) : eventsLoading ? (
+            <TableSkeleton rows={4} />
+          ) : (
           <Reveal>
             <div className="border border-hairline rounded-md bg-surface overflow-hidden mb-12">
               <div className="flex items-center justify-between p-5 md:p-6 border-b border-hairline">
@@ -309,11 +356,22 @@ export default function AdminDashboard() {
               </div>
             </div>
           </Reveal>
+          )}
         </>
       )}
 
       {/* Vendors tab */}
       {isVendors && (
+        <>
+          {vendorsError ? (
+            <LoadError
+              title="Couldn't load the vendor directory"
+              message="Check your connection and try again."
+              onRetry={() => refetchVendors()}
+            />
+          ) : vendorsLoading ? (
+            <TableSkeleton rows={4} />
+          ) : (
         <Reveal>
           <div className="border border-hairline rounded-md bg-surface overflow-hidden">
             <div className="flex items-center justify-between p-5 md:p-6 border-b border-hairline">
@@ -371,7 +429,7 @@ export default function AdminDashboard() {
                         <span className="eyebrow">{vendor.category}</span>
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-ink hidden sm:table-cell">
-                        {vendor.city || vendor.serviceArea || "—"}
+                        {vendor.city || vendor.serviceArea || "Not listed"}
                       </td>
                       <td className="px-6 py-4">
                         <span
@@ -391,7 +449,21 @@ export default function AdminDashboard() {
             </div>
           </div>
         </Reveal>
+          )}
+        </>
       )}
+    </div>
+  );
+}
+
+function StatSkeletonsStat() {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <Skeleton className="h-4 w-4 rounded-sm" />
+        <Skeleton className="h-3 w-20" />
+      </div>
+      <Skeleton className="h-7 w-14" />
     </div>
   );
 }

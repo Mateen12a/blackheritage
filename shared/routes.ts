@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { insertEventSchema, insertBookingSchema, insertVendorSchema, events, bookings, vendors } from './schema';
+import {
+  insertEventSchema, insertBookingSchema, insertVendorSchema, events, bookings, vendors,
+  bookingInitiateSchema, bookingFinalizeSchema, promoCreateSchema, manualTicketSchema,
+  scanRequestSchema, scanOverrideSchema, scanSyncSchema, teamCreateSchema, platformSettingsSchema,
+} from './schema';
 
 export const errorSchemas = {
   validation: z.object({
@@ -133,6 +137,62 @@ export const api = {
         200: z.object({ clientSecret: z.string() }),
       },
     },
+  },
+  bookingInitiate: {
+    method: 'POST' as const,
+    path: '/api/bookings/initiate',
+    input: bookingInitiateSchema,
+  },
+  bookingFinalize: {
+    method: 'POST' as const,
+    path: '/api/bookings/finalize',
+    input: bookingFinalizeSchema,
+  },
+  promos: {
+    list: { method: 'GET' as const, path: '/api/events/:id/promos' },
+    create: { method: 'POST' as const, path: '/api/events/:id/promos', input: promoCreateSchema },
+    delete: { method: 'DELETE' as const, path: '/api/promos/:promoId' },
+  },
+  team: {
+    list: { method: 'GET' as const, path: '/api/team' },
+    create: { method: 'POST' as const, path: '/api/team', input: teamCreateSchema },
+    delete: { method: 'DELETE' as const, path: '/api/team/:userId' },
+  },
+  manualTickets: {
+    method: 'POST' as const,
+    path: '/api/events/:id/manual-tickets',
+    input: manualTicketSchema,
+  },
+  attendeeExport: {
+    method: 'GET' as const,
+    path: '/api/events/:id/attendees.csv',
+  },
+  refund: {
+    method: 'POST' as const,
+    path: '/api/bookings/:id/refund',
+  },
+  scanVerify: {
+    method: 'POST' as const,
+    path: '/api/verify',
+    input: scanRequestSchema,
+  },
+  scanOverride: {
+    method: 'POST' as const,
+    path: '/api/verify/override',
+    input: scanOverrideSchema,
+  },
+  scanSync: {
+    method: 'POST' as const,
+    path: '/api/verify/sync',
+    input: scanSyncSchema,
+  },
+  payouts: {
+    list: { method: 'GET' as const, path: '/api/payouts' },
+    settle: { method: 'POST' as const, path: '/api/payouts/:payoutId/settle' },
+  },
+  platformSettings: {
+    method: 'GET' as const,
+    path: '/api/platform/settings',
   },
 };
 

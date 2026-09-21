@@ -12,6 +12,12 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon, Loader2, Image as ImageIcon, X, Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { themePresets, accentOverrides } from "@shared/themes";
+import { ThemePresetCard } from "@/components/ThemePicker";
+import { Check } from "lucide-react";
 
 interface EventFormProps {
   initialData?: Partial<InsertEvent>;
@@ -37,6 +43,14 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
       sponsorsEnabled: true,
       vendorsEnabled: true,
       ticketTypes: "[]",
+      showRemainingCounts: true,
+      showAttendeeCount: false,
+      waitlistEnabled: false,
+      guestCheckout: true,
+      promoCodesPublic: false,
+      checkoutFields: { phone: false, tableNote: true, dietaryNote: false },
+      branding: null,
+      theme: null,
       ...initialData,
     },
   });
@@ -62,9 +76,37 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
   const handleFormSubmit = (data: InsertEvent) => {
     onSubmit({
       ...data,
-      ticketTypes: JSON.stringify(ticketTypes)
+      ticketTypes: JSON.stringify(ticketTypes),
+      checkoutFields,
     });
   };
+
+  const [checkoutFields, setCheckoutFields] = useState<any>(
+    (initialData as any)?.checkoutFields || { phone: false, tableNote: true, dietaryNote: false }
+  );
+  const toggleField = (key: string, v: boolean) =>
+    setCheckoutFields((prev: any) => ({ ...prev, [key]: v }));
+
+  const branding = (form.watch("branding") || {}) as any;
+  const setBranding = (patch: any) => form.setValue("branding", { ...branding, ...patch });
+
+  // Accepts E3B23C, e3b23c, #e3b23c while typing; stores #E3B23C.
+  const normalizeHex = (raw: string) => {
+    const v = raw.trim().replace(/^#/, "");
+    if (/^[0-9a-fA-F]{6}$/.test(v)) return ("#" + v).toUpperCase();
+    return raw.toUpperCase();
+  };
+
+  // A small row: one switch with its label and a one-line explanation.
+  const ToggleRow = ({ id, label, hint, checked, onChange }: { id: string; label: string; hint: string; checked: boolean; onChange: (v: boolean) => void }) => (
+    <div className="flex items-start justify-between gap-4 py-3.5 border-b border-white/5 last:border-0">
+      <div className="min-w-0">
+        <Label htmlFor={id} className="text-sm font-medium text-white cursor-pointer">{label}</Label>
+        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{hint}</p>
+      </div>
+      <Switch id={id} checked={checked} onCheckedChange={onChange} className="mt-0.5 shrink-0" />
+    </div>
+  );
 
   return (
     <Form {...form}>
@@ -263,18 +305,18 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
                         reader.readAsDataURL(file);
                       }
                     }}
-                    className="h-12 bg-white/5 border-white/10 text-white cursor-pointer file:bg-primary file:text-background file:border-0 file:rounded-lg file:px-4 file:h-full file:mr-4 file:font-black hover:file:bg-white transition-all text-sm sm:text-base"
+                    className="h-12 bg-surface-2 border-hairline text-ink cursor-pointer file:bg-primary file:text-primary-foreground file:border-0 file:rounded-md file:px-4 file:h-full file:mr-4 file:font-medium hover:file:bg-gold-soft transition-colors text-sm sm:text-base"
                   />
                   <ImageIcon className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none w-5 h-5" />
                 </div>
                 {field.value && (
-                  <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary/20 group">
-                    <img src={field.value} alt="Preview" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  <div className="relative aspect-video rounded-md overflow-hidden border border-hairline group">
+                    <img src={field.value} alt="Preview" className="w-full h-full object-cover" />
                     <Button
                       type="button"
                       variant="destructive"
                       size="icon"
-                      className="absolute top-2 right-2 h-8 w-8 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-2 right-2 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => field.onChange("")}
                     >
                       <X className="w-4 h-4" />
@@ -292,21 +334,215 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">Description</FormLabel>
+              <FormLabel className="eyebrow">Description</FormLabel>
               <FormControl>
-                <Textarea {...field} className="bg-white/5 border-white/10 text-white min-h-[150px] rounded-2xl focus:border-primary transition-all text-base resize-none" placeholder="Tell us more about the event..." />
+                <Textarea {...field} className="bg-surface-2 border-hairline text-ink min-h-[150px] rounded-md focus-visible:border-gold focus-visible:ring-0 transition-colors text-base resize-none" placeholder="Tell us more about the event..." />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
+        {/* ── Selling preferences: what guests see and how checkout works ── */}
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+          <h3 className="text-white font-bold uppercase tracking-wider text-sm">Selling preferences</h3>
+          <p className="text-xs text-muted-foreground mt-1 mb-2">Your event, your rules. Change these any time.</p>
+          <FormField
+            control={form.control}
+            name="showRemainingCounts"
+            render={({ field }) => (
+              <ToggleRow
+                id="pref-counts"
+                label="Show tickets-remaining counts"
+                hint={"Guests see how many tickets are left per tier. Off hides the counts; capacity is still enforced."}
+                checked={field.value !== false}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="showAttendeeCount"
+            render={({ field }) => (
+              <ToggleRow
+                id="pref-attendees"
+                label="Show attendee count"
+                hint={'Displays "142 going" on the event page as social proof.'}
+                checked={field.value === true}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="waitlistEnabled"
+            render={({ field }) => (
+              <ToggleRow
+                id="pref-waitlist"
+                label="Waitlist when sold out"
+                hint={"Sold-out tiers collect names and emails instead of turning buyers away. Export the list from Manage Event."}
+                checked={field.value === true}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="guestCheckout"
+            render={({ field }) => (
+              <ToggleRow
+                id="pref-guest"
+                label="Allow guest checkout"
+                hint={"Off requires buyers to create an account first. On is lower friction."}
+                checked={field.value !== false}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="promoCodesPublic"
+            render={({ field }) => (
+              <ToggleRow
+                id="pref-promo"
+                label="Advertise promo codes on the event page"
+                hint={"Lists your live codes (and their discounts) right on the page. Off keeps codes quiet, shared privately."}
+                checked={field.value === true}
+                onChange={field.onChange}
+              />
+            )}
+          />
+
+          <div className="pt-4 mt-2 border-t border-white/5">
+            <Label className="text-sm font-medium text-white">Checkout also collects</Label>
+            <p className="text-xs text-muted-foreground mt-0.5 mb-3">Extra details you want from buyers, on top of name and email.</p>
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-3 text-sm text-white/90 cursor-pointer">
+                <Checkbox checked={!!checkoutFields?.phone} onCheckedChange={(v) => toggleField("phone", v === true)} />
+                Phone number
+              </label>
+              <label className="flex items-center gap-3 text-sm text-white/90 cursor-pointer">
+                <Checkbox checked={!!checkoutFields?.tableNote} onCheckedChange={(v) => toggleField("tableNote", v === true)} />
+                Table or seating preference
+              </label>
+              <label className="flex items-center gap-3 text-sm text-white/90 cursor-pointer">
+                <Checkbox checked={!!checkoutFields?.dietaryNote} onCheckedChange={(v) => toggleField("dietaryNote", v === true)} />
+                Dietary requirement
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Theme: three curated looks, one pick ── */}
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+          <h3 className="text-white font-bold uppercase tracking-wider text-sm">Theme</h3>
+          <p className="text-xs text-muted-foreground mt-1 mb-4">
+            Curated looks for your event page. Pick one, then add your logo and color below. Each preview shows your branding inside the theme.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {Object.values(themePresets).map((preset) => (
+              <ThemePresetCard
+                key={preset.key}
+                preset={preset}
+                selected={form.watch("theme") === preset.key}
+                branding={branding}
+                onSelect={() => {
+                  const selected = form.watch("theme") === preset.key;
+                  form.setValue("theme", selected ? null : preset.key);
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* ── Branding: their identity on their event surfaces ── */}
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+          <h3 className="text-white font-bold uppercase tracking-wider text-sm">Event branding</h3>
+          <p className="text-xs text-muted-foreground mt-1 mb-4">
+            Your name, logo, and color on the event page header, the PDF ticket, and the confirmation email. "Issued via BlackHeritage" stays in the footer.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase font-bold">Organizer display name</Label>
+              <Input
+                value={branding.displayName || ""}
+                onChange={(e) => setBranding({ displayName: e.target.value })}
+                className="h-11 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary"
+                placeholder="e.g. Tunde Live Concepts"
+                maxLength={60}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground uppercase font-bold">Accent color</Label>
+              <div className="flex gap-2">
+                <input
+                  type="color"
+                  value={/^#[0-9a-fA-F]{6}$/.test(branding.accentHex || "") ? branding.accentHex : "#E3B23C"}
+                  onChange={(e) => setBranding({ accentHex: e.target.value.toUpperCase() })}
+                  aria-label="Pick accent color"
+                  className="h-11 w-14 rounded-lg bg-transparent border border-white/10 cursor-pointer p-1"
+                />
+                <Input
+                  value={branding.accentHex || ""}
+                  onChange={(e) => setBranding({ accentHex: normalizeHex(e.target.value) })}
+                  className="h-11 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary font-mono"
+                  placeholder="#E3B23C"
+                  maxLength={7}
+                />
+              </div>
+              {branding.accentHex && !/^#[0-9a-fA-F]{6}$/.test(branding.accentHex) && (
+                <p className="text-xs text-red-400">Use a 6-digit hex color, like #E3B23C.</p>
+              )}
+            </div>
+          </div>
+          <div className="space-y-2 mt-4">
+            <Label className="text-xs text-muted-foreground uppercase font-bold">Logo URL (optional)</Label>
+            <div className="flex items-center gap-3">
+              {branding.logoUrl ? (
+                <img
+                  src={branding.logoUrl}
+                  alt="Logo preview"
+                  aria-hidden="true"
+                  className="h-11 w-11 shrink-0 rounded-lg object-cover ring-1 ring-white/10 bg-white/5"
+                  onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")}
+                  onLoad={(e) => ((e.target as HTMLImageElement).style.visibility = "visible")}
+                />
+              ) : (
+                <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-dashed border-white/15 text-white/30">
+                  <ImageIcon className="h-4 w-4" />
+                </span>
+              )}
+              <Input
+                value={branding.logoUrl || ""}
+                onChange={(e) => setBranding({ logoUrl: e.target.value })}
+                className="h-11 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary"
+                placeholder="https://... your logo image"
+              />
+              {branding.logoUrl && (
+                <button
+                  type="button"
+                  onClick={() => setBranding({ logoUrl: "" })}
+                  aria-label="Remove logo"
+                  className="press shrink-0 text-xs text-muted-foreground hover:text-white transition-colors"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            {branding.logoUrl && (
+              <p className="text-xs text-muted-foreground">
+                Square images look best. It appears in the event page header, the ticket PDF, and emails.
+              </p>
+            )}
+          </div>
+        </div>
+
         <Button 
           type="submit" 
           disabled={isLoading}
-          className="w-full bg-primary text-background hover:bg-white font-black text-xl h-16 rounded-2xl shadow-xl transition-all active:scale-95"
+          className="press w-full bg-primary text-primary-foreground hover:bg-gold-soft font-medium text-base h-12 rounded-md"
         >
-          {isLoading ? <Loader2 className="w-6 h-6 animate-spin mr-2" /> : null}
+          {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
           Save Event
         </Button>
       </form>

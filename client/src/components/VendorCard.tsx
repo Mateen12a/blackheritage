@@ -2,7 +2,7 @@ import { Vendor } from "@shared/schema";
 import { Link } from "wouter";
 import { MapPin } from "lucide-react";
 import { FadeImg } from "@/components/motion";
-import { CategoryIcon, categoryLabel } from "./vendor-categories";
+import { CategoryIcon, vendorDisplayCategory } from "./vendor-categories";
 
 interface VendorCardProps {
   vendor: Vendor;
@@ -51,7 +51,7 @@ export function VendorCard({ vendor }: VendorCardProps) {
             className="absolute inset-0 bg-gradient-to-t from-background via-background/10 to-transparent"
           />
           <span className="absolute bottom-3 left-4 text-[11px] font-bold tracking-[0.18em] uppercase text-ink/80">
-            {categoryLabel(vendor.category)}
+            {vendorDisplayCategory(vendor)}
           </span>
           {photoCount > 1 && (
             <span className="absolute bottom-3 right-4 text-xs font-medium text-ink/80">

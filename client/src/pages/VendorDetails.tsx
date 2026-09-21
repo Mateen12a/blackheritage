@@ -1,6 +1,11 @@
-import { useVendor } from "@/hooks/use-vendors";
-import { CategoryIcon } from "@/components/vendor-categories";
+import { useVendor, useVendors } from "@/hooks/use-vendors";
+import { useVendorTrust } from "@/hooks/use-vendor-trust";
+import { useAuth } from "@/hooks/use-auth";
+import { CategoryIcon, vendorDisplayCategory } from "@/components/vendor-categories";
 import { Reveal, FadeImg } from "@/components/motion";
+import { Navbar } from "@/components/Navbar";
+import { getPreset, accentOverrides } from "@shared/themes";
+import type { CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useRoute, Link } from "wouter";
@@ -12,14 +17,51 @@ import {
   Share2,
   ArrowLeft,
   ImageOff,
+  Instagram,
+  Twitter,
+  Youtube,
+  Music2,
+  Video,
 } from "lucide-react";
 import { useState } from "react";
+import {
+  parseGallery,
+  parseSocials,
+  videoView,
+  type VendorSocials,
+} from "@/lib/media";
+
+const socialIcons = {
+  instagram: { icon: Instagram, label: "Instagram" },
+  x: { icon: Twitter, label: "X" },
+  tiktok: { icon: Music2, label: "TikTok" },
+  youtube: { icon: Youtube, label: "YouTube" },
+} as const;
+
+/**
+ * Page palette: the chosen preset's tokens, then the vendor's accent
+ * override (contrast-safe per theme). No preset and no accent means the
+ * platform default shows. Same behavior as event pages.
+ */
+function useVendorThemeVars(vendor: any): CSSProperties {
+  return {
+    ...(getPreset(vendor?.theme)?.vars || {}),
+    ...accentOverrides(vendor?.theme, vendor?.branding?.accentHex),
+  } as CSSProperties;
+}
 
 export default function VendorDetails() {
   const [, params] = useRoute("/vendors/:id");
-  const id = params?.id;
+  const [, slugParams] = useRoute("/v/:slug");
+  const id = slugParams?.slug || params?.id;
   const { data: vendor, isLoading } = useVendor(id as any);
+  const { data: allVendors } = useVendors();
+  const { user } = useAuth();
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+
+  // Trust signals load while the page is still resolving; the hook stays
+  // above the early returns so hook order never changes between renders.
+  const trust = useVendorTrust(vendor ? String(vendor.id) : undefined);
 
   if (isLoading) {
     return (
@@ -45,14 +87,20 @@ export default function VendorDetails() {
     );
   }
 
-  const gallery = (() => {
-    try {
-      const parsed = JSON.parse(vendor.gallery || "[]");
-      return Array.isArray(parsed) ? (parsed as string[]) : [];
-    } catch {
-      return [];
-    }
-  })();
+  const gallery = parseGallery(vendor.gallery);
+  const videos = parseGallery(vendor.videos);
+  const socials = parseSocials(vendor.socials);
+  const themeVars = useVendorThemeVars(vendor);
+  const brand = vendor.branding || null;
+  const socialEntries = (Object.keys(socialIcons) as Array<keyof typeof socialIcons>)
+    .filter((k) => !!socials[k])
+    .map((k) => ({ key: k, url: socials[k] as string }));
+
+  const isOwnProfile = !!user && vendor.ownerId === (user as any)._id;
+  const canMessageInApp = !!vendor.ownerId && !isOwnProfile;
+  const messagesHref = vendor.ownerId
+    ? "/messages/" + vendor.ownerId + "?vendor=" + vendor.id
+    : null;
 
   const whatsappLink = vendor.whatsapp
     ? "https://wa.me/" +
@@ -65,8 +113,21 @@ export default function VendorDetails() {
       )
     : null;
 
+  // Guests decide fast: same craft first, then the rest of the roster.
+  const related = [
+    ...(allVendors ?? []).filter((v) => v.id !== vendor.id && v.category === vendor.category),
+    ...(allVendors ?? []).filter((v) => v.id !== vendor.id && v.category !== vendor.category),
+  ].slice(0, 3);
+  const hasMobileActions = !!(canMessageInApp && messagesHref) || !!whatsappLink || !!vendor.phone;
+
   return (
-    <div className="min-h-screen pb-24">
+    <div
+      className="min-h-screen pb-24"
+      style={themeVars}
+    >
+      {/* Vendor-branded navbar when they set a name/logo; the platform
+          default renders otherwise. Same treatment as event pages. */}
+      <Navbar eventBrand={brand} overMedia />
       {/* Hero image — the portfolio leads */}
       <div className="relative h-[46vh] w-full overflow-hidden">
         {gallery[0] ? (
@@ -92,7 +153,7 @@ export default function VendorDetails() {
             variant="outline"
             size="icon"
             aria-label="Back to vendor directory"
-            className="absolute top-28 left-4 z-20 rounded-full bg-background/70 border-hairline text-ink hover:bg-surface hover:text-gold"
+            className="absolute top-20 left-4 z-20 rounded-full bg-background/70 border-hairline text-ink hover:bg-surface hover:text-gold"
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -108,7 +169,7 @@ export default function VendorDetails() {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <span className="flex items-center gap-2 text-[11px] font-bold tracking-[0.18em] uppercase text-gold">
                   <CategoryIcon category={vendor.category} className="w-3.5 h-3.5" />
-                  {vendor.category}
+                  {vendorDisplayCategory(vendor)}
                 </span>
                 {(vendor.city || vendor.serviceArea) && (
                   <span className="flex items-center gap-1.5 text-sm text-muted-ink">
@@ -121,6 +182,61 @@ export default function VendorDetails() {
                 {vendor.businessName}
               </h1>
               <div className="mt-5 h-0.5 w-16 bg-gold" aria-hidden="true" />
+
+              {/* Trust strip: earned numbers, shown only when they exist */}
+              {trust.data && (trust.data.memberSince || trust.data.completedBookings > 0 || trust.data.responseHours !== null) && (
+                <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+                  {trust.data.memberSince && (
+                    <span className="text-muted-ink">
+                      On BlackHeritage since{" "}
+                      <span className="text-ink font-medium">
+                        {new Date(trust.data.memberSince).toLocaleDateString("en-NG", { month: "long", year: "numeric" })}
+                      </span>
+                    </span>
+                  )}
+                  {trust.data.completedBookings > 0 && (
+                    <span className="text-muted-ink">
+                      <span className="text-ink font-medium">{trust.data.completedBookings}</span> paid bookings
+                    </span>
+                  )}
+                  {trust.data.responseHours !== null && (
+                    <span className="inline-flex items-center gap-1.5 text-muted-ink">
+                      <span className="relative flex h-2 w-2" aria-hidden="true">
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-gold"></span>
+                      </span>
+                      <span>
+                        Replies in{" "}
+                        <span className="text-ink font-medium">
+                          {trust.data.responseHours < 1
+                            ? Math.max(1, Math.round(trust.data.responseHours * 60)) + " min"
+                            : Math.round(trust.data.responseHours) + "h"}
+                        </span>
+                      </span>
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Social proof row */}
+              {socialEntries.length > 0 && (
+                <div className="mt-6 flex items-center gap-2">
+                  {socialEntries.map(({ key, url }) => {
+                    const { icon: Icon, label } = socialIcons[key];
+                    return (
+                      <a
+                        key={key}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={vendor.businessName + " on " + label}
+                        className="w-10 h-10 rounded-full border border-hairline bg-surface flex items-center justify-center text-muted-ink hover:text-gold hover:border-gold/60 transition-colors"
+                      >
+                        <Icon className="w-4.5 h-4.5" aria-hidden="true" />
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
             </Reveal>
 
             {/* Bio — plain editorial text, no box */}
@@ -138,15 +254,75 @@ export default function VendorDetails() {
               </div>
             )}
 
+            {/* Videos — proof of work in motion */}
+            {videos.length > 0 && (
+              <section aria-label="Videos" className="mb-10">
+                <h2 className="eyebrow mb-5">Videos</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {videos.map((url, index) => {
+                    const view = videoView(url);
+                    if (view.kind === "iframe") {
+                      return (
+                        <div
+                          key={index}
+                          className="relative aspect-video rounded-md overflow-hidden border border-hairline bg-surface"
+                        >
+                          <iframe
+                            src={view.src}
+                            title={vendor.businessName + " video " + (index + 1)}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            className="w-full h-full"
+                            loading="lazy"
+                          />
+                        </div>
+                      );
+                    }
+                    if (view.kind === "file") {
+                      return (
+                        <div
+                          key={index}
+                          className="rounded-md overflow-hidden border border-hairline bg-surface"
+                        >
+                          <video
+                            src={view.src}
+                            controls
+                            preload="metadata"
+                            className="w-full aspect-video"
+                          >
+                            Your browser cannot play this video.
+                          </video>
+                        </div>
+                      );
+                    }
+                    return (
+                      <a
+                        key={index}
+                        href={view.src}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 px-4 py-4 rounded-md border border-hairline bg-surface hover:border-gold/60 transition-colors"
+                      >
+                        <Video className="w-5 h-5 text-gold shrink-0" aria-hidden="true" />
+                        <span className="text-sm text-ink truncate">
+                          Watch video {index + 1}
+                        </span>
+                      </a>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
             {/* Gallery — quiet grid, hairline cells, zoom cursor */}
             <section aria-label="Portfolio">
-              <h2 className="eyebrow mb-5">Portfolio</h2>
+              <h2 className="eyebrow mb-5">Photos</h2>
               {gallery.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-14 bg-surface border border-hairline rounded-md text-center">
                   <ImageOff className="w-8 h-8 text-muted-ink/40 mb-3" />
                   <p className="text-muted-ink text-sm">
-                    Portfolio photos coming soon. Message them to see more of
-                    their work.
+                    No portfolio yet. Message them and ask for samples of
+                    recent work.
                   </p>
                 </div>
               ) : (
@@ -182,17 +358,38 @@ export default function VendorDetails() {
                 <span className="text-gold">direct</span>
               </h2>
               <p className="mt-2 text-sm text-muted-ink leading-relaxed">
-                Message {vendor.businessName.split(" ")[0] || "them"} directly
-                about your date, venue, and budget. No booking fees, no
-                middlemen. You deal, we make the introduction.
+                Message {vendor.businessName.split(" ")[0] || "them"} about
+                your date, venue, and budget. You deal, we make the
+                introduction.
               </p>
 
               <div className="mt-6 flex flex-col gap-3">
-                {whatsappLink && (
-                  <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                {canMessageInApp && messagesHref ? (
+                  <Link href={messagesHref}>
                     <Button className="w-full h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md">
                       <MessageCircle className="w-5 h-5 mr-2" />
-                      Message on WhatsApp
+                      Message {vendor.businessName.split(" ")[0] || "vendor"}
+                    </Button>
+                  </Link>
+                ) : isOwnProfile ? (
+                  <p className="text-sm text-muted-ink text-center py-3 border border-dashed border-hairline rounded-md">
+                    This is your profile. Replies land in your Chats tab.
+                  </p>
+                ) : !vendor.ownerId ? (
+                  <p className="text-sm text-muted-ink text-center py-3 border border-dashed border-hairline rounded-md">
+                    In-app chat opens once they claim this profile. Use the
+                    contacts below.
+                  </p>
+                ) : null}
+
+                {whatsappLink && (
+                  <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                    <Button
+                      variant="ghost"
+                      className="w-full h-11 text-muted-ink hover:text-gold hover:bg-surface-2 rounded-md"
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      WhatsApp instead
                     </Button>
                   </a>
                 )}
@@ -207,7 +404,7 @@ export default function VendorDetails() {
                     </Button>
                   </a>
                 )}
-                {!whatsappLink && !vendor.phone && (
+                {!canMessageInApp && !whatsappLink && !vendor.phone && (
                   <p className="text-center py-6 text-muted-ink text-sm">
                     No contact details listed yet. Check back soon.
                   </p>
@@ -230,6 +427,101 @@ export default function VendorDetails() {
           </aside>
         </div>
       </div>
+
+      {/* Mobile sticky action bar: booking is one thumb-tap anywhere on the page */}
+      {hasMobileActions && (
+        <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden border-t border-hairline bg-surface/95 backdrop-blur-xl px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="flex gap-2.5">
+            {canMessageInApp && messagesHref ? (
+              <Link href={messagesHref} className="flex-1">
+                <Button className="w-full h-11 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-full">
+                  <MessageCircle className="w-4.5 h-4.5 mr-2" />
+                  Message
+                </Button>
+              </Link>
+            ) : null}
+            {whatsappLink && (
+              <a
+                href={whatsappLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1"
+              >
+                <Button
+                  variant="outline"
+                  className="w-full h-11 border-hairline text-ink hover:bg-surface-2 hover:text-gold font-medium rounded-full"
+                >
+                  <MessageCircle className="w-4.5 h-4.5 mr-2" />
+                  WhatsApp
+                </Button>
+              </a>
+            )}
+            {!canMessageInApp && !whatsappLink && vendor.phone && (
+              <a href={"tel:" + vendor.phone.replace(/\s/g, "")} className="flex-1">
+                <Button className="w-full h-11 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-full">
+                  <Phone className="w-4.5 h-4.5 mr-2" />
+                  Call {vendor.phone}
+                </Button>
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Related vendors: keep browsing, same craft */}
+      {related.length > 0 && (
+        <section aria-label="Similar vendors" className="border-t border-hairline mt-16 pt-12 pb-8">
+          <div className="container mx-auto px-4">
+            <Reveal>
+              <p className="eyebrow">More {vendorDisplayCategory(vendor).toLowerCase()}s</p>
+              <h2 className="mt-3 font-display text-2xl md:text-3xl font-bold text-ink tracking-tight">
+                Keep browsing
+              </h2>
+              <div className="mt-4 h-0.5 w-12 bg-gold" aria-hidden="true" />
+            </Reveal>
+            <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {related.map((v) => {
+                const first = (() => {
+                  try {
+                    const g = JSON.parse(v.gallery || "[]");
+                    return Array.isArray(g) ? g[0] : "";
+                  } catch {
+                    return "";
+                  }
+                })();
+                return (
+                  <Link key={v.id} href={"/vendors/" + v.id}>
+                    <article className="group relative overflow-hidden rounded-md border border-hairline aspect-[4/3] cursor-pointer hover:border-white/20 transition-colors">
+                      {first ? (
+                        <img
+                          src={first}
+                          alt={v.businessName}
+                          loading="lazy"
+                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-surface-2 flex items-center justify-center">
+                          <CategoryIcon category={v.category} className="w-10 h-10 text-gold/30" />
+                        </div>
+                      )}
+                      <div
+                        aria-hidden="true"
+                        className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/20 to-transparent"
+                      />
+                      <div className="absolute inset-x-4 bottom-3">
+                        <p className="eyebrow">{v.category}</p>
+                        <p className="mt-0.5 font-display text-base font-bold text-ink truncate group-hover:text-gold transition-colors">
+                          {v.businessName}
+                        </p>
+                      </div>
+                    </article>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Lightbox */}
       <Dialog

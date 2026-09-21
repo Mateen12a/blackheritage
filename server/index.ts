@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import "./env-load";
 import { registerRoutes } from "./routes";
 import { createServer } from "http";
 import { connectDB } from "./db";
@@ -13,21 +14,43 @@ const httpServer = createServer(app);
 // Update CORS to allow requests from your frontend domains
 const ALLOWED_ORIGINS = [
   process.env.FRONTEND_URL,
-  "http://localhost:5173",
   "http://localhost:5000",
+  "http://127.0.0.1:5000",
+  "http://localhost:5173",
   "https://black-heritage-events.vercel.app",
   "https://blackheritage.onrender.com",
   "https://blackhevents.com"
 ].filter(Boolean) as string[];
 
+// Custom organizer domains (WHITE-LABEL.md stage 4) serve the same app from
+// their own origin. Any origin whose host ends in a suffix listed here is
+// trusted; add your root domain (e.g. blackheritage.africa) once live.
+const TRUSTED_ORIGIN_SUFFIXES = [
+  process.env.TRUSTED_ORIGIN_SUFFIX, // e.g. blackheritage.africa
+  "vercel.app",
+  "onrender.com",
+].filter(Boolean) as string[];
+
+function originAllowed(origin: string): boolean {
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  try {
+    const host = new URL(origin).hostname;
+    return TRUSTED_ORIGIN_SUFFIXES.some((s) => host === s || host.endsWith("." + s));
+  } catch {
+    return false;
+  }
+}
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // Same-origin requests (curl, server-to-server) carry no Origin header.
     if (!origin) return callback(null, true);
-    if (ALLOWED_ORIGINS.indexOf(origin) !== -1 || ALLOWED_ORIGINS.includes("*")) {
+    if (originAllowed(origin)) {
       callback(null, true);
     } else {
-      callback(null, true); // Fallback to true for development/troubleshooting
+      // Browsers with credentials require an exact allowlisted match. A
+      // wildcard here would let any website fire credentialed requests.
+      callback(null, false);
     }
   },
   credentials: true,
@@ -58,13 +81,16 @@ declare module "http" {
   }
 }
 
-app.use(
+// Paystack's webhook must arrive as raw bytes for signature verification,
+// so the global JSON parser skips that one path.
+app.use((req, res, next) => {
+  if (req.path === "/api/paystack/webhook") return next();
   express.json({
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },
-  }),
-);
+  })(req, res, next);
+});
 
 app.use(express.urlencoded({ extended: false }));
 
@@ -106,7 +132,11 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  await connectDB();
+  const dbReady = await connectDB();
+  if (!dbReady && process.env.NODE_ENV === "production") {
+    console.error("Cannot start production without MongoDB. Set MONGODB_URI and restart.");
+    process.exit(1);
+  }
   setupAuth(app);
   setupGoogleAuth(app);
   await registerRoutes(httpServer, app);
@@ -121,12 +151,15 @@ app.use((req, res, next) => {
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
   const port = parseInt(process.env.PORT || "3001", 10);
+  const listenOptions: any = {
+    port,
+    host: "0.0.0.0",
+  };
+  if (process.platform !== "win32") {
+    listenOptions.reusePort = true;
+  }
   httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
+    listenOptions,
     () => {
       log(`serving on port ${port}`);
     },

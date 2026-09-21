@@ -1,25 +1,115 @@
 import { useEvent } from "@/hooks/use-events";
-import { Navbar } from "@/components/Navbar";
 import { BookingModal } from "@/components/BookingModal";
 import { Button } from "@/components/ui/button";
 import { useRoute } from "wouter";
-import { Loader2, Calendar, MapPin, Users, Share2, ArrowLeft } from "lucide-react";
+import { Loader2, Calendar, MapPin, Users, Share2, ArrowLeft, Tag, Clock } from "lucide-react";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { BusinessModal } from "@/components/BusinessModal";
+import { Reveal, FadeImg } from "@/components/motion";
+import { PastEventProof } from "@/components/PastEventProof";
+import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Navbar } from "@/components/Navbar";
+import { getPreset, accentOverrides } from "@shared/themes";
+import { useEventPulse } from "@/hooks/use-pulse";
+import { useCountdown } from "@/hooks/use-countdown";
+
+interface PublicPromo {
+  code: string;
+  kind: "percent" | "fixed";
+  value: number;
+}
+
+const naira = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG")}`;
+
+/**
+ * Page palette: the theme preset's tokens, then the organizer's accent
+ * color layered on top (recolors buttons, links, icons, and soft badges
+ * while keeping contrast safe per theme). No preset and no accent means
+ * the platform default shows.
+ */
+function useEventThemeVars(event: any): React.CSSProperties {
+  return {
+    ...(getPreset(event?.theme)?.vars || {}),
+    ...accentOverrides(event?.theme, event?.branding?.accentHex),
+  } as React.CSSProperties;
+}
 
 export default function EventDetails() {
   const [, params] = useRoute("/events/:id");
-  const id = params?.id;
+  const [, slugParams] = useRoute("/e/:slug");
+  const id = params?.id || slugParams?.slug;
   const { data: event, isLoading } = useEvent(id as any);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
+  const [publicPromos, setPublicPromos] = useState<PublicPromo[]>([]);
+  const { toast } = useToast();
+
+  // Hooks stay above every early return so the hook order never changes
+  // between a loading render and a loaded one.
+  const showAttendeeCountEarly = (event as any)?.showAttendeeCount === true;
+  const pulse = useEventPulse(event ? String((event as any).id) : undefined, showAttendeeCountEarly);
+  const earlyTiers: any[] = event ? parseTiersSafe((event as any).ticketTypes) : [];
+  const earlyClose = earlyTiers
+    .map((t: any) => (t.saleClose ? new Date(t.saleClose).getTime() : 0))
+    .filter((ms) => ms > Date.now())
+    .sort((a: number, b: number) => a - b)[0] ?? null;
+  const countdown = useCountdown(earlyClose);
+
+  // Public promo codes: fetched only when the organizer advertises them.
+  // Keyed on the resolved event id, not the route param: on /e/:slug the
+  // param is a slug and the API needs the real id.
+  useEffect(() => {
+    const eventId = (event as any)?.id;
+    if (!eventId) return;
+    let alive = true;
+    fetch(`/api/events/${eventId}/public-promos`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((codes) => { if (alive) setPublicPromos(Array.isArray(codes) ? codes : []); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [(event as any)?.id]);
+
+  const handleShare = async () => {
+    if (!event) return;
+    // The pretty link is the canonical share URL.
+    const slug = (event as any).slug;
+    const url = slug
+      ? `${window.location.origin}/e/${slug}`
+      : window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: event.title,
+          text: "Check out this event: " + event.title,
+          url,
+        });
+      } catch {
+        /* user dismissed the share sheet */
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast({
+          title: "Link copied",
+          description: "Send it to the group chat.",
+        });
+      } catch {
+        toast({
+          variant: "destructive",
+          title: "Couldn't copy the link",
+          description: "Copy it from the address bar instead.",
+        });
+      }
+    }
+  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        <Loader2 className="w-8 h-8 animate-spin text-gold" />
       </div>
     );
   }
@@ -27,189 +117,313 @@ export default function EventDetails() {
   if (!event) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-center p-4">
-        <h2 className="text-2xl font-bold text-white mb-4">Event not found</h2>
-        <Link href="/events">
-          <Button variant="outline">Back to Events</Button>
+        <p className="eyebrow">Off the guest list</p>
+        <h1 className="mt-3 font-display text-3xl font-bold text-ink">
+          Event not found
+        </h1>
+        <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
+        <p className="mt-4 text-sm text-muted-ink max-w-sm">
+          It may have been taken down. The rest of Lagos is still on sale.
+        </p>
+        <Link href="/events" className="mt-6">
+          <Button variant="outline" className="border-hairline text-ink hover:text-gold rounded-md">
+            Back to Events
+          </Button>
         </Link>
       </div>
     );
   }
 
+  const ticketTypes = (() => {
+    try {
+      const parsed = JSON.parse(event.ticketTypes || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  const price =
+    event.price > 0 ? "₦" + (event.price / 100).toLocaleString() : "Free";
+  const showCounts = (event as any).showRemainingCounts !== false;
+  const showAttendeeCount = (event as any).showAttendeeCount === true;
+  const waitlistEnabled = (event as any).waitlistEnabled === true;
+  const themeVars = useEventThemeVars(event);
+  const brand = (event as any).branding || null;
+  const soldOut =
+    ticketTypes.length > 0 &&
+    ticketTypes.every((t: any) => Math.max(0, Number(t.capacity || 0) - Number(t.sold || 0)) <= 0);
+
+  // `pulse` and `countdown` are computed above the early returns; the
+  // organizer's showAttendeeCount flag decides whether any of it renders.
+
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <Navbar />
-      
-      {/* Hero Image */}
-      <div className="relative h-[50vh] w-full overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent z-10" />
-        <img 
-          src={event.imageUrl} 
+    <div
+      className="min-h-screen bg-background pb-40 lg:pb-24"
+      style={themeVars}
+    >
+      {/* Event-branded navbar when the organizer set a name/logo; the
+          platform default renders elsewhere. Brand links still go home. */}
+      <Navbar eventBrand={brand} overMedia />
+
+      {/* Flyer hero — the photo leads, gradients sink it into the page */}
+      <div className="relative h-[52vh] w-full overflow-hidden">
+        <FadeImg
+          src={event.imageUrl}
           alt={event.title}
           className="w-full h-full object-cover"
         />
-        
-        {/* Back Button */}
-        <Link href="/events">
-          <Button 
-            variant="outline" 
-            size="icon" 
-            className="absolute top-28 left-4 z-20 rounded-full bg-black/50 border-white/10 text-white hover:bg-primary hover:text-black hover:border-primary transition-colors"
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-background/10"
+        />
+        <div className="absolute top-4 md:top-28 left-4 right-4 z-20 flex items-center justify-between">
+          <Link href="/events">
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Back to all events"
+              className="press rounded-full bg-background/70 border-hairline text-ink hover:bg-surface hover:text-gold transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          </Link>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Share this event"
+            onClick={handleShare}
+            className="press rounded-full bg-background/70 border-hairline text-ink hover:bg-surface hover:text-gold transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <Share2 className="w-5 h-5" />
           </Button>
-        </Link>
+        </div>
       </div>
 
-      <div className="container mx-auto px-4 -mt-32 relative z-20">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Main Content */}
+      <div className="container mx-auto px-4 -mt-28 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          {/* Main column — editorial, no card box */}
           <div className="lg:col-span-2">
-            <div className="bg-card border border-white/5 rounded-2xl p-8 shadow-xl">
-              <div className="flex flex-wrap items-center gap-4 mb-6">
-                <span className="px-4 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-sm font-bold uppercase tracking-wider">
-                  Upcoming Event
-                </span>
-                <span className="text-muted-foreground text-sm">
-                  Posted on {format(new Date(), "MMM dd, yyyy")}
-                </span>
-              </div>
-              
-              <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-6 leading-tight">
+            <Reveal>
+              <p className="eyebrow text-gold">Upcoming event</p>
+              <h1 className="mt-3 font-display text-4xl md:text-5xl font-bold text-ink leading-[1.1] tracking-tight">
                 {event.title}
               </h1>
+              <div className="mt-5 h-0.5 w-16 bg-gold" aria-hidden="true" />
+              <p className="mt-5 text-lg text-muted-ink">
+                {format(new Date(event.date), "EEEE, d MMMM yyyy")} ·{" "}
+                {format(new Date(event.date), "h:mm a")} · {event.location}
+              </p>
+              {brand?.displayName && (
+                <p className="mt-3 text-sm text-muted-ink flex items-center gap-2">
+                  {brand.logoUrl && (
+                    <img src={brand.logoUrl} alt="" className="w-6 h-6 rounded-md object-cover ring-1 ring-white/10" />
+                  )}
+                  <span>
+                    Presented by <span className="text-ink font-medium">{brand.displayName}</span>
+                  </span>
+                </p>
+              )}
+              {showAttendeeCount && pulse.data && pulse.data.going > 0 && (
+                <p className="mt-4 flex items-center gap-2 text-sm text-muted-ink">
+                  <span className="relative flex h-2 w-2" aria-hidden="true">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-60"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-gold"></span>
+                  </span>
+                  <span>
+                    <span className="text-ink font-medium">{pulse.data.going} going</span>
+                    {pulse.data.soldToday > 0 && (
+                      <span className="text-muted-ink"> &middot; {pulse.data.soldToday} in the last day</span>
+                    )}
+                  </span>
+                </p>
+              )}
+              {showAttendeeCount && pulse.data?.recent?.[0] && (
+                <p className="mt-1.5 text-sm text-muted-ink">
+                  {pulse.data.recent[0].name} booked {pulse.data.recent[0].ago}
+                </p>
+              )}
+            </Reveal>
 
-              <div className="flex flex-col gap-6 mb-8 p-6 bg-background/50 rounded-xl border border-white/5">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-primary/10 text-primary">
-                    <Calendar className="w-6 h-6" />
-                  </div>
+            {/* The details — one hairline-separated list, gold icons */}
+            <Reveal className="mt-10">
+              <dl className="border-t border-hairline">
+                <div className="flex items-start gap-4 py-5 border-b border-hairline">
+                  <Calendar className="w-5 h-5 text-gold shrink-0 mt-0.5" aria-hidden="true" />
                   <div>
-                    <h3 className="font-bold text-white text-lg">Date & Time</h3>
-                    <p className="text-muted-foreground">
-                      {format(new Date(event.date), "EEEE, MMMM do, yyyy")}
-                    </p>
-                    <p className="text-muted-foreground">
-                      {format(new Date(event.date), "h:mm a")}
-                    </p>
+                    <dt className="eyebrow">Date &amp; time</dt>
+                    <dd className="mt-1.5 text-ink">
+                      {format(new Date(event.date), "EEEE, d MMMM yyyy")}
+                    </dd>
+                    <dd className="text-sm text-muted-ink">
+                      Doors open {format(new Date(event.date), "h:mm a")}
+                    </dd>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-primary/10 text-primary">
-                    <MapPin className="w-6 h-6" />
-                  </div>
+                <div className="flex items-start gap-4 py-5 border-b border-hairline">
+                  <MapPin className="w-5 h-5 text-gold shrink-0 mt-0.5" aria-hidden="true" />
                   <div>
-                    <h3 className="font-bold text-white text-lg">Location</h3>
-                    <p className="text-muted-foreground">{event.location}</p>
+                    <dt className="eyebrow">Location</dt>
+                    <dd className="mt-1.5 text-ink">{event.location}</dd>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-primary/10 text-primary">
-                    <Users className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-white text-lg">Tickets Available</h3>
-                    <div className="flex flex-col gap-1 mt-1">
-                      {(() => {
-                        try {
-                          const types = JSON.parse(event.ticketTypes || '[]');
-                          if (types.length === 0) {
-                            return <p className="text-muted-foreground">{event.capacity} Regular tickets remaining</p>;
-                          }
-                          return types.map((type: any) => (
-                            <p key={type.name} className="text-muted-foreground">
-                              <span className="text-primary font-bold">{type.capacity - (type.sold || 0)}</span> {type.name} tickets left
-                            </p>
-                          ));
-                        } catch (e) {
-                          return <p className="text-muted-foreground">{event.capacity} tickets remaining</p>;
-                        }
-                      })()}
+                {showCounts && (
+                  <div className="flex items-start gap-4 py-5 border-b border-hairline">
+                    <Users className="w-5 h-5 text-gold shrink-0 mt-0.5" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <dt className="eyebrow">Availability</dt>
+                      <dd className="mt-1.5">
+                        {ticketTypes.length === 0 ? (
+                          <span className="text-ink">
+                            {event.capacity} regular tickets remaining
+                          </span>
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            {ticketTypes.map((type: any) => (
+                              <span key={type.name} className="text-ink">
+                                <span className="text-gold font-medium">
+                                  {type.capacity - (type.sold || 0)}
+                                </span>{" "}
+                                {type.name} left
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </dd>
                     </div>
                   </div>
-                </div>
-              </div>
+                )}
+              </dl>
+            </Reveal>
 
-              <div className="prose prose-invert max-w-none">
-                <h3 className="text-2xl font-display text-white mb-4">About the Event</h3>
-                <p className="text-lg text-muted-foreground leading-relaxed whitespace-pre-line">
-                  {event.description}
-                </p>
-              </div>
-            </div>
+            {/* Public promo codes, only when the organizer advertises them */}
+            {publicPromos.length > 0 && (
+              <Reveal className="mt-8">
+                <div className="rounded-md border border-gold/25 bg-gold/[0.06] p-5">
+                  <p className="eyebrow text-gold flex items-center gap-2">
+                    <Tag className="w-3.5 h-3.5" aria-hidden="true" /> Current offers
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {publicPromos.map((p) => (
+                      <span
+                        key={p.code}
+                        className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-background/60 px-3 py-1.5 text-xs"
+                      >
+                        <span className="font-mono font-bold text-ink">{p.code}</span>
+                        <span className="text-muted-ink">
+                          {p.kind === "percent" ? `${p.value}% off` : `${naira(p.value)} off`}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-xs text-muted-ink">Apply the code at checkout.</p>
+                </div>
+              </Reveal>
+            )}
+
+            {/* About — plain editorial text */}
+            <Reveal className="mt-10">
+              <p className="eyebrow">About this event</p>
+              <p className="mt-4 text-muted-ink leading-relaxed whitespace-pre-line max-w-2xl">
+                {event.description}
+              </p>
+            </Reveal>
+
+            <PastEventProof event={event} />
           </div>
 
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
+          {/* Sidebar — the one gold surface on the page */}
+          <aside className="lg:col-span-1">
             <div className="sticky top-28 space-y-4">
-              <div className="bg-card border border-white/5 rounded-2xl p-6 shadow-xl">
-                <h3 className="text-xl font-display font-bold text-white mb-2">Price</h3>
-                <div className="flex items-end gap-2 mb-6">
-                  <span className="text-4xl font-bold text-primary">₦{(event.price / 100).toLocaleString()}</span>
-                  <span className="text-muted-foreground mb-1">/ person</span>
+              <div className="bg-surface border border-hairline rounded-md p-7">
+                <p className="eyebrow">Tickets from</p>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="font-display text-4xl font-bold text-ink">
+                    {price}
+                  </span>
+                  {event.price > 0 && (
+                    <span className="text-sm text-muted-ink">/ person</span>
+                  )}
                 </div>
 
-                <Button 
+                {!countdown.expired && countdown.short && (
+                  <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/[0.07] px-3 py-1.5 text-xs text-gold">
+                    <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+                    Sales close in {countdown.short}
+                  </div>
+                )}
+                {showAttendeeCount && pulse.data && pulse.data.going > 0 && (
+                  <p className="mt-3 text-sm text-muted-ink">
+                    <span className="text-ink font-medium">{pulse.data.going}</span> going
+                  </p>
+                )}
+
+                <Button
                   onClick={() => setIsBookingOpen(true)}
-                  className="w-full bg-primary text-background hover:bg-white font-bold py-6 text-lg mb-4 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all"
+                  className="press hidden lg:inline-flex mt-6 w-full h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md"
                 >
                   Get Tickets
                 </Button>
-                
-                <p className="text-xs text-center text-muted-foreground mb-4">
-                  Secure Paystack checkout: card, transfer, or USSD. Your
-                  e-ticket arrives instantly.
-                </p>
 
-                <Button 
-                  variant="outline" 
-                  className="w-full border-white/10 hover:bg-white/5 text-muted-foreground hover:text-white"
-                  onClick={() => {
-                    if (navigator.share) {
-                      navigator.share({
-                        title: event.title,
-                        text: `Check out this event: ${event.title}`,
-                        url: window.location.href,
-                      }).catch(() => {});
-                    } else {
-                      navigator.clipboard.writeText(window.location.href);
-                      alert("Link copied to clipboard!");
-                    }
-                  }}
-                >
-                  <Share2 className="w-4 h-4 mr-2" /> Share Event
-                </Button>
+                {waitlistEnabled && soldOut && (
+                  <WaitlistInline eventId={String(event.id)} />
+                )}
+
+                <p className="mt-4 text-xs text-center text-muted-ink">
+                  E-ticket arrives instantly after payment.
+                </p>
               </div>
 
-              {/* Sponsor & Vendor Section */}
-              <div className="bg-card border border-white/5 rounded-2xl p-6 shadow-xl space-y-4 text-center">
-                <div className="space-y-1">
-                  <h4 className="font-bold text-white text-base">Reach everyone at this event</h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Sponsors and vendors get direct visibility in front of the
-                    whole crowd.
-                  </p>
-                </div>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full border-primary/20 hover:bg-primary/10 text-primary font-bold text-sm h-12"
+              <div className="bg-surface border border-hairline rounded-md p-6">
+                <p className="eyebrow">Sponsors &amp; vendors</p>
+                <h2 className="mt-2 font-display text-lg font-bold text-ink leading-snug">
+                  Reach everyone at this event
+                </h2>
+                <p className="mt-2 text-xs text-muted-ink leading-relaxed">
+                  Sponsors and vendors get direct visibility in front of the
+                  whole crowd.
+                </p>
+                <Button
+                  variant="outline"
+                  className="press mt-4 w-full h-11 border-gold/40 text-gold hover:bg-gold/10 hover:text-gold-soft font-medium rounded-md"
                   onClick={() => setIsBusinessModalOpen(true)}
                 >
                   Apply as Sponsor or Vendor
                 </Button>
               </div>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
 
-      <BookingModal 
-        event={event} 
-        isOpen={isBookingOpen} 
-        onClose={() => setIsBookingOpen(false)} 
+      {/* Public promo strip on mobile sits inside the main column above. */}
+
+      {/* Mobile app bar: price and the one action that matters, pinned where the thumb is */}
+      <div
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-hairline bg-background/95 backdrop-blur-xl px-4 pt-3"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+      >
+        <div className="flex items-center gap-4">
+          <div className="min-w-0">
+            <p className="eyebrow">From</p>
+            <p className="font-display text-xl font-bold text-ink leading-none mt-0.5">{price}</p>
+          </div>
+          <Button
+            onClick={() => setIsBookingOpen(true)}
+            className="press flex-1 h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md"
+          >
+            Get Tickets
+          </Button>
+        </div>
+        {waitlistEnabled && soldOut && <WaitlistInline eventId={String(event.id)} compact />}
+      </div>
+
+      <BookingModal
+        event={event}
+        isOpen={isBookingOpen}
+        onClose={() => setIsBookingOpen(false)}
       />
 
       <BusinessModal
@@ -217,6 +431,88 @@ export default function EventDetails() {
         isOpen={isBusinessModalOpen}
         onClose={() => setIsBusinessModalOpen(false)}
       />
+    </div>
+  );
+}
+
+/**
+ * Waitlist capture for sold-out events, shown only when the organizer turned
+ * waitlists on. One input row, inline confirmation, no page jump.
+ */
+function parseTiersSafe(raw: unknown): any[] {
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function WaitlistInline({ eventId, compact = false }: { eventId: string; compact?: boolean }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
+  const [message, setMessage] = useState("");
+
+  if (state === "done") {
+    return (
+      <div className="mt-4 rounded-md border border-gold/30 bg-gold/[0.07] p-4 text-sm text-ink">
+        You are on the list. If a spot opens, the organizer will email you.
+      </div>
+    );
+  }
+
+  const join = async () => {
+    if (!name.trim() || !email.trim()) {
+      setMessage("Add your name and email to join the waitlist.");
+      setState("error");
+      return;
+    }
+    setState("busy");
+    try {
+      const res = await fetch(`/api/events/${eventId}/waitlist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), email: email.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Could not join");
+      setState("done");
+    } catch (err: any) {
+      setMessage(err.message || "Could not join the waitlist");
+      setState("error");
+    }
+  };
+
+  return (
+    <div className={compact ? "mt-3 w-full" : "mt-4"}>
+      {!compact && <p className="eyebrow text-gold flex items-center gap-2"><Clock className="w-3.5 h-3.5" aria-hidden="true" /> Sold out. Join the waitlist</p>}
+      {compact && <p className="text-xs text-muted-ink">Sold out. Join the waitlist:</p>}
+      <div className="mt-2 flex flex-col sm:flex-row gap-2">
+        <Input
+          placeholder="Your name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          aria-label="Your name"
+          className="h-11 bg-surface-2 border-hairline text-ink rounded-md"
+        />
+        <Input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          aria-label="Email"
+          className="h-11 bg-surface-2 border-hairline text-ink rounded-md"
+        />
+        <Button
+          onClick={join}
+          disabled={state === "busy"}
+          className="press h-11 px-5 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md shrink-0"
+        >
+          {state === "busy" ? <Loader2 className="w-4 h-4 animate-spin" /> : "Join"}
+        </Button>
+      </div>
+      {state === "error" && <p className="mt-2 text-xs text-red-400">{message}</p>}
     </div>
   );
 }

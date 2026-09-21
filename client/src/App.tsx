@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
+import Explore from "@/pages/Explore";
 import Events from "@/pages/Events";
 import EventDetails from "@/pages/EventDetails";
 import Vendors from "@/pages/Vendors";
@@ -18,10 +19,12 @@ import AuthPage from "@/pages/Auth";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AttendeeDashboard from "@/pages/AttendeeDashboard";
 import VendorDashboard from "@/pages/VendorDashboard";
+import Messages from "@/pages/Messages";
+import Verify from "@/pages/Verify";
 import ManageEvent from "@/pages/ManageEvent";
 import NewEvent from "@/pages/NewEvent";
 import { PublicLayout } from "@/components/PublicLayout";
-import { AdminLayout } from "@/components/AdminLayout";
+import { DashboardLayout } from "@/components/DashboardLayout";
 import { MotionProvider } from "@/components/motion";
 
 function ProtectedRoute({
@@ -47,9 +50,9 @@ function ProtectedRoute({
   }
 
   return (
-    <PublicLayout>
+    <DashboardLayout>
       <Component />
-    </PublicLayout>
+    </DashboardLayout>
   );
 }
 
@@ -80,9 +83,69 @@ function AdminRoute({
   }
 
   return (
-    <AdminLayout>
+    <DashboardLayout>
       <Component />
-    </AdminLayout>
+    </DashboardLayout>
+  );
+}
+
+/**
+ * StaffRoute: admins, organizers, and organizer team staff (manager,
+ * finance, entry) all pass. Entry staff land here for the gate portal.
+ */
+function StaffRoute({
+  component: Component,
+}: {
+  component: React.ComponentType;
+}) {
+  const { user, isLoading } = useAuth();
+  const [path] = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Redirect to={"/auth?returnTo=" + encodeURIComponent(path)} />
+    );
+  }
+
+  const isStaff =
+    user.role === "admin" || user.role === "organizer" || !!user.teamOwnerId;
+  if (!isStaff) {
+    return <Redirect to="/dashboard" />;
+  }
+
+  return (
+    <DashboardLayout>
+      <Component />
+    </DashboardLayout>
+  );
+}
+
+/** Logged-in users get the app Explore; guests get the marketing Home. */
+function RootRoute() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
+      </div>
+    );
+  }
+  return user ? (
+    <DashboardLayout>
+      <Explore />
+    </DashboardLayout>
+  ) : (
+    <PublicLayout>
+      <Home />
+    </PublicLayout>
   );
 }
 
@@ -91,13 +154,9 @@ function Router() {
 
   return (
     <Switch>
-      {/* Public Routes with Navbar */}
+      {/* Logged-in users get the app Explore; guests get the marketing Home */}
       <Route path="/">
-        {() => (
-          <PublicLayout>
-            <Home />
-          </PublicLayout>
-        )}
+        <RootRoute />
       </Route>
       <Route path="/events">
         {() => (
@@ -108,7 +167,14 @@ function Router() {
       </Route>
       <Route path="/events/:id">
         {() => (
-          <PublicLayout>
+          <PublicLayout noNavbar>
+            <EventDetails />
+          </PublicLayout>
+        )}
+      </Route>
+      <Route path="/e/:slug">
+        {() => (
+          <PublicLayout noNavbar>
             <EventDetails />
           </PublicLayout>
         )}
@@ -122,7 +188,14 @@ function Router() {
       </Route>
       <Route path="/vendors/:id">
         {() => (
-          <PublicLayout>
+          <PublicLayout noNavbar>
+            <VendorDetails />
+          </PublicLayout>
+        )}
+      </Route>
+      <Route path="/v/:slug">
+        {() => (
+          <PublicLayout noNavbar>
             <VendorDetails />
           </PublicLayout>
         )}
@@ -180,6 +253,16 @@ function Router() {
       </Route>
       <Route path="/vendor-signup">
         {() => <ProtectedRoute component={VendorAccount} />}
+      </Route>
+
+      {/* Messaging */}
+      <Route path="/messages/:id?">
+        {() => <ProtectedRoute component={Messages} />}
+      </Route>
+
+      {/* Gate verification portal (entry staff + organizers) */}
+      <Route path="/verify">
+        {() => <StaffRoute component={Verify} />}
       </Route>
 
       {/* Organizer / Admin Routes */}

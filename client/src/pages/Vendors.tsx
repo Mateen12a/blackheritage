@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { VendorCard } from "@/components/VendorCard";
-import { CategoryIcon } from "@/components/vendor-categories";
+import { CategoryIcon, categoryLabel } from "@/components/vendor-categories";
 import { useVendors } from "@/hooks/use-vendors";
 import { Reveal } from "@/components/motion";
 import { vendorCategories } from "@shared/schema";
@@ -28,7 +28,7 @@ export default function Vendors() {
 
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto px-4 pt-16 pb-24">
+      <div className="container mx-auto px-4 pt-6 pb-24">
         {/* Editorial header — same grammar as Events */}
         <Reveal className="max-w-3xl mb-12">
           <p className="eyebrow">Lagos &amp; beyond</p>
@@ -53,14 +53,14 @@ export default function Vendors() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               aria-label="Search vendors"
-              className="w-full h-14 pl-12 bg-surface-2 border border-hairline rounded-md text-ink text-base placeholder:text-muted-ink focus-visible:border-gold focus-visible:ring-0"
+              className="w-full h-12 pl-12 bg-surface-2 border border-hairline rounded-full text-ink text-base placeholder:text-muted-ink focus-visible:border-gold focus-visible:ring-0"
             />
           </div>
         </div>
 
         {/* Category filters — quiet pills, gold only when active */}
         <div
-          className="flex flex-wrap gap-2 mb-12 max-w-3xl"
+          className="flex gap-2 mb-12 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap max-w-3xl"
           role="group"
           aria-label="Filter vendors by category"
         >
@@ -87,11 +87,45 @@ export default function Vendors() {
             <p className="eyebrow">Loading vendors</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredVendors?.map((vendor) => (
-              <VendorCard key={vendor.id} vendor={vendor} />
-            ))}
-          </div>
+          <>
+            {/* App-style rows on mobile, editorial grid from sm up */}
+            <div className="divide-y divide-hairline md:hidden">
+              {filteredVendors?.map((vendor) => {
+                const gallery = (() => {
+                  try {
+                    const parsed = JSON.parse(vendor.gallery || "[]");
+                    return Array.isArray(parsed) ? (parsed as string[]) : [];
+                  } catch {
+                    return [];
+                  }
+                })();
+                return (
+                  <Link key={vendor.id} href={"/vendors/" + vendor.id}>
+                    <div className="flex items-center gap-4 py-4 active:bg-surface-2 -mx-3 px-3 rounded-md transition-colors">
+                      <div className="w-14 h-14 rounded-md overflow-hidden bg-surface-2 border border-hairline shrink-0 flex items-center justify-center">
+                        {gallery[0] ? (
+                          <img src={gallery[0]} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        ) : (
+                          <CategoryIcon category={vendor.category} className="w-6 h-6 text-gold/40" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-display text-base font-bold text-ink truncate">{vendor.businessName}</h3>
+                        <p className="text-xs text-muted-ink mt-0.5 truncate">
+                          {categoryLabel(vendor.category)} · {vendor.city || vendor.serviceArea || "Nigeria"}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredVendors?.map((vendor) => (
+                <VendorCard key={vendor.id} vendor={vendor} />
+              ))}
+            </div>
+          </>
         )}
 
         {!isLoading && filteredVendors?.length === 0 && (
@@ -113,11 +147,12 @@ export default function Vendors() {
 
         {/* Vendor CTA — flat panel, hairline, single gold button */}
         <Reveal className="mt-24">
-          <section className="border border-hairline rounded-md bg-surface p-10 md:p-14 text-center">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-ink">
+          <section className="border border-hairline rounded-md bg-surface p-10 md:p-14">
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-ink max-w-lg tracking-tight">
               Your work deserves a front page
             </h2>
-            <p className="mt-4 text-muted-ink max-w-xl mx-auto leading-relaxed">
+            <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
+            <p className="mt-5 text-muted-ink max-w-xl leading-relaxed">
               A standing profile with your portfolio, service area, and a
               direct WhatsApp line. Free to list. When Lagos plans a party,
               this is where they'll find you.

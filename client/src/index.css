@@ -3,6 +3,21 @@
 @plugin "@tailwindcss/typography";
 
 /*
+ * Contained layout: Tailwind v4's container has no max-width by default, so
+ * sections ran edge to edge on wide monitors. Cap content at 1216px like
+ * Eventbrite, centered, with breathing room at the screen edges.
+ */
+@utility container {
+  width: 100%;
+  margin-inline: auto;
+  max-width: 76rem;
+  padding-inline: 1rem;
+  @media (min-width: 768px) {
+    padding-inline: 2rem;
+  }
+}
+
+/*
  * BLACK HERITAGE — DESIGN TOKENS
  * The direction is locked in DESIGN.md (repo root): deep indigo-black base,
  * ONE warm gold accent used sparingly, Playfair Display for display type and
@@ -49,32 +64,64 @@
 
   --radius: 0.375rem;
 
-  /* Signature moment #2: the slow hero push-in (Home.tsx). */
-  --animate-kenburns: kenburns 20s ease-out forwards;
+  /* Hero embers: slow rising sparks behind the poster panel (Home.tsx).
+     Three emitters staggered by animation-delay share one keyframe track. */
+  --animate-ember: ember 9s linear infinite;
 
-  @keyframes kenburns {
-    from {
-      transform: scale(1);
+  @keyframes ember {
+    0% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0;
     }
-    to {
-      transform: scale(1.06);
+    8% {
+      opacity: 0.8;
+    }
+    60% {
+      opacity: 0.5;
+    }
+    100% {
+      transform: translate(var(--ember-drift, 24px), -110px) scale(0.4);
+      opacity: 0;
     }
   }
 
-  /* Living gradient: slow-moving warm glow that shifts behind the hero photo.
-     Gives the hero energy without particles or AI slop — just a subtle
-     radial gradient that drifts position over 12 seconds. */
-  --animate-hero-glow: hero-glow 12s ease-in-out infinite alternate;
+  /* Hero glow: one slow warm pulse behind the poster stack. */
+  --animate-hero-glow: hero-glow 10s ease-in-out infinite alternate;
 
   @keyframes hero-glow {
     0% {
-      transform: translate(0%, 0%) scale(1);
-    }
-    50% {
-      transform: translate(10%, -8%) scale(1.1);
+      transform: translate(-6%, 4%) scale(1);
+      opacity: 0.5;
     }
     100% {
-      transform: translate(-5%, 5%) scale(0.95);
+      transform: translate(6%, -4%) scale(1.08);
+      opacity: 0.75;
+    }
+  }
+
+  /* Poster deck push-in: each poster slowly zooms while it is on screen,
+     the CSS half of the HeroPosterDeck rotation in Home.tsx. */
+  --animate-slow-zoom: slow-zoom 5.4s ease-out forwards;
+
+  @keyframes slow-zoom {
+    from {
+      transform: scale(1.06);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  /* Ticker: the top edge of the hero rotates tonight's real events.
+     translateX(-50%) assumes the row is rendered twice (see Home.tsx). */
+  --animate-ticker: ticker 36s linear infinite;
+
+  @keyframes ticker {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
     }
   }
 }
@@ -135,11 +182,10 @@
     [data-motion="scale-on-hover"] {
       transform: none !important;
     }
-    [data-motion="kenburns"] {
-      animation: none !important;
-      transform: none !important;
-    }
-    .animate-hero-glow {
+    .animate-hero-glow,
+    .animate-ember,
+    .animate-ticker,
+    .animate-slow-zoom {
       animation: none !important;
       transform: none !important;
     }
@@ -169,4 +215,13 @@
 }
 @utility gold-gradient {
   @apply bg-primary;
+}
+
+@utility no-scrollbar {
+  /* Swipeable on touch, invisible on desktop: hides the scrollbar but
+     keeps overflow scrollable, for tab strips and chip rows. */
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }

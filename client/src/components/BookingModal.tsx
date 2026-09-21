@@ -9,9 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Event } from "@shared/schema";
 import React, { useState, useEffect } from "react";
-import { useCreateBooking } from "@/hooks/use-bookings";
-import { Loader2, CreditCard, Users } from "lucide-react";
+import {
+  useBookingQuote,
+  useInitiateBooking,
+  useFinalizeBooking,
+} from "@/hooks/use-bookings";
+import { Loader2, CreditCard, Users, Tag, Check, AlertTriangle } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { TicketReveal, type RevealTicket } from "@/components/TicketReveal";
 
 declare global {
   interface Window {
@@ -25,160 +32,191 @@ interface BookingModalProps {
   onClose: () => void;
 }
 
+const naira = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG")}`;
+
 export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
+  const { user } = useAuth();
+  // The reveal state lives here so the buy sheet can hand off to it:
+  // confirm, close the buy sheet, open the moment.
+  const [revealedTickets, setRevealedTickets] = useState<RevealTicket[] | null>(null);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [selectedTicketType, setSelectedTicketType] = useState<string>("");
-  const { mutate: createBooking, isPending } = useCreateBooking();
+  const [promoCode, setPromoCode] = useState("");
+  const [promoTouched, setPromoTouched] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<string>("");
+  const [tableNote, setTableNote] = useState("");
+  const { mutateAsync: initiate, isPending: isInitiating } = useInitiateBooking();
+  const { mutateAsync: finalize, isPending: isFinalizing } = useFinalizeBooking();
+  const { toast } = useToast();
 
   const ticketTypes = React.useMemo(() => {
     try {
-      const types = JSON.parse(event.ticketTypes || '[]');
+      const types = JSON.parse(event.ticketTypes || "[]");
       if (types.length === 0) {
         return [{ name: "Regular", price: event.price, capacity: event.capacity, sold: 0 }];
       }
       return types;
-    } catch (e) {
+    } catch {
       return [{ name: "Regular", price: event.price, capacity: event.capacity, sold: 0 }];
     }
   }, [event]);
 
   useEffect(() => {
-    if (ticketTypes.length > 0 && !selectedTicketType) {
-      setSelectedTicketType(ticketTypes[0].name);
+    if (ticketTypes.length > 0 && !selectedTier) {
+      setSelectedTier(ticketTypes[0].name);
     }
-  }, [ticketTypes, selectedTicketType]);
+  }, [ticketTypes, selectedTier]);
 
-  const currentType = ticketTypes.find((t: any) => t.name === selectedTicketType) || ticketTypes[0];
-  const price = currentType.price / 100;
-  const total = price * quantity;
-
+  // Prefill for signed-in users; guests type their details in.
   useEffect(() => {
-    // No-op: script is now in index.html for stability
-  }, []);
-
-  const handleBooking = () => {
-    if (!email || !name) {
-      alert("Please enter your name and email to proceed");
-      return;
+    if (isOpen && user) {
+      if (!name && user.username) setName(user.username);
     }
+  }, [isOpen, user]);
 
-    if (price === 0) {
-      // Handle free ticket
-      const bookingPayload = {
-        eventId: event.id,
-        quantity,
-        totalAmount: 0,
-        userId: "0",
-        email: email.trim(),
-        name: name.trim(),
-        paymentReference: "FREE_" + Math.random().toString(36).substr(2, 9),
-        ticketType: selectedTicketType
-      };
-      
-    createBooking(bookingPayload, {
-        onSuccess: () => {
-          alert("Booking Successful! Check your email for your ticket.");
-          window.location.reload(); // Refresh to show ticket in My Tickets
-          onClose();
-        },
-        onError: (err: any) => alert(err.message)
+  // Server-computed pricing. Debounced while the promo code is being typed.
+  const [debouncedPromo, setDebouncedPromo] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedPromo(promoCode), 600);
+    return () => clearTimeout(t);
+  }, [promoCode]);
+
+  const quote = useBookingQuote(
+    isOpen ? String(event.id) : null,
+    selectedTier,
+    quantity,
+    debouncedPromo,
+  );
+  const pricing = quote.data;
+  const promoFailed = promoTouched && debouncedPromo.trim().length > 2 && quote.isError;
+
+  const currentType = ticketTypes.find((t: any) => t.name === selectedTier) || ticketTypes[0];
+  const isTable = /table/i.test(currentType?.name || "");
+  const busy = isInitiating || isFinalizing;
+
+  // The organizer's selling preferences drive this whole modal.
+  const [phone, setPhone] = useState("");
+  const [dietaryNote, setDietaryNote] = useState("");
+  const settings = {
+    showRemainingCounts: (event as any).showRemainingCounts !== false,
+    checkoutFields: (event as any).checkoutFields || { phone: false, tableNote: true, dietaryNote: false },
+  };
+  const showCounts = settings.showRemainingCounts;
+  const fields = settings.checkoutFields;
+  const wantsPhone = !!fields?.phone;
+  const wantsDietary = !!fields?.dietaryNote;
+  // Table note shows when the tier is a table, or when the organizer switched
+  // the seating field on for everything.
+  const wantsTable = isTable || !!fields?.tableNote;
+
+  const handleBooking = async () => {
+    if (!email.trim() || !name.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Almost there",
+        description: "Add your name and email so your ticket has somewhere to go.",
       });
-      return;
-    }
-
-    const paystackKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || (window as any).VITE_PAYSTACK_PUBLIC_KEY;
-    const PaystackPop = (window as any).PaystackPop;
-    
-    if (!paystackKey || paystackKey === "UNDEFINED") {
-      alert("Payment configuration is missing. Please ensure VITE_PAYSTACK_PUBLIC_KEY is set in your environment variables.");
-      return;
-    }
-    
-    if (!PaystackPop) {
-      alert("Payment service is loading. Please wait a few seconds and try again.");
       return;
     }
 
     try {
-      // Force blur any active element to prevent focus trap issues with Radix/Shadcn
+      const init = await initiate({
+        eventId: String(event.id),
+        tierName: selectedTier,
+        quantity,
+        name: name.trim(),
+        email: email.trim(),
+        promoCode: debouncedPromo.trim().toUpperCase() || undefined,
+        tableNote: wantsTable && tableNote.trim() ? tableNote.trim() : undefined,
+        phone: wantsPhone && phone.trim() ? phone.trim() : undefined,
+        dietaryNote: wantsDietary && dietaryNote.trim() ? dietaryNote.trim() : undefined,
+        guest: !user,
+      });
+
+      // Dev mode: no Paystack keys on the server, so the booking confirms
+      // immediately against the simulated gateway.
+      if (init.simulated || !init.paymentUrl) {
+        const result = await finalize(init.reference);
+        showSuccess(result);
+        return;
+      }
+
+      // Real gateway: open Paystack's hosted page in a popup, then verify
+      // the reference server-side. The popup response is never trusted.
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
-
+      const paystackKey = init.publicKey || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+      const PaystackPop = window.PaystackPop;
+      if (!paystackKey || !PaystackPop) {
+        toast({
+          variant: "destructive",
+          title: "Payment window could not open",
+          description: "Disable your popup blocker for this site and try again.",
+        });
+        return;
+      }
       const handler = PaystackPop.setup({
         key: paystackKey,
-        email: email,
-        amount: Math.round(total * 100),
+        email: email.trim(),
+        amount: init.totalKobo,
         currency: "NGN",
-        // Force the iframe to a very high z-index via metadata if supported, 
-        // but primarily we rely on the modal having a LOW z-index now.
+        reference: init.reference,
         metadata: {
+          booking_id: init.bookingId,
           custom_fields: [
-            {
-              display_name: "Is Test",
-              variable_name: "is_test",
-              value: "true",
-            },
-            {
-              display_name: "Ticket Type",
-              variable_name: "ticket_type",
-              value: selectedTicketType
-            }
+            { display_name: "Ticket Type", variable_name: "ticket_type", value: selectedTier },
           ],
         },
-        callback: (response: any) => {
-          if (response && (response.status === 'success' || response.reference)) {
-             // Use local variables to ensure the correct values are captured in the closure
-             const finalName = name.trim();
-             const finalEmail = email.trim();
-             
-             const bookingPayload = {
-               eventId: event.id,
-               quantity,
-               totalAmount: Math.round(currentType.price * quantity),
-               userId: "0",
-               email: finalEmail,
-               name: finalName,
-               paymentReference: response.reference,
-               ticketType: selectedTicketType
-             };
-             
-             console.log("Submitting booking with payload:", bookingPayload);
-             
-             createBooking(
-              bookingPayload,
-              {
-                onSuccess: () => {
-                  alert("Booking Successful! Check your email for your ticket.");
-                  window.location.reload(); // Refresh to show ticket in My Tickets
-                  onClose();
-                },
-                onError: (error: any) => {
-                  console.error("Booking save error:", error);
-                  alert(`Booking save failed: ${error.message || 'Unknown error'}. Your payment reference is ${response.reference}. Please contact support.`);
-                }
-              },
-            );
+        // Paystack's current inline API uses onSuccess/onCancel. The legacy
+        // callback/onClose names make inline.js throw "Attribute callback
+        // must be a valid function".
+        onSuccess: async (response: any) => {
+          try {
+            const result = await finalize(response.reference || init.reference);
+            showSuccess(result);
+          } catch (err: any) {
+            toast({
+              variant: "destructive",
+              title: "Payment landed, confirmation is pending",
+              description:
+                "Your payment reference is " +
+                (response.reference || init.reference) +
+                ". We verify every payment with the gateway; check My Tickets in a minute or contact support with the reference.",
+            });
           }
         },
-        onClose: () => {
-          console.log("Paystack closed");
+        onCancel: () => {
+          toast({
+            title: "Payment window closed",
+            description: "Your order is held for a few minutes. Resume any time from the event page.",
+          });
         },
       });
-
       handler.openIframe();
-    } catch (e) {
-      console.error("Paystack error:", e);
-      alert("An error occurred initializing payment. Please try again.");
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Booking didn't go through",
+        description: err?.message || "Give it another shot in a moment.",
+      });
     }
   };
 
+  const showSuccess = (result: { tickets: RevealTicket[] }) => {
+    // Confirmation moment replaces the old toast-and-close: the guest sees
+    // their codes immediately, with calendar and share one tap away.
+    setRevealedTickets(result.tickets);
+    onClose();
+  };
+
+  const totalLabel = pricing ? naira(pricing.totalKobo) : "...";
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent 
-        className="bg-card border border-white/10 text-white w-[95vw] sm:max-w-md p-0 overflow-hidden z-[50]"
+      <DialogContent
+        className="bg-surface border-hairline text-ink w-[95vw] sm:max-w-md p-0 overflow-hidden z-[50]"
         onPointerDownOutside={(e) => {
           if (document.querySelector('iframe[src*="paystack"]')) {
             e.preventDefault();
@@ -193,148 +231,222 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
         <ScrollArea className="max-h-[90vh]">
           <div className="p-6 space-y-6">
             <DialogHeader>
-              <DialogTitle className="text-2xl sm:text-3xl font-display text-primary">
+              <DialogTitle className="text-2xl font-display font-bold text-ink">
                 Buy Your Ticket
               </DialogTitle>
-              <DialogDescription className="text-base sm:text-lg text-white font-medium">
+              <DialogDescription className="text-sm text-muted-ink">
                 {event.title}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-6 py-2">
               <div className="space-y-3">
-                <label className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">
-                  Select Ticket Type
-                </label>
+                <label className="eyebrow">Select Ticket Type</label>
                 <div className="grid grid-cols-1 gap-2">
-                  {ticketTypes.map((type: any) => (
-                    <button
-                      key={type.name}
-                      onClick={() => setSelectedTicketType(type.name)}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${
-                        selectedTicketType === type.name
-                          ? "border-primary bg-primary/10"
-                          : "border-white/10 bg-white/5 hover:bg-white/10"
-                      }`}
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-white">{type.name}</span>
-                        <span className="text-primary font-black">
-                          {type.price === 0 ? "FREE" : `₦${(type.price / 100).toLocaleString()}`}
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-muted-foreground uppercase mt-1">
-                        {type.capacity ? `${type.capacity - (type.sold || 0)} available` : "Unlimited"}
-                      </div>
-                    </button>
-                  ))}
+                  {ticketTypes.map((type: any) => {
+                    const remaining = Math.max(0, Number(type.capacity || 0) - Number(type.sold || 0));
+                    const saleClosed = type.saleClose && new Date(type.saleClose).getTime() < Date.now();
+                    const soldOut = remaining <= 0;
+                    return (
+                      <button
+                        key={type.name}
+                        onClick={() => setSelectedTier(type.name)}
+                        disabled={soldOut || saleClosed}
+                        className={`p-4 rounded-md border text-left transition-colors ${
+                          selectedTier === type.name
+                            ? "border-gold bg-surface-2"
+                            : "border-hairline bg-surface-2/50 hover:border-white/30"
+                        } ${soldOut || saleClosed ? "opacity-50 cursor-not-allowed" : ""}`}
+                      >
+                        <div className="flex justify-between items-baseline">
+                          <span className="font-medium text-ink">{type.name}</span>
+                          <span className="font-display font-bold text-gold">
+                            {type.price === 0 ? "Free" : naira(type.price)}
+                          </span>
+                        </div>
+                        <div className="eyebrow mt-1">
+                          {soldOut
+                            ? "Sold out"
+                            : saleClosed
+                              ? "Sales closed"
+                              : showCounts
+                                ? `${remaining.toLocaleString()} available`
+                                : "On sale now"}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
-                  <label className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">
-                    Your Full Name
-                  </label>
+                  <label className="eyebrow">Your Full Name</label>
                   <Input
                     placeholder="Enter your name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="h-12 sm:h-14 bg-background border-white/20 focus:border-primary text-white rounded-xl px-4 text-base"
+                    className="h-12 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">
-                    Email Address
-                  </label>
+                  <label className="eyebrow">Email Address</label>
                   <Input
                     type="email"
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-12 sm:h-14 bg-background border-white/20 focus:border-primary text-white rounded-xl px-4 text-base"
+                    className="h-12 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base"
                   />
-                  <p className="text-[10px] text-muted-foreground uppercase">
+                  <p className="text-xs text-muted-ink">
                     Your ticket will be sent to this email
                   </p>
                 </div>
+                {wantsPhone && (
+                  <div className="space-y-2">
+                    <label className="eyebrow">Phone Number</label>
+                    <Input
+                      type="tel"
+                      placeholder="e.g. 0803 555 0117"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="h-12 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base"
+                    />
+                  </div>
+                )}
+                {wantsTable && (
+                  <div className="space-y-2">
+                    <label className="eyebrow">Table Details</label>
+                    <Input
+                      placeholder="Group size or seating preference"
+                      value={tableNote}
+                      onChange={(e) => setTableNote(e.target.value)}
+                      className="h-12 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base"
+                    />
+                  </div>
+                )}
+                {wantsDietary && (
+                  <div className="space-y-2">
+                    <label className="eyebrow">Dietary Requirement</label>
+                    <Input
+                      placeholder="Allergies or dietary needs"
+                      value={dietaryNote}
+                      onChange={(e) => setDietaryNote(e.target.value)}
+                      className="h-12 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
-                <label className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">
-                  Number of Tickets
-                </label>
+                <label className="eyebrow">Number of Tickets</label>
                 <Input
                   type="number"
                   min={1}
                   max={10}
                   value={quantity}
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                  className="h-12 sm:h-14 text-lg sm:text-xl bg-background border-white/20 focus:border-primary text-white rounded-xl px-4 text-base"
+                  onChange={(e) => setQuantity(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
+                  className="h-12 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base"
                 />
               </div>
 
-              <div className="bg-secondary/20 rounded-2xl p-4 sm:p-6 space-y-3 border border-white/10">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-primary">
-                    Availability
-                  </span>
-                  <div className="flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                    <Users className="w-3 h-3 text-primary" />
-                    <span className="text-[10px] sm:text-xs font-bold text-white">
-                      {event.capacity} spots left
+              <div className="space-y-2">
+                <label className="eyebrow">Promo Code</label>
+                <div className="relative">
+                  <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-ink" aria-hidden="true" />
+                  <Input
+                    placeholder="Enter code if you have one"
+                    value={promoCode}
+                    onChange={(e) => {
+                      setPromoCode(e.target.value.toUpperCase());
+                      setPromoTouched(true);
+                    }}
+                    className="h-12 pl-10 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base uppercase"
+                  />
+                </div>
+                {pricing?.promoApplied && (
+                  <p className="text-xs text-gold flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                    {pricing.promoMessage}. You save {naira(pricing.discountKobo)}.
+                  </p>
+                )}
+                {promoFailed && (
+                  <p className="text-xs text-red-400 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
+                    That code didn't apply. It may be expired or used up.
+                  </p>
+                )}
+              </div>
+
+              <div className="bg-surface-2 rounded-md p-4 sm:p-6 space-y-3 border border-hairline">
+                {showCounts && (
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="eyebrow text-gold">Availability</span>
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-muted-ink">
+                      <Users className="w-3 h-3 text-gold" aria-hidden="true" />
+                      {pricing
+                        ? `${pricing.available.toLocaleString()} left in ${pricing.ticketType}`
+                        : "Checking..."}
                     </span>
                   </div>
-                </div>
-                <div className="flex justify-between text-sm sm:text-base">
-                  <span className="text-muted-foreground">
-                    One ticket price
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-ink">
+                    {pricing ? `${pricing.ticketType} x ${pricing.quantity}` : "Price"}
                   </span>
-                  <span className="font-bold text-white">
-                    ₦{price.toLocaleString()}
+                  <span className="font-medium text-ink">
+                    {pricing ? naira(pricing.subtotalKobo) : "..."}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm sm:text-base">
-                  <span className="text-muted-foreground">
-                    Number of tickets
-                  </span>
-                  <span className="font-bold text-white">x{quantity}</span>
-                </div>
-                <div className="border-t border-white/10 my-4 pt-4 flex justify-between font-black text-xl sm:text-2xl text-primary">
-                  <span>Total Cost</span>
-                  <span>₦{total.toLocaleString()}</span>
+                {pricing && pricing.discountKobo > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-ink">Promo discount</span>
+                    <span className="font-medium text-gold">-{naira(pricing.discountKobo)}</span>
+                  </div>
+                )}
+                <div className="border-t border-hairline my-4 pt-4 flex justify-between items-baseline">
+                  <span className="eyebrow">Total</span>
+                  <span className="font-display text-2xl font-bold text-gold">{totalLabel}</span>
                 </div>
               </div>
 
               <div className="flex flex-col gap-3">
                 <Button
                   onClick={handleBooking}
-                  disabled={isPending}
-                  className="w-full h-16 sm:h-20 bg-primary text-background hover:bg-white font-black text-xl sm:text-2xl rounded-2xl shadow-xl transition-all active:scale-95"
+                  disabled={busy || quote.isLoading || !pricing}
+                  className="press w-full h-14 bg-primary text-primary-foreground hover:bg-gold-soft font-medium text-lg rounded-md"
                 >
-                  {isPending ? (
-                    <Loader2 className="w-8 h-8 animate-spin" />
+                  {busy ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
                   ) : (
                     <>
-                      <CreditCard className="w-6 h-6 sm:w-8 sm:h-8 mr-3" />
-                      Pay ₦{total.toLocaleString()} Now
+                      <CreditCard className="w-5 h-5 mr-2.5" />
+                      {pricing && pricing.totalKobo === 0 ? "Confirm Free Ticket" : `Pay ${totalLabel}`}
                     </>
                   )}
                 </Button>
-                <span className="text-center text-xs sm:text-sm font-bold text-primary animate-pulse">
-                  Click the button above to pay
-                </span>
               </div>
 
-              <p className="text-[10px] sm:text-sm text-center text-muted-foreground font-medium pb-4">
-                Pay safely with your Card or Bank Transfer using Paystack.
+              <p className="text-xs text-center text-muted-ink leading-relaxed pb-2">
+                Pay safely with card or bank transfer through Paystack.
                 <br />
-                Your ticket will be sent to you immediately after payment.
+                Your coded ticket is issued the moment payment clears, and a PDF copy goes to your email.
               </p>
             </div>
           </div>
         </ScrollArea>
       </DialogContent>
+      <TicketReveal
+        open={revealedTickets !== null}
+        onClose={() => setRevealedTickets(null)}
+        eventTitle={event.title}
+        eventDate={event.date}
+        location={event.location}
+        email={email.trim() || (user?.email as string) || "your email"}
+        tickets={revealedTickets ?? []}
+        accentHex={(event as any).branding?.accentHex || null}
+        logoUrl={(event as any).branding?.logoUrl || null}
+      />
     </Dialog>
   );
 }

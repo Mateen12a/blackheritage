@@ -42,11 +42,13 @@ export default function NewEvent() {
     <div className="min-h-screen bg-background pb-20">
       <Navbar />
       <div className="container mx-auto px-4 pt-24 max-w-2xl">
-        <h1 className="text-3xl font-display font-bold text-white mb-8">Create New Event</h1>
+        <p className="eyebrow">New listing</p>
+        <h1 className="mt-3 font-display text-3xl font-bold text-ink tracking-tight">Create New Event</h1>
+        <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
         
-        <Card className="bg-card border-white/5">
+        <Card className="bg-surface border-hairline mt-8">
           <CardHeader>
-            <CardTitle className="text-white">Event Details</CardTitle>
+            <CardTitle className="text-ink">Event Details</CardTitle>
           </CardHeader>
           <CardContent>
             <EventForm 

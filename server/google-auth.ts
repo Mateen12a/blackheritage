@@ -26,8 +26,26 @@ function isConfigured() {
   return !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 }
 
+/**
+ * Frontend origin to redirect back to after sign-in. FRONTEND_URL wins
+ * (production). Outside production it defaults to the Vite dev server on
+ * port 5000, which proxies /api to this backend. Empty string means a
+ * relative redirect for same-origin deployments where the backend serves
+ * the built client.
+ */
+function frontendOrigin(): string {
+  if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL.replace(/\/$/, "");
+  if (process.env.NODE_ENV !== "production") return "http://localhost:5000";
+  return "";
+}
+
+function safeDestination(dest: unknown): string {
+  if (typeof dest === "string" && /^\/[^/]/.test(dest)) return dest;
+  return "/dashboard";
+}
+
 // Simple state store for CSRF protection (in-memory, single-instance)
-const pendingStates = new Map<string, { email: string; timestamp: number }>();
+const pendingStates = new Map<string, { returnTo: string; timestamp: number }>();
 
 function generateState() {
   const chars =
@@ -51,9 +69,10 @@ export function setupGoogleAuth(app: Express) {
 
     const state = generateState();
     const redirectUri = `${BASE_URL}/api/auth/google/callback`;
+    const returnTo = typeof req.query.returnTo === "string" ? req.query.returnTo : "";
 
     // Store state with a 10-minute expiry
-    pendingStates.set(state, { email: "", timestamp: Date.now() });
+    pendingStates.set(state, { returnTo, timestamp: Date.now() });
 
     // Clean old states
     Array.from(pendingStates.entries()).forEach(([key, val]) => {
@@ -67,9 +86,8 @@ export function setupGoogleAuth(app: Express) {
       redirect_uri: redirectUri,
       response_type: "code",
       scope: "openid email profile",
-      access_type: "offline",
-      prompt: "consent",
       state,
+      prompt: "select_account",
     });
 
     res.redirect(
@@ -93,6 +111,7 @@ export function setupGoogleAuth(app: Express) {
       return res.redirect("/auth?error=invalid_state");
     }
 
+    const returnTo = pendingStates.get(state)?.returnTo;
     pendingStates.delete(state);
 
     try {
@@ -154,13 +173,13 @@ export function setupGoogleAuth(app: Express) {
           console.error("Google auth login failed:", err);
           return res.redirect("/auth?error=session_failed");
         }
-        // Redirect to the appropriate dashboard
+        // Redirect to the appropriate dashboard on the frontend origin
         const role = (user as any).role;
-        const dest =
-          role === "admin" || role === "organizer"
-            ? "/admin"
-            : "/dashboard";
-        res.redirect(dest);
+        const dest = safeDestination(
+          returnTo ||
+            (role === "admin" || role === "organizer" ? "/admin" : "/dashboard")
+        );
+        res.redirect(`${frontendOrigin()}${dest}`);
       });
     } catch (err) {
       console.error("Google OAuth error:", err);

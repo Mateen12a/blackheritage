@@ -3,9 +3,36 @@ import { Link } from "wouter";
 import { MapPin } from "lucide-react";
 import { FadeImg } from "@/components/motion";
 import { format } from "date-fns";
+import { useState } from "react";
+import { CalendarDays } from "lucide-react";
 
 interface EventCardProps {
   event: Event;
+}
+
+/**
+ * Cover image with a graceful fallback: a dead URL (expired CDN link,
+ * host block) must never render as a broken image frame.
+ */
+function EventImage({ event }: { event: Event }) {
+  const [failed, setFailed] = useState(false);
+  if (failed || !event.imageUrl) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-surface-2">
+        <CalendarDays className="w-10 h-10 text-gold/40" aria-hidden="true" />
+        <span className="text-xs text-muted-ink">Flyer coming soon</span>
+      </div>
+    );
+  }
+  return (
+    <FadeImg
+      src={event.imageUrl}
+      alt={event.title}
+      data-motion="scale-on-hover"
+      onError={() => setFailed(true)}
+      className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+    />
+  );
 }
 
 /**
@@ -39,12 +66,7 @@ export function EventCard({ event }: EventCardProps) {
       <article className="group relative overflow-hidden rounded-md bg-surface border border-hairline hover:border-white/20 transition-colors duration-200 h-full flex flex-col cursor-pointer">
         {/* The flyer is the hero */}
         <div className="relative aspect-[3/4] overflow-hidden bg-surface-2">
-          <FadeImg
-            src={event.imageUrl}
-            alt={event.title}
-            data-motion="scale-on-hover"
-            className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
-          />
+          <EventImage event={event} />
           <div
             aria-hidden="true"
             className="absolute inset-0 bg-gradient-to-t from-background via-background/10 to-transparent"

@@ -4,10 +4,17 @@ import { useEvents } from "@/hooks/use-events";
 import { EventCard } from "@/components/EventCard";
 import { Reveal } from "@/components/motion";
 import { Button } from "@/components/ui/button";
+import {
+  StatSkeletons,
+  BookingRowsSkeleton,
+  CardGridSkeleton,
+  HeaderSkeleton,
+  InlineSpinner,
+  LoadError,
+} from "@/components/AsyncStates";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import {
-  Loader2,
   Ticket,
   CalendarDays,
   Store,
@@ -18,9 +25,19 @@ import {
 
 export default function AttendeeDashboard() {
   const { user } = useAuth();
-  const { data: events, isLoading: eventsLoading } = useEvents();
+  const {
+    data: events,
+    isLoading: eventsLoading,
+    isError: eventsError,
+    refetch: refetchEvents,
+  } = useEvents();
 
-  const { data: myBookings, isLoading: bookingsLoading } = useQuery<any[]>({
+  const {
+    data: myBookings,
+    isLoading: bookingsLoading,
+    isError: bookingsError,
+    refetch: refetchBookings,
+  } = useQuery<any[]>({
     queryKey: ["/api/bookings/search", user?.email],
     queryFn: async () => {
       if (!user?.email) return [];
@@ -28,7 +45,7 @@ export default function AttendeeDashboard() {
         `/api/bookings/search?email=${encodeURIComponent(user.email)}`,
         { credentials: "include" }
       );
-      if (!res.ok) return [];
+      if (!res.ok) throw new Error("Could not load your bookings");
       return res.json();
     },
     enabled: !!user?.email,
@@ -50,59 +67,59 @@ export default function AttendeeDashboard() {
     ?.filter((e) => !upcomingBookings.some((b) => b.eventId === e.id))
     .slice(0, 3);
 
-  const isLoading = eventsLoading || bookingsLoading;
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-gold" />
-      </div>
-    );
-  }
+  const headerLoading = eventsLoading || bookingsLoading;
 
   return (
     <div className="pb-20">
       {/* Welcome header */}
-      <div className="mb-10 pt-2">
-        <Reveal>
-          <p className="eyebrow">Welcome back</p>
-          <h1 className="mt-3 font-display text-3xl md:text-4xl font-bold text-ink tracking-tight">
-            {user?.username || "Guest"}
-          </h1>
-          <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
-          <p className="mt-4 text-muted-ink max-w-xl">
-            Your tickets, upcoming events, and what Lagos is doing next.
-          </p>
-        </Reveal>
-      </div>
+      {headerLoading ? (
+        <HeaderSkeleton />
+      ) : (
+        <div className="mb-10 pt-2">
+          <Reveal>
+            <p className="eyebrow">Welcome back</p>
+            <h1 className="mt-3 font-display text-3xl md:text-4xl font-bold text-ink tracking-tight">
+              {user?.username || "Guest"}
+            </h1>
+            <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
+            <p className="mt-4 text-muted-ink max-w-xl">
+              Your tickets, upcoming events, and what Lagos is doing next.
+            </p>
+          </Reveal>
+        </div>
+      )}
 
       {/* Quick stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-        <QuickStat
-          icon={Ticket}
-          label="Upcoming tickets"
-          value={upcomingBookings.length}
-        />
-        <QuickStat
-          icon={CalendarDays}
-          label="Events attended"
-          value={pastBookings.length}
-        />
-        <QuickStat
-          icon={Store}
-          label="Events on sale"
-          value={events?.length || 0}
-        />
-        <QuickStat
-          icon={Clock}
-          label="Member since"
-          value={
-            user?.createdAt
-              ? format(new Date(user.createdAt), "MMM yyyy")
-              : "—"
-          }
-        />
-      </div>
+      {headerLoading ? (
+        <StatSkeletons />
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+          <QuickStat
+            icon={Ticket}
+            label="Upcoming tickets"
+            value={upcomingBookings.length}
+          />
+          <QuickStat
+            icon={CalendarDays}
+            label="Events attended"
+            value={pastBookings.length}
+          />
+          <QuickStat
+            icon={Store}
+            label="Events on sale"
+            value={events?.length || 0}
+          />
+          <QuickStat
+            icon={Clock}
+            label="Member since"
+            value={
+              user?.createdAt
+                ? format(new Date(user.createdAt), "MMM yyyy")
+                : "New here"
+            }
+          />
+        </div>
+      )}
 
       {/* Upcoming tickets */}
       <section className="mb-14">
@@ -124,7 +141,15 @@ export default function AttendeeDashboard() {
           </div>
         </Reveal>
 
-        {upcomingBookings.length === 0 ? (
+        {bookingsLoading ? (
+          <BookingRowsSkeleton />
+        ) : bookingsError ? (
+          <LoadError
+            title="Couldn't load your tickets"
+            message="Check your connection and try again. Your tickets are safe either way."
+            onRetry={() => refetchBookings()}
+          />
+        ) : upcomingBookings.length === 0 ? (
           <div className="border border-hairline rounded-md bg-surface p-8 text-center">
             <Ticket className="w-10 h-10 text-muted-ink/30 mx-auto mb-3" />
             <h3 className="font-display text-lg font-bold text-ink mb-2">
@@ -167,7 +192,15 @@ export default function AttendeeDashboard() {
           </div>
         </Reveal>
 
-        {recommendedEvents && recommendedEvents.length > 0 ? (
+        {eventsLoading ? (
+          <CardGridSkeleton />
+        ) : eventsError ? (
+          <LoadError
+            title="Couldn't load events"
+            message="The listing didn't come through. One more try usually sorts it."
+            onRetry={() => refetchEvents()}
+          />
+        ) : recommendedEvents && recommendedEvents.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {recommendedEvents.map((event) => (
               <EventCard key={event.id} event={event} />
@@ -196,7 +229,7 @@ export default function AttendeeDashboard() {
                 Hire a vendor
               </h2>
               <p className="mt-3 text-muted-ink max-w-lg leading-relaxed">
-                DJs, MCs, caterers, decorators — Lagos's best talent, all in
+                DJs, MCs, caterers, decorators. Lagos's best talent, all in
                 one directory. Browse portfolios, message straight on WhatsApp.
               </p>
             </div>
@@ -235,15 +268,6 @@ function QuickStat({
 
 function BookingCard({ booking }: { booking: any }) {
   if (!booking.event) return null;
-
-  const ticketTypes = (() => {
-    try {
-      const types = JSON.parse(booking.event.ticketTypes || "[]");
-      return types;
-    } catch {
-      return [];
-    }
-  })();
 
   return (
     <Link href={`/events/${booking.eventId}`}>

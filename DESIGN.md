@@ -66,10 +66,12 @@ The product has exactly **two** deliberate motion moments:
 1. **The sliding gold nav underline.** A single gold underline slides between
    links in the navbar. Lives in `Navbar.tsx` (`underlineStyle` + the
    `transition-[transform,width,opacity]` span).
-2. **The Home hero reveal.** A one-time staggered rise of kicker → headline →
-   subline → CTAs, over a slow 20s ken-burns push-in on the hero photo
-   (`animate-kenburns`, defined in index.css). First paint only, never on
-   scroll.
+2. **The Home hero.** A one-time staggered rise of kicker → headline →
+   subline → CTAs over an ambient gold bloom, then a persistent slow life:
+   rising embers around the next-event poster (`animate-ember`) and a
+   pausable ticker of real on-sale events (`animate-ticker`), both defined
+   in index.css. First paint for the entrance; the embers and ticker run
+   continuously but collapse under reduced motion.
 
 Everything else uses the **quiet helpers** in `client/src/components/motion.tsx`
 and stays within these tiers:
@@ -135,6 +137,7 @@ September 2026 design pass. Do not bring them back:
    `initial={{ opacity: 0, y: N }}` with `delay: index * 0.1` staggers, raw
    `motion.div` outside the sanctioned helpers) — motion belongs to the two
    signature moments and the quiet `Reveal`/`FadeImg` helpers, nothing else.
+   Embers exist only in the Home hero; do not sprinkle them on other pages.
 8. **Numbered 01/02/03 markers with no real sequence**, and any other
    decorative filler.
 9. **Loading extra font families** in index.html — Playfair Display and

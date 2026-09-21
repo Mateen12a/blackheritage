@@ -39,7 +39,12 @@ export function useVendor(id: string) {
   return useQuery({
     queryKey: [`${BASE_URL}${api.vendors.get.path}`, id],
     queryFn: async () => {
-      const url = `${BASE_URL}${buildUrl(api.vendors.get.path, { id: id as any })}`;
+      // /v/:slug pages pass the slug; the id route passes a raw id. Both hit
+      // the same payload shape; the slug endpoint resolves aliases too.
+      const isSlug = !/^[0-9a-fA-F]{24}$/.test(id) && !/^vendor-/.test(id);
+      const url = isSlug
+        ? `${BASE_URL}/api/vendors/by-slug/${encodeURIComponent(id)}`
+        : `${BASE_URL}${buildUrl(api.vendors.get.path, { id: id as any })}`;
       const res = await fetch(url, { credentials: "include" });
       if (res.status === 404) return null;
       if (!res.ok) throw new Error("Failed to fetch vendor");

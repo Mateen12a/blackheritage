@@ -5,6 +5,8 @@ export interface IUser extends Document {
   email: string;
   password?: string;
   role: 'user' | 'organizer' | 'admin';
+  teamOwnerId?: string | null; // for staff accounts: the organizer they work for
+  staffRole?: 'manager' | 'finance' | 'entry' | null;
   createdAt: Date;
 }
 
@@ -13,6 +15,8 @@ const UserSchema: Schema = new Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['user', 'organizer', 'admin'], default: 'organizer' },
+  teamOwnerId: { type: String, default: null },
+  staffRole: { type: String, enum: ['manager', 'finance', 'entry', null], default: null },
   createdAt: { type: Date, default: Date.now }
 }, {
   id: false // Disable the id virtual to avoid unique index conflict with null
@@ -36,6 +40,15 @@ export interface IEvent extends Document {
   sponsorsEnabled: boolean;
   vendorsEnabled: boolean;
   ticketTypes: string; // Added ticketTypes
+  showRemainingCounts?: boolean;
+  showAttendeeCount?: boolean;
+  waitlistEnabled?: boolean;
+  guestCheckout?: boolean;
+  promoCodesPublic?: boolean;
+  checkoutFields?: { phone: boolean; tableNote: boolean; dietaryNote: boolean } | null;
+  branding?: { displayName?: string; logoUrl?: string; accentHex?: string } | null;
+  slug?: string | null;
+  theme?: 'midnight-gold' | 'ivory-editorial' | 'sunset-poster' | null;
 }
 
 const EventSchema: Schema = new Schema({
@@ -50,11 +63,26 @@ const EventSchema: Schema = new Schema({
   status: { type: String, enum: ['draft', 'published', 'unpublished'], default: 'published' },
   organizerId: { type: String },
   organizerName: { type: String }, // Add organizer name for "Published by"
+  gallery: { type: String, default: '[]' }, // JSON string: past event photos
+  pastEventVideos: { type: String, default: '[]' }, // JSON string: video URLs
+  promoterName: { type: String, default: null }, // who receives the promoter share
+  promoterCommissionBps: { type: Number, default: 0 }, // organizer-chosen share, basis points
   sponsorPackages: { type: String, default: '[]' },
   vendorPackages: { type: String, default: '[]' },
   sponsorsEnabled: { type: Boolean, default: true },
   vendorsEnabled: { type: Boolean, default: true },
   ticketTypes: { type: String, default: '[]' }, // Added ticketTypes
+  // Selling preferences: organizer-controlled, see shared/schema.ts
+  showRemainingCounts: { type: Boolean, default: true },
+  showAttendeeCount: { type: Boolean, default: false },
+  waitlistEnabled: { type: Boolean, default: false },
+  guestCheckout: { type: Boolean, default: true },
+  promoCodesPublic: { type: Boolean, default: false },
+  checkoutFields: { type: { phone: Boolean, tableNote: Boolean, dietaryNote: Boolean }, default: null },
+  branding: { type: { displayName: String, logoUrl: String, accentHex: String }, default: null },
+  slug: { type: String, index: { unique: true, sparse: true } },
+  slugAliases: { type: [String], default: [], index: true },
+  theme: { type: String, enum: ['midnight-gold', 'ivory-editorial', 'sunset-poster', null], default: null },
 });
 
 export const EventModel = mongoose.models.Event || model<IEvent>("Event", EventSchema);
@@ -84,6 +112,12 @@ const BookingSchema: Schema = new Schema({
   status: { type: String, enum: ['pending', 'paid', 'cancelled'], default: 'pending' },
   paymentIntentId: { type: String },
   paymentReference: { type: String },
+  paymentGateway: { type: String, enum: ['paystack', 'simulated', 'manual', null], default: null },
+  promoCode: { type: String, default: null },
+  tableNote: { type: String, default: null }, // group size / seating preference for tables
+  phone: { type: String, default: null }, // optional checkout fields, organizer-toggled
+  dietaryNote: { type: String, default: null },
+  paidAt: { type: Date },
   isVerified: { type: Boolean, default: false }, // Added isVerified
   verifiedAt: { type: Date }, // Added verifiedAt
   createdAt: { type: Date, default: Date.now }
@@ -100,8 +134,14 @@ export interface IVendor extends Document {
   serviceArea?: string;
   phone?: string;
   whatsapp?: string;
+  videos: string; // JSON string: string[] of video URLs
+  socials: string; // JSON string: Partial<Record<'instagram' | 'x' | 'tiktok' | 'youtube', string>>
   status: 'draft' | 'published' | 'unpublished';
   ownerId?: string;
+  branding?: { displayName?: string; logoUrl?: string; accentHex?: string } | null;
+  slug?: string | null;
+  slugAliases?: string[];
+  theme?: 'midnight-gold' | 'ivory-editorial' | 'sunset-poster' | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -109,14 +149,21 @@ export interface IVendor extends Document {
 const VendorSchema: Schema = new Schema({
   businessName: { type: String, required: true },
   category: { type: String, enum: ['DJ', 'MC', 'Caterer', 'Decorator', 'Photographer', 'Live Band', 'Other'], default: 'Other' },
+  categoryLabel: { type: String, maxlength: 40 },
   bio: { type: String, required: true },
   gallery: { type: String, default: '[]' },
   city: { type: String },
   serviceArea: { type: String },
   phone: { type: String },
   whatsapp: { type: String },
+  videos: { type: String, default: '[]' },
+  socials: { type: String, default: '{}' },
   status: { type: String, enum: ['draft', 'published', 'unpublished'], default: 'published' },
   ownerId: { type: String },
+  branding: { type: { displayName: String, logoUrl: String, accentHex: String }, default: null },
+  slug: { type: String, index: { unique: true, sparse: true } },
+  slugAliases: { type: [String], default: [], index: true },
+  theme: { type: String, enum: ['midnight-gold', 'ivory-editorial', 'sunset-poster', null], default: null },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
@@ -152,3 +199,191 @@ const BusinessBookingSchema: Schema = new Schema({
 });
 
 export const BusinessBookingModel = mongoose.models.BusinessBooking || model<IBusinessBooking>("BusinessBooking", BusinessBookingSchema);
+
+export interface IMessage extends Document {
+  conversationId: string; // sorted "idA::idB"
+  senderId: string;
+  recipientId: string;
+  vendorId?: string; // vendor context, if the chat started from a vendor profile
+  body: string;
+  readAt?: Date;
+  createdAt: Date;
+}
+
+const MessageSchema: Schema = new Schema({
+  conversationId: { type: String, required: true, index: true },
+  senderId: { type: String, required: true, index: true },
+  recipientId: { type: String, required: true, index: true },
+  vendorId: { type: String },
+  body: { type: String, required: true },
+  readAt: { type: Date },
+  createdAt: { type: Date, default: Date.now },
+});
+
+export const MessageModel = mongoose.models.Message || model<IMessage>("Message", MessageSchema);
+
+// ── Ticketing ──
+// One Ticket row per seat. The code is the single source of truth at the gate:
+// system-generated, single-use, and never reused across tickets.
+
+export interface ITicket extends Document {
+  code: string; // e.g. BH-7KQ2M4XA
+  eventId: mongoose.Types.ObjectId;
+  bookingId?: mongoose.Types.ObjectId | null;
+  seat: number;
+  tierName: string;
+  attendeeName: string;
+  attendeeEmail: string;
+  amountPaid: number; // 0 for complimentary tickets
+  status: 'valid' | 'used' | 'void';
+  issuedBy?: string; // userId when issued manually
+  usedAt?: Date;
+  usedBy?: string; // staff userId at check-in
+  createdAt: Date;
+}
+
+const TicketSchema: Schema = new Schema({
+  code: { type: String, required: true, unique: true },
+  eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true, index: true },
+  bookingId: { type: Schema.Types.ObjectId, ref: 'Booking', default: null },
+  seat: { type: Number, required: true },
+  tierName: { type: String, required: true },
+  attendeeName: { type: String, required: true },
+  attendeeEmail: { type: String, required: true },
+  amountPaid: { type: Number, required: true, default: 0 },
+  status: { type: String, enum: ['valid', 'used', 'void'], default: 'valid' },
+  issuedBy: { type: String },
+  usedAt: { type: Date },
+  usedBy: { type: String },
+  createdAt: { type: Date, default: Date.now },
+});
+
+export const TicketModel = mongoose.models.Ticket || model<ITicket>("Ticket", TicketSchema);
+
+// Audit trail for gate activity. One row per verification attempt, including
+// offline scans (synced later) and supervisor overrides.
+export interface IScanEvent extends Document {
+  ticketId?: mongoose.Types.ObjectId | null;
+  code: string;
+  eventId?: mongoose.Types.ObjectId | null;
+  result: 'ok' | 'duplicate' | 'invalid' | 'void' | 'override';
+  staffId: string;
+  clientTime?: Date | null; // when the scan happened on-device (offline clock)
+  syncedAt: Date;
+}
+
+const ScanEventSchema: Schema = new Schema({
+  ticketId: { type: Schema.Types.ObjectId, ref: 'Ticket', default: null },
+  code: { type: String, required: true, index: true },
+  eventId: { type: Schema.Types.ObjectId, ref: 'Event', default: null },
+  result: { type: String, enum: ['ok', 'duplicate', 'invalid', 'void', 'override'], required: true },
+  staffId: { type: String, required: true, index: true },
+  clientTime: { type: Date, default: null },
+  syncedAt: { type: Date, default: Date.now },
+});
+
+export const ScanEventModel = mongoose.models.ScanEvent || model<IScanEvent>("ScanEvent", ScanEventSchema);
+
+export interface IPromoCode extends Document {
+  code: string;
+  eventId: mongoose.Types.ObjectId;
+  kind: 'percent' | 'fixed';
+  value: number; // percent (1-100) or kobo amount
+  maxUses?: number | null;
+  usedCount: number;
+  expiresAt?: Date | null;
+  active: boolean;
+  createdAt: Date;
+}
+
+const PromoCodeSchema: Schema = new Schema({
+  code: { type: String, required: true },
+  eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true, index: true },
+  kind: { type: String, enum: ['percent', 'fixed'], required: true },
+  value: { type: Number, required: true },
+  maxUses: { type: Number, default: null },
+  usedCount: { type: Number, default: 0 },
+  expiresAt: { type: Date, default: null },
+  active: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+// Code uniqueness is per event, not global.
+PromoCodeSchema.index({ code: 1, eventId: 1 }, { unique: true });
+
+export const PromoCodeModel = mongoose.models.PromoCode || model<IPromoCode>("PromoCode", PromoCodeSchema);
+
+// Platform-wide revenue settings, stored as a single settings document.
+export interface IPlatformSetting extends Document {
+  key: string; // always 'platform'
+  ticketCommissionBps: number; // basis points of ticket revenue (e.g. 600 = 6%)
+  vendorCommissionBps: number; // basis points of vendor booking value (e.g. 1250 = 12.5%)
+  updatedAt: Date;
+}
+
+const PlatformSettingSchema: Schema = new Schema({
+  key: { type: String, required: true, unique: true },
+  ticketCommissionBps: { type: Number, required: true, default: 600 },
+  vendorCommissionBps: { type: Number, required: true, default: 1250 },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+export const PlatformSettingModel = mongoose.models.PlatformSetting || model<IPlatformSetting>("PlatformSetting", PlatformSettingSchema);
+
+// Money owed, one row per source booking. kind:
+//  - 'platform_fee': BlackHeritage's commission on a ticket sale
+//  - 'promoter_commission': a cut the organizer chose to share with a promoter
+export interface IPayout extends Document {
+  kind: 'platform_fee' | 'promoter_commission';
+  eventId: mongoose.Types.ObjectId;
+  organizerId?: string;
+  recipientName: string;
+  recipientId?: string | null;
+  amount: number;
+  sourceBookingId?: mongoose.Types.ObjectId | null;
+  status: 'due' | 'settled';
+  note?: string;
+  createdAt: Date;
+}
+
+const PayoutSchema: Schema = new Schema({
+  kind: { type: String, enum: ['platform_fee', 'promoter_commission'], required: true },
+  eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true, index: true },
+  organizerId: { type: String },
+  recipientName: { type: String, required: true },
+  recipientId: { type: String, default: null },
+  amount: { type: Number, required: true },
+  sourceBookingId: { type: Schema.Types.ObjectId, ref: 'Booking', default: null },
+  status: { type: String, enum: ['due', 'settled'], default: 'due' },
+  note: { type: String },
+  createdAt: { type: Date, default: Date.now },
+});
+
+export const PayoutModel = mongoose.models.Payout || model<IPayout>("Payout", PayoutSchema);
+
+// ── Waitlist ──
+// Sold-out tiers collect emails instead of dead-ending when the organizer
+// turns waitlists on for the event.
+export interface IWaitlistEntry extends Document {
+  eventId: mongoose.Types.ObjectId;
+  tierName?: string | null;
+  name: string;
+  email: string;
+  createdAt: Date;
+  notifiedAt?: Date | null;
+}
+
+const WaitlistSchema: Schema = new Schema({
+  eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true, index: true },
+  tierName: { type: String, default: null },
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  notifiedAt: { type: Date, default: null },
+});
+
+// One entry per email per event; joining again just updates the tier choice.
+WaitlistSchema.index({ eventId: 1, email: 1 }, { unique: true });
+
+export const WaitlistModel =
+  mongoose.models.Waitlist || model<IWaitlistEntry>("Waitlist", WaitlistSchema);
