@@ -10,14 +10,15 @@ import { motion } from "framer-motion";
 import {
   Eye,
   EyeOff,
-  ShieldCheck,
   Ticket,
   CalendarDays,
   Store,
   Check,
   ArrowUpRight,
+  ShieldCheck,
 } from "lucide-react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import type { Event } from "@shared/schema";
 import logoImg from "../assets/logo.png";
 
@@ -58,6 +59,7 @@ const AUDIENCES: {
   },
 ];
 
+
 function safeReturnTo(search: string): string | null {
   const returnTo = new URLSearchParams(search).get("returnTo");
   return returnTo &&
@@ -69,16 +71,14 @@ function safeReturnTo(search: string): string | null {
 
 const BASE_URL = import.meta.env.VITE_API_URL || "";
 
-/** Sparse embers for the brand panel. Same system as the Home hero, slower. */
+/** Sparse rising golden embers for the brand panel, evoking a live Lagos concert stage. */
 const PANEL_EMBERS = [
-  { left: "8%", bottom: "18%", size: 4, delay: "0.6s", duration: "11s", drift: "18px" },
-  { left: "26%", bottom: "10%", size: 5, delay: "3.2s", duration: "12s", drift: "-16px" },
-  { left: "48%", bottom: "22%", size: 3, delay: "5.1s", duration: "10s", drift: "22px" },
-  { left: "68%", bottom: "14%", size: 4, delay: "1.8s", duration: "13s", drift: "-20px" },
-  { left: "86%", bottom: "26%", size: 4, delay: "7.4s", duration: "11s", drift: "14px" },
-  { left: "14%", bottom: "42%", size: 3, delay: "8.9s", duration: "12s", drift: "-12px" },
+  { left: "10%", bottom: "16%", size: 4, delay: "0.5s", duration: "10s", drift: "16px" },
+  { left: "28%", bottom: "24%", size: 3, delay: "2.8s", duration: "11s", drift: "-14px" },
+  { left: "52%", bottom: "12%", size: 5, delay: "4.5s", duration: "9s", drift: "20px" },
+  { left: "74%", bottom: "20%", size: 3, delay: "1.5s", duration: "12s", drift: "-18px" },
+  { left: "88%", bottom: "14%", size: 4, delay: "6.2s", duration: "10s", drift: "15px" },
 ];
-
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const rawSearch = useSearch();
@@ -124,7 +124,21 @@ export default function AuthPage() {
 
   const isRegister = mode === "register";
   const activeAudience = AUDIENCES.find((a) => a.key === audience)!;
-  const onSale: Event | undefined = events?.[0];
+
+  // Auto-rotating live showcase of real Lagos events
+  const [activeEventIndex, setActiveEventIndex] = useState(0);
+  const [isEventPaused, setIsEventPaused] = useState(false);
+  const featuredEvents = (events ?? []).slice(0, 4);
+
+  useEffect(() => {
+    if (isEventPaused || featuredEvents.length <= 1) return;
+    const timer = setInterval(() => {
+      setActiveEventIndex((prev) => (prev + 1) % featuredEvents.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [isEventPaused, featuredEvents.length]);
+
+  const currentEvent = featuredEvents[activeEventIndex] || featuredEvents[0];
 
   const roleForAudience =
     audience === "attendee" ? "user" : "organizer";
@@ -192,22 +206,22 @@ export default function AuthPage() {
     <div className="min-h-screen bg-background flex">
       {/* Left — the brand panel. Sticky: it stays put while the form scrolls. */}
       <aside className="relative hidden lg:flex lg:sticky lg:top-0 lg:h-screen flex-col justify-between w-[44%] max-w-xl border-r border-hairline bg-surface p-12 overflow-hidden">
-        {/* Ambient life: drifting warm glows + sparse rising embers */}
-        <div aria-hidden="true" className="absolute inset-0 pointer-events-none">
+        {/* Ambient life: breathing warm glows + floating golden embers */}
+        <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
           <div
             className="absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full animate-hero-glow"
             style={{
               background:
-                "radial-gradient(circle, rgba(227,178,60,0.15) 0%, transparent 70%)",
-              animationDuration: "14s",
+                "radial-gradient(circle, rgba(227,178,60,0.13) 0%, transparent 70%)",
+              animationDuration: "12s",
             }}
           />
           <div
-            className="absolute -bottom-40 -right-28 w-[520px] h-[520px] rounded-full animate-hero-glow"
+            className="absolute -bottom-40 -right-28 w-[500px] h-[500px] rounded-full animate-hero-glow"
             style={{
               background:
-                "radial-gradient(circle, rgba(180,80,40,0.10) 0%, transparent 70%)",
-              animationDuration: "18s",
+                "radial-gradient(circle, rgba(227,178,60,0.08) 0%, transparent 70%)",
+              animationDuration: "16s",
               animationDelay: "-6s",
             }}
           />
@@ -222,7 +236,7 @@ export default function AuthPage() {
                   width: e.size,
                   height: e.size,
                   background: "#E3B23C",
-                  boxShadow: "0 0 6px 1px rgba(227,178,60,0.5)",
+                  boxShadow: "0 0 6px 1px rgba(227,178,60,0.55)",
                   animationDelay: e.delay,
                   animationDuration: e.duration,
                   "--ember-drift": e.drift,
@@ -249,104 +263,172 @@ export default function AuthPage() {
             </div>
           </Link>
 
-          <div>
-            <p className="eyebrow">Lagos events &amp; entertainment</p>
-            <h2 className="mt-4 font-display text-4xl xl:text-5xl font-bold text-ink leading-[1.1] tracking-tight">
+          <div className="my-auto py-4">
+            <div className="flex items-center gap-2 mb-2.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-gold" />
+              </span>
+              <p className="eyebrow text-gold font-bold">
+                {isRegister ? "Join Black Heritage" : "Welcome Back"}
+              </p>
+            </div>
+            <h2 className="font-display text-3xl xl:text-4xl font-bold text-ink leading-[1.15] tracking-tight">
               Where Lagos comes out to{" "}
               <span className="italic text-gold">play</span>
             </h2>
-            <p className="mt-4 text-muted-ink leading-relaxed max-w-md">
-              One place for the events worth showing up for, and the people who
-              make them happen. No forwarded flyers, no guessing off a random
-              Instagram page.
+            <div className="mt-3.5 h-0.5 w-12 bg-gold" aria-hidden="true" />
+            <p className="mt-3 text-sm text-muted-ink leading-relaxed max-w-sm">
+              One home for the shows worth showing up for, and the DJs,
+              caterers, and creatives who make them unforgettable.
             </p>
 
-            <div className="mt-10 space-y-6 max-w-md">
+            {/* Living Marquee: Real auto-advancing Lagos event showcase */}
+            {featuredEvents.length > 0 && currentEvent && (
+              <div
+                className="my-5"
+                onMouseEnter={() => setIsEventPaused(true)}
+                onMouseLeave={() => setIsEventPaused(false)}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold tracking-[0.16em] uppercase text-gold">
+                    Trending On Sale
+                  </span>
+                  {featuredEvents.length > 1 && (
+                    <div className="flex items-center gap-1.5" role="tablist" aria-label="Featured events">
+                      {featuredEvents.map((_, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setActiveEventIndex(idx)}
+                          aria-label={`Show event ${idx + 1}`}
+                          className={cn(
+                            "h-1 rounded-full transition-all duration-300 cursor-pointer",
+                            idx === activeEventIndex
+                              ? "w-4 bg-gold"
+                              : "w-1.5 bg-white/20 hover:bg-white/40"
+                          )}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <Link href={"/events/" + currentEvent.id}>
+                  <div className="group relative rounded-md border border-hairline bg-surface-2/85 hover:border-gold/40 transition-all duration-300 cursor-pointer overflow-hidden p-3 flex items-center gap-3.5 backdrop-blur-sm">
+                    <div className="relative w-14 h-14 rounded overflow-hidden bg-surface border border-hairline shrink-0">
+                      {currentEvent.imageUrl ? (
+                        <img
+                          src={currentEvent.imageUrl}
+                          alt={currentEvent.title}
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Ticket className="w-6 h-6 text-gold/60" />
+                        </div>
+                      )}
+                      <span className="absolute bottom-0.5 right-0.5 px-1 py-0.2 bg-background/90 rounded text-[8px] font-bold text-gold tracking-wider border border-hairline">
+                        LIVE
+                      </span>
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-medium text-gold flex items-center gap-1 truncate">
+                        <CalendarDays className="w-3 h-3 shrink-0" />
+                        <span>{format(new Date(currentEvent.date), "EEE d MMM")}</span>
+                        {currentEvent.location && (
+                          <>
+                            <span className="text-muted-ink/40">·</span>
+                            <span className="text-muted-ink truncate">
+                              {currentEvent.location.split(",")[0]}
+                            </span>
+                          </>
+                        )}
+                      </p>
+                      <p className="mt-0.5 font-display text-sm font-semibold text-ink truncate group-hover:text-gold transition-colors">
+                        {currentEvent.title}
+                      </p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="text-xs font-semibold text-ink">
+                          {currentEvent.price === 0
+                            ? "Free Entry"
+                            : `From ₦${(currentEvent.price / 100).toLocaleString()}`}
+                        </span>
+                        <span className="text-[10px] text-muted-ink border border-hairline px-1.5 py-0.2 rounded">
+                          Instant Ticket
+                        </span>
+                      </div>
+                    </div>
+
+                    <ArrowUpRight
+                      className="w-4 h-4 text-muted-ink shrink-0 group-hover:text-gold group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all"
+                      aria-hidden="true"
+                    />
+                  </div>
+                </Link>
+              </div>
+            )}
+
+            {/* Clean three-point value assurances */}
+            <div className="space-y-2.5 max-w-sm">
               {[
                 {
-                  title: "Stop guessing",
-                  body: "Know which event is actually worth your night before you pay for it.",
+                  title: isRegister ? "Curated Shows" : "Guaranteed Entry",
+                  desc: "Verified tickets with instant QR entry on your phone.",
                 },
                 {
-                  title: "Sell out like a pro",
-                  body: "Ticketing, Paystack checkout, and a dashboard that tracks every sale.",
+                  title: "Direct Access",
+                  desc: "Connect directly with top DJs, performers, and caterers.",
                 },
                 {
-                  title: "Get booked on your work",
-                  body: "A standing profile with your portfolio, so strangers with budgets can find you.",
+                  title: "Standing Profiles",
+                  desc: "A portfolio for organizers and vendors to find real work.",
                 },
               ].map((item) => (
-                <div key={item.title} className="flex items-start gap-3">
+                <div key={item.title} className="flex items-start gap-2.5">
                   <span
-                    className="mt-2 h-1.5 w-1.5 rounded-full bg-gold shrink-0"
+                    className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0"
                     aria-hidden="true"
                   />
-                  <div>
-                    <p className="text-ink font-medium">{item.title}</p>
-                    <p className="text-sm text-muted-ink leading-relaxed">
-                      {item.body}
-                    </p>
+                  <div className="text-xs leading-relaxed">
+                    <span className="text-ink font-medium">{item.title}</span>
+                    <span className="text-muted-ink"> — {item.desc}</span>
                   </div>
                 </div>
               ))}
             </div>
-
-            {/* Live inventory: the marketplace sells itself while you sign in */}
-            {onSale && (
-              <Link href={"/events/" + onSale.id}>
-                <div className="group relative mt-10 max-w-md rounded-xl border border-white/15 bg-background/60 backdrop-blur-sm overflow-hidden hover:border-white/30 transition-colors cursor-pointer">
-                  <div className="flex items-center gap-4 p-4">
-                    {onSale.imageUrl ? (
-                      <img
-                        src={onSale.imageUrl}
-                        alt=""
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                        }}
-                        className="w-14 h-14 rounded-lg object-cover border border-hairline"
-                      />
-                    ) : (
-                      <div className="w-14 h-14 rounded-lg bg-surface-2 border border-hairline flex items-center justify-center">
-                        <Ticket className="w-5 h-5 text-gold/50" aria-hidden="true" />
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="eyebrow">
-                        On sale now · {format(new Date(onSale.date), "EEE d MMM")}
-                      </p>
-                      <p className="mt-1 font-display text-base font-bold text-ink truncate transition-colors duration-200 group-hover:text-gold">
-                        {onSale.title}
-                      </p>
-                    </div>
-                    <ArrowUpRight
-                      className="w-4 h-4 text-gold shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                      aria-hidden="true"
-                    />
-                  </div>
-                </div>
-              </Link>
-            )}
           </div>
 
-          <div>
-            <p className="text-sm text-ink mb-3">
-              <span className="font-display text-lg font-bold text-gold tabular-nums">
-                {events?.length ?? 0}
-              </span>{" "}
-              shows on sale right now
-            </p>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-ink">
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-gold" aria-hidden="true" />
-                Paystack-secured checkout
+          <div className="pt-5 border-t border-hairline">
+            <div className="flex items-center justify-between text-xs text-muted-ink mb-2">
+              <span className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                </span>
+                <span className="text-ink font-medium">
+                  <span className="font-display font-bold text-gold tabular-nums">
+                    {events?.length ?? 0}
+                  </span>{" "}
+                  shows on sale across Lagos
+                </span>
               </span>
-              <span className="flex items-center gap-1.5">
+              <span className="text-[10px] uppercase tracking-wider text-muted-ink/70">
+                Lagos, NG
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-muted-ink">
+              <span className="flex items-center gap-1">
                 <Ticket className="w-3.5 h-3.5 text-gold" aria-hidden="true" />
-                Instant verified e-tickets
+                Instant e-tickets
               </span>
-              <span className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1">
                 <Store className="w-3.5 h-3.5 text-gold" aria-hidden="true" />
-                Free vendor profiles
+                Vendor directory
               </span>
             </div>
           </div>
@@ -371,7 +453,7 @@ export default function AuthPage() {
         </Link>
 
         <motion.div
-          className="w-full max-w-md my-auto"
+          className="w-full max-w-md py-4 sm:py-8"
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
@@ -622,7 +704,7 @@ export default function AuthPage() {
               className="w-3.5 h-3.5 text-gold"
               aria-hidden="true"
             />
-            Paystack-secured checkout on every ticket
+            Verified secure checkout on every ticket
           </p>
         </motion.div>
       </main>

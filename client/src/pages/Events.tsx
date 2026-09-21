@@ -3,14 +3,16 @@ import { EventCardCompact } from "@/components/EventCardCompact";
 import { useEvents } from "@/hooks/use-events";
 import { Reveal } from "@/components/motion";
 import { Search, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useSearch } from "wouter";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-type QuickFilter = "all" | "week" | "free" | "under10k";
+type QuickFilter = "all" | "tonight" | "week" | "free" | "under10k";
 
 const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
   { key: "all", label: "All" },
+  { key: "tonight", label: "Tonight" },
   { key: "week", label: "This week" },
   { key: "free", label: "Free" },
   { key: "under10k", label: "Under ₦10k" },
@@ -19,7 +21,21 @@ const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
 export default function Events() {
   const { data: events, isLoading } = useEvents();
   const [search, setSearch] = useState("");
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
+  const rawSearch = useSearch();
+  const searchParams = new URLSearchParams(rawSearch.startsWith("?") ? rawSearch.slice(1) : rawSearch);
+  const filterParam = searchParams.get("filter") as QuickFilter | null;
+
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>(
+    filterParam && ["all", "tonight", "week", "free", "under10k"].includes(filterParam)
+      ? filterParam
+      : "all"
+  );
+
+  useEffect(() => {
+    if (filterParam && ["all", "tonight", "week", "free", "under10k"].includes(filterParam)) {
+      setQuickFilter(filterParam);
+    }
+  }, [filterParam]);
 
   const filteredEvents = events?.filter((event) => {
     const term = search.toLowerCase();
@@ -30,6 +46,16 @@ export default function Events() {
 
     const matchesQuick = (() => {
       switch (quickFilter) {
+        case "tonight": {
+          const eventDate = new Date(event.date);
+          const now = new Date();
+          const isSameDay =
+            eventDate.getFullYear() === now.getFullYear() &&
+            eventDate.getMonth() === now.getMonth() &&
+            eventDate.getDate() === now.getDate();
+          const diffHours = (eventDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+          return isSameDay || (diffHours >= 0 && diffHours <= 18);
+        }
         case "week": {
           const inOneWeek = Date.now() + 7 * 24 * 60 * 60 * 1000;
           return new Date(event.date).getTime() <= inOneWeek;
@@ -60,7 +86,7 @@ export default function Events() {
             {events?.length ?? 0}
             {events?.length === 1 ? " show" : " shows"} on sale across Lagos:
             afrobeats nights, live jazz, food fests, and everything in between.
-            Paystack-secured, instant confirmation.
+            Instant confirmation, verified entry.
           </p>
         </Reveal>
 
@@ -129,11 +155,34 @@ export default function Events() {
         {!isLoading && filteredEvents?.length === 0 && (
           <div className="text-center py-24 border border-hairline rounded-md bg-surface">
             <h2 className="font-display text-xl font-bold text-ink mb-2">
-              Nothing matches that yet
+              {quickFilter === "tonight"
+                ? "No shows scheduled for tonight"
+                : "Nothing matches that yet"}
             </h2>
             <p className="text-muted-ink">
-              Try “afrobeats” or “Lekki”, or clear the search and filters to
-              see every event on sale.
+              {quickFilter === "tonight" ? (
+                <>
+                  Nothing is kicking off tonight just yet. Check{" "}
+                  <button
+                    type="button"
+                    onClick={() => setQuickFilter("week")}
+                    className="text-gold underline underline-offset-4 hover:text-gold-soft cursor-pointer"
+                  >
+                    this week's lineup
+                  </button>{" "}
+                  or view{" "}
+                  <button
+                    type="button"
+                    onClick={() => setQuickFilter("all")}
+                    className="text-gold underline underline-offset-4 hover:text-gold-soft cursor-pointer"
+                  >
+                    all upcoming shows
+                  </button>
+                  .
+                </>
+              ) : (
+                "Try “afrobeats” or “Lekki”, or clear the search and filters to see every event on sale."
+              )}
             </p>
           </div>
         )}

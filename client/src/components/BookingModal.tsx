@@ -428,7 +428,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
               </div>
 
               <p className="text-xs text-center text-muted-ink leading-relaxed pb-2">
-                Pay safely with card or bank transfer through Paystack.
+                Pay safely with card, bank transfer, or USSD.
                 <br />
                 Your coded ticket is issued the moment payment clears, and a PDF copy goes to your email.
               </p>

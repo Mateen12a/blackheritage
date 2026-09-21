@@ -203,7 +203,7 @@ export async function sendRefundEmail(to: EmailAddress, data: {
       `
       <p style="margin:0 0 20px;font-size:14px;">Hi ${esc(to.name)},</p>
       <p style="margin:0 0 12px;font-size:14px;color:#444;">The organizer refunded <strong>${formatNaira(data.amountKobo)}</strong> for ${esc(data.eventTitle)} (ref ${esc(data.bookingRef)}).</p>
-      <p style="margin:0 0 20px;font-size:14px;color:#444;">Paystack returns refunds to the original payment method. Banks usually take 5 to 10 working days to post it.</p>
+      <p style="margin:0 0 20px;font-size:14px;color:#444;">Refunds are returned to the original payment method. Banks usually take 5 to 10 working days to post it.</p>
       <p style="margin:0;font-size:13px;color:#444;">Your ticket code has been voided and can no longer be used at the gate.</p>`,
     ),
   });

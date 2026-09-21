@@ -226,6 +226,14 @@ export default function Home() {
         ? "/vendor-dashboard"
         : "/dashboard";
 
+  // Time-of-day contextual CTA: evening/night (5 PM - 4:59 AM) vs daytime
+  const isTonight = (() => {
+    const hour = new Date().getHours();
+    return hour >= 17 || hour < 5;
+  })();
+  const eventCtaText = isTonight ? "Find Events Tonight" : "Find Events Today";
+  const eventCtaHref = isTonight ? "/events?filter=tonight" : "/events";
+
   return (
     <div className="min-h-screen">
       {/* ─── Hero: centered type, ambient bloom, one alive poster panel, ticker. ─── */}
@@ -258,9 +266,9 @@ export default function Home() {
 
           <Reveal y={12} delay={0.5} duration={0.55}>
             <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
-              <Link href="/events">
+              <Link href={eventCtaHref}>
                 <Button className="press h-12 px-8 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-full w-full sm:w-auto">
-                  Find Events Tonight
+                  {eventCtaText}
                 </Button>
               </Link>
               <Link href="/vendors">
@@ -306,7 +314,7 @@ export default function Home() {
                 <dd className="flex justify-center">
                   <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-gold" strokeWidth={1.5} aria-hidden="true" />
                 </dd>
-                <dd className="eyebrow mt-2.5">Paystack-secured</dd>
+                <dd className="eyebrow mt-2.5">Bank-grade security</dd>
               </div>
             </dl>
           </Reveal>
@@ -465,7 +473,7 @@ export default function Home() {
               <div className="mt-4 h-0.5 w-12 bg-gold" aria-hidden="true" />
               <p className="mt-4 text-muted-ink leading-relaxed flex-1">
                 Set up ticketing in minutes. VIP tables, regular, VVIP, all
-                with secure Paystack checkout. Track every sale live. No
+                with instant, secure checkout. Track every sale live. No
                 middleman takes a cut you didn't agree to.
               </p>
               <Link href={user ? "/admin" : "/auth?tab=register"} className="mt-6">
@@ -616,7 +624,7 @@ export default function Home() {
                 },
                 {
                   title: "Buy your ticket",
-                  body: "Paystack checkout: card, bank transfer, or USSD. Your e-ticket arrives instantly. No printed slips, no queue.",
+                  body: "Instant checkout: card, bank transfer, or USSD. Your e-ticket arrives instantly. No printed slips, no queue.",
                 },
                 {
                   title: "Show up",
@@ -710,7 +718,7 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-ink/60">
               <ShieldCheck className="w-3.5 h-3.5 text-gold/40" aria-hidden="true" />
-              Paystack-secured checkout
+              Instant verified checkout
             </div>
           </div>
         </div>
