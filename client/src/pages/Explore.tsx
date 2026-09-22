@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { FadeImg } from "@/components/motion";
 import { format } from "date-fns";
 import { useMemo, useState } from "react";
+import { NativeSponsorSpotlight } from "@/components/NativeSponsorSpotlight";
 
 /**
  * App-style Explore: large title, always-present search, category chips,
@@ -225,6 +226,11 @@ export default function Explore() {
               </div>
             )}
           </section>
+
+          {/* Native Partner Spotlight */}
+          <div className="mt-8">
+            <NativeSponsorSpotlight placement="explore_feed" />
+          </div>
 
           {/* Vendor rail — full cards, peeking 24px past the scroll edge */}
           <section className="mt-10" aria-label="Vendors to book">

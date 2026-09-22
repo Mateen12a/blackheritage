@@ -106,14 +106,74 @@ pm2 startup systemd   # run the command it prints
 
 The server serves the built client from `client/dist` when `NODE_ENV=production` (Express static), so one process does both jobs. If your build does not wire static serving, keep Nginx `root` pointed at `~/blackheritage/client/dist` as configured below.
 
-## 5. Nginx
+## 5. Cloudflare SSL and Nginx
+
+Because you are using Cloudflare, you do not need Certbot renewals that can fail or get rate-limited. Cloudflare provides a free **Origin CA Certificate** valid for up to 15 years.
+
+### A. Generate Cloudflare Origin Certificate
+
+1. Log into your Cloudflare Dashboard -> select your domain.
+2. Go to **SSL/TLS** > **Origin Server** > click **Create Certificate**.
+3. Keep the defaults:
+   - Private key type: RSA (2048)
+   - Hostnames: `*.blackhevents.com`, `blackhevents.com`
+   - Validity: 15 years
+4. Copy the **Origin Certificate** and save it on your Oracle VM:
+   ```bash
+   sudo nano /etc/ssl/certs/cloudflare-origin.pem
+   # Paste the certificate and save
+   ```
+5. Copy the **Private Key** and save it on your Oracle VM:
+   ```bash
+   sudo nano /etc/ssl/private/cloudflare-origin.key
+   # Paste the private key and save
+   sudo chmod 600 /etc/ssl/private/cloudflare-origin.key
+   ```
+6. In Cloudflare Dashboard, go to **SSL/TLS** > **Overview** and set the encryption mode to **Full (strict)**.
+
+---
+
+### B. Configure Nginx with Cloudflare Real IP
 
 `/etc/nginx/sites-available/blackheritage`:
 
 ```nginx
+# Restore real visitor IPs from Cloudflare proxy headers
+set_real_ip_from 173.245.48.0/20;
+set_real_ip_from 103.21.244.0/22;
+set_real_ip_from 103.22.200.0/22;
+set_real_ip_from 103.31.4.0/22;
+set_real_ip_from 141.101.64.0/18;
+set_real_ip_from 108.162.192.0/18;
+set_real_ip_from 190.93.240.0/20;
+set_real_ip_from 188.114.96.0/20;
+set_real_ip_from 197.234.240.0/22;
+set_real_ip_from 198.41.128.0/17;
+set_real_ip_from 162.158.0.0/15;
+set_real_ip_from 104.16.0.0/13;
+set_real_ip_from 104.24.0.0/14;
+set_real_ip_from 172.64.0.0/13;
+set_real_ip_from 131.0.72.0/22;
+real_ip_header CF-Connecting-IP;
+
+# HTTP -> HTTPS redirect
 server {
     listen 80;
-    server_name blackhevents.com www.blackhevents.com;
+    listen [::]:80;
+    server_name blackhevents.com www.blackhevents.com *.blackhevents.com;
+    return 301 https://$host$request_uri;
+}
+
+# Main HTTPS server
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name blackhevents.com www.blackhevents.com *.blackhevents.com;
+
+    ssl_certificate /etc/ssl/certs/cloudflare-origin.pem;
+    ssl_certificate_key /etc/ssl/private/cloudflare-origin.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
 
     client_max_body_size 60m;   # uploads cap is 50MB
 
@@ -122,30 +182,56 @@ server {
     index index.html;
 
     # API + uploads proxy to Node
-    location /api/ { proxy_pass http://127.0.0.1:3001; proxy_set_header Host $host; proxy_set_header X-Forwarded-For $remote_addr; proxy_set_header X-Forwarded-Proto $scheme; }
-    location /uploads/ { proxy_pass http://127.0.0.1:3001; }
+    location /api/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    location /uploads/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host $host;
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+    }
 
     # SPA fallback
-    location / { try_files $uri /index.html; }
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
 }
 ```
 
+Enable the configuration and reload Nginx:
+
 ```bash
-sudo ln -s /etc/nginx/sites-available/blackheritage /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/blackheritage /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
-
-# HTTPS, free, auto-renews
-sudo certbot --nginx -d blackhevents.com -d www.blackhevents.com
 ```
 
-## 6. Point DNS and wire the gateways
+---
 
-1. At your registrar: `blackhevents.com` A record -> the VM public IP. The IP is static while the instance runs; reserve it if you stop the instance.
-2. Paystack dashboard: set the webhook to `https://blackhevents.com/api/paystack/webhook`, switch to live keys.
-3. Resend: add `blackhevents.africa`, add the DKIM/SPF DNS records, wait for "verified".
-4. Google Cloud Console: OAuth client with redirect `https://blackhevents.com/api/auth/google/callback`. Put the client id/secret in `.env`.
-5. MongoDB Atlas: once the VM runs its own Mongo, you can cancel Atlas or keep it as a backup target.
+## 6. Cloudflare DNS Configuration
+
+In your Cloudflare Dashboard under **DNS** > **Records**, add the following records:
+
+| Type | Name | Target / Content | Proxy Status | Note |
+|---|---|---|---|---|
+| **A** | `@` | `<YOUR_ORACLE_PUBLIC_IP>` | **Proxied (Orange Cloud)** | Apex domain (`blackhevents.com`) |
+| **CNAME** | `www` | `@` | **Proxied (Orange Cloud)** | Web redirect |
+| **CNAME** | `*` | `@` | **Proxied (Orange Cloud)** | Wildcard for organizer hubs (`*.blackhevents.com`) |
+| **CNAME** | `cname` | `@` | **Proxied (Orange Cloud)** | White-label custom domain target |
+
+### Gateway Wiring:
+1. **Paystack Dashboard**: set webhook URL to `https://blackhevents.com/api/paystack/webhook`, switch to live keys.
+2. **Resend**: add your domain, configure SPF/DKIM DNS records in Cloudflare, verify status.
+3. **Google Cloud Console**: OAuth redirect URI set to `https://blackhevents.com/api/auth/google/callback`.
 
 ## 7. Ops
 

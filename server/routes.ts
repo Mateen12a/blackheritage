@@ -17,7 +17,7 @@ import { z } from "zod";
 import Stripe from "stripe";
 import bcrypt from "bcryptjs";
 import { sendFollowerDropEmail } from "./emails";
-import { User, TicketModel, ScanEventModel, PlatformSettingModel, BookingModel, WaitlistModel } from "./models";
+import { User, TicketModel, ScanEventModel, PlatformSettingModel, BookingModel, WaitlistModel, NativeSponsorModel } from "./models";
 import mongoose from "mongoose";
 import { fulfillBooking, quoteBooking, validatePromo, getPlatformSettings } from "./booking";
 import { initializeTransaction, verifyTransaction, refundTransaction, verifyWebhookSignature, isPaystackConfigured } from "./paystack";
@@ -2299,6 +2299,95 @@ export async function registerRoutes(
       }
       throw err;
     }
+  });
+
+  // ── Native Sponsorships / Partner Placements ──
+  app.get("/api/sponsors/active", async (req, res) => {
+    try {
+      const { placement } = req.query;
+      const filter: any = { active: true };
+      if (placement && typeof placement === "string") {
+        filter.placement = placement;
+      }
+      const sponsors = await NativeSponsorModel.find(filter).sort({ createdAt: -1 }).limit(10).lean();
+      if (sponsors.length > 0) {
+        NativeSponsorModel.updateMany(
+          { _id: { $in: sponsors.map((s: any) => s._id) } },
+          { $inc: { impressions: 1 } }
+        ).catch((err) => console.error("Error logging sponsor impressions:", err));
+      }
+      res.json(sponsors.map((s: any) => ({
+        id: String(s._id),
+        title: s.title,
+        sponsorName: s.sponsorName,
+        tagline: s.tagline,
+        badgeText: s.badgeText,
+        imageUrl: s.imageUrl,
+        targetUrl: s.targetUrl,
+        placement: s.placement,
+        clicks: s.clicks || 0,
+        impressions: s.impressions || 0,
+      })));
+    } catch (err: any) {
+      console.error("Failed to fetch active sponsors:", err);
+      res.status(500).json({ message: "Failed to fetch sponsors" });
+    }
+  });
+
+  app.post("/api/sponsors/:id/click", async (req, res) => {
+    try {
+      const updated = await NativeSponsorModel.findByIdAndUpdate(
+        req.params.id,
+        { $inc: { clicks: 1 } },
+        { new: true }
+      );
+      if (!updated) return res.status(404).json({ message: "Sponsor not found" });
+      res.json({ ok: true, clicks: updated.clicks });
+    } catch (err: any) {
+      res.status(500).json({ message: "Failed to record click" });
+    }
+  });
+
+  app.get("/api/sponsors", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    const sponsors = await NativeSponsorModel.find().sort({ createdAt: -1 }).lean();
+    res.json(sponsors.map((s: any) => ({
+      id: String(s._id),
+      title: s.title,
+      sponsorName: s.sponsorName,
+      tagline: s.tagline,
+      badgeText: s.badgeText,
+      imageUrl: s.imageUrl,
+      targetUrl: s.targetUrl,
+      placement: s.placement,
+      active: s.active,
+      clicks: s.clicks || 0,
+      impressions: s.impressions || 0,
+      createdAt: s.createdAt,
+    })));
+  });
+
+  app.post("/api/sponsors", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    const { title, sponsorName, tagline, badgeText, imageUrl, targetUrl, placement, active } = req.body;
+    if (!title || !sponsorName || !tagline || !imageUrl || !targetUrl) {
+      return res.status(400).json({ message: "Missing required sponsor fields" });
+    }
+    const sponsor = await NativeSponsorModel.create({
+      title,
+      sponsorName,
+      tagline,
+      badgeText: badgeText || "Featured Partner",
+      imageUrl,
+      targetUrl,
+      placement: placement || "home_spotlight",
+      active: active !== false,
+    });
+    res.status(201).json({ id: String(sponsor._id) });
   });
 
   return httpServer;

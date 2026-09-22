@@ -505,3 +505,41 @@ VendorRatingSchema.index({ vendorId: 1, reviewerUserId: 1 }, { unique: true });
 export const VendorRatingModel =
   mongoose.models.VendorRating ||
   model<IVendorRating>("VendorRating", VendorRatingSchema);
+
+// Native Sponsorships / Custom Partner Placements
+export interface INativeSponsor extends Document {
+  title: string;
+  sponsorName: string;
+  tagline: string;
+  badgeText: string; // e.g. "Official Nightlife Partner", "Headline Lounge Sponsor"
+  imageUrl: string;
+  targetUrl: string; // Partner link or internal event/vendor link
+  placement: 'home_spotlight' | 'explore_feed' | 'events_sidebar';
+  active: boolean;
+  clicks: number;
+  impressions: number;
+  createdAt: Date;
+}
+
+const NativeSponsorSchema: Schema = new Schema({
+  title: { type: String, required: true },
+  sponsorName: { type: String, required: true },
+  tagline: { type: String, required: true },
+  badgeText: { type: String, default: "Featured Partner" },
+  imageUrl: { type: String, required: true },
+  targetUrl: { type: String, required: true },
+  placement: {
+    type: String,
+    enum: ['home_spotlight', 'explore_feed', 'events_sidebar'],
+    default: 'home_spotlight',
+  },
+  active: { type: Boolean, default: true },
+  clicks: { type: Number, default: 0 },
+  impressions: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now },
+});
+
+export const NativeSponsorModel =
+  mongoose.models.NativeSponsor ||
+  model<INativeSponsor>("NativeSponsor", NativeSponsorSchema);
+

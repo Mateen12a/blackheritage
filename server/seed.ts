@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import {
   User, EventModel, VendorModel, BookingModel, TicketModel,
-  PromoCodeModel, PayoutModel, PlatformSettingModel,
+  PromoCodeModel, PayoutModel, PlatformSettingModel, NativeSponsorModel,
 } from "./models";
 import { generateTicketCode } from "./tickets";
 
@@ -104,6 +104,156 @@ export async function seedPlatform(): Promise<void> {
   // ── Organizer owns the seeded events so staff scope and dashboards work ──
   const organizerId = organizer._id.toString();
   const inDays = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+  // ── 5 Authentic Upcoming Lagos Events ──
+  const canonicalEvents = [
+    {
+      title: "Detty December Finale: Live at Moist Beach",
+      slug: "detty-december-finale-moist-beach",
+      daysAhead: 14,
+      location: "Moist Beach Club, Oniru Beach, Victoria Island, Lagos",
+      price: 1500000,
+      capacity: 1500,
+      imageUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1600&auto=format&fit=crop",
+      description: "The premier coastal celebration closing out the Lagos party season. World-class Afrobeats DJs, live percussionists, seaside fireworks, and premium beach cabana bottle service.",
+      ticketTypes: [
+        { name: "General Admission", price: 1500000, capacity: 800, sold: 142, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "VIP Deck Access", price: 4500000, capacity: 250, sold: 58, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Premium Beach Cabana (Table of 8)", price: 60000000, capacity: 20, sold: 8, saleOpen: null, saleClose: inDays(28).toISOString() },
+      ],
+      gallery: [
+        "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1200&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1200&auto=format&fit=crop",
+      ],
+      isFeatured: true,
+      theme: "midnight-gold" as const,
+      branding: { displayName: "Tunde Live Concepts", logoUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=96&h=96&auto=format&fit=crop", accentHex: "#C9A227" },
+    },
+    {
+      title: "Lagos Afrobeats & Amapiano All-Nighter",
+      slug: "lagos-afrobeats-amapiano-all-nighter",
+      daysAhead: 21,
+      location: "Landmark Beach, Water Corporation Drive, Victoria Island, Lagos",
+      price: 1000000,
+      capacity: 2200,
+      imageUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1600&auto=format&fit=crop",
+      description: "From Soweto basslines to Lagos highlife percussion. Non-stop twin-stage sound system featuring South Africa's finest log-drum selectors alongside Lagos headline tastemakers.",
+      ticketTypes: [
+        { name: "Regular Beach Pass", price: 1000000, capacity: 1200, sold: 310, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "VIP Sunset Lounge", price: 3500000, capacity: 300, sold: 92, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Backstage Artist Pass", price: 12000000, capacity: 50, sold: 19, saleOpen: null, saleClose: inDays(30).toISOString() },
+      ],
+      gallery: [
+        "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=1200&auto=format&fit=crop",
+      ],
+      isFeatured: true,
+      theme: "ivory-editorial" as const,
+      branding: { displayName: "Afro-Beats Festival", logoUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=96&h=96&auto=format&fit=crop", accentHex: "#9A6B1F" },
+    },
+    {
+      title: "Palmwine & Suya Sunset Sessions",
+      slug: "palmwine-suya-sunset-sessions",
+      daysAhead: 9,
+      location: "Muri Okunola Park, Victoria Island, Lagos",
+      price: 750000,
+      capacity: 850,
+      imageUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=1600&auto=format&fit=crop",
+      description: "An open-air evening under the historic trees of Muri Okunola Park. Authentic fresh palmwine kegs, artisan ram suya, live acoustic neo-soul, and an intimate Lagos social market.",
+      ticketTypes: [
+        { name: "Sunset Entry", price: 750000, capacity: 500, sold: 180, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Gourmet Tasting Board Pass", price: 2250000, capacity: 150, sold: 64, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Picnic Lawn Table (Group of 4)", price: 8000000, capacity: 25, sold: 11, saleOpen: null, saleClose: inDays(25).toISOString() },
+      ],
+      gallery: [
+        "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1200&auto=format&fit=crop",
+      ],
+      isFeatured: true,
+      theme: "sunset-poster" as const,
+      branding: null,
+    },
+    {
+      title: "Lekki Block Party: Street & Sound",
+      slug: "lekki-block-party-street-and-sound",
+      daysAhead: 17,
+      location: "Admiralty Way, Lekki Phase 1, Lagos",
+      price: 500000,
+      capacity: 1800,
+      imageUrl: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=1600&auto=format&fit=crop",
+      description: "Lekki's biggest street-culture takeover. Pop-up streetwear drops, custom car showcase, three DJ sound trucks, and 360-degree party cyphers from twilight to dawn.",
+      ticketTypes: [
+        { name: "Block Entry", price: 500000, capacity: 1000, sold: 420, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Backstage Truck Access", price: 2500000, capacity: 200, sold: 88, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Crew Table of 6", price: 15000000, capacity: 30, sold: 14, saleOpen: null, saleClose: inDays(28).toISOString() },
+      ],
+      gallery: [
+        "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1200&auto=format&fit=crop",
+      ],
+      isFeatured: true,
+      theme: "midnight-gold" as const,
+      branding: null,
+    },
+    {
+      title: "Black Heritage Grand Gala & Awards",
+      slug: "black-heritage-grand-gala-awards",
+      daysAhead: 28,
+      location: "Grand Ballroom, Eko Hotel & Suites, Victoria Island, Lagos",
+      price: 3000000,
+      capacity: 950,
+      imageUrl: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1600&auto=format&fit=crop",
+      description: "An evening honoring contemporary African creators, directors, sound engineers, and cultural pioneers. Red carpet champagne reception, multi-course banquet, and headline performances.",
+      ticketTypes: [
+        { name: "Gala Theatre Seating", price: 3000000, capacity: 350, sold: 85, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Banquet Dining Seat", price: 9500000, capacity: 200, sold: 72, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "VIP Patron Table of 10", price: 120000000, capacity: 15, sold: 6, saleOpen: null, saleClose: inDays(28).toISOString() },
+      ],
+      gallery: [
+        "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1200&auto=format&fit=crop",
+      ],
+      isFeatured: true,
+      theme: "midnight-gold" as const,
+      branding: null,
+    },
+  ];
+
+  for (const item of canonicalEvents) {
+    const existing = await EventModel.findOne({
+      $or: [{ title: item.title }, { slug: item.slug }],
+    });
+    if (!existing) {
+      await EventModel.create({
+        title: item.title,
+        slug: item.slug,
+        organizerId,
+        organizerName: "Tunde Live Concepts",
+        description: item.description,
+        date: inDays(item.daysAhead),
+        location: item.location,
+        price: item.price,
+        capacity: item.capacity,
+        imageUrl: item.imageUrl,
+        isFeatured: item.isFeatured,
+        status: "published",
+        ticketTypes: JSON.stringify(item.ticketTypes),
+        gallery: JSON.stringify(item.gallery),
+        pastEventVideos: "[]",
+        theme: item.theme,
+        branding: item.branding,
+        showRemainingCounts: true,
+        showAttendeeCount: true,
+        waitlistEnabled: true,
+        guestCheckout: true,
+        promoCodesPublic: true,
+      });
+      console.log(`Seed: canonical event created: "${item.title}"`);
+    } else {
+      if (new Date(existing.date).getTime() < Date.now()) {
+        existing.date = inDays(item.daysAhead);
+        existing.date.setUTCHours(19, 0, 0, 0);
+        await existing.save();
+      }
+    }
+  }
+
   let events = await EventModel.find();
   if (events.length > 0) {
     let touched = false;
@@ -398,23 +548,141 @@ export async function seedPlatform(): Promise<void> {
     }
   }
 
-  // ── Vendors: ensure at least one per owner-less directory + portfolio data ──
-  const vendorCount = await VendorModel.countDocuments();
-  if (vendorCount === 0) {
-    await VendorModel.create({
-      businessName: "DJ Naija Vibes", category: "DJ",
-      bio: "Lagos-born party starter with a decade of afrobeats, amapiano and old-school blends. Resident DJ at three of the island's biggest nightlife spots.",
-      gallery: JSON.stringify([
+  // ── 5 Authentic Verified Lagos Event Vendors ──
+  const canonicalVendors = [
+    {
+      businessName: "DJ Consequence",
+      category: "DJ",
+      categoryLabel: "Headline Tour DJ",
+      bio: "The Vibes Machine. Resident DJ at Club Quilox and headline festival tour DJ across Africa. Curating high-energy afrobeats, amapiano, and house sets with live percussion.",
+      gallery: [
+        "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1200&auto=format&fit=crop",
         "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1200&auto=format&fit=crop",
         "https://images.unsplash.com/photo-1571266028243-1e588a5d1e33?q=80&w=1200&auto=format&fit=crop",
-      ]),
-      videos: JSON.stringify(["https://www.youtube.com/watch?v=dQw4w9WgXcQ"]),
-      socials: JSON.stringify({ instagram: "djnaijavibes", x: "djnaijavibes" }),
-      city: "Lagos", serviceArea: "Lagos, Ogun, Oyo states",
-      phone: "+234 801 234 5678", whatsapp: "2348012345678",
-      status: "published", ownerId: vendorOwner?._id?.toString(),
+      ],
+      videos: ["https://www.youtube.com/watch?v=dQw4w9WgXcQ"],
+      socials: { instagram: "djconsequence", x: "djconsequence" },
+      city: "Lagos",
+      serviceArea: "Victoria Island, Ikoyi, Lekki Phase 1, Destination Events",
+      phone: "+234 802 345 6789",
+      whatsapp: "2348023456789",
+      slug: "dj-consequence",
+      theme: "midnight-gold" as const,
+      branding: { displayName: "DJ Consequence", accentHex: "#E3B23C" },
+    },
+    {
+      businessName: "Lagos Cocktail Artisans",
+      category: "Other",
+      categoryLabel: "Bar & Mixology",
+      bio: "Craft cocktail catering for luxury private galas, beach festivals, and wedding after-parties. Bespoke smoked palmwine punch, botanical gin infusions, and rapid flair-bartending bars.",
+      gallery: [
+        "https://images.unsplash.com/photo-1551024709-8f23befc6f87?q=80&w=1200&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=1200&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1470337458703-46ad1756a187?q=80&w=1200&auto=format&fit=crop",
+      ],
+      videos: [],
+      socials: { instagram: "lagoscocktailartisans" },
+      city: "Lagos",
+      serviceArea: "Lekki, Victoria Island, Ikoyi, Epe Expressway",
+      phone: "+234 803 555 1204",
+      whatsapp: "2348035551204",
+      slug: "lagos-cocktail-artisans",
+      theme: "midnight-gold" as const,
+      branding: { displayName: "Lagos Cocktail Artisans", accentHex: "#E3B23C" },
+    },
+    {
+      businessName: "Luminance Stage & Sound Tech",
+      category: "Other",
+      categoryLabel: "Lighting & Sound",
+      bio: "Concert-grade L-Acoustics line arrays, moving-head beam fixtures, atmospheric haze, and LED video walls for high-profile concerts and festival stages.",
+      gallery: [
+        "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1200&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=1200&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1200&auto=format&fit=crop",
+      ],
+      videos: [],
+      socials: { instagram: "luminancetechng" },
+      city: "Lagos",
+      serviceArea: "Eko Hotel, Landmark Centre, Oniru Beach, nationwide touring",
+      phone: "+234 809 111 8842",
+      whatsapp: "2348091118842",
+      slug: "luminance-stage-sound-tech",
+      theme: "midnight-gold" as const,
+      branding: { displayName: "Luminance Tech", accentHex: "#E3B23C" },
+    },
+    {
+      businessName: "Ayo Visuals & Drone Studio",
+      category: "Photographer",
+      categoryLabel: "Visuals & Drone",
+      bio: "Editorial night photography, rapid 60-second festival reels, and 4K FPV drone cinematography. Capturing authentic crowd energy with 24-hour turnaround for organizers.",
+      gallery: [
+        "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1200&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=1200&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?q=80&w=1200&auto=format&fit=crop",
+      ],
+      videos: [],
+      socials: { instagram: "ayovisuals.ng" },
+      city: "Lagos",
+      serviceArea: "Lagos Island, Mainland, Abuja, Accra",
+      phone: "+234 818 777 9931",
+      whatsapp: "2348187779931",
+      slug: "ayo-visuals-drone-studio",
+      theme: "midnight-gold" as const,
+      branding: { displayName: "Ayo Visuals", accentHex: "#E3B23C" },
+    },
+    {
+      businessName: "Naija Gourmet Grills & Small Chops",
+      category: "Caterer",
+      categoryLabel: "Gourmet Grills & Suya",
+      bio: "Signature charcoal-grilled ram asun, fiery peppered snails, prawn spring rolls, and midnight suya stations delivered hot to VIP tables and festival attendees.",
+      gallery: [
+        "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1200&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1200&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1200&auto=format&fit=crop",
+      ],
+      videos: [],
+      socials: { instagram: "naijagourmetgrills" },
+      city: "Lagos",
+      serviceArea: "Victoria Island, Lekki Phase 1, Ikeja GRA, Banana Island",
+      phone: "+234 805 222 3409",
+      whatsapp: "2348052223409",
+      slug: "naija-gourmet-grills-small-chops",
+      theme: "midnight-gold" as const,
+      branding: { displayName: "Naija Gourmet Grills", accentHex: "#E3B23C" },
+    },
+  ];
+
+  for (let i = 0; i < canonicalVendors.length; i++) {
+    const v = canonicalVendors[i];
+    const existing = await VendorModel.findOne({
+      $or: [{ businessName: v.businessName }, { slug: v.slug }],
     });
-    console.log("Seed: vendor directory created");
+    if (!existing) {
+      await VendorModel.create({
+        businessName: v.businessName,
+        category: v.category,
+        categoryLabel: v.categoryLabel,
+        bio: v.bio,
+        gallery: JSON.stringify(v.gallery),
+        videos: JSON.stringify(v.videos),
+        socials: JSON.stringify(v.socials),
+        city: v.city,
+        serviceArea: v.serviceArea,
+        phone: v.phone,
+        whatsapp: v.whatsapp,
+        slug: v.slug,
+        status: "published",
+        ownerId: i === 0 ? vendorOwner?._id?.toString() : undefined,
+        theme: v.theme,
+        branding: v.branding,
+      });
+      console.log(`Seed: verified vendor created: "${v.businessName}"`);
+    } else {
+      if (!existing.gallery || existing.gallery === "[]") {
+        existing.gallery = JSON.stringify(v.gallery);
+        await existing.save();
+      }
+    }
   }
 
   // ── Vendor showcase: one published vendor carries the profile-link demo ──
@@ -499,6 +767,48 @@ export async function seedPlatform(): Promise<void> {
         });
       }
       console.log("Seed: vendor ratings demo created");
+    }
+  }
+
+  // ── Native Brand Sponsors ──
+  const canonicalSponsors = [
+    {
+      title: "Official Spirits Partner of Lagos Alternative Nights",
+      sponsorName: "Jameson Nigeria",
+      tagline: "Smooth triple-distilled whiskey blended with Lagos street soul. Enjoy Jameson Ginger & Lime at featured Black Heritage bars.",
+      badgeText: "Official Spirits Partner",
+      imageUrl: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?q=80&w=1200&auto=format&fit=crop",
+      targetUrl: "/events",
+      placement: "home_spotlight" as const,
+      active: true,
+    },
+    {
+      title: "The Headline Reserve for High-Energy Lagos Tables",
+      sponsorName: "Don Julio 1942",
+      tagline: "Handcrafted in the highlands of Jalisco, served chilled across the finest VIP beach cabanas in Victoria Island and Ikoyi.",
+      badgeText: "Headline Luxury Sponsor",
+      imageUrl: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=1200&auto=format&fit=crop",
+      targetUrl: "/events",
+      placement: "explore_feed" as const,
+      active: true,
+    },
+    {
+      title: "Ultra Low-Latency Wi-Fi for Island Beach Festivals",
+      sponsorName: "Starlink Event Operations",
+      tagline: "Powering POS terminals, live 4K stream broadcasts, and attendee Wi-Fi at Landmark and Moist Beach with satellite internet.",
+      badgeText: "Official Infrastructure Partner",
+      imageUrl: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1200&auto=format&fit=crop",
+      targetUrl: "/vendors",
+      placement: "events_sidebar" as const,
+      active: true,
+    },
+  ];
+
+  for (const s of canonicalSponsors) {
+    const existing = await NativeSponsorModel.findOne({ title: s.title });
+    if (!existing) {
+      await NativeSponsorModel.create(s);
+      console.log(`Seed: native sponsor created: "${s.sponsorName}" (${s.placement})`);
     }
   }
 

@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import type { Event } from "@shared/schema";
+import { NativeSponsorSpotlight } from "@/components/NativeSponsorSpotlight";
 import logoImg from "../assets/logo.png";
 
 /**
@@ -390,6 +391,13 @@ export default function Home() {
               </span>
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* ─── Editorial Brand Spotlight / Native Placement ─── */}
+      <section className="py-6">
+        <div className="container mx-auto px-4">
+          <NativeSponsorSpotlight placement="home_spotlight" />
         </div>
       </section>
 
