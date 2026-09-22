@@ -45,6 +45,9 @@ export async function seedPlatform(): Promise<void> {
     bio: "Lagos live music, concerts, and cultural gala curators. Connecting artists, fans, and culture across Nigeria.",
     logoUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=96&h=96&auto=format&fit=crop",
     coverUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1600&auto=format&fit=crop",
+    videoLoopUrl: "https://assets.mixkit.co/videos/preview/mixkit-crowd-at-a-concert-jumping-and-recording-with-their-phones-41484-large.mp4",
+    spotifyPlaylistUrl: "https://open.spotify.com/playlist/37i9dQZF1DXaNKqZRgC6dw",
+    tourCities: ["Lagos", "Abuja", "London"],
     socials: {
       instagram: "https://instagram.com/tundelive",
       twitter: "https://x.com/tundelive",
@@ -69,6 +72,9 @@ export async function seedPlatform(): Promise<void> {
     organizer.bio = "Lagos live music, concerts, and cultural gala curators. Connecting artists, fans, and culture across Nigeria.";
     organizer.logoUrl = "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=96&h=96&auto=format&fit=crop";
     organizer.coverUrl = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1600&auto=format&fit=crop";
+    organizer.videoLoopUrl = "https://assets.mixkit.co/videos/preview/mixkit-crowd-at-a-concert-jumping-and-recording-with-their-phones-41484-large.mp4";
+    organizer.spotifyPlaylistUrl = "https://open.spotify.com/playlist/37i9dQZF1DXaNKqZRgC6dw";
+    organizer.tourCities = ["Lagos", "Abuja", "London"];
     organizer.socials = {
       instagram: "https://instagram.com/tundelive",
       twitter: "https://x.com/tundelive",
@@ -86,6 +92,58 @@ export async function seedPlatform(): Promise<void> {
     };
     organizer.followersCount = 1420;
     await organizer.save();
+  }
+
+  // ── Official Black Heritage Platform Organizer ("Black Heritage Originals") ──
+  const blackHeritageOrg = await ensureUser("blackheritage", "originals@blackheritage.africa", "organizer", {
+    organizerSlug: "blackheritage",
+    displayName: "Black Heritage Originals",
+    bio: "The official cultural production arm of Black Heritage. Hosting Nigeria's premier cultural galas, creative honors, and curated festival stages across Lagos, Abuja, and nationwide.",
+    logoUrl: "https://blackhevents.com/favicon.png",
+    coverUrl: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1600&auto=format&fit=crop",
+    videoLoopUrl: "https://assets.mixkit.co/videos/preview/mixkit-crowd-at-a-concert-jumping-and-recording-with-their-phones-41484-large.mp4",
+    spotifyPlaylistUrl: "https://open.spotify.com/playlist/37i9dQZF1DXaNKqZRgC6dw",
+    tourCities: ["Lagos", "Abuja", "Port Harcourt", "London"],
+    socials: {
+      instagram: "https://instagram.com/blackheritage.events",
+      twitter: "https://x.com/blackheritage",
+      whatsapp: "2348000000000",
+      website: "https://blackhevents.com",
+    },
+    theme: "midnight-gold",
+    accentHex: "#E3B23C",
+    announcement: {
+      message: "Official Patron Tables and Banquet Dining Passes are now open for the Black Heritage Grand Gala & Awards at Eko Hotel.",
+      linkUrl: "/e/black-heritage-grand-gala-awards",
+      active: true,
+    },
+    followersCount: 4850,
+  });
+
+  if (!blackHeritageOrg.organizerSlug || blackHeritageOrg.organizerSlug !== "blackheritage") {
+    blackHeritageOrg.organizerSlug = "blackheritage";
+    blackHeritageOrg.displayName = "Black Heritage Originals";
+    blackHeritageOrg.bio = "The official cultural production arm of Black Heritage. Hosting Nigeria's premier cultural galas, creative honors, and curated festival stages across Lagos, Abuja, and nationwide.";
+    blackHeritageOrg.logoUrl = "https://blackhevents.com/favicon.png";
+    blackHeritageOrg.coverUrl = "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1600&auto=format&fit=crop";
+    blackHeritageOrg.videoLoopUrl = "https://assets.mixkit.co/videos/preview/mixkit-crowd-at-a-concert-jumping-and-recording-with-their-phones-41484-large.mp4";
+    blackHeritageOrg.spotifyPlaylistUrl = "https://open.spotify.com/playlist/37i9dQZF1DXaNKqZRgC6dw";
+    blackHeritageOrg.tourCities = ["Lagos", "Abuja", "Port Harcourt", "London"];
+    blackHeritageOrg.socials = {
+      instagram: "https://instagram.com/blackheritage.events",
+      twitter: "https://x.com/blackheritage",
+      whatsapp: "2348000000000",
+      website: "https://blackhevents.com",
+    };
+    blackHeritageOrg.theme = "midnight-gold";
+    blackHeritageOrg.accentHex = "#E3B23C";
+    blackHeritageOrg.announcement = {
+      message: "Official Patron Tables and Banquet Dining Passes are now open for the Black Heritage Grand Gala & Awards at Eko Hotel.",
+      linkUrl: "/e/black-heritage-grand-gala-awards",
+      active: true,
+    };
+    blackHeritageOrg.followersCount = 4850;
+    await blackHeritageOrg.save();
   }
 
   const attendee = await ensureUser("ayo_attendee", "ayo@example.com", "user");
@@ -211,7 +269,14 @@ export async function seedPlatform(): Promise<void> {
       ],
       isFeatured: true,
       theme: "midnight-gold" as const,
-      branding: null,
+      organizerId: blackHeritageOrg._id.toString(),
+      organizerName: "Black Heritage Originals",
+      branding: {
+        displayName: "Black Heritage Originals",
+        logoUrl: "https://blackhevents.com/favicon.png",
+        accentHex: "#E3B23C",
+        slug: "blackheritage",
+      },
     },
   ];
 
@@ -219,12 +284,15 @@ export async function seedPlatform(): Promise<void> {
     const existing = await EventModel.findOne({
       $or: [{ title: item.title }, { slug: item.slug }],
     });
+    const targetOrgId = (item as any).organizerId || organizerId;
+    const targetOrgName = (item as any).organizerName || "Tunde Live Concepts";
+
     if (!existing) {
       await EventModel.create({
         title: item.title,
         slug: item.slug,
-        organizerId,
-        organizerName: "Tunde Live Concepts",
+        organizerId: targetOrgId,
+        organizerName: targetOrgName,
         description: item.description,
         date: inDays(item.daysAhead),
         location: item.location,
@@ -246,11 +314,19 @@ export async function seedPlatform(): Promise<void> {
       });
       console.log(`Seed: canonical event created: "${item.title}"`);
     } else {
+      let touched = false;
+      if (item.branding && (!existing.branding || (existing.branding as any).slug !== (item.branding as any).slug)) {
+        existing.branding = item.branding;
+        existing.organizerId = targetOrgId;
+        existing.organizerName = targetOrgName;
+        touched = true;
+      }
       if (new Date(existing.date).getTime() < Date.now()) {
         existing.date = inDays(item.daysAhead);
         existing.date.setUTCHours(19, 0, 0, 0);
-        await existing.save();
+        touched = true;
       }
+      if (touched) await existing.save();
     }
   }
 

@@ -56,3 +56,4 @@ scratch/
 .claude/skills
 .freebuff/
 deploy.sh
+DEPLOY-ORACLE.md

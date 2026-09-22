@@ -476,6 +476,9 @@ export async function registerRoutes(
           customDomainStatus: (organizer as any).customDomainStatus || null,
           announcement: (organizer as any).announcement || null,
           followersCount: (organizer as any).followersCount || 0,
+          videoLoopUrl: (organizer as any).videoLoopUrl || null,
+          spotifyPlaylistUrl: (organizer as any).spotifyPlaylistUrl || null,
+          tourCities: (organizer as any).tourCities || [],
           isFollowing,
         },
         upcomingEvents: upcomingEvents.map((e) => ({
@@ -653,6 +656,9 @@ export async function registerRoutes(
         accentHex,
         customDomain,
         announcement,
+        videoLoopUrl,
+        spotifyPlaylistUrl,
+        tourCities,
       } = req.body;
 
       let cleanSlug = typeof slug === "string" ? slug.toLowerCase().trim() : undefined;
@@ -697,6 +703,9 @@ export async function registerRoutes(
       if (announcement !== undefined) {
         updateData.announcement = announcement;
       }
+      if (videoLoopUrl !== undefined) updateData.videoLoopUrl = videoLoopUrl;
+      if (spotifyPlaylistUrl !== undefined) updateData.spotifyPlaylistUrl = spotifyPlaylistUrl;
+      if (tourCities !== undefined) updateData.tourCities = Array.isArray(tourCities) ? tourCities : [];
 
       const updated = await User.findByIdAndUpdate(
         orgId,
@@ -718,6 +727,9 @@ export async function registerRoutes(
         customDomain: (updated as any).customDomain,
         customDomainStatus: (updated as any).customDomainStatus,
         announcement: (updated as any).announcement,
+        videoLoopUrl: (updated as any).videoLoopUrl || null,
+        spotifyPlaylistUrl: (updated as any).spotifyPlaylistUrl || null,
+        tourCities: (updated as any).tourCities || [],
         followersCount: (updated as any).followersCount || 0,
       });
     } catch (err: any) {
@@ -2388,6 +2400,70 @@ export async function registerRoutes(
       active: active !== false,
     });
     res.status(201).json({ id: String(sponsor._id) });
+  });
+
+  // ── Dynamic Sitemap XML ──
+  app.get(["/sitemap.xml", "/api/sitemap.xml"], async (_req, res) => {
+    try {
+      const baseUrl = process.env.PUBLIC_APP_URL || "https://blackhevents.com";
+      const { EventModel, VendorModel } = await import("./models");
+
+      const [events, vendors, organizers] = await Promise.all([
+        EventModel.find({}).select("slug date updatedAt createdAt").lean(),
+        VendorModel.find({ status: "published" }).select("slug updatedAt createdAt").lean(),
+        User.find({ organizerSlug: { $exists: true, $ne: null } }).select("organizerSlug createdAt").lean(),
+      ]);
+
+      let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+      xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+
+      const addUrl = (loc: string, priority: string, changefreq: string, lastmod?: Date | string) => {
+        xml += "  <url>\n";
+        xml += `    <loc>${baseUrl}${loc}</loc>\n`;
+        if (lastmod) {
+          try {
+            xml += `    <lastmod>${new Date(lastmod).toISOString().split("T")[0]}</lastmod>\n`;
+          } catch {}
+        }
+        xml += `    <changefreq>${changefreq}</changefreq>\n`;
+        xml += `    <priority>${priority}</priority>\n`;
+        xml += "  </url>\n";
+      };
+
+      // Core Static Routes
+      addUrl("/", "1.0", "daily");
+      addUrl("/events", "0.95", "daily");
+      addUrl("/explore", "0.9", "daily");
+      addUrl("/vendors", "0.9", "daily");
+      addUrl("/auth", "0.3", "monthly");
+
+      // Dynamic Events
+      for (const ev of events as any[]) {
+        const path = ev.slug ? `/e/${ev.slug}` : `/events/${ev._id}`;
+        addUrl(path, "0.8", "daily", ev.updatedAt || ev.createdAt || ev.date);
+      }
+
+      // Dynamic Vendors
+      for (const v of vendors as any[]) {
+        const path = v.slug ? `/v/${v.slug}` : `/vendors/${v._id}`;
+        addUrl(path, "0.7", "weekly", v.updatedAt || v.createdAt);
+      }
+
+      // Dynamic Organizers
+      for (const o of organizers as any[]) {
+        if (o.organizerSlug) {
+          addUrl(`/o/${o.organizerSlug}`, "0.85", "weekly", o.createdAt);
+        }
+      }
+
+      xml += "</urlset>";
+
+      res.header("Content-Type", "application/xml");
+      res.send(xml);
+    } catch (err) {
+      console.error("Sitemap generation error:", err);
+      res.status(500).send("Error generating sitemap");
+    }
   });
 
   return httpServer;

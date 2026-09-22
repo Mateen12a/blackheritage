@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getPreset, accentOverrides } from "@shared/themes";
 import type { CSSProperties } from "react";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { ShareFlyerModal } from "@/components/ShareFlyerModal";
 import {
   Calendar,
@@ -33,6 +34,7 @@ import {
   CalendarDays,
   Bell,
   BellRing,
+  Radio,
   Image as ImageIcon,
 } from "lucide-react";
 
@@ -60,12 +62,23 @@ export default function OrganizerDetails() {
   const [isFollowModalOpen, setIsFollowModalOpen] = useState(false);
   const [followEmail, setFollowEmail] = useState("");
   const [isStoryFlyerOpen, setIsStoryFlyerOpen] = useState(false);
+  const [selectedCity, setSelectedCity] = useState<string>("all");
 
   const organizer = data?.organizer;
   const upcomingEvents = data?.upcomingEvents || [];
   const pastEvents = data?.pastEvents || [];
   const archivePhotos = data?.archiveMedia?.photos || [];
   const archiveVideos = data?.archiveMedia?.videos || [];
+
+  const filteredUpcomingEvents = useMemo(() => {
+    if (selectedCity === "all") return upcomingEvents;
+    const query = selectedCity.toLowerCase();
+    return upcomingEvents.filter(
+      (ev) =>
+        (ev.location && ev.location.toLowerCase().includes(query)) ||
+        (ev.title && ev.title.toLowerCase().includes(query))
+    );
+  }, [upcomingEvents, selectedCity]);
 
   const shareUrl = useMemo(() => {
     return `${window.location.origin}/o/${slug}`;
@@ -192,7 +205,17 @@ export default function OrganizerDetails() {
 
       {/* Cover Banner Hero */}
       <div className="relative h-64 sm:h-80 md:h-96 w-full overflow-hidden bg-surface-2 border-b border-hairline">
-        {organizer.coverUrl ? (
+        {organizer.videoLoopUrl ? (
+          <video
+            src={organizer.videoLoopUrl}
+            autoPlay
+            loop
+            muted
+            playsInline
+            poster={organizer.coverUrl || undefined}
+            className="w-full h-full object-cover"
+          />
+        ) : organizer.coverUrl ? (
           <img
             src={organizer.coverUrl}
             alt={organizer.displayName}
@@ -205,7 +228,15 @@ export default function OrganizerDetails() {
             </div>
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent" />
+
+        {/* Live Stage radar pill */}
+        {organizer.videoLoopUrl && (
+          <div className="absolute top-6 right-6 z-10 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface/80 backdrop-blur-md border border-gold/30 text-xs text-gold">
+            <span className="w-2 h-2 rounded-full bg-gold animate-ping" />
+            <span className="font-mono text-[11px] uppercase tracking-wider font-semibold">Live Stage Motion</span>
+          </div>
+        )}
 
         {/* Back Link */}
         <div className="absolute top-6 left-6 z-10">
@@ -395,26 +426,78 @@ export default function OrganizerDetails() {
                 Official Website
               </a>
             )}
+
+            {organizer.spotifyPlaylistUrl && (
+              <a
+                href={organizer.spotifyPlaylistUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gold/10 border border-gold/30 text-gold hover:bg-gold/20 transition-colors font-medium"
+              >
+                <Radio className="w-3.5 h-3.5 text-gold animate-pulse" />
+                Sounds of the Event (Spotify)
+                <ExternalLink className="w-3 h-3 text-gold/70" />
+              </a>
+            )}
           </div>
         </div>
 
         {/* Section: Upcoming & Active Events */}
         <section className="mt-14">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-              <p className="eyebrow">On Sale Now</p>
+              <div className="flex items-center gap-2.5">
+                <p className="eyebrow">On Sale Now</p>
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Live Box Office
+                </span>
+              </div>
               <h2 className="font-display text-2xl font-bold text-ink mt-1">
                 Upcoming Shows & Experiences
               </h2>
             </div>
-            <span className="text-xs text-muted-ink font-mono">
-              {upcomingEvents.length} active
+            <span className="text-xs text-muted-ink font-mono self-start sm:self-auto">
+              {filteredUpcomingEvents.length} active
             </span>
           </div>
 
-          {upcomingEvents.length > 0 ? (
+          {/* Tour Cities Filter Chips */}
+          {organizer.tourCities && organizer.tourCities.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 mb-6">
+              <button
+                type="button"
+                onClick={() => setSelectedCity("all")}
+                className={cn(
+                  "press text-xs px-3.5 py-1.5 rounded-full border transition-colors shrink-0",
+                  selectedCity === "all"
+                    ? "border-gold bg-gold/15 text-gold font-semibold"
+                    : "border-hairline bg-surface-2 text-muted-ink hover:text-ink"
+                )}
+              >
+                All Tour Stops
+              </button>
+              {organizer.tourCities.map((city) => (
+                <button
+                  key={city}
+                  type="button"
+                  onClick={() => setSelectedCity(city.toLowerCase())}
+                  className={cn(
+                    "press text-xs px-3.5 py-1.5 rounded-full border transition-colors shrink-0",
+                    selectedCity === city.toLowerCase()
+                      ? "border-gold bg-gold/15 text-gold font-semibold"
+                      : "border-hairline bg-surface-2 text-muted-ink hover:text-ink"
+                  )}
+                >
+                  {city}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {filteredUpcomingEvents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {upcomingEvents.map((ev) => {
+              {filteredUpcomingEvents.map((ev) => {
                 const eventLink = ev.slug ? `/e/${ev.slug}` : `/events/${ev.id}`;
                 const eventDate = new Date(ev.date);
                 const priceFormatted = ev.price ? `₦${(ev.price / 100).toLocaleString()}` : "Free";

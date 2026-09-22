@@ -229,6 +229,9 @@ export interface PublicOrganizerResponse {
     customDomainStatus?: string | null;
     announcement?: OrganizerAnnouncement | null;
     followersCount?: number;
+    videoLoopUrl?: string | null;
+    spotifyPlaylistUrl?: string | null;
+    tourCities?: string[];
     isFollowing?: boolean;
   };
   upcomingEvents: any[];
@@ -263,6 +266,9 @@ export interface OrganizerProfileData {
   customDomain?: string;
   customDomainStatus?: string | null;
   announcement?: OrganizerAnnouncement;
+  videoLoopUrl?: string | null;
+  spotifyPlaylistUrl?: string | null;
+  tourCities?: string[];
   followersCount?: number;
 }
 

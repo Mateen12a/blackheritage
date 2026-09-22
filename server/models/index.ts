@@ -28,6 +28,9 @@ export interface IUser extends Document {
   theme?: 'midnight-gold' | 'ivory-editorial' | 'sunset-poster' | null;
   accentHex?: string | null;
   avatarUrl?: string | null;
+  videoLoopUrl?: string | null;
+  spotifyPlaylistUrl?: string | null;
+  tourCities?: string[] | null;
   createdAt: Date;
 }
 
@@ -69,6 +72,9 @@ const UserSchema: Schema = new Schema({
   },
   theme: { type: String, enum: ['midnight-gold', 'ivory-editorial', 'sunset-poster', null], default: null },
   accentHex: { type: String, default: null },
+  videoLoopUrl: { type: String, default: null },
+  spotifyPlaylistUrl: { type: String, default: null },
+  tourCities: { type: [String], default: [] },
   createdAt: { type: Date, default: Date.now }
 }, {
   id: false // Disable the id virtual to avoid unique index conflict with null

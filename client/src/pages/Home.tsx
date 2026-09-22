@@ -251,7 +251,7 @@ export default function Home() {
         <div className="container relative z-10 pt-12 md:pt-16 pb-14 md:pb-20">
           <Reveal y={16} duration={0.55}>
             <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-gold text-center">
-              Lagos · Parties · Concerts · Culture
+              Nigeria · Concerts · Festivals · Culture
             </p>
           </Reveal>
 
@@ -259,9 +259,9 @@ export default function Home() {
 
           <Reveal y={16} delay={0.4} duration={0.6}>
             <p className="mt-6 mx-auto max-w-2xl text-center text-lg text-ink/80 leading-relaxed">
-              Concert tickets in seconds, and the DJs, caterers, and decorators
-              who make the night. One home for going out and for throwing the
-              party.
+              Concert tickets across Lagos, Abuja, and nationwide, plus the verified
+              DJs, caterers, and stage sound tech who make the night. One home for
+              going out and throwing the party.
             </p>
           </Reveal>
 
@@ -304,11 +304,11 @@ export default function Home() {
                 <dd className="eyebrow mt-2.5">shows on sale</dd>
               </div>
               <div className="px-5 sm:px-8 md:px-10 text-center border-l border-hairline">
-                <dt className="sr-only">Vendors across Lagos</dt>
+                <dt className="sr-only">Vendors across Nigeria</dt>
                 <dd className="font-display text-3xl sm:text-4xl font-bold text-gold leading-none tabular-nums">
                   {vendors?.length ?? 0}
                 </dd>
-                <dd className="eyebrow mt-2.5">vendors across Lagos</dd>
+                <dd className="eyebrow mt-2.5">vendors across Nigeria</dd>
               </div>
               <div className="px-5 sm:px-8 md:px-10 text-center border-l border-hairline">
                 <dt className="sr-only">Checkout security</dt>
@@ -347,7 +347,7 @@ export default function Home() {
               <div>
                 <p className="eyebrow">On sale now</p>
                 <h2 className="mt-3 font-display text-3xl md:text-4xl font-bold text-ink tracking-tight">
-                  This Week in Lagos
+                  Shows Across Nigeria
                 </h2>
                 <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
                 <p className="mt-4 text-sm text-muted-ink">

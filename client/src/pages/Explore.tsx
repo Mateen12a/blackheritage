@@ -21,8 +21,15 @@ import { NativeSponsorSpotlight } from "@/components/NativeSponsorSpotlight";
 
 type Category = { key: string; label: string };
 
+const CITIES = [
+  { key: "all", label: "All Nigeria" },
+  { key: "lagos", label: "Lagos" },
+  { key: "abuja", label: "Abuja" },
+  { key: "ph", label: "Port Harcourt" },
+];
+
 const CATEGORIES: Category[] = [
-  { key: "all", label: "All" },
+  { key: "all", label: "All Events" },
   { key: "week", label: "This week" },
   { key: "free", label: "Free" },
   { key: "under10k", label: "Under ₦10k" },
@@ -51,12 +58,21 @@ export default function Explore() {
   const { data: events, isLoading, isError, refetch } = useEvents();
   const { data: vendors, isLoading: vendorsLoading } = useVendors();
   const [search, setSearch] = useState("");
+  const [city, setCity] = useState("all");
   const [category, setCategory] = useState("all");
 
   const filtered = useMemo(() => {
     if (!events) return [];
     const term = search.trim().toLowerCase();
     return events
+      .filter((e) => {
+        if (city === "all") return true;
+        const loc = (e.location || "").toLowerCase();
+        if (city === "lagos") return loc.includes("lagos") || loc.includes("island") || loc.includes("lekki") || loc.includes("ikeja");
+        if (city === "abuja") return loc.includes("abuja") || loc.includes("fct");
+        if (city === "ph") return loc.includes("port harcourt") || loc.includes("rivers");
+        return true;
+      })
       .filter((e) => matchesCategory(e, category))
       .filter(
         (e) =>
@@ -66,7 +82,7 @@ export default function Explore() {
           e.location.toLowerCase().includes(term)
       )
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [events, search, category]);
+  }, [events, search, city, category]);
 
   const featured = useMemo(
     () => events?.filter((e) => e.isFeatured).slice(0, 2) ?? [],
@@ -97,7 +113,7 @@ export default function Explore() {
 
   return (
     <div>
-      {/* Large title + search — sticky search collapses under the title on scroll */}
+      {/* Large title + search: sticky search collapses under the title on scroll */}
       <div className="pt-2">
         <p className="eyebrow">Welcome back, {user?.username}</p>
         <h1 className="mt-2 font-display text-4xl font-bold text-ink tracking-tight">
@@ -110,7 +126,7 @@ export default function Explore() {
             aria-hidden="true"
           />
           <Input
-            placeholder="Search events or venues"
+            placeholder="Search events or venues across Nigeria"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             aria-label="Search events"
@@ -120,11 +136,38 @@ export default function Explore() {
         </div>
       </div>
 
-      {/* Category chips — horizontally scrollable, gold when active */}
+      {/* City selector chips: horizontally scrollable */}
+      <div
+        role="group"
+        aria-label="Filter events by city"
+        className="-mx-4 px-4 md:mx-0 md:px-0 mt-4 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {CITIES.map((c) => {
+          const active = city === c.key;
+          return (
+            <button
+              key={c.key}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setCity(c.key)}
+              className={
+                "shrink-0 h-8 px-3.5 rounded-full border text-xs font-semibold transition-colors duration-200 " +
+                (active
+                  ? "bg-gold/15 text-gold border-gold"
+                  : "bg-surface-2 text-muted-ink border-hairline hover:border-gold/40 hover:text-ink")
+              }
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Category chips: horizontally scrollable, gold when active */}
       <div
         role="group"
         aria-label="Filter events"
-        className="-mx-4 px-4 md:mx-0 md:px-0 mt-4 pb-1 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-4 px-4 md:mx-0 md:px-0 mt-2.5 pb-1 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {CATEGORIES.map((c) => {
           const active = category === c.key;

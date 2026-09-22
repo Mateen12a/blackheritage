@@ -45,7 +45,12 @@
           "@id": "https://blackhevents.com/#site",
           "url": "https://blackhevents.com/",
           "name": "Black Heritage Events",
-          "publisher": { "@id": "https://blackhevents.com/#org" }
+          "publisher": { "@id": "https://blackhevents.com/#org" },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://blackhevents.com/explore?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
         }
       ]
     }
