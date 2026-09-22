@@ -24,6 +24,18 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: text("role").notNull().default("user"), // user, organizer, admin
   isAdmin: boolean("is_admin").default(false), // Legacy, keep for compatibility
+  organizerSlug: text("organizer_slug").unique(), // /o/:organizerSlug
+  displayName: text("display_name"),
+  bio: text("bio"),
+  logoUrl: text("logo_url"),
+  coverUrl: text("cover_url"),
+  socials: jsonb("socials"), // { instagram, twitter, whatsapp, website }
+  theme: text("theme"),
+  accentHex: text("accent_hex"),
+  customDomain: text("custom_domain").unique(),
+  customDomainStatus: text("custom_domain_status"),
+  announcement: jsonb("announcement"), // { message, linkUrl, active }
+  followersCount: varchar("followers_count").default("0"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

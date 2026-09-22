@@ -23,6 +23,10 @@ import Messages from "@/pages/Messages";
 import Verify from "@/pages/Verify";
 import ManageEvent from "@/pages/ManageEvent";
 import NewEvent from "@/pages/NewEvent";
+import OrganizerDetails from "@/pages/OrganizerDetails";
+import Settings from "@/pages/Settings";
+import Terms from "@/pages/Terms";
+import Privacy from "@/pages/Privacy";
 import { PublicLayout } from "@/components/PublicLayout";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { MotionProvider } from "@/components/motion";
@@ -207,6 +211,20 @@ function Router() {
           </PublicLayout>
         )}
       </Route>
+      <Route path="/organizers/:slug">
+        {() => (
+          <PublicLayout noNavbar>
+            <OrganizerDetails />
+          </PublicLayout>
+        )}
+      </Route>
+      <Route path="/o/:slug">
+        {() => (
+          <PublicLayout noNavbar>
+            <OrganizerDetails />
+          </PublicLayout>
+        )}
+      </Route>
 
       {/* Auth Page */}
       <Route path="/auth">
@@ -245,6 +263,19 @@ function Router() {
       </Route>
       <Route path="/my-tickets">
         {() => <ProtectedRoute component={MyTickets} />}
+      </Route>
+
+      {/* Account Settings */}
+      <Route path="/settings">
+        {() => <ProtectedRoute component={Settings} />}
+      </Route>
+
+      {/* Legal */}
+      <Route path="/terms">
+        {() => <Terms />}
+      </Route>
+      <Route path="/privacy">
+        {() => <Privacy />}
       </Route>
 
       {/* Vendor Dashboard */}

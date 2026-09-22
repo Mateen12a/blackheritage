@@ -1,5 +1,6 @@
 import { useVendor, useVendors } from "@/hooks/use-vendors";
 import { useVendorTrust } from "@/hooks/use-vendor-trust";
+import { useVendorRatings, useReviewVendor } from "@/hooks/use-vendor-ratings";
 import { useAuth } from "@/hooks/use-auth";
 import { CategoryIcon, vendorDisplayCategory } from "@/components/vendor-categories";
 import { Reveal, FadeImg } from "@/components/motion";
@@ -22,6 +23,7 @@ import {
   Youtube,
   Music2,
   Video,
+  Star,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -61,7 +63,10 @@ export default function VendorDetails() {
 
   // Trust signals load while the page is still resolving; the hook stays
   // above the early returns so hook order never changes between renders.
-  const trust = useVendorTrust(vendor ? String(vendor.id) : undefined);
+  const vendorIdString = vendor ? String(vendor.id) : undefined;
+  const trust = useVendorTrust(vendorIdString);
+  const ratings = useVendorRatings(vendorIdString);
+  const reviewVendor = useReviewVendor(vendorIdString);
 
   if (isLoading) {
     return (
@@ -216,6 +221,14 @@ export default function VendorDetails() {
                   )}
                 </div>
               )}
+
+              {/* Ratings row: average and count, or the first-review invitation */}
+              <RatingRow
+                vendorId={vendorIdString}
+                isOwnProfile={isOwnProfile}
+                onSubmit={(stars, comment) => reviewVendor.mutate({ stars, comment })}
+                isSubmitting={reviewVendor.isPending}
+              />
 
               {/* Social proof row */}
               {socialEntries.length > 0 && (
@@ -539,6 +552,142 @@ export default function VendorDetails() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ── Ratings row ──────────────────────────────────────────────────────────────
+// Average + stars when reviews exist; a sign-in-to-review invitation when they
+// do not. The form is one row of stars and an optional line of text.
+function RatingRow({
+  vendorId,
+  isOwnProfile,
+  onSubmit,
+  isSubmitting,
+}: {
+  vendorId: string | undefined;
+  isOwnProfile: boolean;
+  onSubmit: (stars: number, comment?: string) => void;
+  isSubmitting: boolean;
+}) {
+  const { data: ratings } = useVendorRatings(vendorId);
+  const { user } = useAuth();
+  const [formOpen, setFormOpen] = useState(false);
+  const [stars, setStars] = useState(0);
+  const [hover, setHover] = useState(0);
+  const [comment, setComment] = useState("");
+
+  const hasRatings = !!ratings && ratings.count > 0;
+
+  return (
+    <div className="mt-6">
+      <div className="flex flex-wrap items-center gap-3">
+        {hasRatings && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="flex" aria-hidden="true">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <Star
+                  key={n}
+                  className={
+                    "w-4 h-4 " +
+                    (n <= Math.round(ratings!.average || 0)
+                      ? "fill-gold text-gold"
+                      : "text-hairline")
+                  }
+                />
+              ))}
+            </span>
+            <span className="text-sm font-medium text-ink">{ratings!.average}</span>
+            <span className="text-sm text-muted-ink">
+              ({ratings!.count} {ratings!.count === 1 ? "review" : "reviews"})
+            </span>
+          </span>
+        )}
+        {!isOwnProfile && (
+          <button
+            type="button"
+            onClick={() => (user ? setFormOpen((v) => !v) : (window.location.href = "/auth"))}
+            className="text-sm text-muted-ink underline-offset-4 hover:text-gold hover:underline"
+          >
+            {hasRatings ? "Write a review" : "Be the first to review"}
+          </button>
+        )}
+      </div>
+
+      {formOpen && user && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (stars < 1) return;
+            onSubmit(stars, comment || undefined);
+            setFormOpen(false);
+            setStars(0);
+            setComment("");
+          }}
+          className="mt-4 max-w-md rounded-md border border-hairline bg-surface p-4"
+        >
+          <div className="flex items-center gap-1" onMouseLeave={() => setHover(0)}>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                type="button"
+                aria-label={n + " star" + (n > 1 ? "s" : "")}
+                onMouseEnter={() => setHover(n)}
+                onClick={() => setStars(n)}
+                className="p-0.5"
+              >
+                <Star
+                  className={
+                    "w-6 h-6 transition-colors " +
+                    (n <= (hover || stars) ? "fill-gold text-gold" : "text-hairline")
+                  }
+                />
+              </button>
+            ))}
+          </div>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={2}
+            maxLength={500}
+            placeholder="How was working with them? Optional."
+            className="mt-3 w-full rounded-md border border-hairline bg-background px-3 py-2 text-sm text-ink placeholder:text-muted-ink/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/40"
+          />
+          <div className="mt-3 flex items-center gap-2">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={stars < 1 || isSubmitting}
+              className="bg-primary text-primary-foreground hover:bg-gold-soft"
+            >
+              {isSubmitting && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+              Post review
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setFormOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {hasRatings && ratings!.recent.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {ratings!.recent.slice(0, 3).map((r) => (
+            <div key={r.id} className="text-sm">
+              <span className="font-medium text-ink">{r.name}</span>
+              <span className="ml-2 inline-flex" aria-hidden="true">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star
+                    key={n}
+                    className={"w-3 h-3 " + (n <= r.stars ? "fill-gold text-gold" : "text-hairline")}
+                  />
+                ))}
+              </span>
+              {r.comment && <span className="ml-2 text-muted-ink">{r.comment}</span>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

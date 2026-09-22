@@ -5,19 +5,19 @@ import { insertEventSchema, type InsertEvent } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { FlyerExtractPanel } from "@/components/FlyerExtractPanel";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarIcon, Loader2, Image as ImageIcon, X, Plus, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { CalendarIcon, Loader2, Image as ImageIcon, X, Plus, Trash2, Video, Upload, Check } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { themePresets, accentOverrides } from "@shared/themes";
 import { ThemePresetCard } from "@/components/ThemePicker";
-import { Check } from "lucide-react";
 
 interface EventFormProps {
   initialData?: Partial<InsertEvent>;
@@ -59,6 +59,10 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
     initialData?.ticketTypes ? JSON.parse(initialData.ticketTypes) : []
   );
 
+  // The flyer-extraction panel lives outside the form element but fills the
+  // same tier editor, so the setter is shared through the form context.
+  (form as any)._ticketTypesSetter = setTicketTypes;
+
   const addTicketType = () => {
     setTicketTypes([...ticketTypes, { name: "", price: 0, capacity: 0, sold: 0 }]);
   };
@@ -73,11 +77,33 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
     setTicketTypes(newTypes);
   };
 
+  const [gallery, setGallery] = useState<string[]>(() => {
+    try {
+      return initialData?.gallery ? JSON.parse(initialData.gallery) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [pastEventVideos, setPastEventVideos] = useState<string[]>(() => {
+    try {
+      return initialData?.pastEventVideos ? JSON.parse(initialData.pastEventVideos) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [galleryUrlDraft, setGalleryUrlDraft] = useState("");
+  const [videoUrlDraft, setVideoUrlDraft] = useState("");
+  const [isUploadingGallery, setIsUploadingGallery] = useState(false);
+
   const handleFormSubmit = (data: InsertEvent) => {
     onSubmit({
       ...data,
       ticketTypes: JSON.stringify(ticketTypes),
       checkoutFields,
+      gallery: JSON.stringify(gallery),
+      pastEventVideos: JSON.stringify(pastEventVideos),
     });
   };
 
@@ -111,6 +137,7 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
+        <FlyerExtractPanel />
         <FormField
           control={form.control}
           name="title"
@@ -533,6 +560,196 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
               <p className="text-xs text-muted-foreground">
                 Square images look best. It appears in the event page header, the ticket PDF, and emails.
               </p>
+            )}
+          </div>
+        </div>
+
+        {/* Past Event Media (Optional) */}
+        <div className="space-y-4 rounded-xl border border-hairline bg-surface p-6">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-gold" />
+              Past Event Media (Optional)
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Add photos and video recap links from earlier editions to show what the experience looks like.
+            </p>
+          </div>
+
+          {/* Photo gallery */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium text-white">Photos</Label>
+              <span className="text-xs text-muted-foreground font-mono">{gallery.length} / 12</span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="file"
+                id="event-form-photo-upload"
+                multiple
+                accept="image/*"
+                onChange={async (e) => {
+                  const files = e.target.files;
+                  if (!files || files.length === 0) return;
+                  if (gallery.length + files.length > 12) return;
+                  setIsUploadingGallery(true);
+                  try {
+                    const urls: string[] = [];
+                    for (const file of Array.from(files)) {
+                      if (!file.type.startsWith("image/")) continue;
+                      const fd = new FormData();
+                      fd.append("file", file);
+                      const res = await fetch("/api/uploads/portfolio", {
+                        method: "POST",
+                        credentials: "include",
+                        body: fd,
+                      });
+                      if (res.ok) {
+                        const data = await res.json();
+                        if (data.url) urls.push(data.url);
+                      }
+                    }
+                    if (urls.length > 0) {
+                      setGallery((prev) => [...prev, ...urls].slice(0, 12));
+                    }
+                  } finally {
+                    setIsUploadingGallery(false);
+                    e.target.value = "";
+                  }
+                }}
+                className="hidden"
+                disabled={isUploadingGallery || gallery.length >= 12}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById("event-form-photo-upload")?.click()}
+                disabled={isUploadingGallery || gallery.length >= 12}
+                className="press h-10 border-hairline text-ink hover:text-gold text-xs shrink-0"
+              >
+                {isUploadingGallery ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <Upload className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                Upload photos
+              </Button>
+
+              <div className="flex gap-2 flex-1">
+                <Input
+                  value={galleryUrlDraft}
+                  onChange={(e) => setGalleryUrlDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (galleryUrlDraft.trim() && gallery.length < 12) {
+                        setGallery([...gallery, galleryUrlDraft.trim()]);
+                        setGalleryUrlDraft("");
+                      }
+                    }
+                  }}
+                  placeholder="Or paste an image URL..."
+                  className="h-10 text-xs bg-surface-2 border-hairline text-ink"
+                  disabled={gallery.length >= 12}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    if (galleryUrlDraft.trim() && gallery.length < 12) {
+                      setGallery([...gallery, galleryUrlDraft.trim()]);
+                      setGalleryUrlDraft("");
+                    }
+                  }}
+                  disabled={!galleryUrlDraft.trim() || gallery.length >= 12}
+                  className="press h-10 px-3 text-xs border-hairline text-ink hover:text-gold shrink-0"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  Add
+                </Button>
+              </div>
+            </div>
+
+            {gallery.length > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 pt-2">
+                {gallery.map((url, i) => (
+                  <div key={i} className="group relative aspect-square rounded-md overflow-hidden border border-hairline bg-surface-2">
+                    <img src={url} alt={`Gallery ${i + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setGallery(gallery.filter((_, idx) => idx !== i))}
+                      aria-label="Remove photo"
+                      className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Recap videos */}
+          <div className="space-y-3 pt-3 border-t border-hairline">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium text-white flex items-center gap-1.5">
+                <Video className="w-3.5 h-3.5 text-gold" />
+                Recap Video Links
+              </Label>
+              <span className="text-xs text-muted-foreground font-mono">{pastEventVideos.length} / 4</span>
+            </div>
+
+            <div className="flex gap-2">
+              <Input
+                value={videoUrlDraft}
+                onChange={(e) => setVideoUrlDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (videoUrlDraft.trim() && pastEventVideos.length < 4) {
+                      setPastEventVideos([...pastEventVideos, videoUrlDraft.trim()]);
+                      setVideoUrlDraft("");
+                    }
+                  }
+                }}
+                placeholder="https://www.youtube.com/watch?v=..."
+                className="h-10 text-xs bg-surface-2 border-hairline text-ink"
+                disabled={pastEventVideos.length >= 4}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (videoUrlDraft.trim() && pastEventVideos.length < 4) {
+                    setPastEventVideos([...pastEventVideos, videoUrlDraft.trim()]);
+                    setVideoUrlDraft("");
+                  }
+                }}
+                disabled={!videoUrlDraft.trim() || pastEventVideos.length >= 4}
+                className="press h-10 px-3 text-xs border-hairline text-ink hover:text-gold shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Add
+              </Button>
+            </div>
+
+            {pastEventVideos.length > 0 && (
+              <ul className="space-y-2 pt-1">
+                {pastEventVideos.map((url, i) => (
+                  <li key={i} className="flex items-center justify-between gap-2 px-3 py-2 rounded-md border border-hairline bg-surface-2/60 text-xs">
+                    <span className="font-mono text-muted-foreground truncate">{url}</span>
+                    <button
+                      type="button"
+                      onClick={() => setPastEventVideos(pastEventVideos.filter((_, idx) => idx !== i))}
+                      aria-label="Remove video"
+                      className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
         </div>

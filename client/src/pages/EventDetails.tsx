@@ -42,6 +42,11 @@ export default function EventDetails() {
   const [, params] = useRoute("/events/:id");
   const [, slugParams] = useRoute("/e/:slug");
   const id = params?.id || slugParams?.slug;
+  // Deep-link detection: no internal navigation history means the guest
+  // arrived straight from a shared link. The back affordance then points at
+  // the events directory (browsing context), and the page keeps the focus on
+  // the event itself rather than assuming an in-app journey.
+  const cameFromApp = typeof window !== "undefined" && window.history.length > 1 && document.referrer.includes(window.location.host);
   const { data: event, isLoading } = useEvent(id as any);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
@@ -139,7 +144,7 @@ export default function EventDetails() {
           platform default renders elsewhere. Brand links still go home. */}
       <Navbar eventBrand={brand} overMedia />
 
-      {/* Flyer hero — the photo leads, gradients sink it into the page */}
+      {/* Flyer hero: the photo leads, gradients sink it into the page */}
       <div className="relative h-[52vh] w-full overflow-hidden">
         <FadeImg
           src={event.imageUrl}
@@ -151,16 +156,28 @@ export default function EventDetails() {
           className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-background/10"
         />
         <div className="absolute top-4 md:top-28 left-4 right-4 z-20 flex items-center justify-between">
-          <Link href="/events">
+          {cameFromApp ? (
             <Button
               variant="outline"
               size="icon"
-              aria-label="Back to all events"
+              aria-label="Go back"
+              onClick={() => window.history.back()}
               className="press rounded-full bg-background/70 border-hairline text-ink hover:bg-surface hover:text-gold transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
-          </Link>
+          ) : (
+            <Link href="/events">
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Browse all events"
+                className="press rounded-full bg-background/70 border-hairline text-ink hover:bg-surface hover:text-gold transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+            </Link>
+          )}
           <Button
             variant="outline"
             size="icon"
@@ -175,7 +192,7 @@ export default function EventDetails() {
 
       <div className="container mx-auto px-4 -mt-28 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          {/* Main column — editorial, no card box */}
+          {/* Main column: editorial, no card box */}
           <div className="lg:col-span-2">
             <Reveal>
               <p className="eyebrow text-gold">Upcoming event</p>
@@ -188,14 +205,19 @@ export default function EventDetails() {
                 {format(new Date(event.date), "h:mm a")} · {event.location}
               </p>
               {brand?.displayName && (
-                <p className="mt-3 text-sm text-muted-ink flex items-center gap-2">
-                  {brand.logoUrl && (
-                    <img src={brand.logoUrl} alt="" className="w-6 h-6 rounded-md object-cover ring-1 ring-white/10" />
-                  )}
-                  <span>
-                    Presented by <span className="text-ink font-medium">{brand.displayName}</span>
-                  </span>
-                </p>
+                <div className="mt-3">
+                  <Link
+                    href={`/o/${(event as any).organizerSlug || brand.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`}
+                    className="inline-flex items-center gap-2 text-sm text-muted-ink hover:text-gold transition-colors group"
+                  >
+                    {brand.logoUrl && (
+                      <img src={brand.logoUrl} alt="" className="w-6 h-6 rounded-md object-cover ring-1 ring-white/10" />
+                    )}
+                    <span>
+                      Presented by <span className="text-ink font-medium group-hover:text-gold underline-offset-4 group-hover:underline">{brand.displayName}</span>
+                    </span>
+                  </Link>
+                </div>
               )}
               {showAttendeeCount && pulse.data && pulse.data.going > 0 && (
                 <p className="mt-4 flex items-center gap-2 text-sm text-muted-ink">
@@ -218,7 +240,7 @@ export default function EventDetails() {
               )}
             </Reveal>
 
-            {/* The details — one hairline-separated list, gold icons */}
+            {/* The details: one hairline-separated list, gold icons */}
             <Reveal className="mt-10">
               <dl className="border-t border-hairline">
                 <div className="flex items-start gap-4 py-5 border-b border-hairline">
@@ -296,7 +318,7 @@ export default function EventDetails() {
               </Reveal>
             )}
 
-            {/* About — plain editorial text */}
+            {/* About: plain editorial text */}
             <Reveal className="mt-10">
               <p className="eyebrow">About this event</p>
               <p className="mt-4 text-muted-ink leading-relaxed whitespace-pre-line max-w-2xl">
@@ -307,7 +329,7 @@ export default function EventDetails() {
             <PastEventProof event={event} />
           </div>
 
-          {/* Sidebar — the one gold surface on the page */}
+          {/* Sidebar: the primary action surface on the page */}
           <aside className="lg:col-span-1">
             <div className="sticky top-28 space-y-4">
               <div className="bg-surface border border-hairline rounded-md p-7">
@@ -358,18 +380,17 @@ export default function EventDetails() {
                 </p>
               </div>
 
-              <div className="bg-surface border border-hairline rounded-md p-6">
+              <div className="rounded-xl border border-gold/25 bg-gradient-to-b from-gold/[0.08] to-transparent p-6 shadow-[0_0_40px_-16px_rgba(227,178,60,0.35)]">
                 <p className="eyebrow">Sponsors &amp; vendors</p>
                 <h2 className="mt-2 font-display text-lg font-bold text-ink leading-snug">
-                  Reach everyone at this event
+                  Be in front of everyone at this event
                 </h2>
                 <p className="mt-2 text-xs text-muted-ink leading-relaxed">
-                  Sponsors and vendors get direct visibility in front of the
-                  whole crowd.
+                  A sponsor or vendor spot puts your brand next to the whole
+                  crowd. The organizer reviews every application.
                 </p>
                 <Button
-                  variant="outline"
-                  className="press mt-4 w-full h-11 border-gold/40 text-gold hover:bg-gold/10 hover:text-gold-soft font-medium rounded-md"
+                  className="press mt-4 w-full h-11 bg-gold text-[#1a1408] hover:bg-gold-soft font-semibold rounded-md"
                   onClick={() => setIsBusinessModalOpen(true)}
                 >
                   Apply as Sponsor or Vendor

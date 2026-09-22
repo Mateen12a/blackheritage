@@ -463,6 +463,135 @@ async function api(method, path, body, useCookie = true) {
     }
   }
 
+  // ── Vendor ratings: summary, one-per-user gate, owner refusal ──
+  if (djVendor?.id) {
+    // The vendor-link section above logs in as the vendor owner; the ratings
+    // gates need a plain attendee, so re-establish that session first.
+    cookie = "";
+    r = await api("POST", "/api/auth/login", { username: "ayo_attendee", password: "demo1234" });
+    ok("attendee login for ratings", r.status === 200, "status=" + r.status);
+
+    r = await api("GET", "/api/vendors/" + djVendor.id + "/ratings", null, false);
+    ok("ratings summary responds", r.status === 200 && typeof r.json?.count === "number", "status=" + r.status);
+    ok("seed ratings exist", r.json?.count >= 2, "count=" + r.json?.count);
+    ok("ratings average sane", r.json?.average === null || (r.json.average >= 1 && r.json.average <= 5), "avg=" + r.json?.average);
+
+    // Attendee posts a review (sign-in required, unique per user per vendor).
+    r = await api("POST", "/api/vendors/" + djVendor.id + "/ratings", { stars: 5, comment: "e2e review" });
+    const firstPost = r.status;
+    ok("attendee can post review", firstPost === 201 || firstPost === 409, "status=" + firstPost);
+    r = await api("POST", "/api/vendors/" + djVendor.id + "/ratings", { stars: 3, comment: "second attempt" });
+    ok("duplicate review refused", r.status === 409, "status=" + r.status);
+    r = await api("POST", "/api/vendors/" + djVendor.id + "/ratings", { stars: 9 });
+    ok("out-of-range stars refused", r.status === 400, "status=" + r.status);
+    cookie = ""; // now actually a guest
+    r = await api("POST", "/api/vendors/" + djVendor.id + "/ratings", { stars: 5 });
+    ok("guest review needs sign-in", r.status === 401, "status=" + r.status);
+
+    // Organizer account must also be refused on their own shop? The showcase
+    // vendor is owned by naija_vendor, so log in as them and expect 403.
+    cookie = "";
+    r = await api("POST", "/api/auth/login", { username: "naija_vendor", password: "demo1234" });
+    ok("vendor owner login", r.status === 200, "status=" + r.status);
+    r = await api("POST", "/api/vendors/" + djVendor.id + "/ratings", { stars: 5 });
+    ok("owner cannot review own shop", r.status === 403, "status=" + r.status);
+
+    // Back to attendee for the rest of the suite.
+    cookie = "";
+    r = await api("POST", "/api/auth/login", { username: "ayo_attendee", password: "demo1234" });
+    ok("attendee re-login", r.status === 200, "status=" + r.status);
+  }
+
+  // ── Account settings: profile patch, password round trip ──
+  r = await api("PATCH", "/api/account/profile", { displayName: "Ayo E2E", bio: "Test bio line" });
+  ok("profile patch", r.status === 200 && r.json?.displayName === "Ayo E2E", JSON.stringify(r.json || {}).slice(0, 120));
+  r = await api("PATCH", "/api/account/profile", {});
+  ok("empty profile patch refused", r.status === 400, "status=" + r.status);
+  r = await api("PATCH", "/api/account/profile", { avatarUrl: "https://evil.example/x.jpg" });
+  ok("remote avatar refused", r.status === 400, "status=" + r.status);
+
+  // Password change: wrong current password refused, correct one works,
+  // then change back so the demo credential stays demo1234.
+  r = await api("PATCH", "/api/account/password", { currentPassword: "wrong-pass", newPassword: "newpass9876" });
+  ok("wrong current password refused", r.status === 403, "status=" + r.status);
+  r = await api("PATCH", "/api/account/password", { currentPassword: "demo1234", newPassword: "newpass9876" });
+  ok("password change works", r.status === 200, "status=" + r.status);
+  cookie = "";
+  r = await api("POST", "/api/auth/login", { username: "ayo_attendee", password: "newpass9876" });
+  ok("login with new password", r.status === 200, "status=" + r.status);
+  r = await api("PATCH", "/api/account/password", { currentPassword: "newpass9876", newPassword: "demo1234" });
+  ok("password restored", r.status === 200, "status=" + r.status);
+
+  // ── Registration variants: sparse-null regression, display name, terms gate ──
+  // Two organizers in a row: the E11000 customDomain null collision must stay dead.
+  cookie = "";
+  const stamp = Date.now().toString(36);
+  r = await api("POST", "/api/auth/register", { username: "e2e_org_" + stamp, email: "e2e_org_" + stamp + "@x.com", password: "organizer99", displayName: "E2E Concepts", role: "organizer", acceptedTerms: true });
+  ok("organizer signup works", r.status === 201, "status=" + r.status);
+  ok("displayName stored", r.json?.displayName === "E2E Concepts", JSON.stringify(r.json?.displayName || null));
+  cookie = "";
+  r = await api("POST", "/api/auth/register", { username: "e2e_org2_" + stamp, email: "e2e_org2_" + stamp + "@x.com", password: "organizer99", displayName: "Second Brand", role: "organizer", acceptedTerms: true });
+  ok("second organizer signup, no E11000", r.status === 201, "status=" + r.status + " msg=" + (r.json?.message || ""));
+  r = await api("POST", "/api/auth/register", { username: "e2e_novendor_" + stamp, email: "e2e_nv_" + stamp + "@x.com", password: "vendorpass99", acceptedTerms: true });
+  ok("vendor signup works", r.status === 201, "status=" + r.status);
+  r = await api("POST", "/api/auth/register", { username: "e2e_noterms_" + stamp, email: "e2e_nt_" + stamp + "@x.com", password: "whatever99" });
+  ok("signup without terms refused", r.status === 400, "status=" + r.status);
+
+  // Session-based ticket lookup: logged-in user needs no email param.
+  cookie = "";
+  r = await api("POST", "/api/auth/login", { username: "ayo_attendee", password: "demo1234" });
+  ok("attendee re-login", r.status === 200, "status=" + r.status);
+  r = await api("GET", "/api/bookings/search", null);
+  ok("session ticket lookup", r.status === 200 && Array.isArray(r.json), "status=" + r.status);
+  ok("session lookup returns own bookings", Array.isArray(r.json) && r.json.length >= 1, "count=" + (r.json?.length || 0));
+  // Reference lookup finds one booking exactly.
+  r = await api("GET", "/api/bookings/search?code=" + encodeURIComponent((await api("GET", "/api/bookings/search")).json[0].paymentReference), null);
+  ok("reference lookup", r.status === 200 && Array.isArray(r.json) && r.json.length === 1, JSON.stringify(r.json?.length));
+
+  // Registration probes stay in the database (harmless); the seed and demo
+  // state do not depend on them.
+
+  // ── AI extraction endpoint: gating and real round trip ──
+  // Guest refused before any model call.
+  {
+    const res = await fetch(BASE + "/api/ai/extract-event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hello: true }),
+    });
+    ok("AI extraction guest refused", res.status === 403 || res.status === 401, "status=" + res.status);
+  }
+  // Organizer + a real text flyer: the full model round trip must return parsed details.
+  {
+    cookie = "";
+    r = await api("POST", "/api/auth/login", { username: "tunde_organizer", password: "demo1234" });
+    ok("organizer re-login", r.status === 200, "status=" + r.status);
+    const flyerText = "DETTY DECEMBER FINALE\\nDec 19, 2026 | Eko Hotels Lagos\\nGA 5,000 naira | VIP 15,000 naira | Table 250,000 naira";
+    const form = new FormData();
+    form.append("file", new Blob([flyerText], { type: "text/plain" }), "flyer.txt");
+    const res = await fetch(BASE + "/api/ai/extract-event", {
+      method: "POST",
+      headers: cookie ? { Cookie: cookie } : {},
+      body: form,
+    });
+    const j = await res.json().catch(() => ({}));
+    ok("AI extraction round trip", res.status === 200 && !!j.details, "status=" + res.status + " " + JSON.stringify(j).slice(0, 120));
+    ok("AI extraction title", /detty/i.test(j.details?.title || ""), JSON.stringify(j.details?.title));
+    ok("AI extraction date", /^2026-12-19/.test(j.details?.date || ""), JSON.stringify(j.details?.date));
+    ok("AI extraction tiers in naira", Array.isArray(j.details?.tiers) && j.details.tiers.some((t) => t.price === 15000), JSON.stringify(j.details?.tiers));
+  }
+
+  // ── Unsubscribe route: bad token redirects calmly, never error-dumps ──
+  // Raw http: assert the 302 itself, following it would leave the API.
+  await new Promise((resolve) => {
+    const req = require("http").get(BASE + "/api/organizers/follows/bm9rZXUtand0/unsubscribe", (res) => {
+      ok("unsubscribe redirects on bad token", res.statusCode === 302, "status=" + res.statusCode);
+      res.resume();
+      resolve();
+    });
+    req.on("error", () => { ok("unsubscribe redirects on bad token", false, "request failed"); resolve(); });
+  });
+
   console.log("\n==== " + pass + " passed, " + fail + " failed ====");
   process.exit(fail > 0 ? 1 : 0);
 })().catch((err) => {

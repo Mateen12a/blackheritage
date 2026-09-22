@@ -94,8 +94,10 @@ export default function AuthPage() {
   const [audience, setAudience] = useState<Audience>("attendee");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const { login, register } = useAuth();
@@ -160,13 +162,23 @@ export default function AuthPage() {
       });
       return;
     }
+    if (isRegister && !agreedToTerms) {
+      toast({
+        variant: "destructive",
+        title: "Accept the terms first",
+        description: "Tick the box to agree to the terms and privacy policy.",
+      });
+      return;
+    }
     try {
       const user = isRegister
         ? await register({
             username,
             email,
             password,
+            displayName: fullName.trim() || undefined,
             role: roleForAudience,
+            acceptedTerms: true,
           })
         : await login({ username, password });
       toast({
@@ -396,7 +408,7 @@ export default function AuthPage() {
                   />
                   <div className="text-xs leading-relaxed">
                     <span className="text-ink font-medium">{item.title}</span>
-                    <span className="text-muted-ink"> — {item.desc}</span>
+                    <span className="text-muted-ink">: {item.desc}</span>
                   </div>
                 </div>
               ))}
@@ -598,7 +610,15 @@ export default function AuthPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="username">
+                {isRegister
+                  ? audience === "organizer"
+                    ? "Username (your handle)"
+                    : audience === "vendor"
+                      ? "Username (your handle)"
+                      : "Username"
+                  : "Username"}
+              </Label>
               <Input
                 id="username"
                 autoComplete="username"
@@ -608,6 +628,33 @@ export default function AuthPage() {
                 required
               />
             </div>
+
+            {isRegister && (
+              <div className="space-y-2">
+                <Label htmlFor="fullName">
+                  {audience === "organizer"
+                    ? "Your name (or the brand you run events as)"
+                    : audience === "vendor"
+                      ? "Your name or business name"
+                      : "Full name"}
+                </Label>
+                <Input
+                  id="fullName"
+                  autoComplete="name"
+                  placeholder={
+                    audience === "organizer"
+                      ? "e.g. Tunde Live Concepts"
+                      : audience === "vendor"
+                        ? "e.g. DJ Zoro Naija"
+                        : "e.g. Ada Obi"
+                  }
+                  className="h-12 bg-surface-2 border-hairline text-ink rounded-md focus-visible:border-gold focus-visible:ring-0"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                />
+              </div>
+            )}
 
             {isRegister && (
               <div className="space-y-2">
@@ -670,11 +717,48 @@ export default function AuthPage() {
               </div>
             )}
 
+            {isRegister && (
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[#E3B23C]"
+                  required
+                />
+                <span className="text-xs leading-relaxed text-muted-ink">
+                  I agree to the{" "}
+                  <a
+                    href="/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gold underline underline-offset-2"
+                  >
+                    terms of service
+                  </a>{" "}
+                  and{" "}
+                  <a
+                    href="/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gold underline underline-offset-2"
+                  >
+                    privacy policy
+                  </a>
+                  , including the ticket, refund, and commission terms.
+                </span>
+              </label>
+            )}
+
             <Button
               type="submit"
               className="press w-full h-14 bg-primary text-primary-foreground hover:bg-gold-soft font-medium text-base rounded-full"
             >
-              {isRegister ? activeAudience.cta : "Sign In"}
+              {isRegister
+                ? agreedToTerms
+                  ? activeAudience.cta
+                  : "Agree & create account"
+                : "Sign In"}
             </Button>
 
             {isRegister && (

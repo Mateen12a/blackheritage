@@ -13,6 +13,7 @@ import {
   Store,
   Ticket,
   LogOut,
+  UserCog,
 } from "lucide-react";
 import { useState } from "react";
 import logoImg from "../assets/logo.png";
@@ -35,7 +36,7 @@ type Tab = {
  * App.tsx or it becomes a link that bounces the user back. Five tabs is the
  * ceiling for a legible bottom bar.
  */
-function tabsFor(role?: string, isAdmin?: boolean, isTeamStaff?: boolean): Tab[] {
+function tabsFor(role?: string, isAdmin?: boolean, isTeamStaff?: boolean, isVendor?: boolean): Tab[] {
   const isOrg = role === "admin" || role === "organizer" || isAdmin;
 
   // Organizer team staff (entry, finance, manager): the gate portal is the
@@ -121,12 +122,16 @@ function tabsFor(role?: string, isAdmin?: boolean, isTeamStaff?: boolean): Tab[]
       icon: MessageSquare,
       match: (loc) => loc.startsWith("/messages"),
     },
-    {
-      href: "/vendor-dashboard",
-      label: "My Shop",
-      icon: Store,
-      match: (loc) => loc.startsWith("/vendor-dashboard"),
-    },
+    // My Shop only appears once a vendor profile exists. Guests and attendees
+    // get the invitation from the vendors directory instead of a dead tab.
+    ...(isVendor
+      ? [{
+          href: "/vendor-dashboard",
+          label: "My Shop",
+          icon: Store,
+          match: (loc: string) => loc.startsWith("/vendor-dashboard"),
+        }]
+      : []),
   ];
 }
 
@@ -138,85 +143,87 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const isAdmin = user?.role === "admin" || user?.isAdmin;
   const isOrg = isAdmin || user?.role === "organizer";
   const isTeamStaff = !!user?.teamOwnerId;
-  const tabs = tabsFor(user?.role, isAdmin, isTeamStaff);
   const { data: myVendors } = useMyVendors(!!user);
   const isVendor = !!myVendors && myVendors.length > 0;
+  const tabs = tabsFor(user?.role, isAdmin, isTeamStaff, isVendor);
   const unread = useUnreadCount();
   const isTabActive = (tab: Tab) => tab.match(location);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex">
-      {/* ── Desktop sidebar ── */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col border-r border-hairline bg-surface z-40">
-        <Link
-          href="/"
-          aria-label="Black Heritage Events home"
-          className="flex items-center gap-2.5 h-[68px] px-5 border-b border-hairline shrink-0"
-        >
-          <img src={logoImg} alt="" className="h-8 w-8 object-contain" />
-          <span className="flex flex-col leading-none gap-0.5">
-            <span className="font-display text-[15px] font-bold tracking-wide text-ink">
-              Black Heritage
-            </span>
-            <span className="text-[8px] font-bold tracking-[0.18em] uppercase text-muted-ink">
-              Events
-            </span>
-          </span>
-        </Link>
-
-        <nav aria-label="Account navigation" className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const active = isTabActive(tab);
-            return (
-              <Link key={tab.href} href={tab.href} aria-current={active ? "page" : undefined}>
-                <div
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors cursor-pointer border-l-2 -ml-px",
-                    active
-                      ? "text-gold border-gold bg-gold/5"
-                      : "text-muted-ink hover:text-ink hover:bg-surface-2 border-transparent"
-                  )}
-                >
-                  <Icon size={18} strokeWidth={active ? 2 : 1.5} aria-hidden="true" />
-                  <span className="text-sm font-medium">{tab.label}</span>
-                  {tab.href === "/messages" && unread > 0 && (
-                    <span className="ml-auto h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-bold flex items-center justify-center">
-                      {unread > 9 ? "9+" : unread}
-                    </span>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="border-t border-hairline p-4 shrink-0">
-          <button
-            type="button"
-            onClick={() => setAccountOpen(true)}
-            className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-surface-2 transition-colors text-left"
-            aria-haspopup="dialog"
+      {/* ── Desktop sidebar: floating inset panel ── */}
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col z-40 p-3">
+        <div className="flex flex-col flex-1 rounded-2xl border border-hairline bg-surface shadow-[0_10px_40px_-12px_rgba(0,0,0,0.6)] overflow-hidden">
+          <Link
+            href="/"
+            aria-label="Black Heritage Events home"
+            className="flex items-center gap-2.5 h-[64px] px-5 border-b border-hairline shrink-0"
           >
-            <span className="w-8 h-8 rounded-full bg-surface-2 border border-hairline flex items-center justify-center shrink-0">
-              <span className="text-xs font-bold text-gold uppercase">
-                {(user?.username || "U").charAt(0)}
+            <img src={logoImg} alt="" className="h-8 w-8 object-contain" />
+            <span className="flex flex-col leading-none gap-0.5">
+              <span className="font-display text-[15px] font-bold tracking-wide text-ink">
+                Black Heritage
+              </span>
+              <span className="text-[8px] font-bold tracking-[0.18em] uppercase text-muted-ink">
+                Events
               </span>
             </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-ink truncate">
-                {user?.username}
+          </Link>
+
+          <nav aria-label="Account navigation" className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const active = isTabActive(tab);
+              return (
+                <Link key={tab.href} href={tab.href} aria-current={active ? "page" : undefined}>
+                  <div
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors cursor-pointer",
+                      active
+                        ? "text-gold bg-gold/10"
+                        : "text-muted-ink hover:text-ink hover:bg-surface-2"
+                    )}
+                  >
+                    <Icon size={18} strokeWidth={active ? 2 : 1.5} aria-hidden="true" />
+                    <span className="text-sm font-medium">{tab.label}</span>
+                    {tab.href === "/messages" && unread > 0 && (
+                      <span className="ml-auto h-5 min-w-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[11px] font-bold flex items-center justify-center">
+                        {unread > 9 ? "9+" : unread}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="border-t border-hairline p-3 shrink-0">
+            <button
+              type="button"
+              onClick={() => setAccountOpen(true)}
+              className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-surface-2 transition-colors text-left"
+              aria-haspopup="dialog"
+            >
+              <span className="w-8 h-8 rounded-full bg-surface-2 border border-hairline flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-gold uppercase">
+                  {(user?.username || "U").charAt(0)}
+                </span>
               </span>
-              <span className="block text-[11px] text-muted-ink capitalize">
-                {isOrg ? "Organizer" : isVendor ? "Vendor" : "Attendee"}
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-ink truncate">
+                  {user?.username}
+                </span>
+                <span className="block text-[11px] text-muted-ink capitalize">
+                  {isOrg ? "Organizer" : isVendor ? "Vendor" : "Attendee"}
+                </span>
               </span>
-            </span>
-          </button>
+            </button>
+          </div>
         </div>
       </aside>
 
       {/* ── Main column ── */}
-      <div className="flex-1 min-w-0 md:ml-60 flex flex-col">
+      <div className="flex-1 min-w-0 md:ml-64 flex flex-col">
         {/* Slim mobile top bar */}
         <header className="md:hidden sticky top-0 z-40 border-b border-hairline bg-background/90 backdrop-blur-xl">
           <div className="h-14 px-4 flex items-center justify-between">
@@ -336,7 +343,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          <div className="pt-4 border-t border-hairline">
+          <div className="pt-4 border-t border-hairline space-y-1">
+            <button
+              type="button"
+              onClick={() => {
+                setAccountOpen(false);
+                navigate("/settings");
+              }}
+              className="w-full flex items-center gap-3 px-2 py-3 rounded-md text-muted-ink hover:text-ink hover:bg-surface-2 transition-colors text-left"
+            >
+              <UserCog size={18} strokeWidth={1.5} aria-hidden="true" />
+              <span className="text-sm font-medium">Account settings</span>
+            </button>
             <Button
               variant="ghost"
               onClick={() => logout()}

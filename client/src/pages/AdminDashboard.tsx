@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useVendors } from "@/hooks/use-vendors";
 import { useManagedEvents } from "@/hooks/use-managed-events";
+import { useOrganizerProfile } from "@/hooks/use-organizer";
+import { OrganizerBrandPanel } from "@/components/OrganizerBrandPanel";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Reveal } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,6 +28,7 @@ import {
   TrendingUp,
   MapPin,
   Eye,
+  ExternalLink,
 } from "lucide-react";
 
 
@@ -93,10 +98,17 @@ export default function AdminDashboard() {
         ? "Vendor Directory"
         : "Dashboard";
 
+  const { data: orgProfile } = useOrganizerProfile();
+  const [activeTab, setActiveTab] = useState(() => {
+    if (isVendors) return "vendors";
+    const params = new URLSearchParams(window.location.search);
+    return params.get("tab") || "events";
+  });
+
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10 pt-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 pt-2">
         {eventsLoading ? (
           <HeaderSkeleton bare />
         ) : (
@@ -123,16 +135,40 @@ export default function AdminDashboard() {
           </Reveal>
         )}
 
-        <Link href="/admin/events/new">
-          <Button className="press w-full sm:w-auto bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md">
-            <Plus className="w-4 h-4 mr-2" /> Create Event
-          </Button>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          {orgProfile?.slug && (
+            <a
+              href={`/o/${orgProfile.slug}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Button
+                variant="outline"
+                className="press border-hairline text-ink hover:text-gold text-xs h-10 px-3.5"
+              >
+                <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                View Public Hub
+              </Button>
+            </a>
+          )}
+          <Link href="/admin/events/new">
+            <Button className="press w-full sm:w-auto bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md">
+              <Plus className="w-4 h-4 mr-2" /> Create Event
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      {/* Stats Grid — admin sees platform stats, organizer sees their own */}
-      {(isDashboard || isEvents) && (
-        <>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="bg-surface-2 border border-hairline max-w-full overflow-x-auto no-scrollbar">
+          <TabsTrigger value="events">Events & Overview</TabsTrigger>
+          <TabsTrigger value="brand">Brand & Custom Link</TabsTrigger>
+          {(isAdmin || isVendors) && <TabsTrigger value="vendors">Vendor Directory</TabsTrigger>}
+        </TabsList>
+
+        <TabsContent value="events" className="space-y-6">
+          {/* Stats Grid: admin sees platform stats, organizer sees their own */}
+          <div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
             {statsLoading ? (
               <>
@@ -357,101 +393,105 @@ export default function AdminDashboard() {
             </div>
           </Reveal>
           )}
-        </>
-      )}
-
-      {/* Vendors tab */}
-      {isVendors && (
-        <>
-          {vendorsError ? (
-            <LoadError
-              title="Couldn't load the vendor directory"
-              message="Check your connection and try again."
-              onRetry={() => refetchVendors()}
-            />
-          ) : vendorsLoading ? (
-            <TableSkeleton rows={4} />
-          ) : (
-        <Reveal>
-          <div className="border border-hairline rounded-md bg-surface overflow-hidden">
-            <div className="flex items-center justify-between p-5 md:p-6 border-b border-hairline">
-              <div>
-                <h2 className="font-display text-xl font-bold text-ink">
-                  Vendor Directory
-                </h2>
-                <p className="mt-1 text-sm text-muted-ink">
-                  All vendors listed on the platform
-                </p>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left min-w-[500px]">
-                <thead>
-                  <tr className="border-b border-hairline">
-                    <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
-                      Business
-                    </th>
-                    <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
-                      Category
-                    </th>
-                    <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em] hidden sm:table-cell">
-                      City
-                    </th>
-                    <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-hairline">
-                  {vendors?.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-16 text-center">
-                        <Store className="w-10 h-10 text-muted-ink/20 mx-auto mb-3" />
-                        <p className="font-display text-lg font-bold text-ink">
-                          No vendors yet
-                        </p>
-                      </td>
-                    </tr>
-                  )}
-                  {vendors?.map((vendor: any) => (
-                    <tr
-                      key={vendor.id}
-                      className="hover:bg-surface-2/50 transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        <Link href={`/vendors/${vendor.id}`}>
-                          <span className="font-display font-bold text-ink text-sm hover:text-gold transition-colors cursor-pointer">
-                            {vendor.businessName}
-                          </span>
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="eyebrow">{vendor.category}</span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-ink hidden sm:table-cell">
-                        {vendor.city || vendor.serviceArea || "Not listed"}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
-                            vendor.status === "published"
-                              ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                              : "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
-                          }`}
-                        >
-                          {vendor.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </div>
-        </Reveal>
-          )}
-        </>
-      )}
+        </TabsContent>
+
+        <TabsContent value="brand">
+          <OrganizerBrandPanel />
+        </TabsContent>
+
+        {(isAdmin || isVendors) && (
+          <TabsContent value="vendors">
+            {vendorsError ? (
+              <LoadError
+                title="Couldn't load the vendor directory"
+                message="Check your connection and try again."
+                onRetry={() => refetchVendors()}
+              />
+            ) : vendorsLoading ? (
+              <TableSkeleton rows={4} />
+            ) : (
+              <Reveal>
+                <div className="border border-hairline rounded-md bg-surface overflow-hidden">
+                  <div className="flex items-center justify-between p-5 md:p-6 border-b border-hairline">
+                    <div>
+                      <h2 className="font-display text-xl font-bold text-ink">
+                        Vendor Directory
+                      </h2>
+                      <p className="mt-1 text-sm text-muted-ink">
+                        All vendors listed on the platform
+                      </p>
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left min-w-[500px]">
+                      <thead>
+                        <tr className="border-b border-hairline">
+                          <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
+                            Business
+                          </th>
+                          <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
+                            Category
+                          </th>
+                          <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em] hidden sm:table-cell">
+                            City
+                          </th>
+                          <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
+                            Status
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-hairline">
+                        {vendors?.length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="px-6 py-16 text-center">
+                              <Store className="w-10 h-10 text-muted-ink/20 mx-auto mb-3" />
+                              <p className="font-display text-lg font-bold text-ink">
+                                No vendors yet
+                              </p>
+                            </td>
+                          </tr>
+                        )}
+                        {vendors?.map((vendor: any) => (
+                          <tr
+                            key={vendor.id}
+                            className="hover:bg-surface-2/50 transition-colors"
+                          >
+                            <td className="px-6 py-4">
+                              <Link href={`/vendors/${vendor.id}`}>
+                                <span className="font-display font-bold text-ink text-sm hover:text-gold transition-colors cursor-pointer">
+                                  {vendor.businessName}
+                                </span>
+                              </Link>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="eyebrow">{vendor.category}</span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-muted-ink hidden sm:table-cell">
+                              {vendor.city || vendor.serviceArea || "Not listed"}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span
+                                className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                  vendor.status === "published"
+                                    ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                                    : "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                                }`}
+                              >
+                                {vendor.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </Reveal>
+            )}
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }

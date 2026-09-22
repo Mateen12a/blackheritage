@@ -7,6 +7,27 @@ export interface IUser extends Document {
   role: 'user' | 'organizer' | 'admin';
   teamOwnerId?: string | null; // for staff accounts: the organizer they work for
   staffRole?: 'manager' | 'finance' | 'entry' | null;
+  organizerSlug?: string | null;
+  displayName?: string | null;
+  bio?: string | null;
+  logoUrl?: string | null;
+  coverUrl?: string | null;
+  customDomain?: string | null;
+  customDomainStatus?: 'pending' | 'active' | null;
+  announcement?: {
+    message: string;
+    linkUrl?: string;
+    active: boolean;
+  } | null;
+  socials?: {
+    instagram?: string;
+    twitter?: string;
+    whatsapp?: string;
+    website?: string;
+  } | null;
+  theme?: 'midnight-gold' | 'ivory-editorial' | 'sunset-poster' | null;
+  accentHex?: string | null;
+  avatarUrl?: string | null;
   createdAt: Date;
 }
 
@@ -17,6 +38,37 @@ const UserSchema: Schema = new Schema({
   role: { type: String, enum: ['user', 'organizer', 'admin'], default: 'organizer' },
   teamOwnerId: { type: String, default: null },
   staffRole: { type: String, enum: ['manager', 'finance', 'entry', null], default: null },
+  organizerSlug: { type: String, index: { unique: true, sparse: true } },
+  displayName: { type: String, default: null },
+  bio: { type: String, default: null },
+  logoUrl: { type: String, default: null },
+  coverUrl: { type: String, default: null },
+  // No default: sparse-unique means "field absent" is excluded but explicit
+  // null is not, so a default here makes every user collide with the next.
+  customDomain: { type: String, index: { unique: true, sparse: true } },
+  customDomainStatus: { type: String, enum: ['pending', 'active', null], default: null },
+  announcement: {
+    type: {
+      message: String,
+      linkUrl: String,
+      active: { type: Boolean, default: false },
+    },
+    default: null,
+  },
+  followersCount: { type: Number, default: 0 },
+  avatarUrl: { type: String, default: null },
+  termsAcceptedAt: { type: Date, default: null }, // consent record set at registration
+  socials: {
+    type: {
+      instagram: String,
+      twitter: String,
+      whatsapp: String,
+      website: String,
+    },
+    default: null,
+  },
+  theme: { type: String, enum: ['midnight-gold', 'ivory-editorial', 'sunset-poster', null], default: null },
+  accentHex: { type: String, default: null },
   createdAt: { type: Date, default: Date.now }
 }, {
   id: false // Disable the id virtual to avoid unique index conflict with null
@@ -87,6 +139,10 @@ const EventSchema: Schema = new Schema({
 
 export const EventModel = mongoose.models.Event || model<IEvent>("Event", EventSchema);
 
+// Hot-path indexes: every event page load, dashboard, and check-in runs these.
+EventSchema.index({ status: 1, date: -1 });
+EventSchema.index({ organizerId: 1, status: 1 });
+
 export interface IBooking extends Document {
   email: string;
   name: string;
@@ -124,6 +180,10 @@ const BookingSchema: Schema = new Schema({
 });
 
 export const BookingModel = mongoose.models.Booking || model<IBooking>("Booking", BookingSchema);
+
+// Paid bookings feed scarcity, pulse stats, and the attendee export.
+BookingSchema.index({ eventId: 1, status: 1 });
+BookingSchema.index({ email: 1, createdAt: -1 });
 
 export interface IVendor extends Document {
   businessName: string;
@@ -222,6 +282,9 @@ const MessageSchema: Schema = new Schema({
 
 export const MessageModel = mongoose.models.Message || model<IMessage>("Message", MessageSchema);
 
+// Conversation threads load sorted by time inside one conversation.
+MessageSchema.index({ conversationId: 1, createdAt: 1 });
+
 // ── Ticketing ──
 // One Ticket row per seat. The code is the single source of truth at the gate:
 // system-generated, single-use, and never reused across tickets.
@@ -241,7 +304,6 @@ export interface ITicket extends Document {
   usedBy?: string; // staff userId at check-in
   createdAt: Date;
 }
-
 const TicketSchema: Schema = new Schema({
   code: { type: String, required: true, unique: true },
   eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true, index: true },
@@ -260,6 +322,10 @@ const TicketSchema: Schema = new Schema({
 
 export const TicketModel = mongoose.models.Ticket || model<ITicket>("Ticket", TicketSchema);
 
+// MyTickets lookup and the gate portal's cached valid-list both scan by email
+// and by event+status.
+TicketSchema.index({ attendeeEmail: 1, createdAt: -1 });
+TicketSchema.index({ eventId: 1, status: 1 });
 // Audit trail for gate activity. One row per verification attempt, including
 // offline scans (synced later) and supervisor overrides.
 export interface IScanEvent extends Document {
@@ -387,3 +453,55 @@ WaitlistSchema.index({ eventId: 1, email: 1 }, { unique: true });
 
 export const WaitlistModel =
   mongoose.models.Waitlist || model<IWaitlistEntry>("Waitlist", WaitlistSchema);
+
+// Organizer Follower: tracks fans subscribing to early announcements and ticket drops
+export interface IOrganizerFollower extends Document {
+  organizerId: string;
+  email: string;
+  userId?: string | null;
+  unsubscribed?: boolean; // set by the one-click unsubscribe in drop emails
+  createdAt: Date;
+}
+
+const OrganizerFollowerSchema: Schema = new Schema({
+  organizerId: { type: String, required: true, index: true },
+  email: { type: String, required: true, lowercase: true, trim: true },
+  userId: { type: String, default: null },
+  unsubscribed: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+});
+
+// One follow per email per organizer
+OrganizerFollowerSchema.index({ organizerId: 1, email: 1 }, { unique: true });
+
+export const OrganizerFollowerModel =
+  mongoose.models.OrganizerFollower ||
+  model<IOrganizerFollower>("OrganizerFollower", OrganizerFollowerSchema);
+
+// ── VendorRating: one review per user per vendor ──
+// Vendors close deals over chat and WhatsApp today, so the gate is a signed-in
+// account rather than a paid transaction. When vendor bookings become
+// transactional, tighten the gate to paid bookings without a schema change.
+export interface IVendorRating extends Document {
+  vendorId: string;
+  reviewerUserId: string;
+  reviewerName: string;
+  stars: number; // 1..5
+  comment?: string;
+  createdAt: Date;
+}
+
+const VendorRatingSchema: Schema = new Schema({
+  vendorId: { type: String, required: true },
+  reviewerUserId: { type: String, required: true },
+  reviewerName: { type: String, required: true },
+  stars: { type: Number, required: true, min: 1, max: 5 },
+  comment: { type: String, default: null },
+  createdAt: { type: Date, default: Date.now },
+});
+
+VendorRatingSchema.index({ vendorId: 1, reviewerUserId: 1 }, { unique: true });
+
+export const VendorRatingModel =
+  mongoose.models.VendorRating ||
+  model<IVendorRating>("VendorRating", VendorRatingSchema);

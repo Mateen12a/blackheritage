@@ -1,6 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@shared/routes";
-import { Navbar } from "@/components/Navbar";
 import { EventForm } from "@/components/EventForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocation } from "wouter";
@@ -40,8 +39,9 @@ export default function NewEvent() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <Navbar />
-      <div className="container mx-auto px-4 pt-24 max-w-2xl">
+      {/* AdminRoute provides DashboardLayout (with its brand bar); a second
+          Navbar here would stack two headers on the page. */}
+      <div className="container mx-auto px-4 pt-10 max-w-2xl">
         <p className="eyebrow">New listing</p>
         <h1 className="mt-3 font-display text-3xl font-bold text-ink tracking-tight">Create New Event</h1>
         <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />

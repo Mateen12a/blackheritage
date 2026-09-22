@@ -39,7 +39,55 @@ export async function seedPlatform(): Promise<void> {
   };
 
   const admin = await ensureUser("admin", "admin@blackheritage.africa", "admin", {}, await bcrypt.hash("admin123", 10));
-  const organizer = await ensureUser("tunde_organizer", "tunde@blackheritage.africa", "organizer");
+  const organizer = await ensureUser("tunde_organizer", "tunde@blackheritage.africa", "organizer", {
+    organizerSlug: "tunde-live",
+    displayName: "Tunde Live Concepts",
+    bio: "Lagos live music, concerts, and cultural gala curators. Connecting artists, fans, and culture across Nigeria.",
+    logoUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=96&h=96&auto=format&fit=crop",
+    coverUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1600&auto=format&fit=crop",
+    socials: {
+      instagram: "https://instagram.com/tundelive",
+      twitter: "https://x.com/tundelive",
+      whatsapp: "2348000000000",
+      website: "https://blackheritage.africa",
+    },
+    theme: "midnight-gold",
+    accentHex: "#E3B23C",
+    customDomain: "tickets.tundelive.com",
+    customDomainStatus: "active",
+    announcement: {
+      message: "Early bird passes live for the Detty December Finale. Limited VIP tables available via WhatsApp.",
+      linkUrl: "",
+      active: true,
+    },
+    followersCount: 1420,
+  });
+
+  if (!organizer.organizerSlug || organizer.organizerSlug !== "tunde-live") {
+    organizer.organizerSlug = "tunde-live";
+    organizer.displayName = "Tunde Live Concepts";
+    organizer.bio = "Lagos live music, concerts, and cultural gala curators. Connecting artists, fans, and culture across Nigeria.";
+    organizer.logoUrl = "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=96&h=96&auto=format&fit=crop";
+    organizer.coverUrl = "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1600&auto=format&fit=crop";
+    organizer.socials = {
+      instagram: "https://instagram.com/tundelive",
+      twitter: "https://x.com/tundelive",
+      whatsapp: "2348000000000",
+      website: "https://blackheritage.africa",
+    };
+    organizer.theme = "midnight-gold";
+    organizer.accentHex = "#E3B23C";
+    organizer.customDomain = "tickets.tundelive.com";
+    organizer.customDomainStatus = "active";
+    organizer.announcement = {
+      message: "Early bird passes live for the Detty December Finale. Limited VIP tables available via WhatsApp.",
+      linkUrl: "",
+      active: true,
+    };
+    organizer.followersCount = 1420;
+    await organizer.save();
+  }
+
   const attendee = await ensureUser("ayo_attendee", "ayo@example.com", "user");
   const vendorOwner = await ensureUser("naija_vendor", "naija@example.com", "user");
 
@@ -426,6 +474,31 @@ export async function seedPlatform(): Promise<void> {
         },
       ]);
       console.log("Seed: vendor trust demo conversation created");
+    }
+  }
+
+  // ── Vendor ratings demo: two reviews on the showcase profile so the stars
+  // render for attendees. Healed like the rest of the showcase state.
+  if (showcase && mongoose.connection.readyState === 1) {
+    const { VendorRatingModel, User: UserModel } = await import("./models");
+    const ratingCount = await VendorRatingModel.countDocuments({ vendorId: showcase._id.toString() });
+    if (ratingCount === 0) {
+      const reviewers = await UserModel.find({ role: "user" }).limit(2).lean();
+      const demoReviews = [
+        { stars: 5, comment: "Turned the whole room up. Booked for two events already." },
+        { stars: 4, comment: "Solid set and easy to deal with. Arrived early." },
+      ];
+      for (let i = 0; i < demoReviews.length && i < reviewers.length; i++) {
+        const reviewer = reviewers[i] as any;
+        await VendorRatingModel.create({
+          vendorId: showcase._id.toString(),
+          reviewerUserId: String(reviewer._id),
+          reviewerName: reviewer.displayName || reviewer.username,
+          stars: demoReviews[i].stars,
+          comment: demoReviews[i].comment,
+        });
+      }
+      console.log("Seed: vendor ratings demo created");
     }
   }
 

@@ -68,10 +68,13 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
     }
   }, [ticketTypes, selectedTier]);
 
-  // Prefill for signed-in users; guests type their details in.
+  // Prefill for signed-in users: display name (falls back to username) and
+  // the account email. Guests type their details in.
   useEffect(() => {
     if (isOpen && user) {
-      if (!name && user.username) setName(user.username);
+      const accountName = user.displayName || user.username || "";
+      setName((n) => n || accountName);
+      setEmail((e) => e || user.email || "");
     }
   }, [isOpen, user]);
 
@@ -106,9 +109,13 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
   const fields = settings.checkoutFields;
   const wantsPhone = !!fields?.phone;
   const wantsDietary = !!fields?.dietaryNote;
-  // Table note shows when the tier is a table, or when the organizer switched
-  // the seating field on for everything.
-  const wantsTable = isTable || !!fields?.tableNote;
+  // Table details belong to table tiers. The organizer's global tableNote
+  // switch adds the field to every tier, so respect that too, but a plain
+  // GA/VIP ticket never asks for seating info on its own.
+  const wantsTable = isTable || (!!fields?.tableNote && currentType?.name === "Table Booking");
+  const tableHint = isTable
+    ? "Group size or seating preference"
+    : "Anything we should know about your group";
 
   const handleBooking = async () => {
     if (!email.trim() || !name.trim()) {
@@ -318,11 +325,17 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
                   <div className="space-y-2">
                     <label className="eyebrow">Table Details</label>
                     <Input
-                      placeholder="Group size or seating preference"
+                      placeholder={tableHint}
                       value={tableNote}
                       onChange={(e) => setTableNote(e.target.value)}
                       className="h-12 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base"
                     />
+                    {isTable && (
+                      <p className="text-xs text-muted-ink">
+                        Your table assignment is confirmed by the organizer and
+                        arrives with your ticket email.
+                      </p>
+                    )}
                   </div>
                 )}
                 {wantsDietary && (
@@ -364,13 +377,28 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
                     className="h-12 pl-10 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base uppercase"
                   />
                 </div>
-                {pricing?.promoApplied && (
-                  <p className="text-xs text-gold flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5" aria-hidden="true" />
-                    {pricing.promoMessage}. You save {naira(pricing.discountKobo)}.
-                  </p>
-                )}
-                {promoFailed && (
+                {pricing?.promoApplied ? (
+                  <div className="flex items-center justify-between gap-2 rounded-md border border-gold/40 bg-gold/5 px-3 py-2">
+                    <span className="text-xs text-gold flex items-center gap-1.5 min-w-0">
+                      <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                      <span className="truncate">
+                        {debouncedPromo.trim().toUpperCase()} applied. You save {naira(pricing.discountKobo)}.
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPromoCode("");
+                        setDebouncedPromo("");
+                        setPromoTouched(false);
+                      }}
+                      className="text-xs text-muted-ink hover:text-ink shrink-0"
+                      aria-label="Remove promo code"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : promoFailed && (
                   <p className="text-xs text-red-400 flex items-center gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
                     That code didn't apply. It may be expired or used up.

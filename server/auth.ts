@@ -51,20 +51,24 @@ function safeUser(user: any) {
 // Fixed-window rate limiter for credential endpoints. In-memory is correct
 // for a single server instance; move to a shared store only if the API ever
 // runs multi-instance.
-const attemptCounts = new Map<string, { count: number; windowStart: number }>();
-function rateLimit(max: number, windowMs: number) {
+
+export function rateLimit(max: number, windowMs: number) {
+  // Each limiter instance gets its own counter map. A shared map would let
+  // heavy-but-legit traffic on one route (a test suite logging in, for
+  // example) exhaust a different route's budget under the same key.
+  const bucket = new Map<string, { count: number; windowStart: number }>();
   return (req: any, res: any, next: any) => {
     const key = String(req.ip || "unknown");
     const now = Date.now();
-    const entry = attemptCounts.get(key);
+    const entry = bucket.get(key);
     if (!entry || now - entry.windowStart > windowMs) {
-      attemptCounts.set(key, { count: 1, windowStart: now });
+      bucket.set(key, { count: 1, windowStart: now });
       return next();
     }
     entry.count += 1;
-    if (attemptCounts.size > 5000) {
-      Array.from(attemptCounts.entries()).forEach(([k, v]) => {
-        if (now - v.windowStart > windowMs) attemptCounts.delete(k);
+    if (bucket.size > 5000) {
+      Array.from(bucket.entries()).forEach(([k, v]) => {
+        if (now - v.windowStart > windowMs) bucket.delete(k);
       });
     }
     if (entry.count > max) {
@@ -142,6 +146,9 @@ export function setupAuth(app: Express) {
     // Role is limited to self-serve signup choices. admin is never
     // assignable here; platform admins are created by the seed only.
     const role = req.body.role === "organizer" ? "organizer" : "user";
+    if (req.body.acceptedTerms !== true) {
+      return res.status(400).json({ message: "You must accept the terms of service and privacy policy" });
+    }
     if (typeof username !== "string" || username.trim().length < 3) {
       return res.status(400).json({ message: "Username must be at least 3 characters" });
     }
@@ -151,6 +158,12 @@ export function setupAuth(app: Express) {
     if (typeof password !== "string" || password.length < 8) {
       return res.status(400).json({ message: "Password must be at least 8 characters" });
     }
+    // Optional at signup: the name guests see on tickets, or the brand an
+    // organizer runs events as. Editable later from settings.
+    const displayName =
+      typeof req.body.displayName === "string" && req.body.displayName.trim()
+        ? req.body.displayName.trim().slice(0, 80)
+        : undefined;
     try {
       const existing = usingDevStore()
         ? devUsersByUsername.get(String(username).toLowerCase()) ||
@@ -183,13 +196,20 @@ export function setupAuth(app: Express) {
         email,
         password: hashedPassword,
         role: role || "user",
+        ...(displayName ? { displayName } : {}),
+        termsAcceptedAt: new Date(), // consent record, NDPA audit trail
       });
       await user.save();
       // Welcome email is fire-and-forget: signup must never wait on email.
+      // The role decides the variant: organizers get next steps, guests get
+      // discovery.
       if (process.env.RESEND_API_KEY) {
         import("./emails")
           .then(({ sendWelcomeEmail }) =>
-            sendWelcomeEmail({ name: String(username), email: String(email) }),
+            sendWelcomeEmail(
+              { name: String(displayName || username), email: String(email) },
+              role === "organizer" ? "organizer" : "user",
+            ),
           )
           .catch((e) => console.error("Welcome email failed:", e));
       }

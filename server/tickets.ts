@@ -23,8 +23,8 @@ export interface TicketPdfEvent {
   title: string;
   date: Date;
   location: string;
-  /** Organizer branding: their name and accent replace the platform defaults when set. */
-  branding?: { displayName?: string; logoUrl?: string; accentHex?: string } | null;
+  /** Organizer branding: their name, accent, and custom link replace the platform defaults when set. */
+  branding?: { displayName?: string; logoUrl?: string; accentHex?: string; slug?: string } | null;
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
@@ -151,12 +151,16 @@ export async function buildTicketPdf(
     });
 
     // Footer: platform credit survives any organizer branding
-    page.drawText(
-      event.branding?.displayName
-        ? `This ticket was issued via BlackHeritage for ${safeText(event.branding.displayName)}. Keep it until the event ends.`
-        : "This ticket was issued by BlackHeritage. Keep it until the event ends.",
-      { x: 48, y: 60, size: 9, font: helv, color: MUTED },
-    );
+    const footerText = event.branding?.displayName
+      ? `This ticket was issued via BlackHeritage for ${safeText(event.branding.displayName)}. Keep it until the event ends.`
+      : "This ticket was issued by BlackHeritage. Keep it until the event ends.";
+    page.drawText(footerText, { x: 48, y: 60, size: 9, font: helv, color: MUTED });
+
+    if (event.branding?.slug) {
+      page.drawText(`Organizer Hub: blackheritage.africa/o/${event.branding.slug}`, {
+        x: 48, y: 46, size: 8, font: mono, color: GOLD,
+      });
+    }
   }
 
   return pdf.save();

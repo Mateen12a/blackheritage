@@ -209,23 +209,91 @@ export async function sendRefundEmail(to: EmailAddress, data: {
   });
 }
 
-export async function sendWelcomeEmail(to: EmailAddress): Promise<void> {
+// Welcome email, one variant per role: the account they just opened decides
+// what the first email tells them to do. One email, one job.
+export async function sendWelcomeEmail(
+  to: EmailAddress,
+  role: "user" | "organizer" = "user",
+): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY);
+  const base = process.env.PUBLIC_APP_URL || "http://localhost:5000";
+
+  const bodies: Record<"user" | "organizer", { subject: string; title: string; html: string }> = {
+    user: {
+      subject: "Welcome to BlackHeritage",
+      title: "You're in",
+      html: `
+      <p style="margin:0 0 20px;font-size:14px;">Hi ${esc(to.name)},</p>
+      <p style="margin:0 0 12px;font-size:14px;color:#444;">Your account is live. Two things worth a minute:</p>
+      <p style="margin:0 0 8px;font-size:14px;color:#444;"><strong>Find your next event.</strong> <a href="${base}/" style="color:#111;">Browse what's on sale</a> and book in under a minute.</p>
+      <p style="margin:0 0 20px;font-size:14px;color:#444;"><strong>Keep tickets close.</strong> Every purchase lands in <a href="${base}/my-tickets" style="color:#111;">your tickets</a>, with a code that scans at the gate.</p>
+      <p style="margin:0;font-size:14px;color:#444;">See you in the crowd.</p>`,
+    },
+    organizer: {
+      subject: "Your BlackHeritage dashboard is ready",
+      title: "Your dashboard is ready",
+      html: `
+      <p style="margin:0 0 20px;font-size:14px;">Hi ${esc(to.name)},</p>
+      <p style="margin:0 0 12px;font-size:14px;color:#444;">Everything you need to sell tickets is in one place:</p>
+      <p style="margin:0 0 8px;font-size:14px;color:#444;"><strong>Create your first event.</strong> Tiers, sale windows, cover image, done in minutes. <a href="${base}/admin/events/new" style="color:#111;">Start now</a>.</p>
+      <p style="margin:0 0 8px;font-size:14px;color:#444;"><strong>Your booking link.</strong> A shareable page with your branding on it. Find it on any event you publish.</p>
+      <p style="margin:0 0 8px;font-size:14px;color:#444;"><strong>Gate day.</strong> Add entry staff and they check tickets from any phone, online or off.</p>
+      <p style="margin:0 0 20px;font-size:14px;color:#444;">Complimentary tickets for VIPs and press carry no commission.</p>
+      <p style="margin:0;font-size:14px;color:#444;">Questions? Reply to this email, a person reads it.</p>`,
+    },
+  };
+
+  const body = bodies[role];
   await resend.emails.send({
     from: FROM,
     to: [to.email],
-    subject: "Welcome to BlackHeritage",
+    subject: body.subject,
+    html: shell(body.title, body.html),
+  });
+}
+
+// One email to a follower announcing a new event. Returns the Resend id so
+// the caller can dedupe if a publish is retried. Unsubscribe link points at
+// the platform route that flips the follower row off.
+export async function sendFollowerDropEmail(
+  to: EmailAddress,
+  data: {
+    organizerName: string;
+    eventTitle: string;
+    eventDate: Date;
+    eventLocation: string;
+    eventUrl: string;
+    unsubscribeUrl: string;
+  },
+): Promise<string | undefined> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const dateStr = data.eventDate.toLocaleString("en-NG", {
+    weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit",
+  });
+  const result = await resend.emails.send({
+    from: FROM,
+    to: [to.email],
+    subject: `${data.organizerName}: ${data.eventTitle} is on sale`,
     html: shell(
-      "You're in",
+      "New drop from " + data.organizerName,
       `
       <p style="margin:0 0 20px;font-size:14px;">Hi ${esc(to.name)},</p>
-      <p style="margin:0 0 12px;font-size:14px;color:#444;">Your account is live. Three things you can do right now:</p>
-      <p style="margin:0 0 8px;font-size:14px;color:#444;"><strong>Find your next event.</strong> <a href="${process.env.PUBLIC_APP_URL || "http://localhost:5000"}/" style="color:#111;">Browse what's on sale</a> and book in under a minute.</p>
-      <p style="margin:0 0 8px;font-size:14px;color:#444;"><strong>Keep tickets close.</strong> Every purchase lands in <a href="${process.env.PUBLIC_APP_URL || "http://localhost:5000"}/my-tickets" style="color:#111;">your tickets</a>, with a code that scans at the gate.</p>
-      <p style="margin:0 0 20px;font-size:14px;color:#444;"><strong>Plan an event?</strong> Organizers run sales, teams, and gate check-in from the same dashboard.</p>
-      <p style="margin:0;font-size:14px;color:#444;">See you in the crowd.</p>`,
+      <div style="background:#faf9f7;border:1px solid #e5e2dc;border-radius:8px;padding:16px;margin-bottom:20px;">
+        <div style="font-size:16px;font-weight:bold;">${esc(data.eventTitle)}</div>
+        <div style="font-size:13px;color:#666;margin-top:4px;">${dateStr}</div>
+        <div style="font-size:13px;color:#666;">${esc(data.eventLocation)}</div>
+      </div>
+      <p style="margin:0 0 20px;font-size:14px;">You follow ${esc(data.organizerName)} on BlackHeritage, so you hear about tickets before the crowd. Tiers are limited and these pages do sell out.</p>
+      <p style="margin:0 0 8px;font-size:14px;">
+        <a href="${esc(data.eventUrl)}" style="display:inline-block;background:#111114;color:#ffffff;font-weight:bold;font-size:13px;padding:12px 24px;border-radius:8px;text-decoration:none;">Get tickets before they go</a>
+      </p>
+      <p style="margin:20px 0 0;font-size:11px;color:#999;">
+        You are getting this because you follow ${esc(data.organizerName)}.
+        <a href="${esc(data.unsubscribeUrl)}" style="color:#999;">Stop these emails</a>.
+      </p>`,
     ),
   });
+  return result.data?.id;
 }
 
 export async function isEmailConfigured(): Promise<boolean> {

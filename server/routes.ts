@@ -15,6 +15,8 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import Stripe from "stripe";
+import bcrypt from "bcryptjs";
+import { sendFollowerDropEmail } from "./emails";
 import { User, TicketModel, ScanEventModel, PlatformSettingModel, BookingModel, WaitlistModel } from "./models";
 import mongoose from "mongoose";
 import { fulfillBooking, quoteBooking, validatePromo, getPlatformSettings } from "./booking";
@@ -22,6 +24,8 @@ import { initializeTransaction, verifyTransaction, refundTransaction, verifyWebh
 import { buildTicketPdf, generateTicketCode } from "./tickets";
 import { seedPlatform } from "./seed";
 import { sendManualTicketEmail, sendRefundEmail } from "./emails";
+import { extractEventFromFile, isAIConfigured, aiUploadLimiter } from "./ai";
+import { rateLimit } from "./auth";
 import crypto from "crypto";
 
 const uploadRoot = process.cwd();
@@ -69,6 +73,38 @@ export async function registerRoutes(
 
   // Serve uploaded portfolio files
   app.use("/uploads/portfolio", express.static(UPLOAD_DIR, { maxAge: "30d" }));
+
+  // ── AI event extraction: flyer/document upload → form prefill JSON ──
+  // Organizer-only, rate limited, files stay in memory and go to the model,
+  // never to disk. The response is a suggestion for the form; nothing is
+  // created or published by the model.
+  const aiUpload = multer({ storage: multer.memoryStorage(), limits: aiUploadLimiter.limits });
+  // Rate limit sits INSIDE the handler, applied only once auth passed: gate
+  // rejections must not consume the organizer's extraction budget.
+  const aiRateLimit = rateLimit(10, 10 * 60 * 1000);
+  app.post("/api/ai/extract-event", (req: any, res: any) => {
+    if (!req.isAuthenticated() || (req.user as any).role === "user") {
+      return res.status(403).json({ message: "Only organizer accounts can use extraction" });
+    }
+    if (!isAIConfigured()) {
+      return res.status(503).json({ message: "AI extraction is not configured yet" });
+    }
+    aiRateLimit(req, res, () => {
+    aiUpload.single("file")(req, res, (err: any) => {
+      if (err) return res.status(400).json({ message: err.message || "Upload failed" });
+      if (!req.file) return res.status(400).json({ message: "Choose a flyer image, PDF, or document" });
+      if (!aiUploadLimiter.okMime(req.file.mimetype)) {
+        return res.status(400).json({ message: "Upload a flyer image, PDF, or text document" });
+      }
+      extractEventFromFile(req.file)
+        .then((details) => res.json({ details }))
+        .catch((e: any) => {
+          console.error("AI extraction failed:", e.message);
+          res.status(422).json({ message: e.message || "Could not read event details from that file" });
+        });
+    });
+    });
+  });
   
   // Legacy Stripe intent, kept for older clients. Paystack owns ticket checkout.
   const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -211,9 +247,18 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Forbidden" });
     }
 
+    const wasPublished = event.status === "published";
     try {
       const input = api.events.update.input.parse(req.body);
       const updated = await storage.updateEvent(event.id, input);
+      // Ticket-drop blast: the first transition into published emails every
+      // follower. Fire-and-forget so a Resend hiccup never blocks the save;
+      // per-event dedupe keeps a retry from double-sending.
+      if (!wasPublished && updated.status === "published") {
+        void notifyFollowersOfDrop(updated).catch((err) =>
+          console.error("Follower drop blast failed:", err),
+        );
+      }
       res.json(updated);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -341,6 +386,346 @@ export async function registerRoutes(
     }
   });
 
+  // ── Organizer public profile and hub: /o/:slug ──
+  app.get("/api/organizers/:slug", async (req, res) => {
+    try {
+      const rawSlug = req.params.slug.trim().toLowerCase();
+      let organizer = await User.findOne({
+        $or: [
+          { organizerSlug: rawSlug },
+          { username: rawSlug },
+        ],
+      }).lean();
+
+      if (!organizer && mongoose.Types.ObjectId.isValid(rawSlug)) {
+        organizer = await User.findById(rawSlug).lean();
+      }
+
+      if (!organizer) {
+        return res.status(404).json({ message: "Organizer not found" });
+      }
+
+      const orgId = (organizer as any)._id.toString();
+
+      // Find published events by this organizer
+      const { EventModel } = await import("./models");
+      const events = await EventModel.find({
+        $or: [
+          { organizerId: orgId },
+          { organizerName: (organizer as any).displayName || (organizer as any).username },
+        ],
+        status: { $ne: "draft" },
+      }).lean();
+
+      const now = Date.now();
+      const upcomingEvents: any[] = [];
+      const pastEvents: any[] = [];
+      const allPhotos = new Set<string>();
+      const allVideos = new Set<string>();
+
+      for (const ev of events) {
+        const evDate = new Date(ev.date).getTime();
+        try {
+          const gallery = JSON.parse(ev.gallery || "[]");
+          if (Array.isArray(gallery)) {
+            gallery.forEach((url: string) => { if (url) allPhotos.add(url); });
+          }
+        } catch {}
+
+        try {
+          const videos = JSON.parse(ev.pastEventVideos || "[]");
+          if (Array.isArray(videos)) {
+            videos.forEach((url: string) => { if (url) allVideos.add(url); });
+          }
+        } catch {}
+
+        if (evDate >= now - 24 * 60 * 60 * 1000) {
+          upcomingEvents.push(ev);
+        } else {
+          pastEvents.push(ev);
+        }
+      }
+
+      upcomingEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      pastEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      let isFollowing = false;
+      if (req.isAuthenticated()) {
+        const { OrganizerFollowerModel } = await import("./models");
+        const user = req.user as any;
+        const follow = await OrganizerFollowerModel.findOne({
+          organizerId: orgId,
+          $or: [{ userId: user._id.toString() }, { email: user.email }],
+        }).lean();
+        if (follow) isFollowing = true;
+      }
+
+      res.json({
+        organizer: {
+          id: orgId,
+          username: (organizer as any).username,
+          displayName: (organizer as any).displayName || (organizer as any).username,
+          slug: (organizer as any).organizerSlug || (organizer as any).username,
+          bio: (organizer as any).bio || null,
+          logoUrl: (organizer as any).logoUrl || null,
+          coverUrl: (organizer as any).coverUrl || null,
+          socials: (organizer as any).socials || null,
+          theme: (organizer as any).theme || null,
+          accentHex: (organizer as any).accentHex || null,
+          customDomain: (organizer as any).customDomain || null,
+          customDomainStatus: (organizer as any).customDomainStatus || null,
+          announcement: (organizer as any).announcement || null,
+          followersCount: (organizer as any).followersCount || 0,
+          isFollowing,
+        },
+        upcomingEvents: upcomingEvents.map((e) => ({
+          ...e,
+          id: String(e._id),
+        })),
+        pastEvents: pastEvents.map((e) => ({
+          ...e,
+          id: String(e._id),
+        })),
+        archiveMedia: {
+          photos: Array.from(allPhotos),
+          videos: Array.from(allVideos),
+        },
+        stats: {
+          totalShows: events.length,
+          upcomingShows: upcomingEvents.length,
+          pastShows: pastEvents.length,
+        },
+      });
+    } catch (err: any) {
+      console.error("Organizer lookup error:", err);
+      res.status(500).json({ message: "Could not load organizer profile" });
+    }
+  });
+
+  // Follow organizer for drop alerts
+  app.post("/api/organizers/:slug/follow", async (req, res) => {
+    try {
+      const { OrganizerFollowerModel } = await import("./models");
+      const rawSlug = req.params.slug.toLowerCase().trim();
+      const organizer = await User.findOne({
+        $or: [{ organizerSlug: rawSlug }, { username: rawSlug }],
+      });
+      if (!organizer) return res.status(404).json({ message: "Organizer not found" });
+
+      const orgId = organizer._id.toString();
+      let email = "";
+      let userId = null;
+
+      if (req.isAuthenticated()) {
+        const user = req.user as any;
+        email = user.email;
+        userId = user._id.toString();
+      } else {
+        email = (req.body.email || "").trim().toLowerCase();
+        if (!email || !email.includes("@")) {
+          return res.status(400).json({ message: "A valid email address is required" });
+        }
+      }
+
+      const existing = await OrganizerFollowerModel.findOne({ organizerId: orgId, email });
+      if (!existing) {
+        await OrganizerFollowerModel.create({ organizerId: orgId, email, userId });
+        await User.findByIdAndUpdate(orgId, { $inc: { followersCount: 1 } });
+      }
+
+      const updatedOrg = await User.findById(orgId).lean();
+      res.json({
+        success: true,
+        isFollowing: true,
+        followersCount: (updatedOrg as any)?.followersCount || 1,
+        message: "Following organizer. You will be notified of new ticket drops.",
+      });
+    } catch (err: any) {
+      console.error("Follow error:", err);
+      res.status(500).json({ message: "Could not follow organizer" });
+    }
+  });
+
+  // Unfollow organizer
+  app.delete("/api/organizers/:slug/follow", async (req, res) => {
+    try {
+      const { OrganizerFollowerModel } = await import("./models");
+      const rawSlug = req.params.slug.toLowerCase().trim();
+      const organizer = await User.findOne({
+        $or: [{ organizerSlug: rawSlug }, { username: rawSlug }],
+      });
+      if (!organizer) return res.status(404).json({ message: "Organizer not found" });
+
+      const orgId = organizer._id.toString();
+      let email = "";
+      if (req.isAuthenticated()) {
+        email = (req.user as any).email;
+      } else {
+        email = (req.body.email || "").trim().toLowerCase();
+      }
+
+      if (email) {
+        const deleted = await OrganizerFollowerModel.findOneAndDelete({ organizerId: orgId, email });
+        if (deleted) {
+          await User.findByIdAndUpdate(orgId, { $inc: { followersCount: -1 } });
+        }
+      }
+
+      const updatedOrg = await User.findById(orgId).lean();
+      res.json({
+        success: true,
+        isFollowing: false,
+        followersCount: Math.max(0, (updatedOrg as any)?.followersCount || 0),
+      });
+    } catch (err: any) {
+      console.error("Unfollow error:", err);
+      res.status(500).json({ message: "Could not unfollow organizer" });
+    }
+  });
+
+  // Organizer audience: view followers list
+  app.get("/api/organizers/me/followers", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    const user = req.user as any;
+    const orgId = user.teamOwnerId || user._id.toString();
+    const { OrganizerFollowerModel } = await import("./models");
+
+    const followers = await OrganizerFollowerModel.find({ organizerId: orgId })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+
+    const org = await User.findById(orgId).lean();
+
+    res.json({
+      totalCount: (org as any)?.followersCount || followers.length,
+      followers: followers.map((f: any) => ({
+        id: String(f._id),
+        email: f.email,
+        createdAt: f.createdAt,
+      })),
+    });
+  });
+
+  // ── Organizer profile management ──
+  app.get("/api/organizers/me/profile", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    const user = req.user as any;
+    const orgId = user.teamOwnerId || user._id.toString();
+    const organizer = await User.findById(orgId).lean();
+    if (!organizer) return res.status(404).json({ message: "Organizer not found" });
+
+    res.json({
+      id: String((organizer as any)._id),
+      username: (organizer as any).username,
+      displayName: (organizer as any).displayName || (organizer as any).username,
+      slug: (organizer as any).organizerSlug || (organizer as any).username,
+      bio: (organizer as any).bio || "",
+      logoUrl: (organizer as any).logoUrl || "",
+      coverUrl: (organizer as any).coverUrl || "",
+      socials: (organizer as any).socials || { instagram: "", twitter: "", whatsapp: "", website: "" },
+      theme: (organizer as any).theme || null,
+      accentHex: (organizer as any).accentHex || null,
+      customDomain: (organizer as any).customDomain || "",
+      customDomainStatus: (organizer as any).customDomainStatus || null,
+      announcement: (organizer as any).announcement || { message: "", linkUrl: "", active: false },
+      followersCount: (organizer as any).followersCount || 0,
+    });
+  });
+
+  app.patch("/api/organizers/me/profile", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    const user = req.user as any;
+    if (user.staffRole && user.staffRole !== "manager") {
+      return res.status(403).json({ message: "Only main organizers and managers can update brand profile" });
+    }
+    const orgId = user.teamOwnerId || user._id.toString();
+
+    try {
+      const {
+        slug,
+        displayName,
+        bio,
+        logoUrl,
+        coverUrl,
+        socials,
+        theme,
+        accentHex,
+        customDomain,
+        announcement,
+      } = req.body;
+
+      let cleanSlug = typeof slug === "string" ? slug.toLowerCase().trim() : undefined;
+      if (cleanSlug) {
+        if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(cleanSlug)) {
+          return res.status(400).json({ message: "Lowercase letters, numbers, and hyphens only" });
+        }
+        const existing = await User.findOne({
+          organizerSlug: cleanSlug,
+          _id: { $ne: orgId },
+        }).lean();
+        if (existing) {
+          return res.status(409).json({ message: "This custom link is already claimed" });
+        }
+      }
+
+      let cleanDomain = typeof customDomain === "string" ? customDomain.toLowerCase().trim() : undefined;
+      if (cleanDomain) {
+        cleanDomain = cleanDomain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+        const domainMatch = await User.findOne({
+          customDomain: cleanDomain,
+          _id: { $ne: orgId },
+        }).lean();
+        if (domainMatch) {
+          return res.status(409).json({ message: "This domain is already mapped to another organizer" });
+        }
+      }
+
+      const updateData: any = {};
+      if (cleanSlug !== undefined) updateData.organizerSlug = cleanSlug;
+      if (displayName !== undefined) updateData.displayName = displayName;
+      if (bio !== undefined) updateData.bio = bio;
+      if (logoUrl !== undefined) updateData.logoUrl = logoUrl;
+      if (coverUrl !== undefined) updateData.coverUrl = coverUrl;
+      if (socials !== undefined) updateData.socials = socials;
+      if (theme !== undefined) updateData.theme = theme;
+      if (accentHex !== undefined) updateData.accentHex = accentHex;
+      if (cleanDomain !== undefined) {
+        updateData.customDomain = cleanDomain || null;
+        updateData.customDomainStatus = cleanDomain ? "active" : null;
+      }
+      if (announcement !== undefined) {
+        updateData.announcement = announcement;
+      }
+
+      const updated = await User.findByIdAndUpdate(
+        orgId,
+        { $set: updateData },
+        { new: true }
+      ).lean();
+
+      res.json({
+        id: String((updated as any)._id),
+        username: (updated as any).username,
+        displayName: (updated as any).displayName,
+        slug: (updated as any).organizerSlug,
+        bio: (updated as any).bio,
+        logoUrl: (updated as any).logoUrl,
+        coverUrl: (updated as any).coverUrl,
+        socials: (updated as any).socials,
+        theme: (updated as any).theme,
+        accentHex: (updated as any).accentHex,
+        customDomain: (updated as any).customDomain,
+        customDomainStatus: (updated as any).customDomainStatus,
+        announcement: (updated as any).announcement,
+        followersCount: (updated as any).followersCount || 0,
+      });
+    } catch (err: any) {
+      console.error("Update organizer profile error:", err);
+      res.status(500).json({ message: "Could not save organizer profile" });
+    }
+  });
+
   // ── Waitlist: organizer view ──
   app.get("/api/events/:id/waitlist", async (req, res) => {
     const ctx = await requireEventScope(req, res);
@@ -389,10 +774,27 @@ export async function registerRoutes(
     res.json(bookings);
   });
 
+  // Ticket lookup. For signed-in users the session is the query: every
+  // booking made with their account email, no email field needed. Guests keep
+  // the email path, and anyone can paste a ticket reference straight in.
   app.get("/api/bookings/search", async (req, res) => {
-    const email = req.query.email as string;
-    if (!email) return res.status(400).json({ message: "Email required" });
     try {
+      const code = typeof req.query.code === "string" ? req.query.code.trim() : "";
+      if (code) {
+        const booking = await storage.getBookingByReference(code);
+        if (!booking) return res.json([]);
+        const event = await storage.getEvent(String((booking as any).eventId));
+        return res.json([{ ...booking, event }]);
+      }
+
+      if (req.isAuthenticated()) {
+        const email = (req.user as any).email;
+        const bookings = await storage.getBookingsByEmail(email);
+        return res.json(bookings);
+      }
+
+      const email = req.query.email as string;
+      if (!email) return res.status(400).json({ message: "Sign in, or enter the email or ticket code you booked with" });
       const bookings = await storage.getBookingsByEmail(email);
       res.json(bookings);
     } catch (err) {
@@ -658,6 +1060,23 @@ export async function registerRoutes(
       const event = await storage.getEvent(String(tickets[0].eventId));
       if (!event) return res.status(404).json({ message: "Event not found" });
 
+      let orgBranding = (event as any).branding ? { ...(event as any).branding } : null;
+      if (event.organizerId) {
+        const orgUser = await User.findById(event.organizerId).lean();
+        if (orgUser) {
+          if (!orgBranding) {
+            orgBranding = {
+              displayName: (orgUser as any).displayName || (orgUser as any).username,
+              logoUrl: (orgUser as any).logoUrl,
+              accentHex: (orgUser as any).accentHex,
+              slug: (orgUser as any).organizerSlug || (orgUser as any).username,
+            };
+          } else if (!orgBranding.slug) {
+            orgBranding.slug = (orgUser as any).organizerSlug || (orgUser as any).username;
+          }
+        }
+      }
+
       // Guests and signed-in users can download; ticket codes are unguessable
       // and the booking id is only revealed to the buyer after payment.
       const pdf = await buildTicketPdf(
@@ -667,7 +1086,7 @@ export async function registerRoutes(
           attendeeName: t.attendeeName,
           seat: t.seat,
         })),
-        { title: event.title, date: new Date(event.date), location: event.location, branding: (event as any).branding || null },
+        { title: event.title, date: new Date(event.date), location: event.location, branding: orgBranding },
       );
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="blackheritage-tickets-${String(tickets[0].code)}.pdf"`);
@@ -1751,5 +2170,187 @@ export async function registerRoutes(
 
   await seedPlatform();
 
+  // ── Account settings: every signed-in user can edit their own profile ──
+  app.patch("/api/account/profile", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    const user = req.user as any;
+    const body = (req.body || {}) as Record<string, unknown>;
+    const update: Record<string, unknown> = {};
+
+    if (typeof body.displayName === "string") {
+      const v = body.displayName.trim().slice(0, 80);
+      update.displayName = v || null;
+    }
+    if (typeof body.bio === "string") {
+      update.bio = body.bio.trim().slice(0, 600) || null;
+    }
+    if (typeof body.avatarUrl === "string") {
+      const v = body.avatarUrl.trim();
+      if (v && !v.startsWith("/uploads/")) {
+        return res.status(400).json({ message: "Avatar must be an uploaded file" });
+      }
+      update.avatarUrl = v || null;
+    }
+    if (body.socials !== undefined) {
+      const s = body.socials as Record<string, unknown>;
+      const clean: Record<string, string> = {};
+      for (const key of ["instagram", "twitter", "whatsapp", "website"] as const) {
+        if (typeof s[key] === "string") clean[key] = (s[key] as string).trim().slice(0, 120);
+      }
+      update.socials = clean;
+    }
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ message: "Nothing to update" });
+    }
+
+    const updated = await User.findByIdAndUpdate(user._id, { $set: update }, { new: true }).lean();
+    if (!updated) return res.status(404).json({ message: "Account not found" });
+    res.json(safeUserShape(updated));
+  });
+
+  app.patch("/api/account/password", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    const { currentPassword, newPassword } = req.body as Record<string, string>;
+    if (typeof newPassword !== "string" || newPassword.length < 8) {
+      return res.status(400).json({ message: "New password must be at least 8 characters" });
+    }
+    const user = await User.findById((req.user as any)._id);
+    if (!user) return res.status(404).json({ message: "Account not found" });
+    if (user.password) {
+      const ok = await bcrypt.compare(String(currentPassword || ""), user.password);
+      if (!ok) return res.status(403).json({ message: "Current password is wrong" });
+    }
+    user.password = await bcrypt.hash(String(newPassword), 10);
+    await user.save();
+    res.json({ ok: true });
+  });
+
+  // Unsubscribe: one signed token per (follower, event) pair. GET so it works
+  // straight from the email client. Sets unsubscribed on the row.
+  app.get("/api/organizers/follows/:token/unsubscribe", async (req, res) => {
+    const { OrganizerFollowerModel } = await import("./models");
+    try {
+      const [followerId] = Buffer.from(req.params.token, "base64url").toString("utf8").split(":");
+      if (!followerId) throw new Error("bad token");
+      await OrganizerFollowerModel.findByIdAndUpdate(followerId, { $set: { unsubscribed: true } });
+    } catch {
+      // Bad or expired token: still show a calm page, never an error dump.
+    }
+    const base = process.env.PUBLIC_APP_URL || "http://localhost:5000";
+    res.redirect(302, `${base}/unsubscribed`);
+  });
+
+  // ── Vendor ratings: sign-in required, one review per user per vendor ──
+  app.get("/api/vendors/:id/ratings", async (req, res) => {
+    const { VendorRatingModel } = await import("./models");
+    const [agg] = await VendorRatingModel.aggregate([
+      { $match: { vendorId: String(req.params.id) } },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          average: { $avg: "$stars" },
+        },
+      },
+    ]);
+    const recent = await VendorRatingModel.find({ vendorId: String(req.params.id) })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean();
+    res.json({
+      count: agg?.count || 0,
+      average: agg ? Math.round(agg.average * 10) / 10 : null,
+      recent: recent.map((r: any) => ({
+        id: String(r._id),
+        name: r.reviewerName,
+        stars: r.stars,
+        comment: r.comment,
+        createdAt: r.createdAt,
+      })),
+    });
+  });
+
+  app.post("/api/vendors/:id/ratings", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to leave a review" });
+    const user = req.user as any;
+    const stars = Number(req.body?.stars);
+    if (!Number.isInteger(stars) || stars < 1 || stars > 5) {
+      return res.status(400).json({ message: "Pick 1 to 5 stars" });
+    }
+    const comment = typeof req.body?.comment === "string" ? req.body.comment.trim().slice(0, 500) : null;
+    const { VendorRatingModel, VendorModel } = await import("./models");
+    const vendor = await VendorModel.findById(req.params.id).lean();
+    if (!vendor) return res.status(404).json({ message: "Vendor not found" });
+    if ((vendor as any).ownerId === user._id.toString()) {
+      return res.status(403).json({ message: "You cannot review your own shop" });
+    }
+    try {
+      const review = await VendorRatingModel.create({
+        vendorId: String(req.params.id),
+        reviewerUserId: user._id.toString(),
+        reviewerName: user.displayName || user.username,
+        stars,
+        comment: comment || null,
+      });
+      res.status(201).json({ id: String(review._id) });
+    } catch (err: any) {
+      if (err?.code === 11000) {
+        return res.status(409).json({ message: "You already reviewed this vendor" });
+      }
+      throw err;
+    }
+  });
+
   return httpServer;
+}
+
+// Small shape shared by /api/auth/user and the account PATCH so the client
+// cache stays consistent whichever endpoint answered last.
+function safeUserShape(user: any) {
+  const { password, ...rest } = user;
+  return rest;
+}
+
+// ── Follower ticket-drop blast ──
+// Called once when an event first goes published. Reads the follower list,
+// builds one unsubscribe URL per follower, and sends through Resend.
+// Errors are logged, never thrown: a bad address must not kill the batch.
+async function notifyFollowersOfDrop(event: any): Promise<void> {
+  if (!process.env.RESEND_API_KEY) return;
+  const { OrganizerFollowerModel, PlatformSettingModel } = await import("./models");
+  const followers = await OrganizerFollowerModel.find({
+    organizerId: event.organizerId,
+    unsubscribed: { $ne: true },
+  })
+    .limit(500)
+    .lean();
+  if (followers.length === 0) return;
+
+  const org = await User.findById(event.organizerId).lean();
+  const organizerName =
+    (org as any)?.displayName || (org as any)?.username || event.organizerName || "The organizer";
+  const base = process.env.PUBLIC_APP_URL || "http://localhost:5000";
+  const eventUrl = event.slug ? `${base}/e/${event.slug}` : `${base}/events/${event.id}`;
+
+  let sent = 0;
+  for (const f of followers as any[]) {
+    const token = Buffer.from(`${String(f._id)}:${String(event._id)}`).toString("base64url");
+    try {
+      await sendFollowerDropEmail(
+        { name: f.email.split("@")[0], email: f.email },
+        {
+          organizerName,
+          eventTitle: event.title,
+          eventDate: new Date(event.date),
+          eventLocation: event.location,
+          eventUrl,
+          unsubscribeUrl: `${base}/api/organizers/follows/${token}/unsubscribe`,
+        },
+      );
+      sent++;
+    } catch (err) {
+      console.error("Drop email to", f.email, "failed:", err);
+    }
+  }
+  console.log(`Follower drop blast for "${event.title}": ${sent}/${followers.length} sent`);
 }

@@ -9,6 +9,7 @@ import {
   Search,
   ShieldCheck,
   Download,
+  ArrowRight,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,12 @@ import {
 
 export default function MyTickets() {
   const { user } = useAuth();
-  const [email, setEmail] = useState(user?.email || "");
+  // Signed-in: the session is the query. Guests: email lookup. Everyone:
+  // a ticket reference pasted in finds the booking directly.
+  const isMember = !!user;
+  const [guestEmail, setGuestEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [submittedCode, setSubmittedCode] = useState("");
   const [searchEmail, setSearchEmail] = useState("");
   const [activeTicket, setActiveTicket] = useState<any>(null);
 
@@ -37,30 +43,31 @@ export default function MyTickets() {
     isError,
     refetch,
   } = useQuery<any[]>({
-    queryKey: ["/api/bookings/search", searchEmail],
+    queryKey: ["/api/bookings/search", isMember ? "session" : searchEmail, submittedCode],
     queryFn: async () => {
-      if (!searchEmail) return [];
-      const res = await fetch(
-        `/api/bookings/search?email=${encodeURIComponent(searchEmail)}`
-      );
+      const params = new URLSearchParams();
+      if (submittedCode) params.set("code", submittedCode);
+      else if (!isMember && searchEmail) params.set("email", searchEmail);
+      const res = await fetch(`/api/bookings/search?${params.toString()}`, {
+        credentials: "include",
+      });
       if (!res.ok) throw new Error("Could not load bookings");
       return res.json();
     },
-    enabled: !!searchEmail,
+    enabled: isMember || !!searchEmail || !!submittedCode,
     retry: 1,
   });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setSearchEmail(email);
+    if (code.trim()) {
+      setSubmittedCode(code.trim().toUpperCase());
+    } else if (!isMember && guestEmail.trim()) {
+      setSearchEmail(guestEmail.trim());
+    }
   };
 
-  // Auto-search on mount if user has email
-  useEffect(() => {
-    if (user?.email && searchEmail === "") setSearchEmail(user.email);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.email]);
-  const hasSearched = searchEmail !== "";
+  const hasSearched = isMember || searchEmail !== "" || submittedCode !== "";
   const showResults = hasSearched && !isLoading;
 
   return (
@@ -72,29 +79,40 @@ export default function MyTickets() {
         </h1>
         <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
         <p className="mt-4 text-muted-ink max-w-lg">
-          Enter your email to see every booking you've made. Each one comes
-          with a verified e-ticket.
+          {isMember
+            ? "Every booking on your account, plus any ticket reference you paste in. Each one comes with a verified e-ticket."
+            : "Search with the email you booked with, or paste a ticket reference. Each booking comes with a verified e-ticket."}
         </p>
       </Reveal>
 
       <div className="max-w-md mb-14">
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <Input
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-12 bg-surface-2 border-hairline text-ink rounded-md focus-visible:border-gold focus-visible:ring-0"
-              required
-            />
-            <Button
-              type="submit"
-              aria-label="Search for tickets"
-              className="h-12 bg-primary text-primary-foreground hover:bg-gold-soft px-6 rounded-md font-medium press"
-            >
-              <Search className="w-5 h-5" aria-hidden="true" />
-              <span className="sr-only">Search for tickets</span>
-            </Button>
+          <form onSubmit={handleSearch} className="space-y-2">
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                placeholder={isMember ? "Ticket reference (optional)" : "Ticket reference or email"}
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className="h-12 bg-surface-2 border-hairline text-ink rounded-md focus-visible:border-gold focus-visible:ring-0 font-mono"
+              />
+              <Button
+                type="submit"
+                aria-label="Search for tickets"
+                className="h-12 bg-primary text-primary-foreground hover:bg-gold-soft px-6 rounded-md font-medium press"
+              >
+                <Search className="w-5 h-5" aria-hidden="true" />
+                <span className="sr-only">Search for tickets</span>
+              </Button>
+            </div>
+            {!isMember && (
+              <Input
+                type="email"
+                placeholder="the email you booked with"
+                value={guestEmail}
+                onChange={(e) => setGuestEmail(e.target.value)}
+                className="h-12 bg-surface-2 border-hairline text-ink rounded-md focus-visible:border-gold focus-visible:ring-0"
+              />
+            )}
           </form>
         </div>
 
@@ -182,8 +200,7 @@ export default function MyTickets() {
               No bookings found
             </h3>
             <p className="text-muted-ink text-sm mb-6 max-w-sm mx-auto">
-              We couldn't find any tickets for {searchEmail}. Check the
-              spelling, or browse upcoming events.
+              Nothing matched{submittedCode ? ` the reference ${submittedCode}` : searchEmail ? ` ${searchEmail}` : " your account"}. Check it, or browse upcoming events.
             </p>
             <Link href="/events">
               <Button className="press bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md">
@@ -198,12 +215,14 @@ export default function MyTickets() {
               Search for your tickets
             </h3>
             <p className="text-muted-ink text-sm">
-              Enter the email you used when booking to see your tickets.
+              {isMember
+                ? "Your bookings appear here automatically. Paste a reference to pull in a specific ticket."
+                : "Enter the email you booked with, or a ticket reference."}
             </p>
           </div>
         )}
 
-      {/* Ticket stub dialog — the e-ticket itself */}
+      {/* Ticket stub dialog: the e-ticket itself */}
       <Dialog
         open={!!activeTicket}
         onOpenChange={(open) => !open && setActiveTicket(null)}
@@ -216,6 +235,25 @@ export default function MyTickets() {
                 <DialogTitle className="mt-3 font-display text-2xl font-bold text-ink leading-snug">
                   {activeTicket.event?.title || "Event"}
                 </DialogTitle>
+                {activeTicket.event?.branding?.displayName && (
+                  <div className="mt-2.5">
+                    <Link
+                      href={`/o/${activeTicket.event.branding.slug || activeTicket.event.organizerSlug || activeTicket.event.branding.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                      className="inline-flex items-center gap-1.5 text-xs text-muted-ink hover:text-gold transition-colors"
+                    >
+                      {activeTicket.event.branding.logoUrl && (
+                        <img
+                          src={activeTicket.event.branding.logoUrl}
+                          alt=""
+                          className="w-4 h-4 rounded-sm object-cover"
+                        />
+                      )}
+                      <span>
+                        Presented by <span className="font-semibold text-ink underline-offset-2 hover:underline">{activeTicket.event.branding.displayName}</span>
+                      </span>
+                    </Link>
+                  </div>
+                )}
                 <div className="mt-4 space-y-2 text-sm text-muted-ink">
                   <p className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-gold" aria-hidden="true" />
@@ -263,6 +301,18 @@ export default function MyTickets() {
                   <Download className="w-4.5 h-4.5" aria-hidden="true" />
                   Download PDF Tickets
                 </a>
+
+                {activeTicket.event?.branding?.displayName && (
+                  <div className="mt-3 text-center">
+                    <Link
+                      href={`/o/${activeTicket.event.branding.slug || activeTicket.event.organizerSlug || activeTicket.event.branding.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                      className="text-[11px] text-muted-ink hover:text-gold transition-colors inline-flex items-center gap-1"
+                    >
+                      <span>Explore more productions by {activeTicket.event.branding.displayName}</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           )}

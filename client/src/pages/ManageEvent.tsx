@@ -10,6 +10,7 @@ import { format, isPast } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BookingLinkPanel } from "@/components/BookingLinkPanel";
 import { ShareFlyerModal } from "@/components/ShareFlyerModal";
+import { EventMediaPanel } from "@/components/EventMediaPanel";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -259,6 +260,7 @@ export default function ManageEvent() {
           <TabsTrigger value="attendees">Ticket Buyers</TabsTrigger>
           <TabsTrigger value="tools">Organizer Tools</TabsTrigger>
           <TabsTrigger value="link">Booking Link</TabsTrigger>
+          <TabsTrigger value="media">Past Event Media</TabsTrigger>
           <TabsTrigger value="sponsors">Sponsors & Vendors</TabsTrigger>
           <TabsTrigger value="settings">Event Settings</TabsTrigger>
           {(event as any).waitlistEnabled === true && (
@@ -417,6 +419,10 @@ export default function ManageEvent() {
 
         <TabsContent value="link">
           <BookingLinkPanel event={event} />
+        </TabsContent>
+
+        <TabsContent value="media">
+          <EventMediaPanel event={event} />
         </TabsContent>
 
         <TabsContent value="sponsors">
