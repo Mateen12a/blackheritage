@@ -53,4 +53,6 @@ scratch/
 *.local
 .agents/
 .claude/
+.claude/skills
 .freebuff/
+deploy.sh

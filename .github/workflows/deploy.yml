@@ -1,0 +1,38 @@
+name: Production Auto-Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Oracle Cloud
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_SSH_KEY }}
+          port: 22
+          script_stop: true
+          script: |
+            echo "=== Pulling latest changes from main ==="
+            cd /home/ubuntu/blackheritage
+            git pull origin main
+
+            echo "=== Installing dependencies ==="
+            npm install
+
+            echo "=== Building production client and server ==="
+            npm run build
+
+            echo "=== Restarting PM2 process ==="
+            pm2 restart bh-api
+
+            echo "=== Reloading Nginx ==="
+            sudo nginx -t && sudo systemctl reload nginx
+
+            echo "=== Deployment successful! ==="
