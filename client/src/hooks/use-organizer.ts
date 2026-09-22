@@ -546,12 +546,14 @@ export function useOrganizerProfile() {
         theme: saved.theme || primary?.theme || "midnight-gold",
         accentHex: saved.accentHex || primary?.branding?.accentHex || "#E3B23C",
         customDomain: saved.customDomain || "tickets.tundelive.com",
-        customDomainStatus: saved.customDomainStatus || "active",
         announcement: saved.announcement || {
           message: "Early bird passes live for the Detty December Finale. Limited VIP tables available via WhatsApp.",
           linkUrl: "",
           active: true,
         },
+        videoLoopUrl: saved.videoLoopUrl || primary?.videoLoopUrl || "https://assets.mixkit.co/videos/preview/mixkit-crowd-at-a-concert-jumping-and-recording-with-their-phones-41484-large.mp4",
+        spotifyPlaylistUrl: saved.spotifyPlaylistUrl || primary?.spotifyPlaylistUrl || "https://open.spotify.com/playlist/37i9dQZF1DXaNKqZRgC6dw",
+        tourCities: saved.tourCities || primary?.tourCities || ["Lagos", "Abuja", "Port Harcourt", "London"],
         followersCount: saved.followersCount || 1420,
       };
     },
