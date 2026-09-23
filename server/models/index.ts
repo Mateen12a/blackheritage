@@ -291,7 +291,7 @@ export const MessageModel = mongoose.models.Message || model<IMessage>("Message"
 // Conversation threads load sorted by time inside one conversation.
 MessageSchema.index({ conversationId: 1, createdAt: 1 });
 
-// ── Ticketing ──
+// Ticketing
 // One Ticket row per seat. The code is the single source of truth at the gate:
 // system-generated, single-use, and never reused across tickets.
 
@@ -433,7 +433,7 @@ const PayoutSchema: Schema = new Schema({
 
 export const PayoutModel = mongoose.models.Payout || model<IPayout>("Payout", PayoutSchema);
 
-// ── Waitlist ──
+// Waitlist
 // Sold-out tiers collect emails instead of dead-ending when the organizer
 // turns waitlists on for the event.
 export interface IWaitlistEntry extends Document {
@@ -484,7 +484,7 @@ export const OrganizerFollowerModel =
   mongoose.models.OrganizerFollower ||
   model<IOrganizerFollower>("OrganizerFollower", OrganizerFollowerSchema);
 
-// ── VendorRating: one review per user per vendor ──
+// VendorRating: one review per user per vendor
 // Vendors close deals over chat and WhatsApp today, so the gate is a signed-in
 // account rather than a paid transaction. When vendor bookings become
 // transactional, tighten the gate to paid bookings without a schema change.
@@ -548,4 +548,3 @@ const NativeSponsorSchema: Schema = new Schema({
 export const NativeSponsorModel =
   mongoose.models.NativeSponsor ||
   model<INativeSponsor>("NativeSponsor", NativeSponsorSchema);
-

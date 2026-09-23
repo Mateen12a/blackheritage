@@ -368,7 +368,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* ─── Hero: atmospheric concert motion, headline, Afrobeats player, live poster panel ─── */}
+      {/* Hero: atmospheric concert motion, headline, Afrobeats player, live poster panel */}
       <section className="relative overflow-hidden">
         {/* High-energy ambient concert video backdrop */}
         <div aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none z-0">
@@ -497,7 +497,7 @@ export default function Home() {
         )}
       </section>
 
-      {/* ─── Featured events ─── */}
+      {/* Featured events */}
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="flex items-end justify-between mb-10 gap-6">
@@ -552,14 +552,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Editorial Brand Spotlight / Native Placement ─── */}
+      {/* Editorial Brand Spotlight / Native Placement */}
       <section className="py-6">
         <div className="container mx-auto px-4">
           <NativeSponsorSpotlight placement="home_spotlight" />
         </div>
       </section>
 
-      {/* ─── The talent wall: real vendor work, drag to browse ─── */}
+      {/* The talent wall: real vendor work, drag to browse */}
       {vendorsWithWork.length >= 3 && (
         <section aria-label="Vendors at work" className="py-20 overflow-hidden">
           <div className="container mx-auto px-4">
@@ -627,7 +627,7 @@ export default function Home() {
         </section>
       )}
 
-      {/* ─── Two-sided marketplace strip ─── */}
+      {/* Two-sided marketplace strip */}
       <section className="border-t border-hairline py-16">
         <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-6">
           <Reveal className="h-full">
@@ -676,7 +676,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Trust + proof ─── */}
+      {/* Trust + proof */}
       <section className="border-t border-hairline bg-surface py-20">
         <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
           <div className="order-2 lg:order-1">
@@ -769,7 +769,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── How it works ─── */}
+      {/* How it works */}
       <section className="border-t border-hairline py-20">
         <div className="container mx-auto px-4">
           <Reveal className="max-w-3xl mb-12">
@@ -822,7 +822,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── Footer ─── */}
+      {/* Footer */}
       <footer className="border-t border-hairline bg-surface">
         <div className="container mx-auto px-4 py-14">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-10 md:gap-8">

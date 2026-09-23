@@ -912,7 +912,8 @@ export async function registerRoutes(
               tier: quote.ticketType,
               quantity: input.quantity,
             },
-          });          return res.status(201).json({
+          });
+          return res.status(201).json({
             bookingId: String(booking._id ?? booking.id),
             reference,
             totalKobo: quote.totalKobo,
@@ -1024,10 +1025,11 @@ export async function registerRoutes(
       if (event.event === "charge.success") {
         const reference = event.data?.reference;
         if (reference) {
-      const bookings = await storage.getAllBookings?.();
-      const booking: any = bookings
-        ? bookings.find((b: any) => b.paymentReference === reference)
-        : await (storage as any).getBookingByReference(reference);          if (booking && booking.status !== "paid") {
+          const bookings = await storage.getAllBookings?.();
+          const booking: any = bookings
+            ? bookings.find((b: any) => b.paymentReference === reference)
+            : await (storage as any).getBookingByReference(reference);
+          if (booking && booking.status !== "paid") {
             // Trust Paystack's webhook amount; also cross-check against our order.
             const expected = Number(booking.totalAmount);
             if (Number(event.data.amount) === expected) {
