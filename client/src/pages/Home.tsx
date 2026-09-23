@@ -505,15 +505,20 @@ export default function Home() {
               </h2>
               <div className="mt-4 h-0.5 w-12 bg-gold" aria-hidden="true" />
               <p className="mt-4 text-muted-ink leading-relaxed flex-1">
-                Set up ticketing in minutes. VIP tables, regular, VVIP, all
-                with instant, secure checkout. Track every sale live. No
-                middleman takes a cut you didn't agree to.
+                Instant WhatsApp QR delivery, 0% gate fraud, and next-day direct bank settlement. 6% flat fee vs 10%+ legacy sites, plus 0% fee on your first 100 tickets.
               </p>
-              <Link href={user ? "/admin" : "/auth?tab=register"} className="mt-6">
-                <span className="press inline-flex items-center justify-center h-11 px-6 rounded-md bg-primary text-primary-foreground font-medium hover:bg-gold-soft transition-colors cursor-pointer">
-                  Create an Event
-                </span>
-              </Link>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link href="/organizers">
+                  <span className="press inline-flex items-center justify-center h-11 px-5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-gold-soft transition-colors cursor-pointer text-xs">
+                    See Organizer Benefits
+                  </span>
+                </Link>
+                <Link href={user ? "/admin" : "/auth?tab=register"}>
+                  <span className="press inline-flex items-center justify-center h-11 px-5 rounded-md border border-hairline text-ink font-medium hover:bg-surface-2 hover:text-gold transition-colors cursor-pointer text-xs">
+                    Host an Event
+                  </span>
+                </Link>
+              </div>
             </div>
           </Reveal>
           <Reveal delay={0.08} className="h-full">

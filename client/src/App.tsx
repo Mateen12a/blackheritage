@@ -24,6 +24,7 @@ import Verify from "@/pages/Verify";
 import ManageEvent from "@/pages/ManageEvent";
 import NewEvent from "@/pages/NewEvent";
 import OrganizerDetails from "@/pages/OrganizerDetails";
+import OrganizersLanding from "@/pages/OrganizersLanding";
 import Settings from "@/pages/Settings";
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
@@ -208,6 +209,20 @@ function Router() {
         {() => (
           <PublicLayout>
             <CalendarPage />
+          </PublicLayout>
+        )}
+      </Route>
+      <Route path="/organizers">
+        {() => (
+          <PublicLayout>
+            <OrganizersLanding />
+          </PublicLayout>
+        )}
+      </Route>
+      <Route path="/host">
+        {() => (
+          <PublicLayout>
+            <OrganizersLanding />
           </PublicLayout>
         )}
       </Route>

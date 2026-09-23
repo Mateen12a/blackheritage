@@ -16,6 +16,7 @@ const publicLinks = [
   { href: "/events", label: "Events" },
   { href: "/vendors", label: "Vendors" },
   { href: "/calendar", label: "Calendar" },
+  { href: "/organizers", label: "For Organizers" },
 ];
 
 function isActive(href: string, location: string) {

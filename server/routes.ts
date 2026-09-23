@@ -16,8 +16,7 @@ import {
 import { z } from "zod";
 import Stripe from "stripe";
 import bcrypt from "bcryptjs";
-import { sendFollowerDropEmail } from "./emails";
-import { User, TicketModel, ScanEventModel, PlatformSettingModel, BookingModel, WaitlistModel, NativeSponsorModel } from "./models";
+import { User, TicketModel, ScanEventModel, PlatformSettingModel, BookingModel, WaitlistModel, NativeSponsorModel, OrganizerLeadModel } from "./models";
 import mongoose from "mongoose";
 import { fulfillBooking, quoteBooking, validatePromo, getPlatformSettings } from "./booking";
 import { initializeTransaction, verifyTransaction, refundTransaction, verifyWebhookSignature, isPaystackConfigured } from "./paystack";
@@ -2440,6 +2439,7 @@ export async function registerRoutes(
       addUrl("/events", "0.95", "daily");
       addUrl("/explore", "0.9", "daily");
       addUrl("/vendors", "0.9", "daily");
+      addUrl("/organizers", "0.95", "daily");
       addUrl("/auth", "0.3", "monthly");
 
       // Dynamic Events
@@ -2468,6 +2468,54 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Sitemap generation error:", err);
       res.status(500).send("Error generating sitemap");
+    }
+  });
+
+  // ── Organizer Leads & Playbook Downloads (Lead Magnet) ──
+  app.post("/api/leads", async (req, res) => {
+    try {
+      const { name, brandName, whatsapp, email, city, estimatedAttendance, notes } = req.body;
+      if (!name || !brandName || !whatsapp || !email) {
+        return res.status(400).json({ error: "Name, brand name, WhatsApp number, and email are required." });
+      }
+
+      // Clean phone number (e.g. +234, 080...)
+      const cleanedWhatsapp = String(whatsapp).replace(/\s+/g, "").trim();
+
+      const lead = await OrganizerLeadModel.create({
+        name: String(name).trim(),
+        brandName: String(brandName).trim(),
+        whatsapp: cleanedWhatsapp,
+        email: String(email).trim().toLowerCase(),
+        city: city ? String(city).trim() : "Lagos",
+        estimatedAttendance: estimatedAttendance ? String(estimatedAttendance).trim() : "500-1500",
+        claimedOffer: true,
+        notes: notes ? String(notes).trim() : "",
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Playbook unlocked. Your 0% fee promotion code is active.",
+        promoCode: "FOUNDER100",
+        leadId: lead._id,
+      });
+    } catch (err: any) {
+      console.error("Error creating organizer lead:", err);
+      return res.status(500).json({ error: "Failed to submit request. Please try again." });
+    }
+  });
+
+  // ── Admin: List Organizer Leads ──
+  app.get("/api/admin/leads", async (req, res) => {
+    if (!req.user || (req.user.role !== "admin" && !req.user.isAdmin)) {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    try {
+      const leads = await OrganizerLeadModel.find().sort({ createdAt: -1 }).lean();
+      return res.json(leads);
+    } catch (err) {
+      console.error("Error fetching organizer leads:", err);
+      return res.status(500).json({ error: "Failed to load organizer leads." });
     }
   });
 

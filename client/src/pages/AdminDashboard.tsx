@@ -29,6 +29,8 @@ import {
   MapPin,
   Eye,
   ExternalLink,
+  MessageCircle,
+  Phone,
 } from "lucide-react";
 
 
@@ -67,6 +69,20 @@ export default function AdminDashboard() {
     isError: vendorsError,
     refetch: refetchVendors,
   } = useVendors();
+
+  const {
+    data: leads,
+    isLoading: leadsLoading,
+    refetch: refetchLeads,
+  } = useQuery<any[]>({
+    queryKey: ["/api/admin/leads"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/leads", { credentials: "include" });
+      if (!res.ok) throw new Error("Could not load leads");
+      return res.json();
+    },
+    enabled: isAdmin,
+  });
 
   const exportToCSV = (data: any[], filename: string) => {
     if (!data || data.length === 0) return;
@@ -164,6 +180,16 @@ export default function AdminDashboard() {
           <TabsTrigger value="events">Events & Overview</TabsTrigger>
           <TabsTrigger value="brand">Brand & Custom Link</TabsTrigger>
           {(isAdmin || isVendors) && <TabsTrigger value="vendors">Vendor Directory</TabsTrigger>}
+          {isAdmin && (
+            <TabsTrigger value="leads" className="flex items-center gap-1.5">
+              <span>Organizer Leads</span>
+              {leads && leads.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-gold/20 text-gold text-[10px] font-bold">
+                  {leads.length}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="events" className="space-y-6">
@@ -489,6 +515,108 @@ export default function AdminDashboard() {
                 </div>
               </Reveal>
             )}
+          </TabsContent>
+        )}
+
+        {isAdmin && (
+          <TabsContent value="leads" className="space-y-6">
+            <Reveal>
+              <div className="border border-hairline rounded-md bg-surface overflow-hidden">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-5 md:p-6 border-b border-hairline gap-4">
+                  <div>
+                    <h2 className="font-display text-xl font-bold text-ink">
+                      Organizer Leads &amp; Playbook Inquiries
+                    </h2>
+                    <p className="text-xs text-muted-ink mt-1">
+                      Promoters and festival directors who requested the 2026 Zero-Gate-Fraud Playbook.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {leads && leads.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => exportToCSV(leads, "organizer-leads.csv")}
+                        className="press border-hairline text-ink hover:text-gold text-xs h-9"
+                      >
+                        <Download className="w-3.5 h-3.5 mr-1.5" /> Export CSV
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {leadsLoading ? (
+                  <div className="p-8 text-center text-muted-ink text-sm">
+                    Loading organizer leads...
+                  </div>
+                ) : !leads || leads.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <p className="font-display text-lg font-bold text-ink">No Leads Captured Yet</p>
+                    <p className="text-xs text-muted-ink mt-1.5 max-w-md mx-auto leading-relaxed">
+                      When Nigerian event promoters visit <Link href="/organizers" className="text-gold underline">blackhevents.com/organizers</Link> and download the Free Zero-Gate-Fraud Playbook, their contact details and event size will appear here instantly.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                      <thead>
+                        <tr className="border-b border-hairline bg-surface-2 text-muted-ink text-[11px] font-semibold uppercase tracking-wider">
+                          <th className="py-3 px-4">Organizer &amp; Brand</th>
+                          <th className="py-3 px-4">WhatsApp Direct</th>
+                          <th className="py-3 px-4 hidden md:table-cell">Email</th>
+                          <th className="py-3 px-4 hidden sm:table-cell">City &amp; Crowd</th>
+                          <th className="py-3 px-4">Date</th>
+                          <th className="py-3 px-4 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-hairline">
+                        {leads.map((lead: any) => {
+                          const rawPhone = String(lead.whatsapp || "").replace(/[^0-9]/g, "");
+                          const intlPhone = rawPhone.startsWith("0") ? "234" + rawPhone.slice(1) : rawPhone;
+                          const waText = encodeURIComponent(
+                            `Hi ${lead.name}, saw you requested the Black Heritage Zero-Gate-Fraud Playbook for ${lead.brandName}! Are you planning an event soon?`
+                          );
+                          const waUrl = `https://wa.me/${intlPhone}?text=${waText}`;
+
+                          return (
+                            <tr key={lead._id} className="hover:bg-white/[0.02] transition-colors">
+                              <td className="py-3.5 px-4">
+                                <p className="font-bold text-ink text-sm">{lead.brandName}</p>
+                                <p className="text-xs text-muted-ink mt-0.5">{lead.name}</p>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className="font-mono text-gold font-medium">{lead.whatsapp}</span>
+                              </td>
+                              <td className="py-3.5 px-4 hidden md:table-cell text-muted-ink">
+                                {lead.email}
+                              </td>
+                              <td className="py-3.5 px-4 hidden sm:table-cell">
+                                <span className="text-ink font-medium">{lead.city}</span>
+                                <span className="text-xs text-muted-ink block">{lead.estimatedAttendance} people</span>
+                              </td>
+                              <td className="py-3.5 px-4 text-muted-ink text-xs whitespace-nowrap">
+                                {format(new Date(lead.createdAt), "MMM d, yyyy")}
+                              </td>
+                              <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                <a href={waUrl} target="_blank" rel="noreferrer">
+                                  <Button
+                                    size="sm"
+                                    className="press h-8 px-3 rounded-full bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500 hover:text-black font-semibold text-xs border border-emerald-500/30"
+                                  >
+                                    <MessageCircle className="w-3.5 h-3.5 mr-1" />
+                                    Chat
+                                  </Button>
+                                </a>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </Reveal>
           </TabsContent>
         )}
       </Tabs>

@@ -548,3 +548,36 @@ const NativeSponsorSchema: Schema = new Schema({
 export const NativeSponsorModel =
   mongoose.models.NativeSponsor ||
   model<INativeSponsor>("NativeSponsor", NativeSponsorSchema);
+
+// Organizer Leads / Playbook Downloads (Lead Magnet)
+export interface IOrganizerLead extends Document {
+  name: string;
+  brandName: string;
+  whatsapp: string;
+  email: string;
+  city: string;
+  estimatedAttendance?: string;
+  claimedOffer: boolean;
+  notes?: string;
+  createdAt: Date;
+}
+
+const OrganizerLeadSchema: Schema = new Schema({
+  name: { type: String, required: true },
+  brandName: { type: String, required: true },
+  whatsapp: { type: String, required: true },
+  email: { type: String, required: true },
+  city: { type: String, default: "Lagos" },
+  estimatedAttendance: { type: String, default: "500-1500" },
+  claimedOffer: { type: Boolean, default: true },
+  notes: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now },
+});
+
+OrganizerLeadSchema.index({ whatsapp: 1 });
+OrganizerLeadSchema.index({ email: 1 });
+
+export const OrganizerLeadModel =
+  mongoose.models.OrganizerLead ||
+  model<IOrganizerLead>("OrganizerLead", OrganizerLeadSchema);
+

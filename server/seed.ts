@@ -94,6 +94,90 @@ export async function seedPlatform(): Promise<void> {
     await organizer.save();
   }
 
+  // Mainland Block Party
+  const mainlandOrg = await ensureUser("mainlandblockparty", "tickets@mainlandblockparty.com", "organizer", {
+    organizerSlug: "mainland-block-party",
+    displayName: "Mainland Block Party",
+    bio: "The undisputed heartbeat of African youth culture. Connecting music, energy, and community across Lagos, Abuja, Port Harcourt, and London.",
+    logoUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=120&h=120&auto=format&fit=crop",
+    coverUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1600&auto=format&fit=crop",
+    videoLoopUrl: "https://assets.mixkit.co/videos/preview/mixkit-crowd-at-a-concert-jumping-and-recording-with-their-phones-41484-large.mp4",
+    spotifyPlaylistUrl: "https://open.spotify.com/playlist/37i9dQZF1DXaNKqZRgC6dw",
+    tourCities: ["Lagos", "Abuja", "Port Harcourt", "London"],
+    socials: {
+      instagram: "https://instagram.com/mainlandblockparty",
+      twitter: "https://x.com/mainlandblockp",
+      whatsapp: "2348000000001",
+      website: "https://mainlandblockparty.com",
+    },
+    theme: "midnight-gold",
+    accentHex: "#E3B23C",
+    announcement: {
+      message: "Early bird tickets live for the Island Takeover at Moist Beach. Grab passes before wave 1 closes.",
+      linkUrl: "/e/mainland-block-party-island-takeover",
+      active: true,
+    },
+    followersCount: 28400,
+  });
+
+  // Alte Culture Circle
+  const alteOrg = await ensureUser("alte_culture", "community@alte-culture.ng", "organizer", {
+    organizerSlug: "alte-culture-circle",
+    displayName: "Alte Culture Circle",
+    bio: "The premier cultural festival celebrating Nigeria's alternative music, progressive fashion, photography, and contemporary youth art at Muri Okunola Park.",
+    logoUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=120&h=120&auto=format&fit=crop",
+    coverUrl: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1600&auto=format&fit=crop",
+    tourCities: ["Lagos", "Abuja"],
+    socials: {
+      instagram: "https://instagram.com/alteculturecircle",
+      twitter: "https://x.com/alteculture",
+      whatsapp: "2348000000002",
+    },
+    theme: "ivory-editorial",
+    accentHex: "#E3B23C",
+    announcement: {
+      message: "Alte Culture Festival 2026 phase 1 artist lineup announced. Tier 1 passes selling fast.",
+      linkUrl: "/e/alte-culture-festival-2026",
+      active: true,
+    },
+    followersCount: 12900,
+  });
+
+  // Native Sound System
+  const nativeOrg = await ensureUser("native_sound", "live@nativesoundsystem.com", "organizer", {
+    organizerSlug: "native-sound-system",
+    displayName: "Native Sound System",
+    bio: "Lagos and London sound collective curation by The NATIVE. Groundbreaking DJ sets, club nights, and festival sound stages celebrating modern African sonic identity.",
+    logoUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=120&h=120&auto=format&fit=crop",
+    coverUrl: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1600&auto=format&fit=crop",
+    tourCities: ["Lagos", "London", "Accra"],
+    socials: {
+      instagram: "https://instagram.com/nativesoundsystem",
+      twitter: "https://x.com/nativesoundsystem",
+      whatsapp: "2348000000003",
+    },
+    theme: "midnight-gold",
+    accentHex: "#E3B23C",
+    followersCount: 18300,
+  });
+
+  // Sip & Paint .NG
+  const sipOrg = await ensureUser("sip_and_paint", "hello@sipandpaint.ng", "organizer", {
+    organizerSlug: "sip-and-paint-ng",
+    displayName: "Sip & Paint .NG",
+    bio: "Nigeria's favorite social creative experience. Cocktails, canvases, Afrobeats, and curated rooftop vibes across Lekki, Victoria Island, and Abuja.",
+    logoUrl: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=120&h=120&auto=format&fit=crop",
+    coverUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1600&auto=format&fit=crop",
+    tourCities: ["Lagos", "Abuja"],
+    socials: {
+      instagram: "https://instagram.com/sipandpaintng",
+      whatsapp: "2348000000004",
+    },
+    theme: "sunset-poster",
+    accentHex: "#E3B23C",
+    followersCount: 9200,
+  });
+
   // Clean up any previously seeded blackheritage organizer / gala so user manages their own events
   await User.deleteOne({ username: "blackheritage" });
   await EventModel.deleteOne({ slug: "black-heritage-grand-gala-awards" });
@@ -115,21 +199,22 @@ export async function seedPlatform(): Promise<void> {
   const organizerId = organizer._id.toString();
   const inDays = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
-  // 5 Authentic Upcoming Lagos Events
+  // Authentic Nigerian Cultural Events across Lagos & Abuja
   const canonicalEvents = [
     {
-      title: "Detty December Finale: Live at Moist Beach",
-      slug: "detty-december-finale-moist-beach",
-      daysAhead: 14,
+      title: "Mainland Block Party: The Island Takeover",
+      slug: "mainland-block-party-island-takeover",
+      daysAhead: 12,
       location: "Moist Beach Club, Oniru Beach, Victoria Island, Lagos",
-      price: 1500000,
-      capacity: 1500,
+      price: 500000,
+      capacity: 2500,
       imageUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1600&auto=format&fit=crop",
-      description: "The premier coastal celebration closing out the Lagos party season. World-class Afrobeats DJs, live percussionists, seaside fireworks, and premium beach cabana bottle service.",
+      description: "The biggest youth music movement in Nigeria hits Moist Beach. 3 sound trucks, live percussionists, seaside fireworks, pop-up merch drops, and non-stop Afrobeats & Amapiano till sunrise.",
       ticketTypes: [
-        { name: "General Admission", price: 1500000, capacity: 800, sold: 142, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "VIP Deck Access", price: 4500000, capacity: 250, sold: 58, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "Premium Beach Cabana (Table of 8)", price: 60000000, capacity: 20, sold: 8, saleOpen: null, saleClose: inDays(28).toISOString() },
+        { name: "Early Bird Pass", price: 500000, capacity: 500, sold: 450, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "General Admission", price: 1000000, capacity: 1500, sold: 820, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "VIP Backstage Deck", price: 3500000, capacity: 300, sold: 140, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Beach Cabana (Table of 8)", price: 25000000, capacity: 20, sold: 12, saleOpen: null, saleClose: inDays(28).toISOString() },
       ],
       gallery: [
         "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1200&auto=format&fit=crop",
@@ -137,28 +222,127 @@ export async function seedPlatform(): Promise<void> {
       ],
       isFeatured: true,
       theme: "midnight-gold" as const,
-      branding: { displayName: "Tunde Live Concepts", logoUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=96&h=96&auto=format&fit=crop", accentHex: "#C9A227" },
+      organizerId: mainlandOrg._id.toString(),
+      organizerName: "Mainland Block Party",
+      branding: {
+        displayName: "Mainland Block Party",
+        logoUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=120&h=120&auto=format&fit=crop",
+        accentHex: "#E3B23C",
+        slug: "mainland-block-party",
+      },
     },
     {
-      title: "Lagos Afrobeats & Amapiano All-Nighter",
-      slug: "lagos-afrobeats-amapiano-all-nighter",
-      daysAhead: 21,
-      location: "Landmark Beach, Water Corporation Drive, Victoria Island, Lagos",
-      price: 1000000,
-      capacity: 2200,
-      imageUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1600&auto=format&fit=crop",
-      description: "From Soweto basslines to Lagos highlife percussion. Non-stop twin-stage sound system featuring South Africa's finest log-drum selectors alongside Lagos headline tastemakers.",
+      title: "Capital Block Party: Neon Garden Cypher",
+      slug: "capital-block-party-neon-garden",
+      daysAhead: 19,
+      location: "Harrow Park, Wuse 2, Abuja",
+      price: 750000,
+      capacity: 1800,
+      imageUrl: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=1600&auto=format&fit=crop",
+      description: "Abuja's premier youth block party. Under the neon lights of Harrow Park with Nigeria's top touring DJs, local streetwear brands, and high-energy crowd cyphers.",
       ticketTypes: [
-        { name: "Regular Beach Pass", price: 1000000, capacity: 1200, sold: 310, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "VIP Sunset Lounge", price: 3500000, capacity: 300, sold: 92, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "Backstage Artist Pass", price: 12000000, capacity: 50, sold: 19, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Early Bird Garden Pass", price: 750000, capacity: 400, sold: 280, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "General Admission", price: 1250000, capacity: 1000, sold: 510, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Backstage VIP Lounge", price: 4000000, capacity: 200, sold: 90, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Pavilion Table of 6", price: 20000000, capacity: 15, sold: 8, saleOpen: null, saleClose: inDays(28).toISOString() },
       ],
       gallery: [
-        "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=1200&auto=format&fit=crop",
+        "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1200&auto=format&fit=crop",
+      ],
+      isFeatured: true,
+      theme: "midnight-gold" as const,
+      organizerId: mainlandOrg._id.toString(),
+      organizerName: "Mainland Block Party",
+      branding: {
+        displayName: "Mainland Block Party",
+        logoUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=120&h=120&auto=format&fit=crop",
+        accentHex: "#E3B23C",
+        slug: "mainland-block-party",
+      },
+    },
+    {
+      title: "Alte Culture Festival 2026",
+      slug: "alte-culture-festival-2026",
+      daysAhead: 26,
+      location: "Muri Okunola Park, Victoria Island, Lagos",
+      price: 1000000,
+      capacity: 2000,
+      imageUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=1600&auto=format&fit=crop",
+      description: "A multi-stage celebration of progressive African youth culture. Featuring headline alternative artists, underground skate parks, pop-up fashion runways, and indie art installations.",
+      ticketTypes: [
+        { name: "General Pass", price: 1000000, capacity: 1200, sold: 620, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "VIP Stage Lawn", price: 3000000, capacity: 400, sold: 180, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "All-Access Creator Pass", price: 7500000, capacity: 100, sold: 45, saleOpen: null, saleClose: inDays(25).toISOString() },
+      ],
+      gallery: [
+        "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1200&auto=format&fit=crop",
       ],
       isFeatured: true,
       theme: "ivory-editorial" as const,
-      branding: { displayName: "Afro-Beats Festival", logoUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=96&h=96&auto=format&fit=crop", accentHex: "#9A6B1F" },
+      organizerId: alteOrg._id.toString(),
+      organizerName: "Alte Culture Circle",
+      branding: {
+        displayName: "Alte Culture Circle",
+        logoUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=120&h=120&auto=format&fit=crop",
+        accentHex: "#E3B23C",
+        slug: "alte-culture-circle",
+      },
+    },
+    {
+      title: "Native Sound System: Born in Lagos Club Night",
+      slug: "native-sound-system-born-in-lagos",
+      daysAhead: 15,
+      location: "Wave Beach, Elegushi, Lekki, Lagos",
+      price: 800000,
+      capacity: 1500,
+      imageUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1600&auto=format&fit=crop",
+      description: "Heavy sub-bass, experimental Afrobeats, and high-octane live sets on the shoreline. Curated by The NATIVE featuring international guest DJs and the underground sound of Lagos.",
+      ticketTypes: [
+        { name: "Regular Shoreline Pass", price: 800000, capacity: 900, sold: 410, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "VIP Lounge Deck", price: 2500000, capacity: 250, sold: 110, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Sound Stage Cabana (Table of 6)", price: 18000000, capacity: 15, sold: 9, saleOpen: null, saleClose: inDays(28).toISOString() },
+      ],
+      gallery: [
+        "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1200&auto=format&fit=crop",
+      ],
+      isFeatured: true,
+      theme: "midnight-gold" as const,
+      organizerId: nativeOrg._id.toString(),
+      organizerName: "Native Sound System",
+      branding: {
+        displayName: "Native Sound System",
+        logoUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=120&h=120&auto=format&fit=crop",
+        accentHex: "#E3B23C",
+        slug: "native-sound-system",
+      },
+    },
+    {
+      title: "Sunset Sip, Paint & Chill",
+      slug: "sunset-sip-paint-chill",
+      daysAhead: 7,
+      location: "Atmosphere Rooftop, Lennox Mall, Lekki Phase 1, Lagos",
+      price: 1500000,
+      capacity: 120,
+      imageUrl: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1600&auto=format&fit=crop",
+      description: "Unwind with chilled wine, pre-sketched canvases, art tutors, and an intimate golden hour rooftop vibe overlooking the Lekki skyline. All painting materials and 2 complimentary cocktails included.",
+      ticketTypes: [
+        { name: "Solo Painter Pass (Canvas & 2 Drinks)", price: 1500000, capacity: 60, sold: 48, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Couples Package (2 Canvases & Wine Bottle)", price: 3500000, capacity: 20, sold: 18, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Creative Table for 4", price: 6000000, capacity: 8, sold: 5, saleOpen: null, saleClose: inDays(25).toISOString() },
+      ],
+      gallery: [
+        "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1200&auto=format&fit=crop",
+      ],
+      isFeatured: true,
+      theme: "sunset-poster" as const,
+      organizerId: sipOrg._id.toString(),
+      organizerName: "Sip & Paint .NG",
+      branding: {
+        displayName: "Sip & Paint .NG",
+        logoUrl: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=120&h=120&auto=format&fit=crop",
+        accentHex: "#E3B23C",
+        slug: "sip-and-paint-ng",
+      },
     },
     {
       title: "Palmwine & Suya Sunset Sessions",
@@ -167,7 +351,7 @@ export async function seedPlatform(): Promise<void> {
       location: "Muri Okunola Park, Victoria Island, Lagos",
       price: 750000,
       capacity: 850,
-      imageUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=1600&auto=format&fit=crop",
+      imageUrl: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1600&auto=format&fit=crop",
       description: "An open-air evening under the historic trees of Muri Okunola Park. Authentic fresh palmwine kegs, artisan ram suya, live acoustic neo-soul, and an intimate Lagos social market.",
       ticketTypes: [
         { name: "Sunset Entry", price: 750000, capacity: 500, sold: 180, saleOpen: null, saleClose: inDays(30).toISOString() },
@@ -179,30 +363,15 @@ export async function seedPlatform(): Promise<void> {
       ],
       isFeatured: true,
       theme: "sunset-poster" as const,
-      branding: null,
+      organizerId: organizerId,
+      organizerName: "Tunde Live Concepts",
+      branding: {
+        displayName: "Tunde Live Concepts",
+        logoUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=96&h=96&auto=format&fit=crop",
+        accentHex: "#E3B23C",
+        slug: "tunde-live",
+      },
     },
-    {
-      title: "Lekki Block Party: Street & Sound",
-      slug: "lekki-block-party-street-and-sound",
-      daysAhead: 17,
-      location: "Admiralty Way, Lekki Phase 1, Lagos",
-      price: 500000,
-      capacity: 1800,
-      imageUrl: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=1600&auto=format&fit=crop",
-      description: "Lekki's biggest street-culture takeover. Pop-up streetwear drops, custom car showcase, three DJ sound trucks, and 360-degree party cyphers from twilight to dawn.",
-      ticketTypes: [
-        { name: "Block Entry", price: 500000, capacity: 1000, sold: 420, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "Backstage Truck Access", price: 2500000, capacity: 200, sold: 88, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "Crew Table of 6", price: 15000000, capacity: 30, sold: 14, saleOpen: null, saleClose: inDays(28).toISOString() },
-      ],
-      gallery: [
-        "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1200&auto=format&fit=crop",
-      ],
-      isFeatured: true,
-      theme: "midnight-gold" as const,
-      branding: null,
-    },
-
   ];
 
   for (const item of canonicalEvents) {
