@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Reveal, FadeImg } from "@/components/motion";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
-import { Loader2, ShieldCheck, Flame, ArrowUpRight } from "lucide-react";
+import { Loader2, ShieldCheck, Flame, ArrowUpRight, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
