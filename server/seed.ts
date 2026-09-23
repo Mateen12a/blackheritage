@@ -15,14 +15,14 @@ import { generateTicketCode } from "./tickets";
 export async function seedPlatform(): Promise<void> {
   if (mongoose.connection.readyState !== 1) return;
 
-  // ── Platform settings: 6% tickets, 12.5% vendor bookings ──
+  // Platform settings: 6% tickets, 12.5% vendor bookings
   const settings = await PlatformSettingModel.findOne({ key: "platform" });
   if (!settings) {
     await PlatformSettingModel.create({ key: "platform", ticketCommissionBps: 600, vendorCommissionBps: 1250 });
     console.log("Seed: platform settings created (6% tickets, 12.5% vendor)");
   }
 
-  // ── Accounts: admin, organizer, attendee, vendor owner, team staff ──
+  // Accounts: admin, organizer, attendee, vendor owner, team staff
   const password = await bcrypt.hash("demo1234", 10);
 
   const ensureUser = async (username: string, email: string, role: string, extra: any = {}, pwd = password) => {
@@ -94,7 +94,7 @@ export async function seedPlatform(): Promise<void> {
     await organizer.save();
   }
 
-  // ── Official Black Heritage Platform Organizer ("Black Heritage Originals") ──
+  // Official Black Heritage Platform Organizer ("Black Heritage Originals")
   const blackHeritageOrg = await ensureUser("blackheritage", "originals@blackheritage.africa", "organizer", {
     organizerSlug: "blackheritage",
     displayName: "Black Heritage Originals",
@@ -159,11 +159,11 @@ export async function seedPlatform(): Promise<void> {
   });
   if (!gateStaff.teamOwnerId) console.log("Seed: team accounts ensured (gate_staff, finance_staff)");
 
-  // ── Organizer owns the seeded events so staff scope and dashboards work ──
+  // Organizer owns the seeded events so staff scope and dashboards work
   const organizerId = organizer._id.toString();
   const inDays = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
-  // ── 5 Authentic Upcoming Lagos Events ──
+  // 5 Authentic Upcoming Lagos Events
   const canonicalEvents = [
     {
       title: "Detty December Finale: Live at Moist Beach",
@@ -478,7 +478,7 @@ export async function seedPlatform(): Promise<void> {
   }
   events = await EventModel.find();
 
-  // ── Promo codes on the first event ──
+  // Promo codes on the first event
   const flagship = events[0];
   const promoCount = await PromoCodeModel.countDocuments({ eventId: flagship?._id });
   if (flagship && promoCount === 0) {
@@ -493,7 +493,7 @@ export async function seedPlatform(): Promise<void> {
     console.log(`Seed: promo codes EARLYBIRD and CREW500 on "${flagship.title}"`);
   }
 
-  // ── Tickets for every paid booking that has none ──
+  // Tickets for every paid booking that has none
   const paidBookings = await BookingModel.find({ status: "paid" });
   let minted = 0;
   for (const booking of paidBookings) {
@@ -624,7 +624,7 @@ export async function seedPlatform(): Promise<void> {
     }
   }
 
-  // ── 5 Authentic Verified Lagos Event Vendors ──
+  // 5 Authentic Verified Lagos Event Vendors
   const canonicalVendors = [
     {
       businessName: "DJ Consequence",
@@ -761,7 +761,7 @@ export async function seedPlatform(): Promise<void> {
     }
   }
 
-  // ── Vendor showcase: one published vendor carries the profile-link demo ──
+  // Vendor showcase: one published vendor carries the profile-link demo
   // Healed on every boot so the demo survives e2e runs, same as the event
   // showcase. Targets whichever vendor set the database actually holds:
   // an already-branded one, else the first published profile.
@@ -791,8 +791,8 @@ export async function seedPlatform(): Promise<void> {
     console.log("Seed: vendor showcase branding applied to " + showcase.businessName);
   }
 
-  // ── Vendor trust demo: one real client-to-owner conversation on the ──
-  // ── showcase profile so the reply-time signal has honest data.       ──
+  // Vendor trust demo: one real client-to-owner conversation on the
+  // showcase profile so the reply-time signal has honest data.
   if (showcase && attendee && vendorOwner?._id && showcase.ownerId === vendorOwner._id.toString()) {
     const { MessageModel } = await import("./models");
     const hasDemoConvo = await MessageModel.countDocuments({ conversationId: "seed-vendor-demo" });
@@ -821,7 +821,7 @@ export async function seedPlatform(): Promise<void> {
     }
   }
 
-  // ── Vendor ratings demo: two reviews on the showcase profile so the stars
+  // Vendor ratings demo: two reviews on the showcase profile so the stars
   // render for attendees. Healed like the rest of the showcase state.
   if (showcase && mongoose.connection.readyState === 1) {
     const { VendorRatingModel, User: UserModel } = await import("./models");
@@ -846,7 +846,7 @@ export async function seedPlatform(): Promise<void> {
     }
   }
 
-  // ── Native Brand Sponsors ──
+  // Native Brand Sponsors
   const canonicalSponsors = [
     {
       title: "Official Spirits Partner of Lagos Alternative Nights",
