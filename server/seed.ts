@@ -94,57 +94,9 @@ export async function seedPlatform(): Promise<void> {
     await organizer.save();
   }
 
-  // Official Black Heritage Platform Organizer ("Black Heritage Originals")
-  const blackHeritageOrg = await ensureUser("blackheritage", "originals@blackheritage.africa", "organizer", {
-    organizerSlug: "blackheritage",
-    displayName: "Black Heritage Originals",
-    bio: "The official cultural production arm of Black Heritage. Hosting Nigeria's premier cultural galas, creative honors, and curated festival stages across Lagos, Abuja, and nationwide.",
-    logoUrl: "https://blackhevents.com/favicon.png",
-    coverUrl: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1600&auto=format&fit=crop",
-    videoLoopUrl: "https://assets.mixkit.co/videos/preview/mixkit-crowd-at-a-concert-jumping-and-recording-with-their-phones-41484-large.mp4",
-    spotifyPlaylistUrl: "https://open.spotify.com/playlist/37i9dQZF1DXaNKqZRgC6dw",
-    tourCities: ["Lagos", "Abuja", "Port Harcourt", "London"],
-    socials: {
-      instagram: "https://instagram.com/blackheritage.events",
-      twitter: "https://x.com/blackheritage",
-      whatsapp: "2348000000000",
-      website: "https://blackhevents.com",
-    },
-    theme: "midnight-gold",
-    accentHex: "#E3B23C",
-    announcement: {
-      message: "Official Patron Tables and Banquet Dining Passes are now open for the Black Heritage Grand Gala & Awards at Eko Hotel.",
-      linkUrl: "/e/black-heritage-grand-gala-awards",
-      active: true,
-    },
-    followersCount: 4850,
-  });
-
-  if (!blackHeritageOrg.organizerSlug || blackHeritageOrg.organizerSlug !== "blackheritage") {
-    blackHeritageOrg.organizerSlug = "blackheritage";
-    blackHeritageOrg.displayName = "Black Heritage Originals";
-    blackHeritageOrg.bio = "The official cultural production arm of Black Heritage. Hosting Nigeria's premier cultural galas, creative honors, and curated festival stages across Lagos, Abuja, and nationwide.";
-    blackHeritageOrg.logoUrl = "https://blackhevents.com/favicon.png";
-    blackHeritageOrg.coverUrl = "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1600&auto=format&fit=crop";
-    blackHeritageOrg.videoLoopUrl = "https://assets.mixkit.co/videos/preview/mixkit-crowd-at-a-concert-jumping-and-recording-with-their-phones-41484-large.mp4";
-    blackHeritageOrg.spotifyPlaylistUrl = "https://open.spotify.com/playlist/37i9dQZF1DXaNKqZRgC6dw";
-    blackHeritageOrg.tourCities = ["Lagos", "Abuja", "Port Harcourt", "London"];
-    blackHeritageOrg.socials = {
-      instagram: "https://instagram.com/blackheritage.events",
-      twitter: "https://x.com/blackheritage",
-      whatsapp: "2348000000000",
-      website: "https://blackhevents.com",
-    };
-    blackHeritageOrg.theme = "midnight-gold";
-    blackHeritageOrg.accentHex = "#E3B23C";
-    blackHeritageOrg.announcement = {
-      message: "Official Patron Tables and Banquet Dining Passes are now open for the Black Heritage Grand Gala & Awards at Eko Hotel.",
-      linkUrl: "/e/black-heritage-grand-gala-awards",
-      active: true,
-    };
-    blackHeritageOrg.followersCount = 4850;
-    await blackHeritageOrg.save();
-  }
+  // Clean up any previously seeded blackheritage organizer / gala so user manages their own events
+  await User.deleteOne({ username: "blackheritage" });
+  await EventModel.deleteOne({ slug: "black-heritage-grand-gala-awards" });
 
   const attendee = await ensureUser("ayo_attendee", "ayo@example.com", "user");
   const vendorOwner = await ensureUser("naija_vendor", "naija@example.com", "user");
@@ -250,34 +202,7 @@ export async function seedPlatform(): Promise<void> {
       theme: "midnight-gold" as const,
       branding: null,
     },
-    {
-      title: "Black Heritage Grand Gala & Awards",
-      slug: "black-heritage-grand-gala-awards",
-      daysAhead: 28,
-      location: "Grand Ballroom, Eko Hotel & Suites, Victoria Island, Lagos",
-      price: 3000000,
-      capacity: 950,
-      imageUrl: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1600&auto=format&fit=crop",
-      description: "An evening honoring contemporary African creators, directors, sound engineers, and cultural pioneers. Red carpet champagne reception, multi-course banquet, and headline performances.",
-      ticketTypes: [
-        { name: "Gala Theatre Seating", price: 3000000, capacity: 350, sold: 85, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "Banquet Dining Seat", price: 9500000, capacity: 200, sold: 72, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "VIP Patron Table of 10", price: 120000000, capacity: 15, sold: 6, saleOpen: null, saleClose: inDays(28).toISOString() },
-      ],
-      gallery: [
-        "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1200&auto=format&fit=crop",
-      ],
-      isFeatured: true,
-      theme: "midnight-gold" as const,
-      organizerId: blackHeritageOrg._id.toString(),
-      organizerName: "Black Heritage Originals",
-      branding: {
-        displayName: "Black Heritage Originals",
-        logoUrl: "https://blackhevents.com/favicon.png",
-        accentHex: "#E3B23C",
-        slug: "blackheritage",
-      },
-    },
+
   ];
 
   for (const item of canonicalEvents) {
