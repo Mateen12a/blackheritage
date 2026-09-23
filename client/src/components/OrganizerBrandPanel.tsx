@@ -30,6 +30,13 @@ import {
   Download,
   CheckCircle2,
   ShieldCheck,
+  Film,
+  Music,
+  MapPin,
+  Plus,
+  X,
+  Flame,
+  Play,
 } from "lucide-react";
 
 export function OrganizerBrandPanel() {
@@ -54,6 +61,11 @@ export function OrganizerBrandPanel() {
   const [twitter, setTwitter] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [website, setWebsite] = useState("");
+
+  const [videoLoopUrl, setVideoLoopUrl] = useState("");
+  const [spotifyPlaylistUrl, setSpotifyPlaylistUrl] = useState("");
+  const [tourCities, setTourCities] = useState<string[]>([]);
+  const [newCityInput, setNewCityInput] = useState("");
 
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
@@ -82,6 +94,10 @@ export function OrganizerBrandPanel() {
       setTwitter(soc.twitter || "");
       setWhatsapp(soc.whatsapp || "");
       setWebsite(soc.website || "");
+
+      setVideoLoopUrl(profile.videoLoopUrl || "");
+      setSpotifyPlaylistUrl(profile.spotifyPlaylistUrl || "");
+      setTourCities(profile.tourCities || []);
       setIsDirty(false);
     }
   }, [profile]);
@@ -170,6 +186,9 @@ export function OrganizerBrandPanel() {
       theme,
       accentHex: accentHex.trim() || null,
       customDomain: customDomain.trim(),
+      videoLoopUrl: videoLoopUrl.trim() || null,
+      spotifyPlaylistUrl: spotifyPlaylistUrl.trim() || null,
+      tourCities: tourCities,
       announcement: {
         message: announcementMessage.trim(),
         linkUrl: announcementLink.trim(),
@@ -605,6 +624,188 @@ export function OrganizerBrandPanel() {
                 className="w-28 h-8 text-xs font-mono bg-surface-2 border-hairline text-ink"
               />
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Alive & Kinetic Experience Studio Card */}
+      <Card className="bg-surface border-hairline">
+        <CardHeader>
+          <CardTitle className="text-ink flex items-center gap-2">
+            <Film className="w-5 h-5 text-gold" />
+            Alive & Kinetic Experience Studio
+          </CardTitle>
+          <CardDescription className="text-xs sm:text-sm text-muted-ink">
+            Elevate your public link hub with live concert video loops, Spotify soundbites, and multi-city tour stops.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          {/* Hero Video Loop */}
+          <div className="space-y-2">
+            <Label className="text-xs text-ink font-medium flex items-center gap-1.5">
+              <Film className="w-3.5 h-3.5 text-gold" />
+              Hero Background Video Loop (MP4 / WebM URL)
+            </Label>
+            <Input
+              value={videoLoopUrl}
+              onChange={(e) => {
+                setVideoLoopUrl(e.target.value);
+                setIsDirty(true);
+              }}
+              placeholder="https://... direct .mp4 or .webm link"
+              className="bg-surface-2 border-hairline text-ink text-xs h-10 font-mono"
+            />
+            <p className="text-[11px] text-muted-ink">
+              Autoplays silently behind your hero cover banner, giving your hub live festival crowd energy.
+            </p>
+
+            {/* Quick 1-Click Video Presets */}
+            <div className="pt-2">
+              <span className="text-[11px] text-muted-ink font-semibold uppercase tracking-wider block mb-2">
+                Or choose a curated atmosphere preset:
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {[
+                  {
+                    name: "Concert Crowd & Strobes",
+                    url: "https://assets.mixkit.co/videos/preview/mixkit-crowd-at-a-concert-jumping-and-recording-with-their-phones-41484-large.mp4",
+                  },
+                  {
+                    name: "Festival Beach Sunset",
+                    url: "https://assets.mixkit.co/videos/preview/mixkit-top-aerial-shot-of-seashore-with-waves-1090-large.mp4",
+                  },
+                  {
+                    name: "Midnight Stage Cypher",
+                    url: "https://assets.mixkit.co/videos/preview/mixkit-dancing-at-a-music-festival-41490-large.mp4",
+                  },
+                ].map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => {
+                      setVideoLoopUrl(preset.url);
+                      setIsDirty(true);
+                    }}
+                    className={`press p-2 rounded-lg border text-left text-xs transition-colors ${
+                      videoLoopUrl === preset.url
+                        ? "border-gold bg-gold/10 text-gold"
+                        : "border-hairline bg-surface-2 text-ink hover:border-gold/40"
+                    }`}
+                  >
+                    <span className="font-medium block">{preset.name}</span>
+                    <span className="text-[10px] text-muted-ink">1-Click Apply</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Video Preview */}
+            {videoLoopUrl && (
+              <div className="mt-3 relative h-28 w-full max-w-sm rounded-lg overflow-hidden border border-hairline bg-surface-2">
+                <video
+                  src={videoLoopUrl}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent pointer-events-none" />
+                <span className="absolute bottom-2 left-2 text-[10px] font-mono text-gold font-semibold uppercase tracking-wider bg-surface/80 px-2 py-0.5 rounded">
+                  Live Loop Preview
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Spotify / Soundbite Link */}
+          <div className="space-y-2 pt-3 border-t border-hairline">
+            <Label className="text-xs text-ink font-medium flex items-center gap-1.5">
+              <Music className="w-3.5 h-3.5 text-gold" />
+              Event Soundtrack / Spotify Playlist URL
+            </Label>
+            <Input
+              value={spotifyPlaylistUrl}
+              onChange={(e) => {
+                setSpotifyPlaylistUrl(e.target.value);
+                setIsDirty(true);
+              }}
+              placeholder="https://open.spotify.com/playlist/... or artist track link"
+              className="bg-surface-2 border-hairline text-ink text-xs h-10 font-mono"
+            />
+            <p className="text-[11px] text-muted-ink">
+              Adds a glowing &quot;Sounds of the Event&quot; audio button to your public hub header.
+            </p>
+          </div>
+
+          {/* Multi-City Tour Stops */}
+          <div className="space-y-2 pt-3 border-t border-hairline">
+            <Label className="text-xs text-ink font-medium flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-gold" />
+              Tour Stops & Multi-City Series
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                value={newCityInput}
+                onChange={(e) => setNewCityInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const trimmed = newCityInput.trim();
+                    if (trimmed && !tourCities.includes(trimmed)) {
+                      setTourCities([...tourCities, trimmed]);
+                      setNewCityInput("");
+                      setIsDirty(true);
+                    }
+                  }
+                }}
+                placeholder="Type city (e.g. Lagos, Abuja, London) and press Enter"
+                className="bg-surface-2 border-hairline text-ink text-xs h-10 flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  const trimmed = newCityInput.trim();
+                  if (trimmed && !tourCities.includes(trimmed)) {
+                    setTourCities([...tourCities, trimmed]);
+                    setNewCityInput("");
+                    setIsDirty(true);
+                  }
+                }}
+                className="press border-hairline text-ink hover:text-gold text-xs h-10 px-3"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" />
+                Add City
+              </Button>
+            </div>
+
+            {tourCities.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-2">
+                {tourCities.map((city) => (
+                  <span
+                    key={city}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gold/10 border border-gold/30 text-xs text-gold font-medium"
+                  >
+                    <span>{city}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTourCities(tourCities.filter((c) => c !== city));
+                        setIsDirty(true);
+                      }}
+                      className="hover:text-ink transition-colors ml-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <p className="text-[11px] text-muted-ink">
+              Renders interactive city filter buttons on your hub so attendees can quickly browse upcoming dates by location.
+            </p>
           </div>
         </CardContent>
       </Card>

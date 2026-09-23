@@ -99,8 +99,7 @@
     }
   }
 
-  /* Poster deck push-in: each poster slowly zooms while it is on screen,
-     the CSS half of the HeroPosterDeck rotation in Home.tsx. */
+  /* Poster deck push-in: each poster slowly zooms while it is on screen */
   --animate-slow-zoom: slow-zoom 5.4s ease-out forwards;
 
   @keyframes slow-zoom {
@@ -112,8 +111,7 @@
     }
   }
 
-  /* Ticker: the top edge of the hero rotates tonight's real events.
-     translateX(-50%) assumes the row is rendered twice (see Home.tsx). */
+  /* Ticker: the top edge of the hero rotates tonight's real events. */
   --animate-ticker: ticker 36s linear infinite;
 
   @keyframes ticker {
@@ -123,6 +121,29 @@
     to {
       transform: translateX(-50%);
     }
+  }
+
+  /* Soundwave equalizer bars for Vibe Player */
+  --animate-soundwave-1: soundwave-1 0.75s ease-in-out infinite alternate;
+  --animate-soundwave-2: soundwave-2 1.05s ease-in-out infinite alternate;
+  --animate-soundwave-3: soundwave-3 0.85s ease-in-out infinite alternate;
+  --animate-soundwave-4: soundwave-4 1.2s ease-in-out infinite alternate;
+
+  @keyframes soundwave-1 {
+    0% { height: 3px; }
+    100% { height: 15px; }
+  }
+  @keyframes soundwave-2 {
+    0% { height: 14px; }
+    100% { height: 5px; }
+  }
+  @keyframes soundwave-3 {
+    0% { height: 4px; }
+    100% { height: 17px; }
+  }
+  @keyframes soundwave-4 {
+    0% { height: 16px; }
+    100% { height: 6px; }
   }
 }
 
@@ -185,7 +206,11 @@
     .animate-hero-glow,
     .animate-ember,
     .animate-ticker,
-    .animate-slow-zoom {
+    .animate-slow-zoom,
+    .animate-soundwave-1,
+    .animate-soundwave-2,
+    .animate-soundwave-3,
+    .animate-soundwave-4 {
       animation: none !important;
       transform: none !important;
     }
@@ -193,8 +218,7 @@
 }
 
 @utility eyebrow {
-  /* The single sanctioned small label: DM Sans, caps, muted. Metadata only —
-     never headings, never buttons. */
+  /* The single sanctioned small label: DM Sans, caps, muted. Metadata only */
   @apply text-[11px] font-bold tracking-[0.18em] uppercase text-muted-foreground;
 }
 

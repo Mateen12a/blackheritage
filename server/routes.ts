@@ -632,6 +632,9 @@ export async function registerRoutes(
       customDomain: (organizer as any).customDomain || "",
       customDomainStatus: (organizer as any).customDomainStatus || null,
       announcement: (organizer as any).announcement || { message: "", linkUrl: "", active: false },
+      videoLoopUrl: (organizer as any).videoLoopUrl || null,
+      spotifyPlaylistUrl: (organizer as any).spotifyPlaylistUrl || null,
+      tourCities: (organizer as any).tourCities || [],
       followersCount: (organizer as any).followersCount || 0,
     });
   });
@@ -1961,7 +1964,7 @@ export async function registerRoutes(
   });
 
   app.post(api.vendors.create.path, async (req, res) => {
-    // Any signed-in user can list themselves as a vendor — the Auth page
+    // Any signed-in user can list themselves as a vendor - the Auth page
     // registers vendor-intent users with the plain "user" role (the User
     // model has no "vendor" role; ownership lives on the vendor document).
     if (!req.isAuthenticated()) {
