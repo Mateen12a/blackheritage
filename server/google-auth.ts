@@ -6,8 +6,8 @@ import { User } from "./models";
  * Google OAuth routes.
  *
  * To enable Google sign-in, set these environment variables:
- *   GOOGLE_CLIENT_ID     — from Google Cloud Console
- *   GOOGLE_CLIENT_SECRET — from Google Cloud Console
+ *   GOOGLE_CLIENT_ID     : from Google Cloud Console
+ *   GOOGLE_CLIENT_SECRET : from Google Cloud Console
  *
  * The callback URL is: {BASE_URL}/api/auth/google/callback
  *
@@ -95,7 +95,7 @@ export function setupGoogleAuth(app: Express) {
     );
   });
 
-  // Step 2: Handle the callback — exchange code for tokens, fetch profile, create/find user, log in
+  // Step 2: Handle the callback: exchange code for tokens, fetch profile, create/find user, log in
   app.get("/api/auth/google/callback", async (req, res) => {
     if (!isConfigured()) {
       return res.redirect("/auth?error=google_not_configured");

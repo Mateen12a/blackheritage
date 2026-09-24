@@ -6,8 +6,9 @@ import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import { User, IUser } from "./models";
 import MongoStore from "connect-mongo";
+import { generateReferralCode } from "./referrals";
 
-// DEV FALLBACK — when MongoDB is unreachable (local preview), users live in
+// DEV FALLBACK: when MongoDB is unreachable (local preview), users live in
 // memory so registration and login still work. Never used in production.
 interface DevUser {
   _id: string;
@@ -26,7 +27,7 @@ export const usingDevStore = () => mongoose.connection.readyState !== 1;
 /**
  * Look up a user by id in whichever store is live. Lives here because the
  * dev user map is private to this module. Always resolves to undefined for
- * unknown ids — never throws (guards Mongoose ObjectId cast errors).
+ * unknown ids: never throws (guards Mongoose ObjectId cast errors).
  */
 export async function findUserById(id: string): Promise<any> {
   if (!id) return undefined;
@@ -143,6 +144,12 @@ export function setupAuth(app: Express) {
 
   app.post("/api/auth/register", rateLimit(20, 15 * 60 * 1000), async (req, res) => {
     const { username, email, password } = req.body;
+    // Referral: capture the code before anything else can fail. Attribution
+    // must survive a failed attempt, so it rides on the session cookie and
+    // resolves at the moment the account actually lands.
+    if (req.body.referredBy) {
+      (req.session as any).referredByCode = String(req.body.referredBy).toUpperCase().trim();
+    }
     // Role is limited to self-serve signup choices. admin is never
     // assignable here; platform admins are created by the seed only.
     const role = req.body.role === "organizer" ? "organizer" : "user";
@@ -191,15 +198,30 @@ export function setupAuth(app: Express) {
           res.status(201).json(safeUser(user));
         });
       }
+      // Resolve the referral now that signup actually succeeded. The code
+      // was stashed on the session at request start.
+      let referrerId: string | undefined;
+      const stash = (req.session as any)?.referredByCode;
+      if (stash) {
+        try {
+          const { findUserIdByCode } = await import("./referrals");
+          referrerId = (await findUserIdByCode(stash)) || undefined;
+        } catch {
+          // A bad referral code never blocks a signup.
+        }
+      }
       const user = new User({
         username,
         email,
         password: hashedPassword,
         role: role || "user",
         ...(displayName ? { displayName } : {}),
+        ...(referrerId ? { referredBy: referrerId } : {}),
+        referralCode: generateReferralCode(),
         termsAcceptedAt: new Date(), // consent record, NDPA audit trail
       });
       await user.save();
+      (req.session as any).referredByCode = undefined;
       // Welcome email is fire-and-forget: signup must never wait on email.
       // The role decides the variant: organizers get next steps, guests get
       // discovery.
@@ -236,5 +258,27 @@ export function setupAuth(app: Express) {
   app.get("/api/auth/user", (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Not logged in" });
     res.json(safeUser(req.user));
+  });
+
+  // ── Referrals: a code per account, one endpoint to read your own ──
+  app.get("/api/referrals/me", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not logged in" });
+    const me = req.user as any;
+    const fresh = await User.findById(me._id).select("referralCode referredBy displayName username").lean();
+    if (!fresh) return res.status(404).json({ message: "Account not found" });
+    // Self-heal: accounts from before the program get a code on first read.
+    let code = (fresh as any).referralCode;
+    if (!code) {
+      code = generateReferralCode();
+      await User.updateOne({ _id: fresh._id }, { $set: { referralCode: code } }).catch(() => {});
+    }
+    const base = process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get("host")}`;
+    const invites = await User.countDocuments({ referredBy: String(fresh._id) }).catch(() => 0);
+    return res.json({
+      code,
+      link: `${base}/r/${code}`,
+      invites: invites || 0,
+      referredBy: (fresh as any).referredBy || null,
+    });
   });
 }

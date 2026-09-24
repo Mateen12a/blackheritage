@@ -58,6 +58,16 @@ function ensureWindowsBinaries() {
 
 ensureWindowsBinaries();
 
+// Sync authentic event flyers from artifacts into client/public/events
+const syncScript = path.join(__dirname, 'sync-flyers.cjs');
+if (fs.existsSync(syncScript)) {
+  try {
+    require(syncScript);
+  } catch (err) {
+    console.warn('[dev-runner] Flyer sync notice:', err.message);
+  }
+}
+
 console.log('[dev-runner] Starting Express backend & Vite frontend...');
 
 const viteCli = path.join(nodeModulesDir, 'vite', 'bin', 'vite.js');

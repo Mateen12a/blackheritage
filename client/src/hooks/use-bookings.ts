@@ -95,6 +95,8 @@ export interface BookingInitResult {
   accessCode?: string;
   publicKey?: string | null;
   simulated?: boolean;
+  /** Which gateway holds this payment: flutterwave redirects, paystack pops inline. */
+  gateway?: string;
 }
 
 export function useInitiateBooking() {

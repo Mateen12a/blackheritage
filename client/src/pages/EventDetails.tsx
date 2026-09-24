@@ -13,6 +13,7 @@ import { PastEventProof } from "@/components/PastEventProof";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/Navbar";
+import { BookingReturnHandler } from "@/components/BookingReturnHandler";
 import { getPreset, accentOverrides } from "@shared/themes";
 import { useEventPulse } from "@/hooks/use-pulse";
 import { useCountdown } from "@/hooks/use-countdown";
@@ -431,6 +432,8 @@ export default function EventDetails() {
         </div>
         {waitlistEnabled && soldOut && <WaitlistInline eventId={String(event.id)} compact />}
       </div>
+
+      <BookingReturnHandler event={event} />
 
       <BookingModal
         event={event}

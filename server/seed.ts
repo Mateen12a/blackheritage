@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import {
@@ -199,26 +201,65 @@ export async function seedPlatform(): Promise<void> {
   const organizerId = organizer._id.toString();
   const inDays = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
-  // Authentic Nigerian Cultural Events across Lagos & Abuja
+  // Sync authentic Nigerian event flyers from brain artifacts into client/public/events
+  try {
+    const brainDir = "C:/Users/PC/.gemini/antigravity-ide/brain/84a9bd3c-c46b-4f40-8c69-c5e9e636f686";
+    const destDir = path.resolve(process.cwd(), "client", "public", "events");
+    if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+
+    const flyers = [
+      { src: "mainland_party_poster_1790165395409.jpg", dest: "mainland-block-party.jpg" },
+      { src: "alte_culture_poster_1790165455508.jpg", dest: "alte-culture-festival.jpg" },
+      { src: "native_sound_poster_1790165472069.jpg", dest: "native-sound-system.jpg" },
+      { src: "sip_paint_poster_1790165490855.jpg", dest: "sip-and-paint-ng.jpg" },
+      { src: "palmwine_fest_poster_1790165512705.jpg", dest: "palmwine-music-festival.jpg" },
+    ];
+    for (const f of flyers) {
+      const srcPath = path.join(brainDir, f.src);
+      const destPath = path.join(destDir, f.dest);
+      if (fs.existsSync(srcPath) && !fs.existsSync(destPath)) {
+        fs.copyFileSync(srcPath, destPath);
+      }
+    }
+  } catch (err: any) {
+    console.warn("Notice syncing flyers in seed:", err?.message);
+  }
+
+  // Remove deprecated demo test events so the marketplace exclusively displays authentic Nigerian cultural events
+  await EventModel.deleteMany({
+    slug: {
+      $in: [
+        "easter-sunday-cultural-gala",
+        "easter-afro-beats-festival",
+        "easter-family-fun-day",
+        "black-heritage-grand-gala-awards",
+        "lagos-afrobeats-amapiano-all-nighter",
+        "detty-december-finale-moist-beach",
+        "lekki-block-party-street-and-sound",
+      ],
+    },
+  });
+
+  // Authentic Nigerian Cultural Events across Lagos & Abuja with bespoke flyers and accurate ticket tiers
   const canonicalEvents = [
     {
-      title: "Mainland Block Party: The Island Takeover",
-      slug: "mainland-block-party-island-takeover",
+      title: "Mainland Block Party: GTA Lagos",
+      slug: "mainland-block-party-gta-lagos",
+      slugAliases: ["mainland-block-party-island-takeover"],
       daysAhead: 12,
-      location: "Moist Beach Club, Oniru Beach, Victoria Island, Lagos",
-      price: 500000,
-      capacity: 2500,
-      imageUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1600&auto=format&fit=crop",
-      description: "The biggest youth music movement in Nigeria hits Moist Beach. 3 sound trucks, live percussionists, seaside fireworks, pop-up merch drops, and non-stop Afrobeats & Amapiano till sunrise.",
+      location: "Secret Outdoor Location, Lagos Mainland | Moist Beach, Oniru, Victoria Island, Lagos",
+      price: 1000000,
+      capacity: 3500,
+      imageUrl: "/events/mainland-block-party.jpg",
+      description: "Nigeria's biggest youth movement and street music festival. 3 sound trucks, live percussionists, festival merch drops, surprise sets from Africa's biggest Afrobeats & Amapiano hitmakers, and non-stop street energy till sunrise.",
       ticketTypes: [
-        { name: "Early Bird Pass", price: 500000, capacity: 500, sold: 450, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "General Admission", price: 1000000, capacity: 1500, sold: 820, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "VIP Backstage Deck", price: 3500000, capacity: 300, sold: 140, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "Beach Cabana (Table of 8)", price: 25000000, capacity: 20, sold: 12, saleOpen: null, saleClose: inDays(28).toISOString() },
+        { name: "General Access (Mainland Gate)", price: 1000000, capacity: 2500, sold: 1850, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "VIP Fast Track (Stage Deck)", price: 3000000, capacity: 600, sold: 420, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "VIP Table of 6", price: 50000000, capacity: 40, sold: 28, saleOpen: null, saleClose: inDays(28).toISOString() },
+        { name: "Grand Cabana (Table of 10)", price: 150000000, capacity: 15, sold: 9, saleOpen: null, saleClose: inDays(25).toISOString() },
       ],
       gallery: [
-        "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1200&auto=format&fit=crop",
-        "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1200&auto=format&fit=crop",
+        "/events/mainland-block-party.jpg",
       ],
       isFeatured: true,
       theme: "midnight-gold" as const,
@@ -226,56 +267,28 @@ export async function seedPlatform(): Promise<void> {
       organizerName: "Mainland Block Party",
       branding: {
         displayName: "Mainland Block Party",
-        logoUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=120&h=120&auto=format&fit=crop",
+        logoUrl: "/events/mainland-block-party.jpg",
         accentHex: "#E3B23C",
         slug: "mainland-block-party",
       },
     },
     {
-      title: "Capital Block Party: Neon Garden Cypher",
-      slug: "capital-block-party-neon-garden",
-      daysAhead: 19,
-      location: "Harrow Park, Wuse 2, Abuja",
-      price: 750000,
-      capacity: 1800,
-      imageUrl: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=1600&auto=format&fit=crop",
-      description: "Abuja's premier youth block party. Under the neon lights of Harrow Park with Nigeria's top touring DJs, local streetwear brands, and high-energy crowd cyphers.",
-      ticketTypes: [
-        { name: "Early Bird Garden Pass", price: 750000, capacity: 400, sold: 280, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "General Admission", price: 1250000, capacity: 1000, sold: 510, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "Backstage VIP Lounge", price: 4000000, capacity: 200, sold: 90, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "Pavilion Table of 6", price: 20000000, capacity: 15, sold: 8, saleOpen: null, saleClose: inDays(28).toISOString() },
-      ],
-      gallery: [
-        "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1200&auto=format&fit=crop",
-      ],
-      isFeatured: true,
-      theme: "midnight-gold" as const,
-      organizerId: mainlandOrg._id.toString(),
-      organizerName: "Mainland Block Party",
-      branding: {
-        displayName: "Mainland Block Party",
-        logoUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=120&h=120&auto=format&fit=crop",
-        accentHex: "#E3B23C",
-        slug: "mainland-block-party",
-      },
-    },
-    {
-      title: "Alte Culture Festival 2026",
+      title: "Alté Culture Festival 2026",
       slug: "alte-culture-festival-2026",
+      slugAliases: [],
       daysAhead: 26,
       location: "Muri Okunola Park, Victoria Island, Lagos",
-      price: 1000000,
-      capacity: 2000,
-      imageUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=1600&auto=format&fit=crop",
-      description: "A multi-stage celebration of progressive African youth culture. Featuring headline alternative artists, underground skate parks, pop-up fashion runways, and indie art installations.",
+      price: 1250000,
+      capacity: 2500,
+      imageUrl: "/events/alte-culture-festival.jpg",
+      description: "The 5th edition of Nigeria's premier youth cultural gathering celebrating progressive alternative music, indie fashion, photography, skate culture, and forward-thinking youth art. Featuring Lady Donli, Odunsi (The Engine), BOJ, and underground selectors.",
       ticketTypes: [
-        { name: "General Pass", price: 1000000, capacity: 1200, sold: 620, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "VIP Stage Lawn", price: 3000000, capacity: 400, sold: 180, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "All-Access Creator Pass", price: 7500000, capacity: 100, sold: 45, saleOpen: null, saleClose: inDays(25).toISOString() },
+        { name: "Festival Lawn Pass", price: 1250000, capacity: 1800, sold: 980, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "VIP Stage Deck", price: 3500000, capacity: 500, sold: 260, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "All-Access Creator Pass", price: 7500000, capacity: 120, sold: 78, saleOpen: null, saleClose: inDays(25).toISOString() },
       ],
       gallery: [
-        "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1200&auto=format&fit=crop",
+        "/events/alte-culture-festival.jpg",
       ],
       isFeatured: true,
       theme: "ivory-editorial" as const,
@@ -283,27 +296,28 @@ export async function seedPlatform(): Promise<void> {
       organizerName: "Alte Culture Circle",
       branding: {
         displayName: "Alte Culture Circle",
-        logoUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=120&h=120&auto=format&fit=crop",
+        logoUrl: "/events/alte-culture-festival.jpg",
         accentHex: "#E3B23C",
         slug: "alte-culture-circle",
       },
     },
     {
-      title: "Native Sound System: Born in Lagos Club Night",
-      slug: "native-sound-system-born-in-lagos",
+      title: "Native Sound System: Club NATIVE Lagos",
+      slug: "native-sound-system-club-native",
+      slugAliases: ["native-sound-system-born-in-lagos"],
       daysAhead: 15,
-      location: "Wave Beach, Elegushi, Lekki, Lagos",
-      price: 800000,
-      capacity: 1500,
-      imageUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1600&auto=format&fit=crop",
-      description: "Heavy sub-bass, experimental Afrobeats, and high-octane live sets on the shoreline. Curated by The NATIVE featuring international guest DJs and the underground sound of Lagos.",
+      location: "Wave Beach, Elegushi, Lekki Phase 1, Lagos",
+      price: 1000000,
+      capacity: 1800,
+      imageUrl: "/events/native-sound-system.jpg",
+      description: "Heavy sub-bass, experimental Afrobeats, and high-octane live sets on the shoreline. Curated by The NATIVE featuring international guest selectors, Shzzy, Lady Donli, TDRM, Solis, and the underground sounds of modern Africa.",
       ticketTypes: [
-        { name: "Regular Shoreline Pass", price: 800000, capacity: 900, sold: 410, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "VIP Lounge Deck", price: 2500000, capacity: 250, sold: 110, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "Sound Stage Cabana (Table of 6)", price: 18000000, capacity: 15, sold: 9, saleOpen: null, saleClose: inDays(28).toISOString() },
+        { name: "Regular Shoreline Pass", price: 1000000, capacity: 1200, sold: 710, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "VIP Shoreline Lounge", price: 3000000, capacity: 350, sold: 180, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Sound Stage Cabana (Table of 6)", price: 25000000, capacity: 25, sold: 16, saleOpen: null, saleClose: inDays(28).toISOString() },
       ],
       gallery: [
-        "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1200&auto=format&fit=crop",
+        "/events/native-sound-system.jpg",
       ],
       isFeatured: true,
       theme: "midnight-gold" as const,
@@ -311,27 +325,28 @@ export async function seedPlatform(): Promise<void> {
       organizerName: "Native Sound System",
       branding: {
         displayName: "Native Sound System",
-        logoUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=120&h=120&auto=format&fit=crop",
+        logoUrl: "/events/native-sound-system.jpg",
         accentHex: "#E3B23C",
         slug: "native-sound-system",
       },
     },
     {
-      title: "Sunset Sip, Paint & Chill",
-      slug: "sunset-sip-paint-chill",
+      title: "Sip & Paint .NG: Golden Hour Rooftop",
+      slug: "sip-paint-ng-golden-hour",
+      slugAliases: ["sunset-sip-paint-chill"],
       daysAhead: 7,
       location: "Atmosphere Rooftop, Lennox Mall, Lekki Phase 1, Lagos",
-      price: 1500000,
-      capacity: 120,
-      imageUrl: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1600&auto=format&fit=crop",
-      description: "Unwind with chilled wine, pre-sketched canvases, art tutors, and an intimate golden hour rooftop vibe overlooking the Lekki skyline. All painting materials and 2 complimentary cocktails included.",
+      price: 2000000,
+      capacity: 150,
+      imageUrl: "/events/sip-and-paint-ng.jpg",
+      description: "Lagos' favorite creative social experience overlooking the Lekki-Ikoyi link bridge. Pre-sketched canvases, art tutors, chilled wine, signature cocktails, and soulful Afrobeats as the sun sets over the lagoon. All supplies included.",
       ticketTypes: [
-        { name: "Solo Painter Pass (Canvas & 2 Drinks)", price: 1500000, capacity: 60, sold: 48, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "Couples Package (2 Canvases & Wine Bottle)", price: 3500000, capacity: 20, sold: 18, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "Creative Table for 4", price: 6000000, capacity: 8, sold: 5, saleOpen: null, saleClose: inDays(25).toISOString() },
+        { name: "Solo Painter Pass (Canvas & 2 Cocktails)", price: 2000000, capacity: 80, sold: 62, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Couples Experience (2 Canvases & Wine Bottle)", price: 4500000, capacity: 25, sold: 21, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Group Table for 4", price: 8000000, capacity: 12, sold: 9, saleOpen: null, saleClose: inDays(25).toISOString() },
       ],
       gallery: [
-        "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1200&auto=format&fit=crop",
+        "/events/sip-and-paint-ng.jpg",
       ],
       isFeatured: true,
       theme: "sunset-poster" as const,
@@ -339,35 +354,36 @@ export async function seedPlatform(): Promise<void> {
       organizerName: "Sip & Paint .NG",
       branding: {
         displayName: "Sip & Paint .NG",
-        logoUrl: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=120&h=120&auto=format&fit=crop",
+        logoUrl: "/events/sip-and-paint-ng.jpg",
         accentHex: "#E3B23C",
         slug: "sip-and-paint-ng",
       },
     },
     {
-      title: "Palmwine & Suya Sunset Sessions",
-      slug: "palmwine-suya-sunset-sessions",
+      title: "Palmwine Music Festival: Live in Lagos",
+      slug: "palmwine-music-festival-lagos",
+      slugAliases: ["palmwine-suya-sunset-sessions"],
       daysAhead: 9,
       location: "Muri Okunola Park, Victoria Island, Lagos",
-      price: 750000,
-      capacity: 850,
-      imageUrl: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1600&auto=format&fit=crop",
-      description: "An open-air evening under the historic trees of Muri Okunola Park. Authentic fresh palmwine kegs, artisan ram suya, live acoustic neo-soul, and an intimate Lagos social market.",
+      price: 1500000,
+      capacity: 2000,
+      imageUrl: "/events/palmwine-music-festival.jpg",
+      description: "Curated by Show Dem Camp & Friends. An iconic open-air December celebration of classic highlife, modern hip-hop, fresh palmwine kegs, artisan suya grills, and festival culture under the canopy of Muri Okunola Park.",
       ticketTypes: [
-        { name: "Sunset Entry", price: 750000, capacity: 500, sold: 180, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "Gourmet Tasting Board Pass", price: 2250000, capacity: 150, sold: 64, saleOpen: null, saleClose: inDays(30).toISOString() },
-        { name: "Picnic Lawn Table (Group of 4)", price: 8000000, capacity: 25, sold: 11, saleOpen: null, saleClose: inDays(25).toISOString() },
+        { name: "General Palmwine Pass", price: 1500000, capacity: 1400, sold: 780, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "VIP Lawn Table", price: 4500000, capacity: 250, sold: 130, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Patron Cabana (Table of 8)", price: 35000000, capacity: 20, sold: 11, saleOpen: null, saleClose: inDays(25).toISOString() },
       ],
       gallery: [
-        "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1200&auto=format&fit=crop",
+        "/events/palmwine-music-festival.jpg",
       ],
       isFeatured: true,
       theme: "sunset-poster" as const,
       organizerId: organizerId,
       organizerName: "Tunde Live Concepts",
       branding: {
-        displayName: "Tunde Live Concepts",
-        logoUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=96&h=96&auto=format&fit=crop",
+        displayName: "Show Dem Camp & Friends",
+        logoUrl: "/events/palmwine-music-festival.jpg",
         accentHex: "#E3B23C",
         slug: "tunde-live",
       },
@@ -376,7 +392,11 @@ export async function seedPlatform(): Promise<void> {
 
   for (const item of canonicalEvents) {
     const existing = await EventModel.findOne({
-      $or: [{ title: item.title }, { slug: item.slug }],
+      $or: [
+        { title: item.title },
+        { slug: item.slug },
+        ...(item.slugAliases || []).map((alias) => ({ slug: alias })),
+      ],
     });
     const targetOrgId = (item as any).organizerId || organizerId;
     const targetOrgName = (item as any).organizerName || "Tunde Live Concepts";
@@ -385,6 +405,7 @@ export async function seedPlatform(): Promise<void> {
       await EventModel.create({
         title: item.title,
         slug: item.slug,
+        slugAliases: item.slugAliases || [],
         organizerId: targetOrgId,
         organizerName: targetOrgName,
         description: item.description,
@@ -409,6 +430,42 @@ export async function seedPlatform(): Promise<void> {
       console.log(`Seed: canonical event created: "${item.title}"`);
     } else {
       let touched = false;
+      if (existing.title !== item.title) {
+        existing.title = item.title;
+        touched = true;
+      }
+      if (existing.slug !== item.slug) {
+        existing.slug = item.slug;
+        touched = true;
+      }
+      if (existing.imageUrl !== item.imageUrl) {
+        existing.imageUrl = item.imageUrl;
+        touched = true;
+      }
+      if (existing.description !== item.description) {
+        existing.description = item.description;
+        touched = true;
+      }
+      if (existing.location !== item.location) {
+        existing.location = item.location;
+        touched = true;
+      }
+      if (existing.price !== item.price) {
+        existing.price = item.price;
+        touched = true;
+      }
+      if (existing.capacity !== item.capacity) {
+        existing.capacity = item.capacity;
+        touched = true;
+      }
+      if (item.ticketTypes && existing.ticketTypes !== JSON.stringify(item.ticketTypes)) {
+        existing.ticketTypes = JSON.stringify(item.ticketTypes);
+        touched = true;
+      }
+      if (item.gallery && existing.gallery !== JSON.stringify(item.gallery)) {
+        existing.gallery = JSON.stringify(item.gallery);
+        touched = true;
+      }
       if (item.branding && (!existing.branding || (existing.branding as any).slug !== (item.branding as any).slug)) {
         existing.branding = item.branding;
         existing.organizerId = targetOrgId;
@@ -572,19 +629,33 @@ export async function seedPlatform(): Promise<void> {
   }
   events = await EventModel.find();
 
-  // Promo codes on the first event
-  const flagship = events[0];
-  const promoCount = await PromoCodeModel.countDocuments({ eventId: flagship?._id });
-  if (flagship && promoCount === 0) {
-    await PromoCodeModel.create({
-      code: "EARLYBIRD", eventId: flagship._id, kind: "percent", value: 15,
-      maxUses: 200, usedCount: 0, expiresAt: inDays(5), active: true,
-    });
-    await PromoCodeModel.create({
-      code: "CREW500", eventId: flagship._id, kind: "fixed", value: 50000,
-      maxUses: 50, usedCount: 0, expiresAt: inDays(30), active: true,
-    });
-    console.log(`Seed: promo codes EARLYBIRD and CREW500 on "${flagship.title}"`);
+  // Promo codes on the flagship. Picked by exact title, not natural order:
+  // Mongo's events[0] shifts between restarts, which silently moves the
+  // demo codes.
+  const flagship: any =
+    events.find((e: any) => e.title === "Palmwine Music Festival: Live in Lagos") || events[0];
+  // Heal, don't just create: demo codes expire on a fuse, so a long-running
+  // demo DB ends up with dead codes. Codes are unique per (code, eventId),
+  // so an existing row is refreshed IN PLACE (never moved across events) and
+  // one is created only when the flagship has none.
+  if (flagship) {
+    for (const spec of [
+      { code: "EARLYBIRD", kind: "percent", value: 15, maxUses: 200 },
+      { code: "CREW500", kind: "fixed", value: 50000, maxUses: 50 },
+    ]) {
+      const p: any = await PromoCodeModel.findOne({ code: spec.code, eventId: flagship._id });
+      if (!p) {
+        await PromoCodeModel.create({
+          ...spec, eventId: flagship._id, usedCount: 0,
+          expiresAt: inDays(30), active: true,
+        });
+      } else if (p.active === false || (p.expiresAt && new Date(p.expiresAt).getTime() < Date.now())) {
+        await PromoCodeModel.updateOne(
+          { _id: p._id },
+          { $set: { active: true, expiresAt: inDays(30) } },
+        );
+      }
+    }
   }
 
   // Tickets for every paid booking that has none
@@ -640,12 +711,16 @@ export async function seedPlatform(): Promise<void> {
   if (minted > 0) console.log(`Seed: ${minted} tickets minted for paid bookings, commission rows recorded`);
 
   // Give the demo attendee a guaranteed live booking on the flagship so the
-  // dashboard and gate portal always have something real to show.
-  const ayoBooking = await BookingModel.countDocuments({ email: "ayo@example.com", eventId: flagship?._id });
-  if (flagship && attendee && ayoBooking === 0) {
+  // dashboard and gate portal always have something real to show. Full heal:
+  // create the booking if missing, then mint its tickets if missing. A
+  // booking without tickets breaks My Tickets, the gate demo, and e2e.
+  let booking: any = flagship
+    ? await BookingModel.findOne({ email: "ayo@example.com", eventId: flagship._id })
+    : null;
+  if (!booking && flagship && attendee) {
     const tiers: any[] = JSON.parse(flagship.ticketTypes);
     const vip = tiers.find((t: any) => t.name === "VIP") || tiers[0];
-    const booking = await BookingModel.create({
+    booking = await BookingModel.create({
       userId: attendee._id.toString(),
       eventId: flagship._id,
       ticketType: vip.name,
@@ -658,18 +733,28 @@ export async function seedPlatform(): Promise<void> {
       paymentGateway: "simulated",
       paidAt: new Date(),
     });
-    await TicketModel.create([
-      {
-        code: "BH-7KQ2M4XA", eventId: flagship._id, bookingId: booking._id, seat: 1,
-        tierName: vip.name, attendeeName: "Ayo Balogun", attendeeEmail: "ayo@example.com",
-        amountPaid: vip.price, status: "valid",
-      },
-      {
-        code: "BH-3XW9RDTZ", eventId: flagship._id, bookingId: booking._id, seat: 2,
-        tierName: vip.name, attendeeName: "Ayo Balogun", attendeeEmail: "ayo@example.com",
-        amountPaid: vip.price, status: "valid",
-      },
-    ]);
+    // Canonical demo codes: reuse wherever earlier demo data still holds
+    // them (a deleted demo booking leaves its tickets behind), otherwise
+    // create. A blind insert here 11000s the whole seed and kills the boot.
+    const demoTickets = [
+      { code: "BH-7KQ2M4XA", seat: 1 },
+      { code: "BH-3XW9RDTZ", seat: 2 },
+    ];
+    for (const dt of demoTickets) {
+      const existingTicket = await TicketModel.findOne({ code: dt.code });
+      if (existingTicket) {
+        await TicketModel.updateOne(
+          { _id: existingTicket._id },
+          { $set: { eventId: flagship._id, bookingId: booking._id, status: "valid", tierName: vip.name } },
+        );
+      } else {
+        await TicketModel.create({
+          code: dt.code, eventId: flagship._id, bookingId: booking._id, seat: dt.seat,
+          tierName: vip.name, attendeeName: "Ayo Balogun", attendeeEmail: "ayo@example.com",
+          amountPaid: vip.price, status: "valid",
+        });
+      }
+    }
     vip.sold = Number(vip.sold || 0) + 2;
     flagship.ticketTypes = JSON.stringify(tiers);
     await flagship.save();
@@ -679,7 +764,43 @@ export async function seedPlatform(): Promise<void> {
       amount: Math.round((vip.price * 2 * 600) / 10000),
       sourceBookingId: booking._id, status: "due", note: "6% platform commission",
     });
-    console.log("Seed: demo attendee booking created with codes BH-7KQ2M4XA / BH-3XW9RDTZ");
+    console.log("Seed: demo attendee booking created");
+  }
+
+  // Ticket heal for the demo booking, independent of booking creation: a
+  // crashed boot can leave it without tickets, and a refund test leaves it
+  // refunded with voided tickets. Restore the full paid state either way.
+  if (booking) {
+    if (booking.status !== "paid") {
+      await BookingModel.updateOne({ _id: booking._id }, { $set: { status: "paid", paidAt: new Date() } });
+      booking.status = "paid";
+      console.log("Seed: demo booking re-paid (a refund test consumed it)");
+    }
+    const demoTickets = [
+      { code: "BH-7KQ2M4XA", seat: 1 },
+      { code: "BH-3XW9RDTZ", seat: 2 },
+    ];
+    const liveTickets = await TicketModel.countDocuments({ bookingId: booking._id, status: "valid" });
+    if (liveTickets < 2) {
+      const tiers: any[] = JSON.parse(flagship.ticketTypes);
+      const vip = tiers.find((t: any) => t.name === "VIP") || tiers[0];
+      for (const dt of demoTickets) {
+        const existingTicket = await TicketModel.findOne({ code: dt.code });
+        if (existingTicket) {
+          await TicketModel.updateOne(
+            { _id: existingTicket._id },
+            { $set: { eventId: flagship._id, bookingId: booking._id, status: "valid", tierName: vip.name, usedAt: null, usedBy: null } },
+          );
+        } else {
+          await TicketModel.create({
+            code: dt.code, eventId: flagship._id, bookingId: booking._id, seat: dt.seat,
+            tierName: vip.name, attendeeName: "Ayo Balogun", attendeeEmail: "ayo@example.com",
+            amountPaid: vip.price, status: "valid",
+          });
+        }
+      }
+      console.log("Seed: demo booking tickets healed");
+    }
   }
 
   // Demo green-path ticket: one always-valid code for testing the gate's
@@ -981,6 +1102,11 @@ export async function seedPlatform(): Promise<void> {
       console.log(`Seed: native sponsor created: "${s.sponsorName}" (${s.placement})`);
     }
   }
+
+  // Referrals: every account gets a code. Boot-time self-heal covers accounts
+  // created before the program existed.
+  const { ensureReferralCodes } = await import("./referrals");
+  await ensureReferralCodes();
 
   console.log("Seed check complete.");
 }

@@ -141,11 +141,20 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
         guest: !user,
       });
 
-      // Dev mode: no Paystack keys on the server, so the booking confirms
+      // Dev mode: no gateway keys on the server, so the booking confirms
       // immediately against the simulated gateway.
       if (init.simulated || !init.paymentUrl) {
         const result = await finalize(init.reference);
         showSuccess(result);
+        return;
+      }
+
+      // Flutterwave: hosted checkout redirects the whole tab through the
+      // gateway and back to this page with ?ref=... The return handler shows
+      // the reveal there, so here we just send the buyer off. More reliable
+      // than popups on Nigerian mobile browsers.
+      if (init.gateway === "flutterwave") {
+        window.location.href = init.paymentUrl;
         return;
       }
 

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { TicketModel, BookingModel, PromoCodeModel, PayoutModel, PlatformSettingModel, EventModel } from "./models";
 import { generateTicketCode, buildTicketPdf } from "./tickets";
-import { isPaystackConfigured } from "./paystack";
+import { activeGateway } from "./payments";
 
 
 
@@ -110,7 +110,7 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
   // Branded confirmation email with the PDF attached. Never blocks the
   // response; failures are logged, not thrown.
   try {
-    if (isPaystackConfigured() || process.env.RESEND_API_KEY) {
+    if (activeGateway() !== "simulated" || process.env.RESEND_API_KEY) {
       const { sendTicketEmail } = await import("./emails");
       const pdf = await buildTicketPdf(
         tickets.map((t: any) => ({

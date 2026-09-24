@@ -16,6 +16,7 @@ import {
   Check,
   ArrowUpRight,
   ShieldCheck,
+  Gift,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -91,6 +92,14 @@ export default function AuthPage() {
   const mode: Mode =
     modeOverride ?? (queryString.includes("tab=register") ? "register" : "login");
   const setMode = (m: Mode) => setModeOverride(m);
+  // Referral: /r/CODE lands here with ?ref=CODE. The code rides along to the
+  // server with the registration, which attributes the invite.
+  const referralCode = (
+    new URLSearchParams(queryString).get("ref") || ""
+  )
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 16);
   const [audience, setAudience] = useState<Audience>("attendee");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -179,6 +188,7 @@ export default function AuthPage() {
             displayName: fullName.trim() || undefined,
             role: roleForAudience,
             acceptedTerms: true,
+            ...(referralCode ? { referredBy: referralCode } : {}),
           })
         : await login({ username, password });
       toast({
@@ -714,6 +724,15 @@ export default function AuthPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                 />
+              </div>
+            )}
+
+            {isRegister && referralCode && (
+              <div className="flex items-center gap-2 rounded-md border border-gold/30 bg-gold/10 px-3.5 py-2.5 text-xs text-ink">
+                <Gift className="w-3.5 h-3.5 text-gold shrink-0" aria-hidden="true" />
+                <span>
+                  Invited with code <span className="font-semibold text-gold">{referralCode}</span>. Your friend gets credit when you finish signing up.
+                </span>
               </div>
             )}
 

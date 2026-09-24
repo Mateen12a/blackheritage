@@ -72,6 +72,10 @@ const UserSchema: Schema = new Schema({
   },
   theme: { type: String, enum: ['midnight-gold', 'ivory-editorial', 'sunset-poster', null], default: null },
   accentHex: { type: String, default: null },
+  // Referral program: a code per user, minted at signup. referredBy stores
+  // the inviting user's id (not the code) so renaming codes stays safe.
+  referralCode: { type: String, index: { unique: true, sparse: true } },
+  referredBy: { type: String, default: null },
   videoLoopUrl: { type: String, default: null },
   spotifyPlaylistUrl: { type: String, default: null },
   tourCities: { type: [String], default: [] },
@@ -159,6 +163,7 @@ export interface IBooking extends Document {
   status: 'pending' | 'paid' | 'cancelled';
   paymentIntentId?: string;
   paymentReference?: string;
+  gatewayTxnId?: string | null;
   isVerified: boolean; // Added isVerified
   verifiedAt?: Date; // Added verifiedAt
   createdAt: Date;
@@ -174,7 +179,8 @@ const BookingSchema: Schema = new Schema({
   status: { type: String, enum: ['pending', 'paid', 'cancelled'], default: 'pending' },
   paymentIntentId: { type: String },
   paymentReference: { type: String },
-  paymentGateway: { type: String, enum: ['paystack', 'simulated', 'manual', null], default: null },
+  paymentGateway: { type: String, enum: ['flutterwave', 'paystack', 'simulated', 'manual', null], default: null },
+  gatewayTxnId: { type: String, default: null }, // Flutterwave refunds need the numeric transaction id
   promoCode: { type: String, default: null },
   tableNote: { type: String, default: null }, // group size / seating preference for tables
   phone: { type: String, default: null }, // optional checkout fields, organizer-toggled

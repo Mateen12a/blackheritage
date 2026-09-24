@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Reveal } from "@/components/motion";
 import { Loader2, Upload } from "lucide-react";
+import { ReferralCard } from "@/components/ReferralCard";
 
 function SettingsForm() {
   const { user } = useAuth();
@@ -273,6 +274,10 @@ function SettingsForm() {
             </form>
           </CardContent>
         </Card>
+      </Reveal>
+
+      <Reveal>
+        <ReferralCard />
       </Reveal>
     </div>
   );

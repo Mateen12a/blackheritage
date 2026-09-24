@@ -63,6 +63,18 @@ app.get("/api/health", (_req, res) => {
   res.status(200).send("OK");
 });
 
+// Referral share links: /r/CODE forwards into the SPA, which stashes the
+// code and opens the register tab. A plain 302 keeps the link readable
+// everywhere (WhatsApp, Instagram bios, QR codes).
+app.get("/r/:code", (req, res) => {
+  const code = String(req.params.code || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 16);
+  if (!code) return res.redirect("/auth");
+  res.redirect(`/auth?tab=register&ref=${encodeURIComponent(code)}`);
+});
+
 // Self-ping mechanism to keep Render instance awake
 const BACKEND_URL = process.env.VITE_API_URL || process.env.BACKEND_URL;
 if (BACKEND_URL) {

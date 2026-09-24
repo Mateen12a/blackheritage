@@ -45,7 +45,10 @@ async function api(method, path, body, useCookie = true) {
   // The flagship is the event that carries the seeded promo codes.
   let event = null;
   for (const e of r.json) {
-    const pl = await api("GET", "/api/events/" + e.id + "/promos");
+    // The flagship advertises EARLYBIRD publicly (promoCodesPublic). The
+    // organizer-only /promos endpoint 403s for plain users, so the public
+    // listing is the one an attendee session can actually read.
+    const pl = await api("GET", "/api/events/" + e.id + "/public-promos");
     if (Array.isArray(pl.json) && pl.json.some((p) => p.code === "EARLYBIRD")) { event = e; break; }
   }
   if (!event) event = r.json[0];
@@ -202,8 +205,10 @@ async function api(method, path, body, useCookie = true) {
   ok("payouts recorded", r.status === 200 && fees.length >= 1, "status=" + r.status + " count=" + payoutsArr.length);
 
   // ── 24. Refund: voids ticket and emails ──
+  // Never refund the ayo@example.com demo booking: it is seed state the
+  // dashboards and gate demo rely on. Pick any other paid booking.
   const bookingsNow = await api("GET", "/api/events/" + event.id + "/bookings");
-  const paidBooking = (bookingsNow.json || []).find((b) => b.status === "paid");
+  const paidBooking = (bookingsNow.json || []).find((b) => b.status === "paid" && b.email !== "ayo@example.com");
   if (paidBooking) {
     r = await api("POST", "/api/bookings/" + paidBooking.id + "/refund");
     ok("refund processes", r.status === 200 && r.json?.ok, JSON.stringify(r.json));
@@ -550,6 +555,45 @@ async function api(method, path, body, useCookie = true) {
 
   // Registration probes stay in the database (harmless); the seed and demo
   // state do not depend on them.
+
+  // ── Referrals: code issuance, attribution at signup, invite counting ──
+  {
+    cookie = "";
+    await api("POST", "/api/auth/login", { username: "tunde_organizer", password: "demo1234" });
+    r = await api("GET", "/api/referrals/me");
+    ok("referral code issued", r.status === 200 && /^[A-Z0-9]{6,16}$/.test(r.json?.code || ""), "status=" + r.status + " code=" + r.json?.code);
+    ok("referral link format", typeof r.json?.link === "string" && r.json.link.includes("/r/"), r.json?.link);
+    const invitesBefore = r.json?.invites || 0;
+
+    const refUname = "refe2e" + Date.now().toString(36);
+    cookie = "";
+    r = await api("POST", "/api/auth/register", {
+      username: refUname, email: refUname + "@e2e.test", password: "refe2epass1",
+      acceptedTerms: true, role: "user", referredBy: r.json.code,
+    });
+    ok("referred signup accepted", r.status === 201, "status=" + r.status);
+
+    // Fresh user has their own code too
+    r = await api("GET", "/api/referrals/me");
+    ok("new user gets own code", r.status === 200 && /^[A-Z0-9]{6,16}$/.test(r.json?.code || ""), "status=" + r.status);
+
+    // Inviter's count moved up by exactly one
+    let orgCookie = cookie;
+    cookie = "";
+    await api("POST", "/api/auth/login", { username: "tunde_organizer", password: "demo1234" });
+    r = await api("GET", "/api/referrals/me");
+    ok("invite counted", r.json?.invites === invitesBefore + 1, "before=" + invitesBefore + " after=" + r.json?.invites);
+
+    // Bad code at signup must not block registration
+    const badUname = "refbad" + Date.now().toString(36);
+    cookie = "";
+    r = await api("POST", "/api/auth/register", {
+      username: badUname, email: badUname + "@e2e.test", password: "refe2epass1",
+      acceptedTerms: true, role: "user", referredBy: "NOSUCHCODE",
+    });
+    ok("bad referral code does not block signup", r.status === 201, "status=" + r.status);
+    cookie = orgCookie;
+  }
 
   // ── AI extraction endpoint: gating and real round trip ──
   // Guest refused before any model call.

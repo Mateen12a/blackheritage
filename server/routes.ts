@@ -19,10 +19,10 @@ import bcrypt from "bcryptjs";
 import { User, TicketModel, ScanEventModel, PlatformSettingModel, BookingModel, WaitlistModel, NativeSponsorModel, OrganizerLeadModel } from "./models";
 import mongoose from "mongoose";
 import { fulfillBooking, quoteBooking, validatePromo, getPlatformSettings } from "./booking";
-import { initializeTransaction, verifyTransaction, refundTransaction, verifyWebhookSignature, isPaystackConfigured } from "./paystack";
+import { initializePayment, verifyPayment, refundPayment, activeGateway, isPaystackConfigured, isFlutterwaveConfigured, isPaystackSignatureValid, isFlutterwaveSignatureValid } from "./payments";
 import { buildTicketPdf, generateTicketCode } from "./tickets";
 import { seedPlatform } from "./seed";
-import { sendManualTicketEmail, sendRefundEmail } from "./emails";
+import { sendManualTicketEmail, sendRefundEmail, sendFollowerDropEmail } from "./emails";
 import { extractEventFromFile, isAIConfigured, aiUploadLimiter } from "./ai";
 import { rateLimit } from "./auth";
 import crypto from "crypto";
@@ -70,8 +70,10 @@ export async function registerRoutes(
     res.json({ status: "ok" });
   });
 
-  // Serve uploaded portfolio files
+  // Serve uploaded portfolio files and event flyers
   app.use("/uploads/portfolio", express.static(UPLOAD_DIR, { maxAge: "30d" }));
+  const EVENTS_DIR = path.resolve(process.cwd(), "client", "public", "events");
+  app.use("/events", express.static(EVENTS_DIR, { maxAge: "30d" }));
 
   // ── AI event extraction: flyer/document upload → form prefill JSON ──
   // Organizer-only, rate limited, files stay in memory and go to the model,
@@ -889,7 +891,7 @@ export async function registerRoutes(
         tableNote: input.tableNote || null,
         phone: input.phone || null,
         dietaryNote: input.dietaryNote || null,
-        paymentGateway: isPaystackConfigured() ? "paystack" : "simulated",
+        paymentGateway: activeGateway(),
       });
 
       // Increment promo usage only when it actually applied
@@ -898,12 +900,16 @@ export async function registerRoutes(
         await PromoCodeModel.updateOne({ _id: quote.promoId }, { $inc: { usedCount: 1 } });
       }
 
-      if (isPaystackConfigured()) {
+      if (isPaystackConfigured() || isFlutterwaveConfigured()) {
+        const gateway = activeGateway();
         try {
-          const init = await initializeTransaction({
+          const init = await initializePayment({
             email: input.email,
             amountKobo: quote.totalKobo,
             reference,
+            name: input.name,
+            phone: input.phone || undefined,
+            redirectUrl: process.env.PUBLIC_APP_URL ? `${process.env.PUBLIC_APP_URL}/events/${event.slug || event.id}?ref=${reference}&gateway=${gateway}` : undefined,
             metadata: {
               bookingId: String(booking._id ?? booking.id),
               eventId: String(event.id),
@@ -918,13 +924,14 @@ export async function registerRoutes(
             totalKobo: quote.totalKobo,
             paymentUrl: init.authorizationUrl,
             accessCode: init.accessCode,
-            publicKey: process.env.PAYSTACK_PUBLIC_KEY || null,
+            publicKey: init.publicKey,
+            gateway: init.gateway,
           });
         } catch (psErr: any) {
           // Release held seats so the event is not left with phantom holds
           await releaseHeldSeats(String(event.id), quote.ticketType, input.quantity);
           await BookingModel.deleteOne({ _id: booking._id }).catch(() => {});
-          console.error("Paystack init failed:", psErr);
+          console.error("Payment init failed:", psErr);
           return res.status(502).json({ message: "Payment gateway is not responding. Try again in a moment." });
         }
       }
@@ -982,8 +989,8 @@ export async function registerRoutes(
         });
       }
 
-      if (isPaystackConfigured()) {
-        const verification = await verifyTransaction(reference);
+      if (activeGateway() !== "simulated") {
+        const verification = await verifyPayment(reference);
         const expected = Number(booking.totalAmount);
         if (verification.status !== "success") {
           return res.status(402).json({ message: "Payment did not go through. You have not been charged for a completed order." });
@@ -991,6 +998,12 @@ export async function registerRoutes(
         if (verification.amount !== expected) {
           console.error(`Amount mismatch for ${reference}: expected ${expected}, got ${verification.amount}`);
           return res.status(400).json({ message: "Payment amount does not match this order. Contact support." });
+        }
+        if (verification.paidAt) {
+          await BookingModel.findByIdAndUpdate(booking._id ?? booking.id, { paidAt: new Date(verification.paidAt) });
+        }
+        if (verification.transactionId) {
+          await BookingModel.findByIdAndUpdate(booking._id ?? booking.id, { gatewayTxnId: verification.transactionId }).catch(() => {});
         }
       }
       // Without Paystack keys the dev simulation fulfills directly.
@@ -1010,31 +1023,62 @@ export async function registerRoutes(
     }
   });
 
-  // ── Paystack webhook: source of truth for async payment confirmations ──
-  app.post("/api/paystack/webhook", express.raw({ type: "*/*" }), async (req, res) => {
+  // ── Payment webhook: source of truth for async payment confirmations ──
+  // One endpoint for both gateways: the signature decides whose payload this
+  // is (Paystack x-paystack-signature HMAC-SHA512; Flutterwave verif-hash
+  // HMAC-SHA256). Keep /api/paystack/webhook alive for already-registered
+  // dashboard URLs; new setups point at /api/payments/webhook.
+  const paymentWebhookHandler: express.RequestHandler = async (req, res) => {
     const rawBody = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : JSON.stringify(req.body);
-    const signature = req.headers["x-paystack-signature"] as string | undefined;
 
-    if (!verifyWebhookSignature(rawBody, signature)) {
+    let gateway: "paystack" | "flutterwave" | null = null;
+    if (isPaystackSignatureValid(rawBody, req.headers["x-paystack-signature"] as string | undefined)) {
+      gateway = "paystack";
+    } else if (isFlutterwaveSignatureValid(rawBody, req.headers["verif-hash"] as string | undefined)) {
+      gateway = "flutterwave";
+    }
+    if (!gateway) {
       return res.status(401).json({ message: "Invalid signature" });
     }
 
     try {
       const event = JSON.parse(rawBody);
-      if (event.event === "charge.success") {
+      if (gateway === "paystack" && event.event === "charge.success") {
         const reference = event.data?.reference;
+        const txnId: string | null = event.data?.id != null ? String(event.data.id) : null;
         if (reference) {
           const bookings = await storage.getAllBookings?.();
           const booking: any = bookings
             ? bookings.find((b: any) => b.paymentReference === reference)
             : await (storage as any).getBookingByReference(reference);
           if (booking && booking.status !== "paid") {
-            // Trust Paystack's webhook amount; also cross-check against our order.
+            // Trust the gateway's webhook amount; also cross-check against our order.
             const expected = Number(booking.totalAmount);
             if (Number(event.data.amount) === expected) {
               await fulfillBooking(String(booking._id ?? booking.id));
+              if (txnId) await BookingModel.findByIdAndUpdate(booking._id ?? booking.id, { gatewayTxnId: txnId }).catch(() => {});
             } else {
               console.error(`Webhook amount mismatch for ${reference}: expected ${expected}, got ${event.data.amount}`);
+            }
+          }
+        }
+      }
+      if (gateway === "flutterwave" && event.event === "charge.completed" && event.data?.status === "successful") {
+        const reference = event.data?.tx_ref;
+        const txnId: string | null = event.data?.id != null ? String(event.data.id) : null;
+        if (reference) {
+          const bookings = await storage.getAllBookings?.();
+          const booking: any = bookings
+            ? bookings.find((b: any) => b.paymentReference === reference)
+            : await (storage as any).getBookingByReference(reference);
+          if (booking && booking.status !== "paid") {
+            const expected = Number(booking.totalAmount);
+            // Flutterwave amounts arrive in major units (naira); compare in kobo.
+            if (Math.round(Number(event.data.amount) * 100) === expected) {
+              await fulfillBooking(String(booking._id ?? booking.id));
+              if (txnId) await BookingModel.findByIdAndUpdate(booking._id ?? booking.id, { gatewayTxnId: txnId, paidAt: event.data.created_at ? new Date(event.data.created_at) : undefined }).catch(() => {});
+            } else {
+              console.error(`Webhook amount mismatch for ${reference}: expected ${expected} kobo, got ${event.data.amount} naira`);
             }
           }
         }
@@ -1042,9 +1086,13 @@ export async function registerRoutes(
       res.json({ received: true });
     } catch (err) {
       console.error("Webhook processing error:", err);
-      res.status(200).json({ received: true }); // Paystack retries on failure; acknowledge anyway
+      res.status(200).json({ received: true }); // Gateways retry on failure; acknowledge anyway
     }
-  });
+  };
+
+  app.post("/api/payments/webhook", express.raw({ type: "*/*" }), paymentWebhookHandler);
+  app.post("/api/paystack/webhook", express.raw({ type: "*/*" }), paymentWebhookHandler);
+  app.post("/api/flutterwave/webhook", express.raw({ type: "*/*" }), paymentWebhookHandler);
 
   // ── Ticket codes for a booking (buyer reaches this only via their booking) ──
   app.get("/api/bookings/:id/tickets", async (req, res) => {
@@ -1464,11 +1512,18 @@ export async function registerRoutes(
       if (ctx.user.role !== "admin" && !owns) return res.status(403).json({ message: "This booking belongs to another organizer" });
       if (booking.status !== "paid") return res.status(400).json({ message: "Only paid bookings can be refunded" });
 
-      if (isPaystackConfigured() && (booking as any).paymentGateway === "paystack") {
+      if ((booking as any).paymentGateway === "flutterwave" && isFlutterwaveConfigured()) {
+        // Flutterwave refunds the numeric transaction id, stored on the booking
+        // at webhook time. Bookings fulfilled locally (tests) have none.
+        const txnId = Number((booking as any).gatewayTxnId);
+        if (txnId) {
+          await refundPayment({ reference: String((booking as any).paymentReference || ""), gateway: "flutterwave", transactionId: txnId });
+        }
+      } else if (isPaystackConfigured() && (booking as any).paymentGateway === "paystack") {
         const reference = String((booking as any).paymentReference || "");
         let captured = false;
         try {
-          const verification = await verifyTransaction(reference);
+          const verification = await verifyPayment(reference);
           captured = verification.status === "success";
         } catch (verifyErr: any) {
           // A locally-fulfilled booking (test webhook) has no Paystack-side
@@ -1477,7 +1532,7 @@ export async function registerRoutes(
           if (!/not found/i.test(String(verifyErr?.message || ""))) throw verifyErr;
         }
         if (captured) {
-          await refundTransaction(reference);
+          await refundPayment({ reference, gateway: "paystack" });
         }
       }
 
@@ -2507,7 +2562,7 @@ export async function registerRoutes(
 
   // ── Admin: List Organizer Leads ──
   app.get("/api/admin/leads", async (req, res) => {
-    if (!req.user || (req.user.role !== "admin" && !req.user.isAdmin)) {
+    if (!req.user || (req.user as any).role !== "admin") {
       return res.status(403).json({ error: "Admin access required." });
     }
     try {

@@ -47,7 +47,7 @@ function mapEvent(doc: any): Event {
   };
 }
 
-// DEV FALLBACK DATA — used only when MongoDB is unreachable, so the public
+// DEV FALLBACK DATA: used only when MongoDB is unreachable, so the public
 // pages still render real content in local preview. Not used in production.
 const mockVendors: Vendor[] = [
   {
@@ -85,7 +85,7 @@ const mockVendors: Vendor[] = [
     businessName: "MC Papi Flex",
     category: "MC",
     categoryLabel: null,
-    bio: "Your ceremony's chief hype officer. Bilingual Yoruba-English MC for weddings, corporate galas and street carnivals — keeps timelines tight and dance floors fuller.",
+    bio: "Your ceremony's chief hype officer. Bilingual Yoruba-English MC for weddings, corporate galas and street carnivals: keeps timelines tight and dance floors fuller.",
     gallery: JSON.stringify([
       "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?q=80&w=1200&auto=format&fit=crop",
       "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1200&auto=format&fit=crop",
@@ -161,7 +161,7 @@ const mockVendors: Vendor[] = [
     businessName: "Lens by Obi",
     category: "Photographer",
     categoryLabel: null,
-    bio: "Documentary-style event photography with a same-week gallery turnaround. Concerts, white weddings and everything in between — 300+ events shot across Nigeria.",
+    bio: "Documentary-style event photography with a same-week gallery turnaround. Concerts, white weddings and everything in between: 300+ events shot across Nigeria.",
     gallery: JSON.stringify([
       "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?q=80&w=1200&auto=format&fit=crop",
       "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=1200&auto=format&fit=crop",
@@ -241,14 +241,14 @@ function conversationKey(a: string, b: string): string {
   return [a, b].sort().join("::");
 }
 
-// DEV FALLBACK DATA — see note above mockVendors.
+// DEV FALLBACK DATA: see note above mockVendors.
 // Messages created while MongoDB is offline land here, so a conversation
 // started in one request can be read back in the same session.
 const mockMessages: any[] = [];
 
 const inDays = (days: number) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
-// DEV FALLBACK DATA — see note above mockVendors.
+// DEV FALLBACK DATA: see note above mockVendors.
 // Bookings created while MongoDB is offline land here, so the attendee
 // dashboard and My Tickets search can read them back in the same session.
 const mockBookings: any[] = [];
@@ -325,7 +325,7 @@ const mockEvents: Event[] = [
   {
     id: "event-detty-jazz-sessions",
     title: "Detty December Jazz Sessions",
-    description: "Live band evenings under the palms — highlife, jazz and palmwine music with special guests every night.",
+    description: "Live band evenings under the palms: highlife, jazz and palmwine music with special guests every night.",
     date: inDays(40),
     location: "Muri Okunola Park, Victoria Island, Lagos",
     price: 300000,

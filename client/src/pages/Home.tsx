@@ -1,4 +1,5 @@
 import { EventCard } from "@/components/EventCard";
+import { RoleHowItWorks } from "@/components/RoleHowItWorks";
 import { useEvents } from "@/hooks/use-events";
 import { useAuth } from "@/hooks/use-auth";
 import { useVendors } from "@/hooks/use-vendors";
@@ -641,58 +642,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="border-t border-hairline py-20">
-        <div className="container mx-auto px-4">
-          <Reveal className="max-w-3xl mb-12">
-            <p className="eyebrow">How it works</p>
-            <h2 className="mt-3 font-display text-3xl md:text-4xl font-bold text-ink tracking-tight">
-              Three steps to your night out
-            </h2>
-            <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
-          </Reveal>
-
-          {/* Editorial timeline: hairline rail, gold dots, no decorative numbers */}
-          <div className="max-w-3xl">
-            <ol>
-              {[
-                {
-                  title: "Browse what's on",
-                  body: "See every upcoming event in Lagos, from owambe to live jazz. Each one shows real availability and ticket prices.",
-                },
-                {
-                  title: "Buy your ticket",
-                  body: "Instant checkout: card, bank transfer, or USSD. Your e-ticket arrives instantly. No printed slips, no queue.",
-                },
-                {
-                  title: "Show up",
-                  body: "Scan your ticket at the door. That's it. If you're planning your own event, you can do all of this in under 10 minutes.",
-                },
-              ].map((step, i, arr) => (
-                <Reveal key={step.title}>
-                  <li className="relative flex gap-6 pb-10 last:pb-0">
-                    {/* rail + dot */}
-                    <div className="relative flex flex-col items-center" aria-hidden="true">
-                      <span className="mt-2 h-2 w-2 rounded-full bg-gold shrink-0" />
-                      {i < arr.length - 1 && (
-                        <span className="mt-1 w-px flex-1 bg-hairline" />
-                      )}
-                    </div>
-                    <div className="pb-2">
-                      <h3 className="font-display text-xl font-bold text-ink">
-                        {step.title}
-                      </h3>
-                      <p className="mt-2 text-sm text-muted-ink leading-relaxed max-w-xl">
-                        {step.body}
-                      </p>
-                    </div>
-                  </li>
-                </Reveal>
-              ))}
-            </ol>
-          </div>
-        </div>
-      </section>
+      {/* How it works: role-based, switchable between guests / organizers / vendors / brands */}
+      <RoleHowItWorks />
 
       {/* Footer */}
       <footer className="border-t border-hairline bg-surface">
