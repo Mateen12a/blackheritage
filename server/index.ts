@@ -93,10 +93,15 @@ declare module "http" {
   }
 }
 
-// Paystack's webhook must arrive as raw bytes for signature verification,
-// so the global JSON parser skips that one path.
+// Payment webhooks must arrive as raw bytes for signature verification,
+// so the global JSON parser skips every webhook path.
 app.use((req, res, next) => {
-  if (req.path === "/api/paystack/webhook") return next();
+  if (
+    req.path === "/api/paystack/webhook" ||
+    req.path === "/api/payments/webhook" ||
+    req.path === "/api/flutterwave/webhook"
+  )
+    return next();
   express.json({
     verify: (req, _res, buf) => {
       req.rawBody = buf;

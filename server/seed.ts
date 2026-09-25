@@ -1038,7 +1038,14 @@ export async function seedPlatform(): Promise<void> {
   // Healed on every boot so the demo survives e2e runs, same as the event
   // showcase. Targets whichever vendor set the database actually holds:
   // an already-branded one, else the first published profile.
+  // Deterministic target: the demo account owns the first canonical vendor,
+  // because the create loop above stamps ownership on index 0. Selecting by
+  // natural order instead handed the account a different business every boot.
   const showcase =
+    (await VendorModel.findOne({ slug: "dj-consequence" })) ||
+    (vendorOwner?._id
+      ? await VendorModel.findOne({ ownerId: vendorOwner._id.toString() })
+      : null) ||
     (await VendorModel.findOne({ slug: { $exists: true, $ne: null }, branding: { $ne: null } })) ||
     (await VendorModel.findOne({ status: "published" }).sort({ createdAt: 1 }));
   if (showcase && (!showcase.slug || !showcase.branding
@@ -1062,6 +1069,19 @@ export async function seedPlatform(): Promise<void> {
     if (vendorOwner?._id) showcase.ownerId = vendorOwner._id.toString();
     await showcase.save();
     console.log("Seed: vendor showcase branding applied to " + showcase.businessName);
+  }
+
+  // Demo hygiene: the demo vendor account owns exactly one listing. Older seed
+  // runs stamped ownership on several unrelated directory profiles, which left
+  // the dashboard editing the first of three businesses it did not represent.
+  if (vendorOwner?._id && showcase) {
+    const stray = await VendorModel.updateMany(
+      { ownerId: vendorOwner._id.toString(), _id: { $ne: showcase._id } },
+      { $unset: { ownerId: "" } },
+    );
+    if (stray.modifiedCount) {
+      console.log(`Seed: released ${stray.modifiedCount} stray vendor owner(s)`);
+    }
   }
 
   // Vendor trust demo: one real client-to-owner conversation on the
@@ -1098,24 +1118,57 @@ export async function seedPlatform(): Promise<void> {
   // render for attendees. Healed like the rest of the showcase state.
   if (showcase && mongoose.connection.readyState === 1) {
     const { VendorRatingModel, User: UserModel } = await import("./models");
-    const ratingCount = await VendorRatingModel.countDocuments({ vendorId: showcase._id.toString() });
-    if (ratingCount === 0) {
-      const reviewers = await UserModel.find({ role: "user" }).limit(2).lean();
-      const demoReviews = [
-        { stars: 5, comment: "Turned the whole room up. Booked for two events already." },
-        { stars: 4, comment: "Solid set and easy to deal with. Arrived early." },
-      ];
-      for (let i = 0; i < demoReviews.length && i < reviewers.length; i++) {
-        const reviewer = reviewers[i] as any;
+
+    // A vendor cannot review their own listing, so clear any self-review an
+    // older seed left behind (it also looked like fake five-star padding).
+    if (vendorOwner?._id) {
+      const ownedIds = (
+        await VendorModel.find({ ownerId: vendorOwner._id.toString() }).select("_id").lean()
+      ).map((v: any) => String(v._id));
+      if (ownedIds.length) {
+        const removed = await VendorRatingModel.deleteMany({
+          reviewerUserId: vendorOwner._id.toString(),
+          vendorId: { $in: ownedIds },
+        });
+        if (removed.deletedCount) {
+          console.log(`Seed: removed ${removed.deletedCount} self-review(s)`);
+        }
+      }
+    }
+
+    const demoReviews = [
+      { stars: 5, comment: "Turned the whole room up. Booked for two events already." },
+      { stars: 4, comment: "Solid set and easy to deal with. Arrived early." },
+    ];
+    const existingReviews = await VendorRatingModel.find({ vendorId: showcase._id.toString() })
+      .select("reviewerUserId")
+      .lean();
+    const taken = new Set(existingReviews.map((r: any) => String(r.reviewerUserId)));
+    const need = Math.max(0, demoReviews.length - existingReviews.length);
+    if (need > 0) {
+      // Named accounts first so the demo reads like clients, and never the
+      // vendor's own account or someone who already reviewed this listing.
+      const reviewers = await UserModel.find({
+        role: "user",
+        _id: { $nin: Array.from(taken).concat(String(vendorOwner?._id || "")).filter(Boolean) },
+      })
+        .sort({ displayName: -1 })
+        .limit(need)
+        .lean();
+      for (const reviewer of reviewers as any[]) {
+        const slot = demoReviews[Math.min(taken.size, demoReviews.length - 1)];
         await VendorRatingModel.create({
           vendorId: showcase._id.toString(),
           reviewerUserId: String(reviewer._id),
           reviewerName: reviewer.displayName || reviewer.username,
-          stars: demoReviews[i].stars,
-          comment: demoReviews[i].comment,
+          stars: slot.stars,
+          comment: slot.comment,
         });
+        taken.add(String(reviewer._id));
       }
-      console.log("Seed: vendor ratings demo created");
+      if (reviewers.length) {
+        console.log(`Seed: vendor ratings healed to ${existingReviews.length + reviewers.length}`);
+      }
     }
   }
 

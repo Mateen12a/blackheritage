@@ -18,7 +18,7 @@ export function isPaystackConfigured(): boolean {
 }
 
 export function isFlutterwaveConfigured(): boolean {
-  return Boolean(process.env.FLUTTERWAVE_SECRET_KEY);
+  return Boolean(process.env.FLUTTERWAVE_SECRET_KEY || process.env.FLW_SECRET_KEY);
 }
 
 // ── Shared shapes ────────────────────────────────────────────────────────────
@@ -56,18 +56,26 @@ export interface VerifyResult {
 const FLW_BASE = "https://api.flutterwave.com/v3";
 
 function flwSecret(): string {
-  const key = process.env.FLUTTERWAVE_SECRET_KEY;
-  if (!key) throw new Error("FLUTTERWAVE_SECRET_KEY is not configured");
+  const key = process.env.FLUTTERWAVE_SECRET_KEY || process.env.FLW_SECRET_KEY;
+  if (!key) throw new Error("FLUTTERWAVE_SECRET_KEY or FLW_SECRET_KEY is not configured");
   return key;
 }
 
 export function isFlutterwaveSignatureValid(rawBody: string, signature: string | undefined): boolean {
-  const hash = process.env.FLUTTERWAVE_WEBHOOK_HASH;
+  const hash = process.env.FLUTTERWAVE_WEBHOOK_HASH || process.env.FLW_WEBHOOK_HASH || process.env.FLW_SECRET_HASH;
   if (!hash || !signature) return false;
-  const expected = crypto.createHmac("sha256", hash).update(rawBody).digest("hex");
-  const a = Buffer.from(expected);
-  const b = Buffer.from(signature);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  // Flutterwave sends the secret hash directly in the verif-hash request header
+  if (signature === hash) return true;
+  // Fallback: HMAC-SHA256 comparison if hash was passed as digest
+  try {
+    const expected = crypto.createHmac("sha256", hash).update(rawBody).digest("hex");
+    const a = Buffer.from(expected);
+    const b = Buffer.from(signature);
+    if (a.length === b.length && crypto.timingSafeEqual(a, b)) return true;
+  } catch {
+    // ignore
+  }
+  return false;
 }
 
 export async function flwInitialize(params: InitPaymentInput): Promise<InitPaymentResult> {
@@ -106,7 +114,7 @@ export async function flwInitialize(params: InitPaymentInput): Promise<InitPayme
     gateway: "flutterwave",
     authorizationUrl: body.data.link,
     accessCode: null,
-    publicKey: process.env.FLUTTERWAVE_PUBLIC_KEY || null,
+    publicKey: process.env.FLUTTERWAVE_PUBLIC_KEY || process.env.FLW_PUBLIC_KEY || null,
   };
 }
 

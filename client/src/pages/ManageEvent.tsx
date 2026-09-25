@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Trash2, Edit, ChevronLeft, Tag, UserPlus, MailPlus, Undo2, Activity, TrendingUp, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useRoute, Link, useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { format, isPast } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RowListSkeleton } from "@/components/AsyncStates";
@@ -91,10 +91,13 @@ function WaitlistPanel({ eventId }: { eventId: string }) {
 }
 
 export default function ManageEvent() {
-  const [, params] = useRoute("/admin/events/:id");
-  const id = params?.id;
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  // Mounted by both /admin/events/:id and /admin/events/:id/bookings. A route
+  // pattern for the first cannot match the /bookings suffix, which left the id
+  // undefined and the page reporting the event did not exist, so read the id
+  // straight off the path. Both URLs land on the ticket buyer list.
+  const id = location.match(/^\/admin\/events\/([^/?#]+)/)?.[1];
   const [isFlyerModalOpen, setIsFlyerModalOpen] = useState(false);
 
   const { data: event, isLoading: eventLoading } = useQuery<any>({
@@ -117,12 +120,18 @@ export default function ManageEvent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
-      if (!res.ok) throw new Error("Failed to update status");
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.message || "Failed to update status");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [buildUrl(api.events.get.path, { id: id as string })] });
       toast({ title: "Status updated successfully" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Cannot publish yet", description: err.message, variant: "destructive" });
     },
   });
 
@@ -188,7 +197,9 @@ export default function ManageEvent() {
     );
   }
 
-  const isExpired = isPast(new Date(event.date));
+  const eventDate = event.date ? new Date(event.date) : null;
+  const hasValidDate = !!eventDate && !isNaN(eventDate.getTime());
+  const isExpired = hasValidDate ? isPast(eventDate as Date) : false;
 
   return (
     <div className="pb-20">
@@ -210,12 +221,28 @@ export default function ManageEvent() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {event.location}</span>
-            <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {format(new Date(event.date), "PPP")}</span>
+            <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {event.location || "Venue to be announced"}</span>
+            <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {hasValidDate ? format(eventDate as Date, "PPP") : "Date to be announced"}</span>
             {event.organizerName && <span className="italic text-xs opacity-60">Published by {event.organizerName}</span>}
           </div>
         </div>
         
+        {event.status === "draft" && (
+          <div className="w-full md:w-full mb-4 rounded-xl border border-gold/40 bg-gold/[0.06] px-4 py-3 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-gold">Draft: only you can see this event</p>
+              <p className="text-xs text-muted-ink mt-0.5">Add the date, venue, description, and an image, then publish when you are ready.</p>
+            </div>
+            <Button
+              size="sm"
+              className="press bg-primary text-primary-foreground hover:bg-gold-soft shrink-0"
+              onClick={() => updateStatusMutation.mutate("published")}
+              disabled={updateStatusMutation.isPending}
+            >
+              Publish
+            </Button>
+          </div>
+        )}
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <Button 
             variant="outline" 
@@ -486,6 +513,7 @@ export default function ManageEvent() {
         open={isFlyerModalOpen}
         onClose={() => setIsFlyerModalOpen(false)}
         event={event}
+        enableStudio
       />
     </div>
   );

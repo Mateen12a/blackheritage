@@ -123,12 +123,14 @@ export interface IEvent extends Document {
 
 const EventSchema: Schema = new Schema({
   title: { type: String, required: true },
-  description: { type: String, required: true },
-  date: { type: Date, required: true },
-  location: { type: String, required: true },
+  // Drafts may omit the details below. Completeness is enforced by the
+  // publish gate in routes.ts, not at the persistence layer.
+  description: { type: String, default: "" },
+  date: { type: Date },
+  location: { type: String, default: "" },
   price: { type: Number, required: true },
   capacity: { type: Number, required: true },
-  imageUrl: { type: String, required: true },
+  imageUrl: { type: String, default: "" },
   isFeatured: { type: Boolean, default: false },
   status: { type: String, enum: ['draft', 'published', 'unpublished'], default: 'published' },
   organizerId: { type: String },

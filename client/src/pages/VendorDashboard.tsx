@@ -22,6 +22,7 @@ import {
   Video,
 } from "lucide-react";
 import { parseGallery, parseSocials } from "@/lib/media";
+import { VendorPromoModal } from "@/components/VendorPromoModal";
 import { useEffect, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -31,8 +32,14 @@ export default function VendorDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const { data: myVendors, isLoading: vendorsLoading } = useMyVendors(!!user);
   const [, setLocation] = useLocation();
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [promoOpen, setPromoOpen] = useState(false);
 
-  const existing = myVendors?.[0];
+  // One account can own more than one listing. The page edits exactly one at a
+  // time, so the switching control below is what makes the others reachable.
+  const existing =
+    (profileId && myVendors?.find((v: any) => v.id === profileId)) || myVendors?.[0];
+  const hasMultipleProfiles = (myVendors?.length ?? 0) > 1;
   const isCreate = !existing;
 
   const createMutation = useCreateVendor();
@@ -98,6 +105,36 @@ export default function VendorDashboard() {
 
   return (
     <div>
+      {/* Listing switcher: only for accounts with more than one profile, so
+          the second business is not silently unreachable. */}
+      {hasMultipleProfiles && (
+        <div
+          role="group"
+          aria-label="Switch listing"
+          className="mb-8 -mx-4 px-4 md:mx-0 md:px-0 flex gap-2 overflow-x-auto no-scrollbar"
+        >
+          {myVendors!.map((v: any) => {
+            const active = v.id === existing?.id;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setProfileId(v.id)}
+                className={
+                  "press shrink-0 h-9 px-4 rounded-full border text-sm font-medium transition-colors duration-200 " +
+                  (active
+                    ? "bg-gold/15 text-gold border-gold"
+                    : "bg-surface-2 text-muted-ink border-hairline hover:border-gold/40 hover:text-ink")
+                }
+              >
+                {v.businessName}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-10 pt-2">
         <Reveal>
@@ -239,6 +276,15 @@ export default function VendorDashboard() {
                       View Public Profile
                     </Button>
                   </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPromoOpen(true)}
+                    className="w-full border-hairline text-ink hover:bg-surface-2 hover:text-gold"
+                  >
+                    <Store className="w-4 h-4 mr-2 text-gold" />
+                    Create Promo Card
+                  </Button>
                   <CopyProfileLink vendorId={existing.id} slug={(existing as any).slug} />
                 </div>
               </div>
@@ -353,6 +399,12 @@ export default function VendorDashboard() {
           <VendorLinkPanel vendor={existing} />
         </Reveal>
       )}
+
+      <VendorPromoModal
+        open={promoOpen}
+        onClose={() => setPromoOpen(false)}
+        vendor={existing}
+      />
     </div>
   );
 }

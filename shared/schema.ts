@@ -204,6 +204,13 @@ export const vendorsRelations = relations(vendors, ({ one }) => ({
   }),
 }));
 
+// JSON transport carries dates as ISO strings; normalize once so create and
+// update routes both accept what real clients send, and reject junk with 400
+// instead of a storage-layer cast error.
+const dateInput = z.union([z.string(), z.date()])
+  .transform((v) => (typeof v === "string" ? new Date(v) : v))
+  .refine((v) => !isNaN(v.getTime()), "Enter a valid date");
+
 export const insertEventSchema = createInsertSchema(events).omit({ id: true }).extend({
   slug: z
     .string()
@@ -213,7 +220,29 @@ export const insertEventSchema = createInsertSchema(events).omit({ id: true }).e
     .optional()
     .nullable(),
   theme: z.enum(["midnight-gold", "ivory-editorial", "sunset-poster"]).optional().nullable(),
+  date: dateInput,
 });
+
+// Drafts can be saved with only a title so organizers can announce early and
+// fill in details later. The publish route runs the full schema before an
+// event goes public, so nothing incomplete ever reaches the directory.
+export const insertDraftEventSchema = insertEventSchema.extend({
+  description: z.string().optional().default(""),
+  date: dateInput.optional(),
+  location: z.string().optional().default(""),
+  imageUrl: z.string().optional().default(""),
+});
+
+/** Fields an event must have before it can be published. */
+export function missingEventPublishFields(input: Partial<InsertEvent>): string[] {
+  const missing: string[] = [];
+  if (!input.title || !String(input.title).trim()) missing.push("title");
+  if (!input.description || !String(input.description).trim()) missing.push("description");
+  if (!input.date || isNaN(new Date(input.date as any).getTime())) missing.push("date");
+  if (!input.location || !String(input.location).trim()) missing.push("location");
+  if (!input.imageUrl || !String(input.imageUrl).trim()) missing.push("image");
+  return missing;
+}
 export const insertBookingSchema = createInsertSchema(bookings).omit({ id: true, createdAt: true, status: true, paymentIntentId: true });
 export const insertBusinessBookingSchema = createInsertSchema(businessBookings).omit({ id: true, createdAt: true, status: true });
 

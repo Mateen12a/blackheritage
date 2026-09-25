@@ -21,6 +21,8 @@ import {
   MapPin,
   CheckCircle2,
   Loader2,
+  Sparkles,
+  EyeOff,
 } from "lucide-react";
 import {
   renderFlyerToCanvas,
@@ -28,6 +30,7 @@ import {
   getCanvasBlob,
   type FlyerFormat,
   type FlyerTheme,
+  type FlyerPresetType,
 } from "@/lib/canvas-flyer";
 
 interface ShareFlyerModalProps {
@@ -37,9 +40,22 @@ interface ShareFlyerModalProps {
   isAttendee?: boolean;
   attendeeName?: string;
   ticketTier?: string;
+  // Studio presets (teaser, private pass) are organizer tools. Attendee
+  // surfaces keep the standard flyer unless the host enables this.
+  enableStudio?: boolean;
+  // Provided when the caller wants an "Apply as event cover" action, e.g.
+  // the event form. Receives an uploaded URL (never a data URL, so WhatsApp
+  // link previews keep working).
+  onApplyCover?: (url: string) => void;
 }
 
 const naira = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG")}`;
+
+const PRESET_TABS: { id: FlyerPresetType; name: string; desc: string }[] = [
+  { id: "standard", name: "Event Flyer", desc: "Full details" },
+  { id: "teaser", name: "Mystery Teaser", desc: "Details later" },
+  { id: "private_pass", name: "Private Pass", desc: "Invite-only card" },
+];
 
 export function ShareFlyerModal({
   open,
@@ -48,6 +64,8 @@ export function ShareFlyerModal({
   isAttendee = false,
   attendeeName = "",
   ticketTier = "",
+  enableStudio = false,
+  onApplyCover,
 }: ShareFlyerModalProps) {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -66,6 +84,16 @@ export function ShareFlyerModal({
   const [copiedImage, setCopiedImage] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // Creative Studio preset state
+  const [preset, setPreset] = useState<FlyerPresetType>("standard");
+  const [teaserLine, setTeaserLine] = useState("");
+  const [teaserBadge, setTeaserBadge] = useState("");
+  const [accessCodeState, setAccessCodeState] = useState("");
+  const [showAccessCode, setShowAccessCode] = useState(false); // masked by default
+  const [dressCode, setDressCode] = useState("");
+  const [hostLine, setHostLine] = useState("");
+  const [isApplyingCover, setIsApplyingCover] = useState(false);
+
   // Compute canonical event URL
   const slug = (event as any)?.slug;
   const canonicalUrl = typeof window !== "undefined"
@@ -78,6 +106,14 @@ export function ShareFlyerModal({
   const priceDisplay = (event as any)?.price > 0
     ? `From ${naira((event as any).price)}`
     : "Free Admission";
+
+  // Seed the private-pass fields from the event each time the modal opens.
+  useEffect(() => {
+    if (open) {
+      setAccessCodeState(typeof event?.accessCode === "string" ? event.accessCode : "");
+      setHostLine(event?.branding?.displayName || "");
+    }
+  }, [open, event]);
 
   // Re-draw canvas whenever options change or modal opens
   const redraw = useCallback(async () => {
@@ -102,7 +138,14 @@ export function ShareFlyerModal({
         attendeeName: attendeeNameState || attendeeName,
         ticketTier: ticketTier,
         accentColor: event.branding?.accentHex || undefined,
-      });
+        presetType: enableStudio ? preset : "standard",
+        teaserLine,
+        teaserBadge,
+        accessCode: preset === "private_pass" ? accessCodeState.trim() : undefined,
+        showAccessCode,
+        dressCode,
+        hostLine,
+      } as any);
     } catch (err) {
       console.warn("Flyer render failed:", err);
     } finally {
@@ -122,6 +165,14 @@ export function ShareFlyerModal({
     event,
     priceDisplay,
     canonicalUrl,
+    enableStudio,
+    preset,
+    teaserLine,
+    teaserBadge,
+    accessCodeState,
+    showAccessCode,
+    dressCode,
+    hostLine,
   ]);
 
   useEffect(() => {
@@ -171,7 +222,7 @@ export function ShareFlyerModal({
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
-    const filename = `flyer-${safeTitle}-${format}.png`;
+    const filename = `flyer-${preset}-${safeTitle}-${format}.png`;
     downloadCanvasImage(canvasRef.current, filename);
     toast({
       title: "Flyer downloaded",
@@ -184,7 +235,11 @@ export function ShareFlyerModal({
     handleDownload();
     const text = isAttendeePass
       ? `I'm going to ${event.title}! 🎟️ Get your tickets here: ${canonicalUrl}`
-      : `Check out ${event.title} in Lagos! 🎟️ Get tickets: ${canonicalUrl}`;
+      : preset === "teaser"
+        ? `Something is coming: ${event.title}. Follow for the drop: ${canonicalUrl}`
+        : preset === "private_pass"
+          ? `You're on the list for ${event.title}. Enter your code at ${canonicalUrl} to claim your pass.`
+          : `Check out ${event.title} in Lagos! 🎟️ Get tickets: ${canonicalUrl}`;
     const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(waUrl, "_blank");
   };
@@ -267,6 +322,45 @@ export function ShareFlyerModal({
     }
   };
 
+  // Apply the rendered card as the event cover: upload the PNG so a real URL
+  // (not a data URL) lands in the form and in OG tags.
+  const handleApplyCover = async () => {
+    if (!canvasRef.current || !onApplyCover) return;
+    setIsApplyingCover(true);
+    try {
+      const blob = await getCanvasBlob(canvasRef.current);
+      const safeTitle = (event?.title || "event").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      const fd = new FormData();
+      fd.append("file", new File([blob], `studio-cover-${safeTitle || "event"}.png`, { type: "image/png" }));
+      const res = await fetch("/api/uploads/portfolio", {
+        method: "POST",
+        credentials: "include",
+        body: fd,
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.message || "Upload failed");
+      }
+      const data = await res.json();
+      if (!data.url) throw new Error("Upload returned no URL");
+      onApplyCover(data.url);
+      toast({
+        title: "Cover applied",
+        description: "The design is now your event image.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Could not set cover",
+        description: err.message || "Try again in a moment.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsApplyingCover(false);
+    }
+  };
+
+  const showPresetTabs = enableStudio && !isAttendeePass;
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="bg-surface border-hairline text-ink w-[96vw] max-w-5xl max-h-[92vh] overflow-y-auto p-0 rounded-2xl z-[70]">
@@ -279,10 +373,12 @@ export function ShareFlyerModal({
               </span>
               <div>
                 <DialogTitle className="font-display text-xl md:text-2xl font-bold text-ink">
-                  Flyer &amp; Story Studio
+                  {showPresetTabs ? "Creative Studio" : "Flyer & Story Studio"}
                 </DialogTitle>
                 <DialogDescription className="text-xs md:text-sm text-muted-ink mt-0.5">
-                  Create flyers and story cards sized for WhatsApp status and Instagram.
+                  {showPresetTabs
+                    ? "Event flyers, mystery teasers, and private passes, sized for WhatsApp and Instagram."
+                    : "Create flyers and story cards sized for WhatsApp status and Instagram."}
                 </DialogDescription>
               </div>
             </div>
@@ -317,7 +413,7 @@ export function ShareFlyerModal({
               </div>
 
               {/* Action Buttons Under Preview */}
-              <div className="w-full mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className={`w-full mt-4 grid grid-cols-2 gap-2 ${onApplyCover ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
                 <Button
                   onClick={handleDownload}
                   className="press bg-primary text-primary-foreground hover:bg-gold-soft h-10 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5"
@@ -361,11 +457,53 @@ export function ShareFlyerModal({
                     </>
                   )}
                 </Button>
+
+                {onApplyCover && (
+                  <Button
+                    onClick={handleApplyCover}
+                    disabled={isApplyingCover}
+                    variant="outline"
+                    className="press border-gold/50 text-gold hover:bg-gold/10 h-10 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5"
+                  >
+                    {isApplyingCover ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    )}
+                    Set as cover
+                  </Button>
+                )}
               </div>
             </div>
 
             {/* Right Column: Customization Controls */}
             <div className="lg:col-span-6 space-y-6">
+              {/* Preset selection (organizer studio only) */}
+              {showPresetTabs && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink">
+                    Design
+                  </Label>
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {PRESET_TABS.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setPreset(p.id)}
+                        className={`press p-2.5 rounded-xl border text-center transition-[border-color,background-color] ${
+                          preset === p.id
+                            ? "border-gold bg-gold/10 text-ink"
+                            : "border-hairline bg-surface-2/60 text-muted-ink hover:text-ink hover:border-hairline/80"
+                        }`}
+                      >
+                        <p className="text-xs font-semibold text-ink truncate">{p.name}</p>
+                        <p className="text-[10px] text-muted-ink truncate">{p.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Format Selection */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink">
@@ -407,7 +545,6 @@ export function ShareFlyerModal({
               </div>
 
               {/* Theme Presets */}
-              {/* Theme Presets */}
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink">
                   Theme
@@ -435,7 +572,93 @@ export function ShareFlyerModal({
                 </div>
               </div>
 
-              {/* Custom Flyer Artwork Upload */}
+              {/* Teaser controls */}
+              {showPresetTabs && preset === "teaser" && (
+                <div className="space-y-3 rounded-xl border border-hairline bg-surface-2/40 p-4">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-gold" />
+                    Teaser details
+                  </Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] text-muted-ink">The line under the title</Label>
+                    <Input
+                      value={teaserLine}
+                      onChange={(e) => setTeaserLine(e.target.value)}
+                      placeholder="Venue drops Friday. Lagos Island."
+                      maxLength={90}
+                      className="h-9 text-xs bg-surface border-hairline text-ink rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] text-muted-ink">Hype badge</Label>
+                    <Input
+                      value={teaserBadge}
+                      onChange={(e) => setTeaserBadge(e.target.value)}
+                      placeholder="SECRET LOCATION • LAGOS"
+                      maxLength={40}
+                      className="h-9 text-xs bg-surface border-hairline text-ink rounded-lg"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-ink">
+                    Leave what you do not want to share empty. Only the month shows if you picked a date.
+                  </p>
+                </div>
+              )}
+
+              {/* Private pass controls */}
+              {showPresetTabs && preset === "private_pass" && (
+                <div className="space-y-3 rounded-xl border border-hairline bg-surface-2/40 p-4">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink">
+                    Pass details
+                  </Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] text-muted-ink">Host line</Label>
+                    <Input
+                      value={hostLine}
+                      onChange={(e) => setHostLine(e.target.value)}
+                      placeholder="Hosted by Amara"
+                      maxLength={40}
+                      className="h-9 text-xs bg-surface border-hairline text-ink rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] text-muted-ink">Dress code</Label>
+                    <Input
+                      value={dressCode}
+                      onChange={(e) => setDressCode(e.target.value)}
+                      placeholder="All Black"
+                      maxLength={30}
+                      className="h-9 text-xs bg-surface border-hairline text-ink rounded-lg"
+                    />
+                  </div>
+                  {event?.visibility === "invite_only" && (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] text-muted-ink">Access code</Label>
+                        <Input
+                          value={accessCodeState}
+                          onChange={(e) => setAccessCodeState(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))}
+                          placeholder="Your event access code"
+                          className="h-9 text-xs bg-surface border-hairline text-ink rounded-lg font-mono tracking-widest"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <EyeOff className="w-4 h-4 text-gold" />
+                          <div>
+                            <p className="text-xs font-medium text-ink">Reveal full code on the card</p>
+                            <p className="text-[11px] text-muted-ink">Off prints a masked hint, so a forwarded card does not open the door.</p>
+                          </div>
+                        </div>
+                        <Switch checked={showAccessCode} onCheckedChange={setShowAccessCode} />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Custom Flyer Artwork Upload (hidden on teaser: procedural by design) */}
+              {!(showPresetTabs && preset === "teaser") && (
               <div className="space-y-2 rounded-xl border border-hairline bg-surface-2/40 p-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink flex items-center gap-1.5">
@@ -478,8 +701,10 @@ export function ShareFlyerModal({
                     : "Currently using event cover photo. Upload a vertical or square graphic to replace it."}
                 </p>
               </div>
+              )}
 
-              {/* Elements & Toggles */}
+              {/* Elements & Toggles: standard preset and attendee mode */}
+              {(!showPresetTabs || preset === "standard") && (
               <div className="space-y-3 rounded-xl border border-hairline bg-surface-2/40 p-4">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink">
                   Overlay Elements
@@ -549,6 +774,23 @@ export function ShareFlyerModal({
                   </div>
                 </div>
               </div>
+              )}
+
+              {/* QR toggle for studio presets */}
+              {showPresetTabs && preset !== "standard" && (
+                <div className="flex items-center justify-between rounded-xl border border-hairline bg-surface-2/40 p-4">
+                  <div className="flex items-center gap-2">
+                    <QrCode className="w-4 h-4 text-gold" />
+                    <div>
+                      <p className="text-xs font-medium text-ink">
+                        {preset === "teaser" ? "Follow-the-drop QR" : "Entry QR"}
+                      </p>
+                      <p className="text-[11px] text-muted-ink">Scans to {canonicalUrl.replace(/^https?:\/\//, "")}</p>
+                    </div>
+                  </div>
+                  <Switch checked={showQr} onCheckedChange={setShowQr} />
+                </div>
+              )}
 
               {/* Direct Link Copy Strip */}
               <div className="flex items-center gap-2 rounded-xl border border-hairline bg-surface-2/60 p-3">

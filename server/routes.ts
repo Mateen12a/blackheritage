@@ -8,10 +8,11 @@ import { randomBytes } from "crypto";
 import { storage, mapEventLean, mapVendor } from "./storage";
 import { api } from "@shared/routes";
 import {
-  insertMessageSchema, bookingInitiateSchema, bookingFinalizeSchema,
+  insertDraftEventSchema, missingEventPublishFields, insertMessageSchema, bookingInitiateSchema, bookingFinalizeSchema,
   promoCreateSchema, manualTicketSchema, scanRequestSchema, scanOverrideSchema,
   scanSyncSchema, teamCreateSchema, platformSettingsSchema,
   eventSettingsSchema, brandingSchema, waitlistJoinSchema,
+  type InsertEvent,
 } from "@shared/schema";
 import { z } from "zod";
 import Stripe from "stripe";
@@ -139,7 +140,7 @@ export async function registerRoutes(
         if (doc) event = mapEventLean(doc);
       }
 
-      if (event && (event as any).visibility !== "invite_only") {
+      if (event && (event as any).visibility !== "invite_only" && (event as any).status === "published") {
         const base = process.env.PUBLIC_APP_URL || "https://blackhevents.com";
         const dateStr = new Date(event.date).toLocaleString("en-NG", {
           weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
@@ -268,6 +269,13 @@ export async function registerRoutes(
       const doc = await EventModel.findOne({ slug: key }).lean()
         || await EventModel.findOne({ slugAliases: key }).lean();
       if (!doc) return res.status(404).json({ message: "Event not found" });
+      // Drafts are workshop-only: invisible to everyone but the owner until
+      // they are published, same answer a missing event would give.
+      if ((doc as any).status === "draft") {
+        const viewer = req.user as any;
+        const isOwner = viewer && ((doc as any).organizerId === viewer._id?.toString() || viewer.role === "admin");
+        if (!isOwner) return res.status(404).json({ message: "Event not found" });
+      }
       // Same invite-only gate as the id route: code, invite token, or the
       // organizer themself. Everything else gets the requiresCode marker.
       if ((doc as any).visibility === "invite_only") {
@@ -408,6 +416,13 @@ export async function registerRoutes(
       if (isNavigation && (event as any).slug) {
         return res.redirect(301, `/e/${(event as any).slug}`);
       }
+      // Drafts are workshop-only: invisible to everyone but the owner (and
+      // admins), same answer a missing event would give.
+      if ((event as any).status === "draft") {
+        const viewer = req.user as any;
+        const isOwner = viewer && (event.organizerId === viewer._id?.toString() || viewer.role === "admin");
+        if (!isOwner) return res.status(404).json({ message: "Event not found" });
+      }
       // Invite-only gate: the page stays invisible until the right access
       // code arrives (?code= on this request, a prior /access check, or an
       // invite token the client holds). Unlisted and public serve normally.
@@ -443,7 +458,13 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Forbidden" });
     }
     try {
-      const input = api.events.create.input.parse(req.body);
+      // Drafts may omit description, date, location, and image. The publish
+      // path validates completeness separately, so nothing incomplete goes
+      // public.
+      const draftFirst = insertDraftEventSchema.safeParse(req.body);
+      const input = (draftFirst.success && draftFirst.data.status === "draft")
+        ? draftFirst.data
+        : api.events.create.input.parse(req.body);
       // Slug: organizer-provided wins; otherwise derived from the title.
       // Collisions get a numeric suffix; the unique index is the backstop.
       let slug = input.slug?.toLowerCase() || slugify(input.title);
@@ -460,7 +481,9 @@ export async function registerRoutes(
         ...input,
         slug,
         organizerId: (req.user as any)._id.toString(),
-      });
+        // Drafts legitimately omit date; the publish gate owns completeness.
+        date: input.date as Date | undefined,
+      } as Parameters<typeof storage.createEvent>[0]);
       res.status(201).json(event);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -482,11 +505,23 @@ export async function registerRoutes(
     
     if ((req.user as any).role !== 'admin' && event.organizerId !== (req.user as any)._id.toString()) {
       return res.status(403).json({ message: "Forbidden" });
-    }
-
-    const wasPublished = event.status === "published";
+    }      const wasPublished = event.status === "published";
     try {
       const input = api.events.update.input.parse(req.body);
+      // Publishing is the completeness gate: a draft with missing fields
+      // cannot leave the workshop. Direct saves that keep the current status
+      // (including "unpublished") skip this check.
+      if (input.status === "published" && !wasPublished) {
+        const merged = { ...event, ...input } as Partial<InsertEvent>;
+        const missing = missingEventPublishFields(merged);
+        if (missing.length > 0) {
+          return res.status(400).json({
+            message: `Complete these before publishing: ${missing.join(", ")}`,
+            field: missing[0],
+            missing,
+          });
+        }
+      }
       const updated = await storage.updateEvent(event.id, input);
       // Ticket-drop blast: the first transition into published emails every
       // follower. Fire-and-forget so a Resend hiccup never blocks the save;
@@ -506,6 +541,22 @@ export async function registerRoutes(
       }
       throw err;
     }
+  });
+
+  // ── Publish readiness: what a draft event is still missing ──
+  // Lets the dashboard badge incomplete drafts and disable publish without
+  // duplicating the completeness rules on the client.
+  app.get("/api/events/:id/publish-readiness", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role === "user") {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const event = await storage.getEvent(req.params.id);
+    if (!event) return res.status(404).json({ message: "Not found" });
+    if ((req.user as any).role !== "admin" && event.organizerId !== (req.user as any)._id.toString()) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+    const missing = missingEventPublishFields(event as any);
+    res.json({ ready: missing.length === 0, missing });
   });
 
   // ── Selling preferences + branding ──
@@ -1152,7 +1203,10 @@ export async function registerRoutes(
             reference,
             name: input.name,
             phone: input.phone || undefined,
-            redirectUrl: process.env.PUBLIC_APP_URL ? `${process.env.PUBLIC_APP_URL}/events/${event.slug || event.id}?ref=${reference}&gateway=${gateway}` : undefined,
+            // Flutterwave rejects the payment init without a redirect_url, so
+            // fall back to the request's own host when PUBLIC_APP_URL is not
+            // configured (local dev, previews).
+            redirectUrl: `${process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get("host")}`}/events/${event.slug || event.id}?ref=${reference}&gateway=${gateway}`,
             metadata: {
               bookingId: String(booking._id ?? booking.id),
               eventId: String(event.id),
@@ -1760,7 +1814,14 @@ export async function registerRoutes(
         // at webhook time. Bookings fulfilled locally (tests) have none.
         const txnId = Number((booking as any).gatewayTxnId);
         if (txnId) {
-          await refundPayment({ reference: String((booking as any).paymentReference || ""), gateway: "flutterwave", transactionId: txnId });
+          try {
+            await refundPayment({ reference: String((booking as any).paymentReference || ""), gateway: "flutterwave", transactionId: txnId });
+          } catch (refundErr: any) {
+            // A locally-fulfilled booking (test webhook) has no Flutterwave-side
+            // transaction; only "not found" is tolerable. Real refund failures
+            // must still abort before tickets are voided.
+            if (!/not found/i.test(String(refundErr?.message || ""))) throw refundErr;
+          }
         }
       } else if (isPaystackConfigured() && (booking as any).paymentGateway === "paystack") {
         const reference = String((booking as any).paymentReference || "");

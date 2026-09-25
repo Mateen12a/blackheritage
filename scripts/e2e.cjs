@@ -10,6 +10,46 @@ function ok(name, cond, detail = "") {
   else { fail++; console.log("FAIL " + name + (detail ? " :: " + detail : "")); }
 }
 
+// Load .env so webhook signing matches the server's gateway config. Mirrors
+// the server's own loader (server/env.ts) for .env only; real env wins.
+const fs = require("fs");
+const envPath = require("path").join(__dirname, "..", ".env");
+if (fs.existsSync(envPath)) {
+  for (const line of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
+    if (!line.trim() || line.trim().startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq === -1) continue;
+    const key = line.slice(0, eq).trim();
+    let value = line.slice(eq + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
+    if (!(key in process.env)) process.env[key] = value;
+  }
+}
+
+// Fulfill a booking the way Flutterwave does in production: a signed
+// charge.completed webhook on /api/payments/webhook. finalize then takes
+// its idempotent already-paid path. Returns null when no hash is configured.
+async function flwWebhook(ref, amountKobo) {
+  const hash = process.env.FLW_WEBHOOK_HASH;
+  if (!ref || !hash) return null;
+  const payload = JSON.stringify({
+    event: "charge.completed",
+    data: {
+      id: 424242,
+      tx_ref: ref,
+      amount: amountKobo / 100, // naira, as Flutterwave sends it
+      currency: "NGN",
+      status: "successful",
+      created_at: new Date().toISOString(),
+    },
+  });
+  return fetch(BASE + "/api/payments/webhook", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "verif-hash": hash },
+    body: payload,
+  });
+}
+
 async function api(method, path, body, useCookie = true) {
   const res = await fetch(BASE + path, {
     method,
@@ -77,6 +117,9 @@ async function api(method, path, body, useCookie = true) {
     const payload = JSON.stringify({ event: "charge.success", data: { reference: promoRef, amount: promoTotal, status: "success" } });
     const sig = crypto.createHmac("sha512", process.env.PAYSTACK_SECRET_KEY).update(payload).digest("hex");
     await fetch(BASE + "/api/paystack/webhook", { method: "POST", headers: { "Content-Type": "application/json", "x-paystack-signature": sig }, body: payload });
+  } else if (promoRef) {
+    const flwRes = await flwWebhook(promoRef, promoTotal);
+    if (flwRes) ok("promo webhook accepted", flwRes.status === 200, "status=" + flwRes.status);
   }
   const promoFinal = await api("POST", "/api/bookings/finalize", { reference: promoRef });
   ok("promo booking fulfills", promoFinal.status === 200, JSON.stringify(promoFinal).slice(0, 100));
@@ -95,8 +138,9 @@ async function api(method, path, body, useCookie = true) {
   const reference = r.json?.reference;
 
   // ── 7. Complete payment the way production does: a signed webhook ──
-  // With real Paystack keys, finalize correctly refuses an unverified
-  // payment. The webhook is the source of truth, signed with the secret.
+  // With live gateway keys, finalize correctly refuses an unverified
+  // payment. The webhook is the source of truth (Paystack HMAC here;
+  // Flutterwave's verif-hash via flwWebhook otherwise).
   let firstCode = null;
   const secret = process.env.PAYSTACK_SECRET_KEY;
   if (secret) {
@@ -111,6 +155,9 @@ async function api(method, path, body, useCookie = true) {
       body: payload,
     });
     ok("webhook accepted", whRes.status === 200, "status=" + whRes.status);
+  } else {
+    const flwRes = await flwWebhook(reference, baseTotal);
+    if (flwRes) ok("webhook accepted", flwRes.status === 200, "status=" + flwRes.status);
   }
   r = await api("POST", "/api/bookings/finalize", { reference });
   ok("finalize fulfills", r.status === 200 && r.json?.status === "paid" && r.json?.tickets?.length === 2, JSON.stringify(r.json).slice(0, 160));
@@ -395,9 +442,14 @@ async function api(method, path, body, useCookie = true) {
   // ── 31. Vendor profile link & look (same infrastructure as events) ──
   r = await api("GET", "/api/vendors", null, false);
   ok("vendors list", r.status === 200 && Array.isArray(r.json) && r.json.length > 0);
-  // The seed brands one published vendor (whichever set the database
-  // holds), so the test finds it by slug rather than by name.
-  const djVendor = (r.json || []).find((v) => v.slug) || r.json[0];
+  // The seed hands the demo vendor account exactly one published profile and
+  // brands that same one, so find it by ownership. Picking "first vendor with
+  // a slug" grabbed an unrelated business once every vendor had a slug, which
+  // is why the owner-only checks below started failing.
+  const djVendor =
+    (r.json || []).find((v) => v.ownerId) ||
+    (r.json || []).find((v) => v.slug) ||
+    r.json[0];
   ok("vendor showcase carries slug", !!djVendor?.slug, "slug=" + (djVendor?.slug || "none"));
 
   // Slug lookup and pretty-link promotion, same contract as events.
@@ -446,6 +498,18 @@ async function api(method, path, body, useCookie = true) {
     ok("vendor bogus theme refused", r.status === 400, "status=" + r.status);
     r = await api("PATCH", "/api/vendors/" + djVendor.id + "/look", { theme: "midnight-gold", branding: { displayName: djVendor.businessName, accentHex: "#E3B23C" } });
     ok("vendor look restored", r.status === 200 && r.json?.theme === "midnight-gold", "theme=" + (r.json?.theme || "none"));
+
+    // The dashboard edits exactly one listing per account, so anything this
+    // endpoint returns has to belong to the caller and stay reachable.
+    const ownerId = ownerLogin.json._id;
+    r = await api("GET", "/api/vendors?mine=true");
+    ok("my listings returns only owned profiles",
+      r.status === 200 && Array.isArray(r.json) && r.json.length > 0
+        && r.json.every((v) => v.ownerId === ownerId),
+      "count=" + (Array.isArray(r.json) ? r.json.length : r.status));
+    ok("my listings includes the showcase profile",
+      Array.isArray(r.json) && r.json.some((v) => v.id === djVendor.id),
+      JSON.stringify((r.json || []).map((v) => v.id)));
   }
 
   // ── Pulse: live social proof numbers for the flagship ──
@@ -625,6 +689,88 @@ async function api(method, path, body, useCookie = true) {
     ok("AI extraction title", /detty/i.test(j.details?.title || ""), JSON.stringify(j.details?.title));
     ok("AI extraction date", /^2026-12-19/.test(j.details?.date || ""), JSON.stringify(j.details?.date));
     ok("AI extraction tiers in naira", Array.isArray(j.details?.tiers) && j.details.tiers.some((t) => t.price === 15000), JSON.stringify(j.details?.tiers));
+  }
+
+  // ── Draft events: sparse create, owner-only visibility, publish gate ──
+  {
+    // Guest accounts cannot create events at all.
+    cookie = "";
+    await api("POST", "/api/auth/login", { username: "ayo_attendee", password: "demo1234" });
+    r = await api("POST", "/api/events", { title: "e2e nope", status: "draft" });
+    ok("attendee cannot create events", r.status === 403, "status=" + r.status);
+
+    // Organizer: a draft with only a title saves, and it is hidden from the
+    // public directory.
+    cookie = "";
+    r = await api("POST", "/api/auth/login", { username: "tunde_organizer", password: "demo1234" });
+    ok("organizer login for drafts", r.status === 200, "status=" + r.status);
+    r = await api("POST", "/api/events", {
+      title: "E2E Mystery Block Party",
+      status: "draft",
+      price: 0,
+      capacity: 100,
+    });
+    ok("draft create with title only", r.status === 201 && r.json?.id, "status=" + r.status + " " + JSON.stringify(r.json).slice(0, 120));
+    const draftId = r.json?.id;
+    ok("draft stored without date", !r.json?.date || isNaN(new Date(r.json.date).getTime()), "date=" + JSON.stringify(r.json?.date));
+
+    r = await api("GET", "/api/events");
+    ok("draft hidden from public list", !(r.json || []).some((e) => e.id === draftId), "list=" + (r.json || []).length);
+
+    // Anonymous viewer gets the same answer as a missing event.
+    const anonRes = await fetch(BASE + "/api/events/" + draftId);
+    ok("draft 404s for anonymous", anonRes.status === 404, "status=" + anonRes.status);
+
+    // The owner sees their own draft.
+    r = await api("GET", "/api/events/" + draftId);
+    ok("owner can read own draft", r.status === 200 && r.json?.title === "E2E Mystery Block Party", "status=" + r.status);
+
+    // Publishing an incomplete draft is refused with the missing fields.
+    r = await api("PATCH", "/api/events/" + draftId, { status: "published" });
+    ok("incomplete publish refused", r.status === 400 && Array.isArray(r.json?.missing) && r.json.missing.includes("date"), "status=" + r.status + " missing=" + JSON.stringify(r.json?.missing));
+
+    // Publish-readiness endpoint agrees.
+    r = await api("GET", "/api/events/" + draftId + "/publish-readiness");
+    ok("readiness lists gaps", r.status === 200 && r.json?.ready === false && r.json.missing.length >= 3, "status=" + r.status + " " + JSON.stringify(r.json));
+
+    // Completing the draft makes it publishable.
+    r = await api("PATCH", "/api/events/" + draftId, {
+      description: "Finished by the e2e suite",
+      date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      location: "Eko Hotels, Lagos",
+      imageUrl: "/uploads/portfolio/e2e-draft-cover.png",
+    });
+    ok("draft completion update ok", r.status === 200, "status=" + r.status);
+
+    r = await api("GET", "/api/events/" + draftId + "/publish-readiness");
+    ok("readiness ready after fill", r.status === 200 && r.json?.ready === true, "status=" + r.status);
+
+    r = await api("PATCH", "/api/events/" + draftId, { status: "published" });
+    ok("publish succeeds after completion", r.status === 200 && r.json?.status === "published", "status=" + r.status);
+
+    // The published event must be openable: clean up after the assertions.
+    r = await api("DELETE", "/api/events/" + draftId);
+    ok("draft event cleaned up", r.status === 200 || r.status === 204 || r.status === 404, "status=" + r.status);
+  }
+
+  // ── Studio cover upload path (organizer uploads a rendered PNG) ──
+  {
+    // A 1x1 PNG as the studio would produce; proves the multipart route and
+    // the served URL, which is what "Set as cover" depends on.
+    const pngB64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mPcv5+hHgAGgwJ/lK3Q6wAAAABJRU5ErkJggg==";
+    const form = new FormData();
+    form.append("file", new Blob([Buffer.from(pngB64, "base64")], { type: "image/png" }), "studio-cover.png");
+    const res = await fetch(BASE + "/api/uploads/portfolio", {
+      method: "POST",
+      headers: cookie ? { Cookie: cookie } : {},
+      body: form,
+    });
+    const j = await res.json().catch(() => ({}));
+    ok("studio cover upload works", res.status === 201 && typeof j.url === "string" && j.url.startsWith("/uploads/portfolio/"), "status=" + res.status + " " + JSON.stringify(j).slice(0, 100));
+    if (j.url) {
+      const imgRes = await fetch(BASE + j.url);
+      ok("cover upload served back", imgRes.status === 200, "status=" + imgRes.status);
+    }
   }
 
   // ── Unsubscribe route: bad token redirects calmly, never error-dumps ──

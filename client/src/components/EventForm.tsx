@@ -6,6 +6,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FlyerExtractPanel } from "@/components/FlyerExtractPanel";
+import { ShareFlyerModal } from "@/components/ShareFlyerModal";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -124,6 +125,10 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
   const [videoUrlDraft, setVideoUrlDraft] = useState("");
   const [isUploadingGallery, setIsUploadingGallery] = useState(false);
 
+  // Creative Studio: design a cover without a designer, applied straight into
+  // the imageUrl field through a real upload (never a data URL).
+  const [studioOpen, setStudioOpen] = useState(false);
+
   const handleFormSubmit = (data: InsertEvent) => {
     onSubmit({
       ...data,
@@ -132,6 +137,25 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
       gallery: JSON.stringify(gallery),
       pastEventVideos: JSON.stringify(pastEventVideos),
     });
+  };
+
+  // Drafts skip the full-validation path server side: only a title is
+  // required, so an organizer can park an early announcement and finish it
+  // later from Manage Event.
+  const handleDraftSubmit = () => {
+    const values = form.getValues();
+    if (!values.title || !String(values.title).trim()) {
+      form.setError("title", { message: "Give the event a title first" });
+      return;
+    }
+    onSubmit({
+      ...values,
+      status: "draft",
+      ticketTypes: JSON.stringify(ticketTypes),
+      checkoutFields,
+      gallery: JSON.stringify(gallery),
+      pastEventVideos: JSON.stringify(pastEventVideos),
+    } as InsertEvent);
   };
 
   const [checkoutFields, setCheckoutFields] = useState<any>(
@@ -463,6 +487,15 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
                   <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-black">OR</span>
                   <div className="h-px flex-1 bg-white/10" />
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStudioOpen(true)}
+                  className="press w-full h-12 border-gold/50 text-gold hover:bg-gold/10 rounded-xl font-medium"
+                >
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  Design with Studio, no flyer needed
+                </Button>
                 <div className="relative group">
                   <Input
                     type="file"
@@ -499,6 +532,24 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
               <FormMessage />
             </FormItem>
           )}
+        />
+
+        <ShareFlyerModal
+          open={studioOpen}
+          onClose={() => setStudioOpen(false)}
+          event={{
+            title: form.watch("title") || "Untitled Event",
+            date: form.watch("date") || new Date(),
+            location: form.watch("location") || "",
+            price: form.watch("price") || 0,
+            imageUrl: form.watch("imageUrl") || null,
+            slug: null,
+            visibility: form.watch("visibility"),
+            accessCode: form.watch("accessCode") || "",
+            branding: form.watch("branding") || null,
+          }}
+          enableStudio
+          onApplyCover={(url) => form.setValue("imageUrl", url, { shouldDirty: true })}
         />
 
         <FormField
@@ -899,14 +950,25 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
           </div>
         </div>
 
-        <Button 
-          type="submit" 
-          disabled={isLoading}
-          className="press w-full bg-primary text-primary-foreground hover:bg-gold-soft font-medium text-base h-12 rounded-md"
-        >
-          {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-          Save Event
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isLoading}
+            onClick={handleDraftSubmit}
+            className="press sm:flex-none px-6 border-white/20 text-white hover:bg-white/10 font-medium text-base h-12 rounded-md"
+          >
+            Save as draft
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={isLoading}
+            className="press flex-1 bg-primary text-primary-foreground hover:bg-gold-soft font-medium text-base h-12 rounded-md"
+          >
+            {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+            Save Event
+          </Button>
+        </div>
       </form>
     </Form>
   );

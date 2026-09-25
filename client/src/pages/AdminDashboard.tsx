@@ -348,7 +348,8 @@ export default function AdminDashboard() {
                       </tr>
                     )}
                     {events?.map((event: any) => {
-                      const expired = isPast(new Date(event.date));
+                      const rowDate = event.date ? new Date(event.date) : null;
+                      const expired = !!rowDate && !isNaN(rowDate.getTime()) && isPast(rowDate);
                       const sales = eventSales(event);
                       return (
                         <tr
@@ -358,18 +359,29 @@ export default function AdminDashboard() {
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-md overflow-hidden bg-surface-2 shrink-0 hidden sm:block">
-                                <img
-                                  src={event.imageUrl}
-                                  alt=""
-                                  className="w-full h-full object-cover"
-                                  loading="lazy"
-                                />
+                                {event.imageUrl ? (
+                                  <img
+                                    src={event.imageUrl}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Calendar className="w-4 h-4 text-muted-ink/40" />
+                                  </div>
+                                )}
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
                                   <span className="font-display font-bold text-ink text-sm">
                                     {event.title}
                                   </span>
+                                  {event.status === "draft" && (
+                                    <span className="px-1.5 py-0.5 rounded bg-gold/10 text-gold border border-gold/30 text-[9px] font-bold uppercase tracking-wider">
+                                      Draft
+                                    </span>
+                                  )}
                                   {expired && (
                                     <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 text-[9px] font-bold uppercase tracking-wider">
                                       Expired
@@ -378,13 +390,15 @@ export default function AdminDashboard() {
                                 </div>
                                 <span className="flex items-center gap-1 text-xs text-muted-ink mt-0.5">
                                   <MapPin className="w-3 h-3" />
-                                  {event.location}
+                                  {event.location || "Venue TBA"}
                                 </span>
                               </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 text-sm text-muted-ink hidden sm:table-cell">
-                            {format(new Date(event.date), "MMM dd, yyyy")}
+                            {event.date && !isNaN(new Date(event.date).getTime())
+                              ? format(new Date(event.date), "MMM dd, yyyy")
+                              : "Date TBA"}
                           </td>
                           <td className="px-6 py-4">
                             <span
