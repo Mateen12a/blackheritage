@@ -55,11 +55,13 @@ export function EventCardCompact({ event }: EventCardCompactProps) {
               {price}
 </span>
             </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-ink">
+          {/* Both middle cells carry min-w-0 so a long ticket-tier name
+              ellipsises instead of widening the card and scrolling the page. */}
+          <div className="mt-2 flex min-w-0 items-center gap-1.5 text-xs text-muted-ink">
             <MapPin className="w-3 h-3 text-gold shrink-0" aria-hidden="true" />
-            <span className="truncate">{event.location}</span>
-            <span aria-hidden="true" className="text-muted-ink">·</span>
-            <span className="shrink-0">{availability}</span>
+            <span className="min-w-0 flex-1 truncate">{event.location}</span>
+            <span aria-hidden="true" className="text-muted-ink shrink-0">·</span>
+            <span className="min-w-0 max-w-[62%] truncate">{availability}</span>
           </div>
         </div>
       </article>

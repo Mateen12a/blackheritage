@@ -4,7 +4,6 @@ import { useEvents } from "@/hooks/use-events";
 import { Reveal } from "@/components/motion";
 import { Search } from "lucide-react";
 import { DirectorySkeleton } from "@/components/AsyncStates";
-import { StateFilter } from "@/components/StateFilter";
 import { stateForLocation, stateOptionsForEvents } from "@/lib/nigeria";
 import { useSearch } from "wouter";
 import { useState, useEffect, useMemo } from "react";
@@ -15,8 +14,7 @@ type QuickFilter = "all" | "tonight" | "week" | "free" | "under10k";
 
 type TypeFilter = "all" | string;
 
-const EVENT_TYPE_FILTERS: { key: Exclude<TypeFilter, "all"> | "all"; label: string }[] = [
-  { key: "all", label: "All types" },
+const EVENT_TYPE_FILTERS: { key: Exclude<TypeFilter, "all">; label: string }[] = [
   { key: "party", label: "Parties" },
   { key: "concert", label: "Concerts" },
   { key: "festival", label: "Festivals" },
@@ -26,13 +24,22 @@ const EVENT_TYPE_FILTERS: { key: Exclude<TypeFilter, "all"> | "all"; label: stri
   { key: "comedy_show", label: "Comedy" },
 ];
 
-const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
-  { key: "all", label: "All" },
+// The lead "All" chip resets every group and tapping an active chip clears
+// that group, so the groups themselves list concrete choices only.
+const QUICK_FILTERS: { key: Exclude<QuickFilter, "all">; label: string }[] = [
   { key: "tonight", label: "Tonight" },
   { key: "week", label: "This week" },
   { key: "free", label: "Free" },
   { key: "under10k", label: "Under ₦10k" },
 ];
+
+const chipClass = (selected: boolean) =>
+  cn(
+    "shrink-0 px-4 py-2 rounded-full border text-sm font-medium transition-colors duration-200",
+    selected
+      ? "bg-primary text-primary-foreground border-primary"
+      : "bg-transparent text-muted-ink border-hairline hover:border-white/30 hover:text-ink",
+  );
 
 export default function Events() {
   const { data: events, isLoading } = useEvents();
@@ -56,6 +63,13 @@ export default function Events() {
   }, [filterParam]);
 
   const stateOptions = useMemo(() => stateOptionsForEvents(events), [events]);
+  const anyFilterActive = quickFilter !== "all" || typeFilter !== "all" || stateKey !== "all";
+
+  const clearAllFilters = () => {
+    setQuickFilter("all");
+    setTypeFilter("all");
+    setStateKey("all");
+  };
 
   const filteredEvents = events?.filter((event) => {
     if (stateKey !== "all" && stateForLocation(event.location)?.key !== stateKey) {
@@ -136,63 +150,72 @@ export default function Events() {
           </div>
         </div>
 
-        {/* Quick filters — quiet pills, gold only when active */}
+        {/* One filter row: when / type / where share a single scroller, led by
+            one "All" that resets every group. The groups stay labelled for
+            assistive tech but use display:contents so the chips sit inline. */}
         <div
-          className="flex gap-2 mb-12 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap"
+          className="flex items-center gap-2 mb-12 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto no-scrollbar md:flex-wrap"
           role="group"
-          aria-label="Quick filters"
+          aria-label="Event filters"
         >
-          {QUICK_FILTERS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              aria-pressed={quickFilter === f.key}
-              onClick={() => setQuickFilter(f.key)}
-              className={cn(
-                "shrink-0 px-4 py-2 rounded-full border text-sm font-medium transition-colors duration-200",
-                quickFilter === f.key
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-transparent text-muted-ink border-hairline hover:border-white/30 hover:text-ink"
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+          <button
+            type="button"
+            aria-pressed={!anyFilterActive}
+            onClick={clearAllFilters}
+            className={chipClass(!anyFilterActive)}
+          >
+            All
+          </button>
 
-        {/* Event type filters — same pill language, second row */}
-        <div
-          className="flex gap-2 mb-12 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap"
-          role="group"
-          aria-label="Filter by event type"
-        >
-          {EVENT_TYPE_FILTERS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              aria-pressed={typeFilter === f.key}
-              onClick={() => setTypeFilter(f.key)}
-              className={cn(
-                "shrink-0 px-4 py-2 rounded-full border text-sm font-medium transition-colors duration-200",
-                typeFilter === f.key
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-transparent text-muted-ink border-hairline hover:border-white/30 hover:text-ink"
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+          <div role="group" aria-label="Filter by date" className="contents">
+            {QUICK_FILTERS.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                aria-pressed={quickFilter === f.key}
+                onClick={() => setQuickFilter((current) => (current === f.key ? "all" : f.key))}
+                className={chipClass(quickFilter === f.key)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
 
-        {/* Where: states that have events on sale, with counts, so the row
-            never offers a filter that leads nowhere. */}
-        <StateFilter
-          className="mb-12"
-          options={stateOptions}
-          value={stateKey}
-          onChange={setStateKey}
-          allCount={events?.length ?? 0}
-        />
+          <span aria-hidden="true" className="shrink-0 h-6 w-px bg-hairline" />
+
+          <div role="group" aria-label="Filter by event type" className="contents">
+            {EVENT_TYPE_FILTERS.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                aria-pressed={typeFilter === f.key}
+                onClick={() => setTypeFilter((current) => (current === f.key ? "all" : f.key))}
+                className={chipClass(typeFilter === f.key)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <span aria-hidden="true" className="shrink-0 h-6 w-px bg-hairline" />
+
+          {/* Where: only states with events on sale, with counts, so the row
+              never offers a filter that leads nowhere. */}
+          <div role="group" aria-label="Filter by state" className="contents">
+            {stateOptions.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                aria-pressed={stateKey === option.key}
+                onClick={() => setStateKey((current) => (current === option.key ? "all" : option.key))}
+                className={cn(chipClass(stateKey === option.key), "inline-flex items-center gap-1.5")}
+              >
+                {option.name}
+                <span className="opacity-60">{option.count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Grid */}
         {isLoading ? (
