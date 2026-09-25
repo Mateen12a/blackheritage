@@ -28,14 +28,33 @@ export function useEvent(id: string) {
       // /e/:slug pages pass the slug; the id route passes a raw id. Both hit
       // the same shape of payload; the slug endpoint reads the same rows.
       const isSlug = !/^[0-9a-fA-F]{24}$/.test(id) && !/^event-/.test(id);
+      // Access code rides on both paths: sessionStorage wins (the guest
+      // already unlocked it once), then the ?code= URL param, then any
+      // invite token from a personal invite link.
+      const stored = typeof sessionStorage !== "undefined" ? sessionStorage.getItem(`bh-access-${id}`) : null;
+      const qs = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+      const code = stored || qs.get("code") || "";
+      const invite = qs.get("invite") || "";
+      const extra = new URLSearchParams();
+      if (code) extra.set("code", code);
+      if (invite) extra.set("invite", invite);
+      const suffix = extra.toString() ? `?${extra.toString()}` : "";
       const url = isSlug
-        ? `${BASE_URL}/api/events/by-slug/${encodeURIComponent(id)}`
-        : `${BASE_URL}${buildUrl(api.events.get.path, { id: id as any })}`;
+        ? `${BASE_URL}/api/events/by-slug/${encodeURIComponent(id)}${suffix}`
+        : `${BASE_URL}${buildUrl(api.events.get.path, { id: id as any })}${suffix}`;
       const res = await fetch(url, {
         credentials: "include",
         headers: { Accept: "application/json" },
       });
       if (res.status === 404) return null;
+      // Invite-only events 403 with { requiresCode: true } until the right
+      // access code (or invite token) rides along. Surface the marker so the
+      // page can show its gate screen instead of a hard error.
+      if (res.status === 403) {
+        const body = await res.json().catch(() => null);
+        if (body?.requiresCode) return { __requiresCode: true, title: body.title || null };
+        throw new Error("Failed to fetch event");
+      }
       if (!res.ok) throw new Error("Failed to fetch event");
       const data = await res.json();
       return data;

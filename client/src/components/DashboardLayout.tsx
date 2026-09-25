@@ -59,6 +59,10 @@ function tabsFor(role?: string, isAdmin?: boolean, isTeamStaff?: boolean, isVend
   }
 
   if (isOrg) {
+    // No fixed Vendor tab: "Vendor" in an organizer's own sidebar reads as
+    // "manage my event vendors", which it never is. Organizers who also run a
+    // vendor listing (a DJ who throws events) reach My Shop from the account
+    // sheet instead, so the bottom bar stays at five.
     return [
       {
         href: "/",
@@ -74,6 +78,12 @@ function tabsFor(role?: string, isAdmin?: boolean, isTeamStaff?: boolean, isVend
         match: (loc) => loc.startsWith("/admin"),
       },
       {
+        href: "/my-tickets",
+        label: "Tickets",
+        icon: Ticket,
+        match: (loc) => loc.startsWith("/my-tickets"),
+      },
+      {
         href: "/verify",
         label: "Verify",
         icon: ScanLine,
@@ -84,12 +94,6 @@ function tabsFor(role?: string, isAdmin?: boolean, isTeamStaff?: boolean, isVend
         label: "Chats",
         icon: MessageSquare,
         match: (loc) => loc.startsWith("/messages"),
-      },
-      {
-        href: "/vendor-dashboard",
-        label: "Vendor",
-        icon: Store,
-        match: (loc) => loc.startsWith("/vendor-dashboard"),
       },
     ];
   }
@@ -344,6 +348,21 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="pt-4 border-t border-hairline space-y-1">
+            {/* Organizer-vendors keep their shop one tap away without a
+                sixth bottom-bar tab. */}
+            {isOrg && isVendor && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountOpen(false);
+                  navigate("/vendor-dashboard");
+                }}
+                className="w-full flex items-center gap-3 px-2 py-3 rounded-md text-muted-ink hover:text-ink hover:bg-surface-2 transition-colors text-left"
+              >
+                <Store size={18} strokeWidth={1.5} aria-hidden="true" />
+                <span className="text-sm font-medium">My Shop</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {

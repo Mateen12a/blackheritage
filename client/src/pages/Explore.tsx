@@ -4,6 +4,7 @@ import { useVendors } from "@/hooks/use-vendors";
 import { EventCardCompact } from "@/components/EventCardCompact";
 import { VendorCard } from "@/components/VendorCard";
 import { HeaderSkeleton, LoadError } from "@/components/AsyncStates";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Search, CalendarDays, MapPin } from "lucide-react";
 import { Link } from "wouter";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,8 @@ import { FadeImg } from "@/components/motion";
 import { format } from "date-fns";
 import { useMemo, useState } from "react";
 import { NativeSponsorSpotlight } from "@/components/NativeSponsorSpotlight";
+import { StateFilter } from "@/components/StateFilter";
+import { stateForLocation, stateOptionsForEvents } from "@/lib/nigeria";
 
 /**
  * App-style Explore: large title, always-present search, category chips,
@@ -20,13 +23,6 @@ import { NativeSponsorSpotlight } from "@/components/NativeSponsorSpotlight";
  */
 
 type Category = { key: string; label: string };
-
-const CITIES = [
-  { key: "all", label: "All Nigeria" },
-  { key: "lagos", label: "Lagos" },
-  { key: "abuja", label: "Abuja" },
-  { key: "ph", label: "Port Harcourt" },
-];
 
 const CATEGORIES: Category[] = [
   { key: "all", label: "All Events" },
@@ -58,21 +54,14 @@ export default function Explore() {
   const { data: events, isLoading, isError, refetch } = useEvents();
   const { data: vendors, isLoading: vendorsLoading } = useVendors();
   const [search, setSearch] = useState("");
-  const [city, setCity] = useState("all");
+  const [stateKey, setStateKey] = useState("all");
   const [category, setCategory] = useState("all");
 
   const filtered = useMemo(() => {
     if (!events) return [];
     const term = search.trim().toLowerCase();
     return events
-      .filter((e) => {
-        if (city === "all") return true;
-        const loc = (e.location || "").toLowerCase();
-        if (city === "lagos") return loc.includes("lagos") || loc.includes("island") || loc.includes("lekki") || loc.includes("ikeja");
-        if (city === "abuja") return loc.includes("abuja") || loc.includes("fct");
-        if (city === "ph") return loc.includes("port harcourt") || loc.includes("rivers");
-        return true;
-      })
+      .filter((e) => stateKey === "all" || stateForLocation(e.location)?.key === stateKey)
       .filter((e) => matchesCategory(e, category))
       .filter(
         (e) =>
@@ -82,13 +71,21 @@ export default function Explore() {
           e.location.toLowerCase().includes(term)
       )
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [events, search, city, category]);
+  }, [events, search, stateKey, category]);
 
-  const featured = useMemo(
-    () => events?.filter((e) => e.isFeatured).slice(0, 2) ?? [],
-    [events]
-  );
-  const spotlight = featured[0];
+  const stateOptions = useMemo(() => stateOptionsForEvents(events), [events]);
+  const selectedState = stateOptions.find((option) => option.key === stateKey) ?? null;
+  const browsingOneState = stateKey !== "all" && !search && category === "all";
+
+  // The hero follows the filter. Picking a state should change the page, not
+  // only the list under it, so the state view leads with that state's featured
+  // event and falls back to its next event.
+  const spotlight = useMemo(() => {
+    if (search || category !== "all") return null;
+    const pool = stateKey === "all" ? events ?? [] : filtered;
+    return pool.find((e) => e.isFeatured) ?? (stateKey === "all" ? null : pool[0] ?? null);
+  }, [events, filtered, stateKey, search, category]);
+
   const vendorRail = vendors?.filter((v) => v.status === "published") ?? [];
 
   if (isLoading) {
@@ -136,32 +133,16 @@ export default function Explore() {
         </div>
       </div>
 
-      {/* City selector chips: horizontally scrollable */}
-      <div
-        role="group"
-        aria-label="Filter events by city"
-        className="-mx-4 px-4 md:mx-0 md:px-0 mt-4 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {CITIES.map((c) => {
-          const active = city === c.key;
-          return (
-            <button
-              key={c.key}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setCity(c.key)}
-              className={
-                "shrink-0 h-8 px-3.5 rounded-full border text-xs font-semibold transition-colors duration-200 " +
-                (active
-                  ? "bg-gold/15 text-gold border-gold"
-                  : "bg-surface-2 text-muted-ink border-hairline hover:border-gold/40 hover:text-ink")
-              }
-            >
-              {c.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Where the events are. Chips carry live counts so the row reads as
+          inventory, not decoration. */}
+      <StateFilter
+        className="mt-4"
+        dense
+        options={stateOptions}
+        value={stateKey}
+        onChange={setStateKey}
+        allCount={events?.length ?? 0}
+      />
 
       {/* Category chips: horizontally scrollable, gold when active */}
       <div
@@ -201,7 +182,7 @@ export default function Explore() {
       ) : (
         <>
           {/* Featured spotlight — photo-led card, leads the feed */}
-          {spotlight && !search && category === "all" && (
+          {spotlight && (
             <Link
               href={"/events/" + spotlight.id}
               className="block mt-6 group"
@@ -253,11 +234,24 @@ export default function Explore() {
             {filtered.length === 0 ? (
               <div className="py-12 text-center">
                 <h3 className="font-display text-lg font-bold text-ink mb-1.5">
-                  Nothing matches that yet
+                  {browsingOneState && selectedState
+                    ? `${selectedState.name} has nothing on sale yet`
+                    : "Nothing matches that yet"}
                 </h3>
                 <p className="text-sm text-muted-ink">
-                  Try another search, or clear the filters to see everything on sale.
+                  {browsingOneState && selectedState
+                    ? "Events show up here the moment an organizer publishes one."
+                    : "Try another search, or clear the filters to see everything on sale."}
                 </p>
+                {stateKey !== "all" && (
+                  <button
+                    type="button"
+                    onClick={() => setStateKey("all")}
+                    className="press mt-5 inline-flex items-center h-10 px-5 rounded-full border border-hairline text-sm font-medium text-ink hover:border-gold/50 hover:text-gold transition-colors"
+                  >
+                    See every state
+                  </button>
+                )}
               </div>
             ) : (
               <div className="divide-y divide-hairline">
@@ -279,9 +273,13 @@ export default function Explore() {
           <section className="mt-10" aria-label="Vendors to book">
             <div className="flex items-baseline justify-between mb-3">
               <h2 className="font-display text-xl font-bold text-ink">Vendors</h2>
-              <span className="text-xs text-muted-ink">
-                {vendorsLoading ? "Loading" : vendorRail.length + " listed"}
-              </span>
+              <div className="text-xs text-muted-ink">
+                {vendorsLoading ? (
+                  <Skeleton className="h-3 w-16" />
+                ) : (
+                  vendorRail.length + " listed"
+                )}
+              </div>
             </div>
             <div className="-mx-4 px-4 md:mx-0 md:px-0 flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {vendorRail.slice(0, 10).map((v) => (

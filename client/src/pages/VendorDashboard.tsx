@@ -134,39 +134,40 @@ export default function VendorDashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-10">
-          {/* Profile completeness */}
-          <Reveal>
-            <div className="border border-hairline rounded-md bg-surface p-5">
-              <div className="flex items-baseline justify-between mb-3">
-                <h4 className="eyebrow">Profile Strength</h4>
-                <span className="font-display text-xl font-bold text-gold">{completeness}%</span>
-              </div>
-              <div className="h-1 rounded-full bg-surface-2 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gold transition-[width] duration-500 ease-out"
-                  style={{ width: `${completeness}%` }}
-                  role="progressbar"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={completeness}
-                  aria-label="Profile completeness"
-                />
-              </div>
-              {completenessTips.length > 0 && (
-                <ul className="mt-4 space-y-2">
-                  {completenessTips.map((tip) => (
-                    <li key={tip} className="flex items-start gap-2 text-xs text-muted-ink">
-                      <span aria-hidden="true" className="mt-1.5 h-1 w-1 rounded-full bg-gold shrink-0" />
-                      {tip}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </Reveal>
-
           {/* ── Left: profile preview + quick stats ── */}
           <div className="lg:col-span-1 space-y-6">
+            {/* Profile completeness leads the column: it is the first thing a
+                vendor should fix, and it sits with the profile it grades. */}
+            <Reveal>
+              <div className="border border-hairline rounded-md bg-surface p-5">
+                <div className="flex items-baseline justify-between mb-3">
+                  <h4 className="eyebrow">Profile Strength</h4>
+                  <span className="font-display text-xl font-bold text-gold">{completeness}%</span>
+                </div>
+                <div className="h-1 rounded-full bg-surface-2 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gold transition-[width] duration-500 ease-out"
+                    style={{ width: `${completeness}%` }}
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={completeness}
+                    aria-label="Profile completeness"
+                  />
+                </div>
+                {completenessTips.length > 0 && (
+                  <ul className="mt-4 space-y-2">
+                    {completenessTips.map((tip) => (
+                      <li key={tip} className="flex items-start gap-2 text-xs text-muted-ink">
+                        <span aria-hidden="true" className="mt-1.5 h-1 w-1 rounded-full bg-gold shrink-0" />
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </Reveal>
+
             {/* Profile card */}
             <Reveal>
               <div className="border border-hairline rounded-md bg-surface overflow-hidden">

@@ -28,6 +28,7 @@ export interface IUser extends Document {
   theme?: 'midnight-gold' | 'ivory-editorial' | 'sunset-poster' | null;
   accentHex?: string | null;
   avatarUrl?: string | null;
+  phone?: string | null; // optional, for organizer/vendor support contact
   videoLoopUrl?: string | null;
   spotifyPlaylistUrl?: string | null;
   tourCities?: string[] | null;
@@ -60,6 +61,7 @@ const UserSchema: Schema = new Schema({
   },
   followersCount: { type: Number, default: 0 },
   avatarUrl: { type: String, default: null },
+  phone: { type: String, default: null },
   termsAcceptedAt: { type: Date, default: null }, // consent record set at registration
   socials: {
     type: {
@@ -111,6 +113,12 @@ export interface IEvent extends Document {
   branding?: { displayName?: string; logoUrl?: string; accentHex?: string } | null;
   slug?: string | null;
   theme?: 'midnight-gold' | 'ivory-editorial' | 'sunset-poster' | null;
+  // ── Event visibility: public (listed), unlisted (link-only), invite_only (code-gated) ──
+  visibility?: 'public' | 'unlisted' | 'invite_only';
+  accessCode?: string | null; // 4-6 char code guests need for invite_only events
+  // ── Event type category ──
+  eventType?: string;
+  eventTypeLabel?: string | null; // free text when eventType is 'other'
 }
 
 const EventSchema: Schema = new Schema({
@@ -145,6 +153,20 @@ const EventSchema: Schema = new Schema({
   slug: { type: String, index: { unique: true, sparse: true } },
   slugAliases: { type: [String], default: [], index: true },
   theme: { type: String, enum: ['midnight-gold', 'ivory-editorial', 'sunset-poster', null], default: null },
+  // ── Visibility: controls who can see/access the event ──
+  visibility: { type: String, enum: ['public', 'unlisted', 'invite_only'], default: 'public' },
+  accessCode: { type: String, default: null }, // for invite_only events
+  // ── Event type category ──
+  eventType: {
+    type: String,
+    enum: [
+      'concert', 'party', 'house_party', 'wedding', 'birthday',
+      'corporate', 'festival', 'brunch', 'private_gathering',
+      'conference', 'comedy_show', 'art_exhibition', 'other'
+    ],
+    default: 'party',
+  },
+  eventTypeLabel: { type: String, maxlength: 40 }, // free text when 'other'
 });
 
 export const EventModel = mongoose.models.Event || model<IEvent>("Event", EventSchema);
@@ -220,7 +242,7 @@ export interface IVendor extends Document {
 
 const VendorSchema: Schema = new Schema({
   businessName: { type: String, required: true },
-  category: { type: String, enum: ['DJ', 'MC', 'Caterer', 'Decorator', 'Photographer', 'Live Band', 'Other'], default: 'Other' },
+  category: { type: String, enum: ['DJ', 'MC', 'Caterer', 'Decorator', 'Photographer', 'Videographer', 'Live Band', 'Solo Artist', 'Makeup Artist', 'Event Planner', 'Sound Engineer', 'Lighting', 'Security', 'Bartender', 'Baker', 'Fashion Designer', 'Rental Equipment', 'Venue', 'Other'], default: 'Other' },
   categoryLabel: { type: String, maxlength: 40 },
   bio: { type: String, required: true },
   gallery: { type: String, default: '[]' },
@@ -587,3 +609,36 @@ export const OrganizerLeadModel =
   mongoose.models.OrganizerLead ||
   model<IOrganizerLead>("OrganizerLead", OrganizerLeadSchema);
 
+
+// ── Guest invites for unlisted / invite-only events ──
+// Each invite carries a one-off token that opens the event page without the
+// access code. Status tracks the funnel: sent, opened, ticket bought.
+export interface IEventInvite extends Document {
+  eventId: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  token: string;
+  status: 'pending' | 'viewed' | 'purchased';
+  sentAt?: Date | null;
+  viewedAt?: Date | null;
+  createdAt: Date;
+}
+
+const EventInviteSchema: Schema = new Schema({
+  eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true },
+  name: { type: String, required: true },
+  email: { type: String, default: null },
+  phone: { type: String, default: null },
+  token: { type: String, required: true, unique: true },
+  status: { type: String, enum: ['pending', 'viewed', 'purchased'], default: 'pending' },
+  sentAt: { type: Date, default: null },
+  viewedAt: { type: Date, default: null },
+  createdAt: { type: Date, default: Date.now },
+});
+
+EventInviteSchema.index({ eventId: 1, email: 1 });
+
+export const EventInviteModel =
+  mongoose.models.EventInvite ||
+  model<IEventInvite>("EventInvite", EventInviteSchema);

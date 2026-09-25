@@ -218,6 +218,36 @@ export default function OrganizersLanding() {
         </div>
       </section>
 
+      {/* ─── Event types we serve ─── */}
+      <section className="py-16 md:py-24 border-b border-hairline">
+        <div className="container max-w-6xl mx-auto px-4">
+          <Reveal>
+            <p className="text-xs uppercase tracking-[0.2em] font-semibold text-gold mb-3">Every kind of gathering</p>
+            <h2 className="mt-2 font-display text-3xl md:text-4xl font-bold text-ink">
+              From 30-person house parties to 3,000-seat festivals
+            </h2>
+            <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
+          </Reveal>
+          <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { title: "House Parties & Private Events", hint: "Unlisted or invite-only. Off the public feed, on your guest list." },
+              { title: "Concerts & Festivals", hint: "Public listings, featured placement, tiered tickets, tables." },
+              { title: "Weddings & Celebrations", hint: "Your branding on every ticket and invite link." },
+              { title: "Corporate Events & Conferences", hint: "Invite-only access codes, staffed gate, clean exports." },
+              { title: "Comedy Shows & Art Exhibitions", hint: "Seated or standing, promo codes, waitlists." },
+              { title: "Brunches & Day Parties", hint: "Quick setup, guest checkout, instant QR delivery." },
+            ].map((t, i) => (
+              <Reveal key={t.title} delay={0.05 * i}>
+                <div className="h-full border border-hairline rounded-md bg-surface p-6 hover:border-white/20 transition-colors duration-200">
+                  <h3 className="font-display text-lg font-bold text-ink">{t.title}</h3>
+                  <p className="mt-2 text-sm text-muted-ink leading-relaxed">{t.hint}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ─── Why Switch from Legacy Portals ─── */}
       <section className="py-16 md:py-24 border-b border-hairline">
         <div className="container max-w-5xl mx-auto px-4">
@@ -535,6 +565,9 @@ export default function OrganizersLanding() {
                           onChange={(e) => setFormData({ ...formData, estimatedAttendance: e.target.value })}
                           className="w-full h-10 px-2 rounded-lg bg-surface border border-hairline text-ink text-xs focus:outline-none focus:border-gold"
                         >
+                          <option value="Under 50">Under 50</option>
+                          <option value="50-100">50 to 100</option>
+                          <option value="100-500">100 to 500</option>
                           <option value="Under 500">Under 500</option>
                           <option value="500-1500">500 to 1,500</option>
                           <option value="1500-5000">1,500 to 5,000</option>

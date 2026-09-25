@@ -171,6 +171,12 @@ export function setupAuth(app: Express) {
       typeof req.body.displayName === "string" && req.body.displayName.trim()
         ? req.body.displayName.trim().slice(0, 80)
         : undefined;
+    // Optional support contact for organizers and vendors. Never rendered
+    // publicly; used on gate-day questions and vendor enquiries.
+    const phone =
+      typeof req.body.phone === "string" && req.body.phone.trim()
+        ? req.body.phone.trim().slice(0, 24)
+        : undefined;
     try {
       const existing = usingDevStore()
         ? devUsersByUsername.get(String(username).toLowerCase()) ||
@@ -216,6 +222,7 @@ export function setupAuth(app: Express) {
         password: hashedPassword,
         role: role || "user",
         ...(displayName ? { displayName } : {}),
+        ...(phone ? { phone } : {}),
         ...(referrerId ? { referredBy: referrerId } : {}),
         referralCode: generateReferralCode(),
         termsAcceptedAt: new Date(), // consent record, NDPA audit trail
@@ -223,14 +230,17 @@ export function setupAuth(app: Express) {
       await user.save();
       (req.session as any).referredByCode = undefined;
       // Welcome email is fire-and-forget: signup must never wait on email.
-      // The role decides the variant: organizers get next steps, guests get
-      // discovery.
+      // The audience decides the variant: organizers get dashboard next steps,
+      // vendors get profile setup guidance, attendees get discovery.
+      const audience = req.body.audience;
+      const emailRole: "user" | "organizer" | "vendor" =
+        audience === "vendor" ? "vendor" : role === "organizer" ? "organizer" : "user";
       if (process.env.RESEND_API_KEY) {
         import("./emails")
           .then(({ sendWelcomeEmail }) =>
             sendWelcomeEmail(
               { name: String(displayName || username), email: String(email) },
-              role === "organizer" ? "organizer" : "user",
+              emailRole,
             ),
           )
           .catch((e) => console.error("Welcome email failed:", e));

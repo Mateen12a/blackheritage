@@ -75,6 +75,102 @@ export async function registerRoutes(
   const EVENTS_DIR = path.resolve(process.cwd(), "client", "public", "events");
   app.use("/events", express.static(EVENTS_DIR, { maxAge: "30d" }));
 
+  // ── Organizer onboarding checklist ──
+  // One read, honest conditions, no gamification: what is actually left
+  // before the organizer's first clean launch.
+  app.get("/api/setup-checklist", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in first" });
+    const user = req.user as any;
+    if (user.role === "user" && !user.teamOwnerId) {
+      return res.status(403).json({ message: "Organizer access required" });
+    }
+    try {
+      const uid = (user.teamOwnerId || user._id).toString();
+      const fresh = await User.findById(uid).select("displayName bio logoUrl accentHex socials").lean();
+      const myEvents = await storage.getAllEvents();
+      const own = myEvents.filter((e: any) => e.organizerId === uid);
+      const { BookingModel } = await import("./models");
+      const sold = own.length
+        ? await BookingModel.countDocuments({ eventId: { $in: own.map((e: any) => e.id) }, status: "paid" }).catch(() => 0)
+        : 0;
+      const socials: any = (fresh as any)?.socials || {};
+      const hasSocial = Boolean(socials.instagram || socials.twitter || socials.whatsapp || socials.website);
+      const steps = [
+        { key: "profile", label: "Complete your profile", done: Boolean((fresh as any)?.displayName && (fresh as any)?.bio), href: "/settings", cta: "Settings" },
+        { key: "logo", label: "Upload your logo", done: Boolean((fresh as any)?.logoUrl), href: "/settings", cta: "Settings" },
+        { key: "brand", label: "Pick your brand color", done: Boolean((fresh as any)?.accentHex), href: "/admin?tab=brand", cta: "Brand" },
+        { key: "event", label: "Create your first event", done: own.length > 0, href: "/admin/events/new", cta: "Create" },
+        { key: "socials", label: "Add a social link", done: hasSocial, href: "/settings", cta: "Settings" },
+        { key: "sold", label: "Sell your first ticket", done: sold > 0, href: "/admin/events/new", cta: "Events" },
+      ];
+      return res.json({
+        steps,
+        complete: steps.filter((s) => s.done).length,
+        total: steps.length,
+      });
+    } catch (err) {
+      console.error("Setup checklist error:", err);
+      return res.status(500).json({ message: "Could not load your setup progress" });
+    }
+  });
+
+  // ── Social preview cards for event pages ──
+  // WhatsApp, X, and iMessage read OG tags from the raw HTML. A pure SPA
+  // shell shows a generic card, so /e/:slug and /events/:id serve index.html
+  // with the event's title, date, venue, and cover image injected. Crawlers
+  // get real tags; browsers get the same app as before.
+  const escapeHtml = (s: string) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+  const sendEventPageWithMeta = async (param: string, res: any) => {
+    try {
+      const indexPath = path.resolve(process.cwd(), "client", "dist", "index.html");
+      const devPath = path.resolve(process.cwd(), "client", "index.html");
+      const filePath = fs.existsSync(indexPath) ? indexPath : devPath;
+      if (!fs.existsSync(filePath)) return res.status(404).send("Not found");
+      let html = fs.readFileSync(filePath, "utf8");
+
+      let event: any = null;
+      const isId = /^[0-9a-fA-F]{24}$/.test(param);
+      if (isId) {
+        event = await storage.getEvent(param);
+      } else {
+        const { EventModel } = await import("./models");
+        const doc = await EventModel.findOne({ slug: param.toLowerCase() }).lean()
+          || await EventModel.findOne({ slugAliases: param.toLowerCase() }).lean();
+        if (doc) event = mapEventLean(doc);
+      }
+
+      if (event && (event as any).visibility !== "invite_only") {
+        const base = process.env.PUBLIC_APP_URL || "https://blackhevents.com";
+        const dateStr = new Date(event.date).toLocaleString("en-NG", {
+          weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
+        });
+        const title = escapeHtml(event.title || "Black Heritage Events");
+        const desc = escapeHtml(`${dateStr} · ${event.location || "Lagos"}`);
+        const image = /^https?:\/\//.test(event.imageUrl || "") ? event.imageUrl : `${base}${event.imageUrl || "/favicon.png"}`;
+        const url = (event as any).slug ? `${base}/e/${(event as any).slug}` : `${base}/events/${event.id}`;
+        const tags =
+          `<meta property="og:title" content="${title}" />\n` +
+          `<meta property="og:description" content="${desc}" />\n` +
+          `<meta property="og:image" content="${escapeHtml(image)}" />\n` +
+          `<meta property="og:url" content="${escapeHtml(url)}" />\n` +
+          `<meta property="og:type" content="website" />\n` +
+          `<meta name="twitter:card" content="summary_large_image" />\n` +
+          `<meta name="twitter:title" content="${title}" />\n` +
+          `<meta name="twitter:description" content="${desc}" />\n` +
+          `<meta name="twitter:image" content="${escapeHtml(image)}" />`;
+        html = html.replace(/<meta property="og:title"[^>]*>/, tags);
+      }
+
+      res.set("Cache-Control", "public, max-age=300");
+      return res.send(html);
+    } catch (err) {
+      console.error("Event page meta error:", err);
+      return res.status(500).send("Server error");
+    }
+  };
+  app.get("/e/:slug", (req, res) => { void sendEventPageWithMeta(String(req.params.slug), res); });
+  app.get("/events/:id", (req, res) => { void sendEventPageWithMeta(String(req.params.id), res); });
+
   // ── AI event extraction: flyer/document upload → form prefill JSON ──
   // Organizer-only, rate limited, files stay in memory and go to the model,
   // never to disk. The response is a suggestion for the form; nothing is
@@ -172,10 +268,127 @@ export async function registerRoutes(
       const doc = await EventModel.findOne({ slug: key }).lean()
         || await EventModel.findOne({ slugAliases: key }).lean();
       if (!doc) return res.status(404).json({ message: "Event not found" });
+      // Same invite-only gate as the id route: code, invite token, or the
+      // organizer themself. Everything else gets the requiresCode marker.
+      if ((doc as any).visibility === "invite_only") {
+        const supplied = String(req.query.code || "").trim().toUpperCase();
+        const stored = String((doc as any).accessCode || "").trim().toUpperCase();
+        const inviteToken = String(req.query.invite || "").trim();
+        let inviteOk = false;
+        if (inviteToken) {
+          const { EventInviteModel } = await import("./models");
+          const inv: any = await EventInviteModel.findOne({ eventId: String(doc._id), token: inviteToken }).lean();
+          inviteOk = !!inv;
+          if (inv && inv.status === "pending") {
+            await EventInviteModel.updateOne({ _id: inv._id }, { $set: { status: "viewed", viewedAt: new Date() } }).catch(() => {});
+          }
+        }
+        const user = req.user as any;
+        const organizer = user && (String(doc.organizerId) === user._id?.toString() || user.role === "admin");
+        if (!inviteOk && !organizer && (!supplied || supplied !== stored)) {
+          return res.status(403).json({ requiresCode: true, title: doc.title });
+        }
+      }
       res.json(mapEventLean(doc));
     } catch (err) {
       console.error("Slug lookup error:", err);
       res.status(500).json({ message: "Failed to fetch event" });
+    }
+  });
+
+  // ── Guest invites for private events ──
+  // Bulk send: one row per guest, one token per guest, one email each.
+  app.post("/api/events/:id/invites", async (req, res) => {
+    const ctx = await requireEventScope(req, res);
+    if (!ctx) return;
+    if (!ctx.canEdit) return res.status(403).json({ message: "Only main organizers and managers can send invites" });
+    try {
+      const guests = z.array(z.object({
+        name: z.string().min(1).max(80),
+        email: z.string().email().optional(),
+        phone: z.string().max(24).optional(),
+      })).min(1).max(200).parse(req.body.guests);
+      const { EventInviteModel } = await import("./models");
+      const { sendEventInvite } = await import("./emails");
+      const base = process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get("host")}`;
+      const created: any[] = [];
+      const errors: string[] = [];
+      for (const g of guests) {
+        try {
+          const token = crypto.randomBytes(16).toString("base64url");
+          const doc = await EventInviteModel.create({
+            eventId: ctx.event.id,
+            name: g.name,
+            email: g.email?.toLowerCase() || null,
+            phone: g.phone || null,
+            token,
+          });
+          created.push(doc);
+          if (g.email && process.env.RESEND_API_KEY) {
+            await sendEventInvite(
+              { name: g.name, email: g.email },
+              {
+                eventTitle: ctx.event.title,
+                eventDate: new Date(ctx.event.date),
+                eventLocation: ctx.event.location,
+                inviteUrl: `${base}/e/${(ctx.event as any).slug || ctx.event.id}?invite=${token}`,
+                organizerName: (ctx.event as any).organizerName || "The organizer",
+                branding: (ctx.event as any).branding || null,
+              },
+            ).catch(() => {});
+            await EventInviteModel.updateOne({ _id: doc._id }, { $set: { sentAt: new Date() } });
+          }
+        } catch (e: any) {
+          errors.push(`${g.name}: ${e?.message || "failed"}`);
+        }
+      }
+      return res.status(201).json({ sent: created.length, failed: errors.length, errors: errors.slice(0, 10) });
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      console.error("Invite send error:", err);
+      return res.status(500).json({ message: "Could not send those invites" });
+    }
+  });
+
+  app.get("/api/events/:id/invites", async (req, res) => {
+    const ctx = await requireEventScope(req, res);
+    if (!ctx) return;
+    const { EventInviteModel } = await import("./models");
+    const docs = await EventInviteModel.find({ eventId: ctx.event.id }).sort({ createdAt: -1 }).limit(500).lean();
+    res.json(docs.map((d: any) => ({
+      id: String(d._id), name: d.name, email: d.email, phone: d.phone,
+      status: d.status, sentAt: d.sentAt, viewedAt: d.viewedAt, createdAt: d.createdAt,
+    })));
+  });
+
+  // Access-code check for invite-only events. Used by the gate screen so a
+  // wrong code never fetches event details. Returns the slug to navigate to
+  // on success; the real fetch then carries ?code=.
+  app.get("/api/events/:id/access", async (req, res) => {
+    try {
+      // Route param is an id on /events/:id and a slug on /e/:slug; the gate
+      // screen posts from either, so resolve both shapes.
+      const param = String(req.params.id);
+      let event: any = /^[0-9a-fA-F]{24}$/.test(param)
+        ? await storage.getEvent(param)
+        : null;
+      if (!event) {
+        const { EventModel } = await import("./models");
+        const doc = await EventModel.findOne({ slug: param.toLowerCase() }).lean()
+          || await EventModel.findOne({ slugAliases: param.toLowerCase() }).lean();
+        if (doc) event = mapEventLean(doc);
+      }
+      if (!event) return res.status(404).json({ message: "Event not found" });
+      if ((event as any).visibility !== "invite_only") return res.json({ ok: true });
+      const supplied = String(req.query.code || "").trim().toUpperCase();
+      const stored = String((event as any).accessCode || "").trim().toUpperCase();
+      if (supplied && supplied === stored) {
+        return res.json({ ok: true, slug: (event as any).slug || event.id });
+      }
+      return res.status(403).json({ ok: false, requiresCode: true });
+    } catch (err) {
+      console.error("Access check error:", err);
+      res.status(500).json({ message: "Could not check that code" });
     }
   });
 
@@ -194,6 +407,29 @@ export async function registerRoutes(
       const isNavigation = fetchMode === "navigate" || fetchMode === undefined;
       if (isNavigation && (event as any).slug) {
         return res.redirect(301, `/e/${(event as any).slug}`);
+      }
+      // Invite-only gate: the page stays invisible until the right access
+      // code arrives (?code= on this request, a prior /access check, or an
+      // invite token the client holds). Unlisted and public serve normally.
+      const vis = (event as any).visibility || "public";
+      if (vis === "invite_only") {
+        const supplied = String(req.query.code || "").trim().toUpperCase();
+        const stored = String((event as any).accessCode || "").trim().toUpperCase();
+        const inviteToken = String(req.query.invite || "").trim();
+        let inviteOk = false;
+        if (inviteToken) {
+          const { EventInviteModel } = await import("./models");
+          const inv: any = await EventInviteModel.findOne({ eventId: event.id, token: inviteToken }).lean();
+          inviteOk = !!inv;
+          if (inv && inv.status === "pending") {
+            await EventInviteModel.updateOne({ _id: inv._id }, { $set: { status: "viewed", viewedAt: new Date() } }).catch(() => {});
+          }
+        }
+        const user = req.user as any;
+        const organizer = user && (event.organizerId === user._id?.toString() || user.role === "admin");
+        if (!inviteOk && !organizer && (!supplied || supplied !== stored)) {
+          return res.status(403).json({ requiresCode: true, title: event.title });
+        }
       }
       res.json(event);
     } catch (err) {
@@ -757,16 +993,23 @@ export async function registerRoutes(
     })));
   });
 
+  /**
+   * Ticket and revenue totals. Admins get the platform; organizers and their
+   * team staff get the same shape scoped to their own events, so the dashboard
+   * shows real numbers instead of hiding the panel.
+   */
   app.get(api.events.stats.path, async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
     }
     const user = req.user as any;
-    if (user.role !== 'admin') {
+    const isAdmin = user.role === 'admin' || !!user.isAdmin;
+    if (!isAdmin && user.role !== 'organizer' && !user.teamOwnerId) {
       return res.status(403).json({ message: "Forbidden" });
     }
     try {
-      const stats = await storage.getAdminStats();
+      const organizerId = isAdmin ? undefined : String(user.teamOwnerId || user._id);
+      const stats = await storage.getAdminStats(organizerId);
       res.json(stats);
     } catch (err) {
       console.error("Stats error:", err);

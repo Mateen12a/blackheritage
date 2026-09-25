@@ -5,6 +5,7 @@ import { useVendors } from "@/hooks/use-vendors";
 import { useManagedEvents } from "@/hooks/use-managed-events";
 import { useOrganizerProfile } from "@/hooks/use-organizer";
 import { OrganizerBrandPanel } from "@/components/OrganizerBrandPanel";
+import { SetupChecklist } from "@/components/SetupChecklist";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Reveal } from "@/components/motion";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,6 @@ import {
   Download,
   Ticket,
   Store,
-  TrendingUp,
   MapPin,
   Eye,
   ExternalLink,
@@ -49,10 +49,12 @@ export default function AdminDashboard() {
     queryKey: ["/api/admin/stats"],
     queryFn: async () => {
       const res = await fetch("/api/admin/stats", { credentials: "include" });
-      if (!res.ok) throw new Error("Could not load platform stats");
+      if (!res.ok) throw new Error("Could not load stats");
       return res.json();
     },
-    enabled: isAdmin,
+    // Admins get platform totals; organizers get the same shape scoped to
+    // their own events, so the panel is never a dead end for either role.
+    enabled: !!user,
     retry: 1,
   });
 
@@ -193,6 +195,9 @@ export default function AdminDashboard() {
         </TabsList>
 
         <TabsContent value="events" className="space-y-6">
+          {/* Onboarding progress until everything is done */}
+          {!isAdmin && <SetupChecklist />}
+
           {/* Stats Grid: admin sees platform stats, organizer sees their own */}
           <div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
@@ -211,27 +216,27 @@ export default function AdminDashboard() {
               <div className="col-span-2 md:col-span-4">
                 <LoadError
                   compact
-                  title="Couldn't load platform stats"
+                  title={isAdmin ? "Couldn't load platform stats" : "Couldn't load your stats"}
                   message="The rest of the dashboard still works."
                   onRetry={() => refetchStats()}
                 />
               </div>
-            ) : isAdmin && stats ? (
+            ) : isAdmin ? (
               <>
                 <DashStat
                   icon={Calendar}
                   label="Total Events"
-                  value={stats.totalEvents || 0}
+                  value={stats?.totalEvents || 0}
                 />
                 <DashStat
                   icon={Ticket}
                   label="Tickets Sold"
-                  value={stats.totalTicketsSold || 0}
+                  value={stats?.totalTicketsSold || 0}
                 />
                 <DashStat
                   icon={DollarSign}
                   label="Total Revenue"
-                  value={`₦${((stats.totalRevenue || 0) / 100).toLocaleString()}`}
+                  value={`₦${((stats?.totalRevenue || 0) / 100).toLocaleString()}`}
                 />
                 <DashStat
                   icon={Store}
@@ -244,7 +249,17 @@ export default function AdminDashboard() {
                 <DashStat
                   icon={Calendar}
                   label="My Events"
-                  value={events?.length || 0}
+                  value={stats?.totalEvents || 0}
+                />
+                <DashStat
+                  icon={Ticket}
+                  label="Tickets Sold"
+                  value={stats?.totalTicketsSold || 0}
+                />
+                <DashStat
+                  icon={DollarSign}
+                  label="Revenue"
+                  value={`₦${((stats?.totalRevenue || 0) / 100).toLocaleString()}`}
                 />
                 <DashStat
                   icon={Eye}
@@ -253,18 +268,6 @@ export default function AdminDashboard() {
                     events?.filter((e: any) => e.status === "published")
                       .length || 0
                   }
-                />
-                <DashStat
-                  icon={TrendingUp}
-                  label="Featured"
-                  value={
-                    events?.filter((e: any) => e.isFeatured).length || 0
-                  }
-                />
-                <DashStat
-                  icon={Store}
-                  label="Vendors"
-                  value={vendors?.length || 0}
                 />
               </>
             )}
@@ -314,6 +317,9 @@ export default function AdminDashboard() {
                       <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
                         Status
                       </th>
+                      <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em] hidden sm:table-cell">
+                        Sold
+                      </th>
                       <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em] text-right">
                         Actions
                       </th>
@@ -322,7 +328,7 @@ export default function AdminDashboard() {
                   <tbody className="divide-y divide-hairline">
                     {events?.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="px-6 py-16 text-center">
+                        <td colSpan={5} className="px-6 py-16 text-center">
                           <Ticket className="w-10 h-10 text-muted-ink/20 mx-auto mb-3" />
                           <p className="font-display text-lg font-bold text-ink mb-1">
                             No events yet
@@ -343,6 +349,7 @@ export default function AdminDashboard() {
                     )}
                     {events?.map((event: any) => {
                       const expired = isPast(new Date(event.date));
+                      const sales = eventSales(event);
                       return (
                         <tr
                           key={event.id}
@@ -388,6 +395,14 @@ export default function AdminDashboard() {
                               }`}
                             >
                               {event.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 hidden sm:table-cell">
+                            <span className="text-sm font-medium text-ink">
+                              {sales.tickets.toLocaleString()}
+                            </span>
+                            <span className="block text-xs text-muted-ink">
+                              ₦{(sales.revenue / 100).toLocaleString()}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
@@ -546,8 +561,16 @@ export default function AdminDashboard() {
                 </div>
 
                 {leadsLoading ? (
-                  <div className="p-8 text-center text-muted-ink text-sm">
-                    Loading organizer leads...
+                  <div className="p-5 md:p-6 space-y-4" role="status" aria-live="polite">
+                    <span className="sr-only">Loading organizer leads</span>
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-4" aria-hidden="true">
+                        <Skeleton className="h-4 w-1/4" />
+                        <Skeleton className="h-4 w-1/5" />
+                        <Skeleton className="h-4 w-1/6" />
+                        <Skeleton className="h-4 w-1/5 ml-auto" />
+                      </div>
+                    ))}
                   </div>
                 ) : !leads || leads.length === 0 ? (
                   <div className="p-12 text-center">
@@ -621,6 +644,31 @@ export default function AdminDashboard() {
         )}
       </Tabs>
     </div>
+  );
+}
+
+/**
+ * Tickets sold and gross revenue for one event, read from its ticket tiers.
+ * `ticketTypes` arrives as a JSON string from the API, so parse defensively
+ * and treat anything unparseable as no sales rather than crashing the table.
+ */
+function eventSales(event: any): { tickets: number; revenue: number } {
+  let tiers: any[] = [];
+  try {
+    tiers =
+      typeof event.ticketTypes === "string"
+        ? JSON.parse(event.ticketTypes || "[]")
+        : event.ticketTypes || [];
+  } catch {
+    tiers = [];
+  }
+  if (!Array.isArray(tiers)) return { tickets: 0, revenue: 0 };
+  return tiers.reduce(
+    (acc, tier) => ({
+      tickets: acc.tickets + (Number(tier?.sold) || 0),
+      revenue: acc.revenue + (Number(tier?.price) || 0) * (Number(tier?.sold) || 0),
+    }),
+    { tickets: 0, revenue: 0 },
   );
 }
 

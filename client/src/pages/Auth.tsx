@@ -104,6 +104,7 @@ export default function AuthPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -186,8 +187,10 @@ export default function AuthPage() {
             email,
             password,
             displayName: fullName.trim() || undefined,
+            phone: phone.trim() || undefined,
             role: roleForAudience,
             acceptedTerms: true,
+            audience: audience,
             ...(referralCode ? { referredBy: referralCode } : {}),
           })
         : await login({ username, password });
@@ -663,6 +666,24 @@ export default function AuthPage() {
                   onChange={(e) => setFullName(e.target.value)}
                   required
                 />
+              </div>
+            )}
+
+            {isRegister && (audience === "organizer" || audience === "vendor") && (
+              <div className="space-y-2">
+                <Label htmlFor="signup-phone">Phone / WhatsApp (optional)</Label>
+                <Input
+                  id="signup-phone"
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="e.g. 0812 345 6789"
+                  className="h-12 bg-surface-2 border-hairline text-ink rounded-md focus-visible:border-gold focus-visible:ring-0"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+                <p className="text-[11px] text-muted-ink">
+                  For support on gate day. Never shown publicly.
+                </p>
               </div>
             )}
 

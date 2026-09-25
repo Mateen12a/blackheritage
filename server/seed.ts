@@ -388,6 +388,64 @@ export async function seedPlatform(): Promise<void> {
         slug: "tunde-live",
       },
     },
+    // Out-of-Lagos inventory. The platform eyebrow says "Lagos & Beyond", so
+    // the state filter needs somewhere beyond Lagos to actually send people.
+    {
+      title: "Bonny Waterfront Sessions: Port Harcourt",
+      slug: "bonny-waterfront-sessions-port-harcourt",
+      slugAliases: [],
+      daysAhead: 18,
+      location: "Okrika Waterfront Jetty, Port Harcourt, Rivers",
+      price: 800000,
+      capacity: 1200,
+      imageUrl: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?q=80&w=1600&auto=format&fit=crop",
+      description: "Live highlife, afrobeat and amapiano on the water as the sun drops over the creeks. Two stages, riverside grill, and a boat shuttle from the jetty.",
+      ticketTypes: [
+        { name: "Jetty Entry", price: 800000, capacity: 900, sold: 214, saleOpen: null, saleClose: inDays(18).toISOString() },
+        { name: "Deck Table of 4", price: 4500000, capacity: 60, sold: 19, saleOpen: null, saleClose: inDays(16).toISOString() },
+      ],
+      gallery: [
+        "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?q=80&w=1600&auto=format&fit=crop",
+      ],
+      isFeatured: false,
+      theme: "midnight-gold" as const,
+      organizerId: organizerId,
+      organizerName: "Tunde Live Concepts",
+      branding: {
+        displayName: "Bonny Waterfront Sessions",
+        logoUrl: "https://images.unsplash.com/photo-1527061011665-3652c757a4d4?q=80&w=120&h=120&auto=format&fit=crop",
+        accentHex: "#E3B23C",
+        slug: "bonny-waterfront",
+      },
+    },
+    {
+      title: "Ibadan Drum Circle: Agodi Garden Sessions",
+      slug: "ibadan-drum-circle-agodi-garden",
+      slugAliases: [],
+      daysAhead: 33,
+      location: "Agodi Gardens, Ibadan, Oyo",
+      price: 500000,
+      capacity: 900,
+      imageUrl: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=1600&auto=format&fit=crop",
+      description: "Talking drums, live percussion and a laid-back garden picnic. Bring a mat, the palmwine is on site, and the rhythm carries till dusk.",
+      ticketTypes: [
+        { name: "Garden Entry", price: 500000, capacity: 700, sold: 148, saleOpen: null, saleClose: inDays(33).toISOString() },
+        { name: "Picnic Table of 6", price: 3000000, capacity: 40, sold: 11, saleOpen: null, saleClose: inDays(30).toISOString() },
+      ],
+      gallery: [
+        "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=1600&auto=format&fit=crop",
+      ],
+      isFeatured: false,
+      theme: "sunset-poster" as const,
+      organizerId: organizerId,
+      organizerName: "Tunde Live Concepts",
+      branding: {
+        displayName: "Ibadan Drum Circle",
+        logoUrl: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?q=80&w=120&h=120&auto=format&fit=crop",
+        accentHex: "#E3B23C",
+        slug: "ibadan-drum-circle",
+      },
+    },
   ];
 
   for (const item of canonicalEvents) {
@@ -1107,6 +1165,44 @@ export async function seedPlatform(): Promise<void> {
   // created before the program existed.
   const { ensureReferralCodes } = await import("./referrals");
   await ensureReferralCodes();
+
+  // Private-event demo: one invite-only event so the visibility gate, access
+  // code screen, and invite links are demonstrable without touching prod data.
+  if (organizer) {
+    let privateEv: any = await EventModel.findOne({ title: "Aunty Amara 50th Surprise Dinner" });
+    if (!privateEv) {
+      privateEv = await EventModel.create({
+        title: "Aunty Amara 50th Surprise Dinner",
+        description: "A closed family celebration. Strictly by invitation — this page is hidden from the public listing and opens with a personal code.",
+        date: inDays(21),
+        location: "Private Residence, Ikoyi, Lagos",
+        price: 0,
+        capacity: 60,
+        imageUrl: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=1200&auto=format&fit=crop",
+        isFeatured: false,
+        status: "published",
+        organizerId: organizer._id.toString(),
+        organizerName: "Tunde Live Concepts",
+        ticketTypes: JSON.stringify([
+          { name: "Family Seat", price: 0, capacity: 60, sold: 0, saleOpen: null, saleClose: inDays(20).toISOString() },
+        ]),
+        visibility: "invite_only",
+        accessCode: "AMARA50",
+        eventType: "birthday",
+        guestCheckout: true,
+        promoCodesPublic: false,
+        waitlistEnabled: false,
+        slug: "aunty-amara-50th-surprise-dinner",
+      });
+      console.log("Seed: invite-only demo event created (code AMARA50)");
+    } else if ((privateEv as any).visibility !== "invite_only" || (privateEv as any).accessCode !== "AMARA50") {
+      await EventModel.updateOne(
+        { _id: privateEv._id },
+        { $set: { visibility: "invite_only", accessCode: "AMARA50", eventType: "birthday" } },
+      );
+      console.log("Seed: invite-only demo event settings healed");
+    }
+  }
 
   console.log("Seed check complete.");
 }

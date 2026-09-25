@@ -270,7 +270,9 @@ function BookingCard({ booking }: { booking: any }) {
   if (!booking.event) return null;
 
   return (
-    <Link href={`/events/${booking.eventId}`}>
+    // Prefer the event's slug: the server 301s /events/:id onto /e/:slug, so
+    // linking straight to the pretty URL keeps history and shares clean.
+    <Link href={booking.event.slug ? `/e/${booking.event.slug}` : `/events/${booking.eventId}`}>
       <article className="group border border-hairline rounded-md bg-surface overflow-hidden hover:border-white/20 transition-colors cursor-pointer">
         <div className="flex gap-4 p-4">
           {/* Thumbnail */}

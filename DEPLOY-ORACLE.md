@@ -106,6 +106,22 @@ pm2 startup systemd   # run the command it prints
 
 The server serves the built client from `client/dist` when `NODE_ENV=production` (Express static), so one process does both jobs. If your build does not wire static serving, keep Nginx `root` pointed at `~/blackheritage/client/dist` as configured below.
 
+## 4b. Required production environment variables
+
+Set these on the server (pm2 ecosystem file or systemd unit) — never committed to the repo:
+
+```
+NODE_ENV=production
+PUBLIC_APP_URL=https://blackhevents.com
+SESSION_SECRET=<64+ random chars, e.g. openssl rand -hex 48>
+MONGODB_URI=<your connection string>
+```
+
+- `PUBLIC_APP_URL` — every email link and share URL is built from it. If it is missing, links silently point at localhost:5000.
+- `SESSION_SECRET` — the server refuses to start in production without it (session cookies would be predictable).
+- Payment keys: `PAYSTACK_SECRET_KEY` (or `FLUTTERWAVE_SECRET_KEY` + `FLUTTERWAVE_WEBHOOK_HASH`). The gateway with keys present wins. Switch to `sk_live_*`/live Flutterwave keys when real money starts; webhooks must be re-pointed at `https://blackhevents.com/api/payments/webhook` in the dashboard when you do.
+- Optional: `RESEND_API_KEY` (transactional email), `GEMINI_API_KEY` (flyer extraction), `GOOGLE_CLIENT_ID/SECRET` (social login).
+
 ## 5. Cloudflare SSL and Nginx
 
 Because you are using Cloudflare, you do not need Certbot renewals that can fail or get rate-limited. Cloudflare provides a free **Origin CA Certificate** valid for up to 15 years.
@@ -201,8 +217,24 @@ server {
     }
 
     # SPA fallback
+    # NOTE: no $uri/ here. client/public/events/ is an image folder, so the
+    # built dist contains a real events/ directory; with $uri/ nginx treats
+    # the /events route as that directory, 301s to /events/, and 403s on the
+    # missing directory index - the SPA route never loads. Without $uri/,
+    # files inside (posters) still serve via $uri and every /events/* path
+    # falls through to the app.
     location / {
-        try_files $uri $uri/ /index.html;
+        try_files $uri /index.html;
+    }
+
+    # Event pages MUST hit Node, not the static fallback: Express injects
+    # per-event OG tags (WhatsApp/X preview cards) into the HTML shell.
+    location ~ ^/(e/.+|events/.+)$ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
     }
 }
 ```
@@ -214,6 +246,18 @@ sudo ln -sf /etc/nginx/sites-available/blackheritage /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 ```
+
+### If /events already 403s on a live server (hotfix)
+
+The deployed config predates the fix above. One line, then reload:
+
+```bash
+sudo sed -i 's|try_files \$uri \$uri/ /index.html;|try_files \$uri /index.html;|' /etc/nginx/sites-available/blackheritage
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Verify with curl: https://blackhevents.com/events must answer 200, and a poster
+like https://blackhevents.com/events/palmwine-music-festival.jpg must still serve.
 
 ---
 

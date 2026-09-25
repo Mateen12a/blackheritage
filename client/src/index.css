@@ -145,6 +145,19 @@
     0% { height: 16px; }
     100% { height: 6px; }
   }
+
+  /* Skeleton shimmer: one slow sweep across loading placeholders. Replaces
+     the flat pulse so a waiting screen reads as "working", not "stuck". */
+  --animate-shimmer: shimmer 1.6s ease-in-out infinite;
+
+  @keyframes shimmer {
+    0% {
+      background-position: 150% 0;
+    }
+    100% {
+      background-position: -150% 0;
+    }
+  }
 }
 
 @layer base {
@@ -207,6 +220,7 @@
     .animate-ember,
     .animate-ticker,
     .animate-slow-zoom,
+    .animate-shimmer,
     .animate-soundwave-1,
     .animate-soundwave-2,
     .animate-soundwave-3,

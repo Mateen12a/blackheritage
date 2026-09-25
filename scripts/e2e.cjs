@@ -299,8 +299,10 @@ async function api(method, path, body, useCookie = true) {
   const wlCsv = (r.headers.get("content-type") || "").startsWith("text/csv") ? await r.text() : "";
   ok("waitlist csv", r.status === 200 && wlCsv.includes("wanda@test.com"), wlCsv.slice(0, 120));
 
-  // Waitlist join on an event with the flag off must refuse.
-  const other = (await api("GET", "/api/events")).json.find((e) => e.id !== event.id);
+  // Waitlist join on an event with the flag off must refuse. Pick the
+  // target by the flag itself: which event is "other" shifts with listing
+  // order, and many seeded events legitimately run waitlists.
+  const other = (await api("GET", "/api/events")).json.find((e) => e.id !== event.id && e.waitlistEnabled !== true);
   if (other) {
     r = await api("POST", "/api/events/" + other.id + "/waitlist", { name: "No List Nick", email: "nick@test.com" }, false);
     ok("waitlist off refuses join", r.status === 400, "status=" + r.status);

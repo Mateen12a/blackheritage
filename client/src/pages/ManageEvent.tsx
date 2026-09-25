@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { useRoute, Link, useLocation } from "wouter";
 import { format, isPast } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RowListSkeleton } from "@/components/AsyncStates";
+import { InviteGuestsPanel } from "@/components/InviteGuestsPanel";
 import { BookingLinkPanel } from "@/components/BookingLinkPanel";
 import { ShareFlyerModal } from "@/components/ShareFlyerModal";
 import { EventMediaPanel } from "@/components/EventMediaPanel";
@@ -266,6 +268,9 @@ export default function ManageEvent() {
           {(event as any).waitlistEnabled === true && (
             <TabsTrigger value="waitlist">Waitlist</TabsTrigger>
           )}
+          {(event as any).visibility === "invite_only" || (event as any).visibility === "unlisted" ? (
+            <TabsTrigger value="invites">Invite Guests</TabsTrigger>
+          ) : null}
         </TabsList>
 
         <TabsContent value="attendees">
@@ -415,6 +420,10 @@ export default function ManageEvent() {
 
         <TabsContent value="tools">
           <OrganizerTools event={event} bookings={bookings || []} />
+        </TabsContent>
+
+        <TabsContent value="invites">
+          <InviteGuestsPanel event={event} />
         </TabsContent>
 
         <TabsContent value="link">
@@ -719,7 +728,7 @@ function OrganizerTools({ event, bookings }: { event: any; bookings: any[] }) {
 
             <div className="space-y-2">
               {promos.isLoading ? (
-                <p className="text-sm text-muted-ink py-2">Loading codes...</p>
+                <RowListSkeleton rows={2} label="Loading codes" />
               ) : promos.data && promos.data.length > 0 ? (
                 promos.data.map((p) => (
                   <div

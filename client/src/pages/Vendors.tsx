@@ -4,7 +4,8 @@ import { CategoryIcon, categoryLabel } from "@/components/vendor-categories";
 import { useVendors } from "@/hooks/use-vendors";
 import { Reveal } from "@/components/motion";
 import { vendorCategories } from "@shared/schema";
-import { Search, Loader2 } from "lucide-react";
+import { Search } from "lucide-react";
+import { DirectorySkeleton } from "@/components/AsyncStates";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -82,10 +83,7 @@ export default function Vendors() {
 
         {/* Grid */}
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-32 gap-4">
-            <Loader2 className="w-8 h-8 animate-spin text-gold" />
-            <p className="eyebrow">Loading vendors</p>
-          </div>
+          <DirectorySkeleton count={6} label="Loading vendors" />
         ) : (
           <>
             {/* App-style rows on mobile, editorial grid from sm up */}

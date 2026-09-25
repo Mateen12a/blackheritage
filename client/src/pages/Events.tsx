@@ -2,13 +2,29 @@ import { EventCard } from "@/components/EventCard";
 import { EventCardCompact } from "@/components/EventCardCompact";
 import { useEvents } from "@/hooks/use-events";
 import { Reveal } from "@/components/motion";
-import { Search, Loader2 } from "lucide-react";
+import { Search } from "lucide-react";
+import { DirectorySkeleton } from "@/components/AsyncStates";
+import { StateFilter } from "@/components/StateFilter";
+import { stateForLocation, stateOptionsForEvents } from "@/lib/nigeria";
 import { useSearch } from "wouter";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 type QuickFilter = "all" | "tonight" | "week" | "free" | "under10k";
+
+type TypeFilter = "all" | string;
+
+const EVENT_TYPE_FILTERS: { key: Exclude<TypeFilter, "all"> | "all"; label: string }[] = [
+  { key: "all", label: "All types" },
+  { key: "party", label: "Parties" },
+  { key: "concert", label: "Concerts" },
+  { key: "festival", label: "Festivals" },
+  { key: "brunch", label: "Brunches" },
+  { key: "wedding", label: "Weddings" },
+  { key: "corporate", label: "Corporate" },
+  { key: "comedy_show", label: "Comedy" },
+];
 
 const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
   { key: "all", label: "All" },
@@ -21,6 +37,8 @@ const QUICK_FILTERS: { key: QuickFilter; label: string }[] = [
 export default function Events() {
   const { data: events, isLoading } = useEvents();
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [stateKey, setStateKey] = useState("all");
   const rawSearch = useSearch();
   const searchParams = new URLSearchParams(rawSearch.startsWith("?") ? rawSearch.slice(1) : rawSearch);
   const filterParam = searchParams.get("filter") as QuickFilter | null;
@@ -37,7 +55,21 @@ export default function Events() {
     }
   }, [filterParam]);
 
+  const stateOptions = useMemo(() => stateOptionsForEvents(events), [events]);
+
   const filteredEvents = events?.filter((event) => {
+    if (stateKey !== "all" && stateForLocation(event.location)?.key !== stateKey) {
+      return false;
+    }
+    if (typeFilter !== "all") {
+      const t = (event as any).eventType;
+      const label = (event as any).eventTypeLabel;
+      if (t === "other") {
+        if (!label || !label.toLowerCase().includes("")) return false;
+      } else if (t !== typeFilter) {
+        return false;
+      }
+    }
     const term = search.toLowerCase();
     const matchesSearch =
       event.title.toLowerCase().includes(term) ||
@@ -128,12 +160,43 @@ export default function Events() {
           ))}
         </div>
 
+        {/* Event type filters — same pill language, second row */}
+        <div
+          className="flex gap-2 mb-12 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap"
+          role="group"
+          aria-label="Filter by event type"
+        >
+          {EVENT_TYPE_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              aria-pressed={typeFilter === f.key}
+              onClick={() => setTypeFilter(f.key)}
+              className={cn(
+                "shrink-0 px-4 py-2 rounded-full border text-sm font-medium transition-colors duration-200",
+                typeFilter === f.key
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-transparent text-muted-ink border-hairline hover:border-white/30 hover:text-ink"
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Where: states that have events on sale, with counts, so the row
+            never offers a filter that leads nowhere. */}
+        <StateFilter
+          className="mb-12"
+          options={stateOptions}
+          value={stateKey}
+          onChange={setStateKey}
+          allCount={events?.length ?? 0}
+        />
+
         {/* Grid */}
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-32 gap-4">
-            <Loader2 className="w-8 h-8 animate-spin text-gold" />
-            <p className="eyebrow">Loading events</p>
-          </div>
+          <DirectorySkeleton count={6} label="Loading events" />
         ) : (
           <>
             {/* Compact feed on mobile, editorial grid from sm up */}

@@ -51,6 +51,91 @@ export function CardGridSkeleton({ count = 3 }: { count?: number }) {
   );
 }
 
+/**
+ * Directory skeleton for the Events and Vendors pages. Those pages render a
+ * compact feed on phones and an editorial card grid from md up, so the
+ * placeholder has to be the same two shapes or the page jumps when data lands.
+ * `label` is announced once for screen readers in place of the old text.
+ */
+export function DirectorySkeleton({
+  count = 6,
+  label = "Loading",
+}: {
+  count?: number;
+  label?: string;
+}) {
+  return (
+    <div role="status" aria-live="polite">
+      <span className="sr-only">{label}</span>
+
+      {/* App-style rows on phones */}
+      <div className="divide-y divide-hairline md:hidden" aria-hidden="true">
+        {Array.from({ length: count }).map((_, i) => (
+          <div key={i} className="py-3 flex gap-4">
+            <Skeleton className="w-24 h-24 rounded-md shrink-0" />
+            <div className="flex-1 space-y-2.5 py-1.5 min-w-0">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-4 w-4/5" />
+              <Skeleton className="h-4 w-3/5" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Editorial grid from md up */}
+      <div
+        className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6"
+        aria-hidden="true"
+      >
+        {Array.from({ length: count }).map((_, i) => (
+          <div
+            key={i}
+            className="border border-hairline rounded-md bg-surface overflow-hidden"
+          >
+            <Skeleton className="aspect-[3/4] rounded-none" />
+            <div className="p-5 space-y-3">
+              <Skeleton className="h-5 w-4/5" />
+              <Skeleton className="h-4 w-3/5" />
+              <div className="pt-4 border-t border-hairline flex justify-between">
+                <Skeleton className="h-5 w-14" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Short list of rows (promo codes, referral codes, small panels). */
+export function RowListSkeleton({
+  rows = 2,
+  label = "Loading",
+}: {
+  rows?: number;
+  label?: string;
+}) {
+  return (
+    <div className="space-y-2" role="status" aria-live="polite">
+      <span className="sr-only">{label}</span>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div
+          key={i}
+          className="flex items-center justify-between bg-surface-2 border border-hairline rounded-md px-3 py-2.5"
+          aria-hidden="true"
+        >
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-3 w-40 max-w-full" />
+          </div>
+          <Skeleton className="h-7 w-16" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Horizontal booking/ticket card skeleton (two-up grid). */
 export function BookingRowsSkeleton({ count = 2 }: { count?: number }) {
   return (

@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-const FROM = "BlackHeritage <tickets@blackheritage.africa>";
+const FROM = "Black Heritage Events <tickets@blackhevents.com>";
 
 interface Branding {
   displayName?: string;
@@ -213,14 +213,14 @@ export async function sendRefundEmail(to: EmailAddress, data: {
 // what the first email tells them to do. One email, one job.
 export async function sendWelcomeEmail(
   to: EmailAddress,
-  role: "user" | "organizer" = "user",
+  role: "user" | "organizer" | "vendor" = "user",
 ): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const base = process.env.PUBLIC_APP_URL || "http://localhost:5000";
 
-  const bodies: Record<"user" | "organizer", { subject: string; title: string; html: string }> = {
+  const bodies: Record<"user" | "organizer" | "vendor", { subject: string; title: string; html: string }> = {
     user: {
-      subject: "Welcome to BlackHeritage",
+      subject: "Welcome to Black Heritage Events",
       title: "You're in",
       html: `
       <p style="margin:0 0 20px;font-size:14px;">Hi ${esc(to.name)},</p>
@@ -230,7 +230,7 @@ export async function sendWelcomeEmail(
       <p style="margin:0;font-size:14px;color:#444;">See you in the crowd.</p>`,
     },
     organizer: {
-      subject: "Your BlackHeritage dashboard is ready",
+      subject: "Your Black Heritage Events dashboard is ready",
       title: "Your dashboard is ready",
       html: `
       <p style="margin:0 0 20px;font-size:14px;">Hi ${esc(to.name)},</p>
@@ -240,6 +240,17 @@ export async function sendWelcomeEmail(
       <p style="margin:0 0 8px;font-size:14px;color:#444;"><strong>Gate day.</strong> Add entry staff and they check tickets from any phone, online or off.</p>
       <p style="margin:0 0 20px;font-size:14px;color:#444;">Complimentary tickets for VIPs and press carry no commission.</p>
       <p style="margin:0;font-size:14px;color:#444;">Questions? Reply to this email, a person reads it.</p>`,
+    },
+    vendor: {
+      subject: "Your vendor profile is ready to set up",
+      title: "Let's get you booked",
+      html: `
+      <p style="margin:0 0 20px;font-size:14px;">Hi ${esc(to.name)},</p>
+      <p style="margin:0 0 12px;font-size:14px;color:#444;">Your account is live. Here's how to start getting booked:</p>
+      <p style="margin:0 0 8px;font-size:14px;color:#444;"><strong>Build your profile.</strong> Add your portfolio photos, videos, and service area. <a href="${base}/vendor-dashboard" style="color:#111;">Set it up now</a>.</p>
+      <p style="margin:0 0 8px;font-size:14px;color:#444;"><strong>Your shareable link.</strong> Once published, you get a profile page you can drop in any WhatsApp group or bio link.</p>
+      <p style="margin:0 0 20px;font-size:14px;color:#444;"><strong>Get found.</strong> Organizers browse the vendor directory when planning events. A complete profile with real work gets enquiries.</p>
+      <p style="margin:0;font-size:14px;color:#444;">Questions? Reply to this email.</p>`,
     },
   };
 
@@ -298,4 +309,45 @@ export async function sendFollowerDropEmail(
 
 export async function isEmailConfigured(): Promise<boolean> {
   return Boolean(process.env.RESEND_API_KEY);
+}
+
+// ── Private event invite ──
+// Personal, calm, branded: the guest is being invited, not marketed at.
+export async function sendEventInvite(
+  to: EmailAddress,
+  data: {
+    eventTitle: string;
+    eventDate: Date;
+    eventLocation: string;
+    inviteUrl: string;
+    organizerName: string;
+    branding?: Branding | null;
+  },
+): Promise<string | undefined> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const accent = safeHex(data.branding?.accentHex);
+  const dateStr = data.eventDate.toLocaleString("en-NG", {
+    weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit",
+  });
+  const result = await resend.emails.send({
+    from: FROM,
+    to: [to.email],
+    subject: `You're invited: ${data.eventTitle}`,
+    html: shell(
+      data.branding?.displayName || data.organizerName,
+      `
+      <p style="margin:0 0 20px;font-size:14px;">Hi ${esc(to.name)},</p>
+      <p style="margin:0 0 20px;font-size:14px;color:#444;">${esc(data.branding?.displayName || data.organizerName)} has invited you to a private event.</p>
+      <div style="background:#faf9f7;border:1px solid #e5e2dc;border-left:3px solid ${accent};border-radius:8px;padding:16px;margin-bottom:20px;">
+        <div style="font-size:16px;font-weight:bold;">${esc(data.eventTitle)}</div>
+        <div style="font-size:13px;color:#666;margin-top:4px;">${dateStr}</div>
+        <div style="font-size:13px;color:#666;">${esc(data.eventLocation)}</div>
+      </div>
+      <p style="margin:0 0 8px;font-size:14px;">
+        <a href="${esc(data.inviteUrl)}" style="display:inline-block;background:#111114;color:#ffffff;font-weight:bold;font-size:13px;padding:12px 24px;border-radius:8px;text-decoration:none;">View the invitation</a>
+      </p>
+      <p style="margin:12px 0 0;font-size:12px;color:#999;">This link is personal to you. If you were not expecting it, you can ignore this email.</p>`,
+    ),
+  });
+  return result.data?.id;
 }

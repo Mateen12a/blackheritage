@@ -15,7 +15,7 @@ export interface IStorage {
   getBookingsByUser(userId: string): Promise<(Booking & { event: Event })[]>;
   getBookingsByEvent(eventId: string | number): Promise<(Booking & { user: any })[]>;
   getBusinessBookingsByEvent(eventId: string | number): Promise<BusinessBooking[]>;
-  getAdminStats(): Promise<{ totalEvents: number; totalTicketsSold: number; totalRevenue: number }>;
+  getAdminStats(organizerId?: string): Promise<{ totalEvents: number; totalTicketsSold: number; totalRevenue: number }>;
   getVendors(category?: string): Promise<Vendor[]>;
   getVendor(id: string | number): Promise<Vendor | undefined>;
   getAllVendors(): Promise<Vendor[]>;
@@ -282,6 +282,10 @@ const mockEvents: Event[] = [
     branding: null,
     slug: null,
     theme: null,
+    visibility: "public" as const,
+    accessCode: null,
+    eventType: "party",
+    eventTypeLabel: null,
     ticketTypes: JSON.stringify([
       { name: "Regular", price: 700000, capacity: 4000, sold: 1830 },
       { name: "VIP", price: 2000000, capacity: 900, sold: 240 },
@@ -317,6 +321,10 @@ const mockEvents: Event[] = [
     branding: null,
     slug: null,
     theme: null,
+    visibility: "public" as const,
+    accessCode: null,
+    eventType: "party",
+    eventTypeLabel: null,
     ticketTypes: JSON.stringify([
       { name: "Regular", price: 500000, capacity: 1000, sold: 410 },
       { name: "VIP", price: 1500000, capacity: 200, sold: 88 },
@@ -351,6 +359,10 @@ const mockEvents: Event[] = [
     branding: null,
     slug: null,
     theme: null,
+    visibility: "public" as const,
+    accessCode: null,
+    eventType: "party",
+    eventTypeLabel: null,
     ticketTypes: "[]",
   },
 ];
@@ -359,8 +371,11 @@ export class MongoStorage implements IStorage {
   async getEvents(): Promise<Event[]> {
     try {
       if (mongoose.connection.readyState !== 1) return mockEvents;
-      const docs = await EventModel.find({ status: 'published' });
-      return docs.map(mapEvent);
+      // Public listing: only public events. Unlisted and invite-only events
+      // are reachable by direct link but never appear in the directory.
+      const docs = await EventModel.find({ status: 'published', visibility: { $ne: 'invite_only' } });
+      const mapped = docs.map(mapEvent);
+      return mapped.filter(e => e.visibility !== 'unlisted');
     } catch (e) {
       return mockEvents;
     }
@@ -454,7 +469,8 @@ export class MongoStorage implements IStorage {
     try {
       if (mongoose.connection.readyState !== 1) {
         return mockBookings.find((b) => b.paymentReference === reference);
-      }      const doc = await BookingModel.findOne({ paymentReference: reference });
+      }
+      const doc = await BookingModel.findOne({ paymentReference: reference });
       return doc ? mapBooking(doc) : undefined;
     } catch {
       return undefined;
@@ -589,12 +605,25 @@ export class MongoStorage implements IStorage {
     return mapVendor(doc);
   }
 
-  async getAdminStats(): Promise<{ totalEvents: number; totalTicketsSold: number; totalRevenue: number }> {
-    const totalEvents = await EventModel.countDocuments();
+  /**
+   * Ticket counts and revenue. Pass an organizerId to scope the numbers to
+   * that organizer's events; omit it for the platform-wide totals.
+   *
+   * Only `paid` bookings count. Pending holds have not been collected, and
+   * `cancelled` covers refunds and voids, which are revenue that came back.
+   */
+  async getAdminStats(organizerId?: string): Promise<{ totalEvents: number; totalTicketsSold: number; totalRevenue: number }> {
+    const scope = organizerId
+      ? { eventId: { $in: await EventModel.find({ organizerId }).distinct("_id") } }
+      : {};
+    const totalEvents = organizerId
+      ? await EventModel.countDocuments({ organizerId })
+      : await EventModel.countDocuments();
     const result = await BookingModel.aggregate([
+      { $match: { ...scope, status: "paid" } },
       { $group: { _id: null, totalSold: { $sum: "$quantity" }, totalRevenue: { $sum: "$totalAmount" } } }
     ]);
-    
+
     const stats = result[0] || { totalSold: 0, totalRevenue: 0 };
     return {
       totalEvents,

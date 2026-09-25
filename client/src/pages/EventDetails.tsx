@@ -3,7 +3,7 @@ import { BookingModal } from "@/components/BookingModal";
 import { ShareFlyerModal } from "@/components/ShareFlyerModal";
 import { Button } from "@/components/ui/button";
 import { useRoute } from "wouter";
-import { Loader2, Calendar, MapPin, Users, Share2, ArrowLeft, Tag, Clock } from "lucide-react";
+import { Loader2, Calendar, MapPin, Users, Share2, ArrowLeft, Tag, Clock, MessageCircle, Copy } from "lucide-react";
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
@@ -25,6 +25,22 @@ interface PublicPromo {
 }
 
 const naira = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG")}`;
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  concert: "Concert",
+  party: "Party",
+  house_party: "House Party",
+  wedding: "Wedding",
+  birthday: "Birthday",
+  corporate: "Corporate Event",
+  festival: "Festival",
+  brunch: "Brunch",
+  private_gathering: "Private Gathering",
+  conference: "Conference",
+  comedy_show: "Comedy Show",
+  art_exhibition: "Art Exhibition",
+  other: "Event",
+};
 
 /**
  * Page palette: the theme preset's tokens, then the organizer's accent
@@ -85,6 +101,32 @@ export default function EventDetails() {
     setIsFlyerModalOpen(true);
   };
 
+  // ── Invite-only gate state ──
+  const [accessInput, setAccessInput] = useState("");
+  const [accessError, setAccessError] = useState(false);
+  const requiresCode = (event as any)?.__requiresCode === true;
+  const [, slugRouteParams] = useRoute("/e/:slug");
+  const routeKey = params?.id || slugRouteParams?.slug || "";
+
+  const submitAccessCode = async () => {
+    const code = accessInput.trim().toUpperCase();
+    if (!code || !routeKey) return;
+    try {
+      const res = await fetch(`/api/events/${routeKey}/access?code=${encodeURIComponent(code)}`, {
+        credentials: "include",
+      });
+      if (res.ok) {
+        sessionStorage.setItem(`bh-access-${routeKey}`, code);
+        setAccessError(false);
+        window.location.reload();
+      } else {
+        setAccessError(true);
+      }
+    } catch {
+      setAccessError(true);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -109,6 +151,52 @@ export default function EventDetails() {
             Back to Events
           </Button>
         </Link>
+      </div>
+    );
+  }
+
+  // ── Private event gate: minimal, branded, no event details leak ──
+  if (requiresCode) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="w-full max-w-sm text-center">
+          <p className="eyebrow">Private event</p>
+          <h1 className="mt-3 font-display text-3xl font-bold text-ink tracking-tight">
+            {(event as any).title || "This is a private event"}
+          </h1>
+          <div className="mt-4 h-0.5 w-16 bg-gold mx-auto" aria-hidden="true" />
+          <p className="mt-5 text-sm text-muted-ink">
+            This is a private event. Enter the access code to continue.
+          </p>
+          <form
+            className="mt-6 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submitAccessCode();
+            }}
+          >
+            <Input
+              value={accessInput}
+              onChange={(e) => {
+                setAccessInput(e.target.value.toUpperCase());
+                setAccessError(false);
+              }}
+              placeholder="Access code"
+              className="h-12 bg-surface-2 border-hairline text-ink text-center font-mono tracking-widest uppercase rounded-md focus-visible:border-gold"
+              autoFocus
+              maxLength={8}
+            />
+            <Button
+              type="submit"
+              className="press h-12 px-6 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md"
+            >
+              Enter
+            </Button>
+          </form>
+          {accessError && (
+            <p className="mt-3 text-xs text-red-400">That code is not right. Check your invite and try again.</p>
+          )}
+        </div>
       </div>
     );
   }
@@ -196,7 +284,9 @@ export default function EventDetails() {
           {/* Main column: editorial, no card box */}
           <div className="lg:col-span-2">
             <Reveal>
-              <p className="eyebrow text-gold">Upcoming event</p>
+              <p className="eyebrow text-gold">
+                {(event as any).eventTypeLabel || EVENT_TYPE_LABELS[(event as any).eventType] || "Upcoming event"}
+              </p>
               <h1 className="mt-3 font-display text-4xl md:text-5xl font-bold text-ink leading-[1.1] tracking-tight">
                 {event.title}
               </h1>
@@ -234,6 +324,53 @@ export default function EventDetails() {
                   </span>
                 </p>
               )}
+
+              {/* Share row: WhatsApp is how Nigerian events travel. */}
+              <div className="mt-6 flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => {
+                    const text = `${event.title}\n${format(new Date(event.date), "EEE d MMM, h:mm a")}\n${event.location}\n\nGet tickets: ${window.location.href}`;
+                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+                  }}
+                  className="press inline-flex items-center gap-2 px-4 py-2 rounded-full border border-hairline bg-surface-2 text-sm text-ink hover:border-gold/40 hover:text-gold transition-colors cursor-pointer"
+                >
+                  <MessageCircle className="w-4 h-4 text-green-500" aria-hidden="true" />
+                  WhatsApp
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(window.location.href);
+                      toast({ title: "Link copied", description: "Paste it anywhere." });
+                    } catch {
+                      toast({ variant: "destructive", title: "Copy failed", description: window.location.href });
+                    }
+                  }}
+                  className="press inline-flex items-center gap-2 px-4 py-2 rounded-full border border-hairline bg-surface-2 text-sm text-ink hover:border-gold/40 hover:text-gold transition-colors cursor-pointer"
+                >
+                  <Copy className="w-4 h-4" aria-hidden="true" />
+                  Copy link
+                </button>
+                {typeof navigator !== "undefined" && "share" in navigator && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await (navigator as any).share({
+                          title: event.title,
+                          text: `${event.title} — ${format(new Date(event.date), "EEE d MMM")}`,
+                          url: window.location.href,
+                        });
+                      } catch {
+                        // User cancelled or share failed; the two buttons above still cover it.
+                      }
+                    }}
+                    className="press inline-flex items-center gap-2 px-4 py-2 rounded-full border border-hairline bg-surface-2 text-sm text-ink hover:border-gold/40 hover:text-gold transition-colors cursor-pointer"
+                  >
+                    <Share2 className="w-4 h-4" aria-hidden="true" />
+                    Share
+                  </button>
+                )}
+              </div>
               {showAttendeeCount && pulse.data?.recent?.[0] && (
                 <p className="mt-1.5 text-sm text-muted-ink">
                   {pulse.data.recent[0].name} booked {pulse.data.recent[0].ago}

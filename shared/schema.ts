@@ -42,6 +42,14 @@ export const events = pgTable("events", {
   // ── White-label share links ──
   slug: text("slug"), // the organizer-friendly part of the share link: /e/:slug
   theme: text("theme"), // preset key: midnight-gold | ivory-editorial | sunset-poster
+
+  // ── Visibility: who can see/access the event ──
+  visibility: text("visibility").notNull().default("public"), // public, unlisted, invite_only
+  accessCode: text("access_code"), // for invite_only events
+
+  // ── Event type category ──
+  eventType: text("event_type").default("party"),
+  eventTypeLabel: text("event_type_label"), // free text when eventType is 'other'
 });
 
 export const bookings = pgTable("bookings", {
@@ -115,8 +123,35 @@ export const businessBookingsRelations = relations(businessBookings, ({ one }) =
   }),
 }));
 
-export const vendorCategories = ["DJ", "MC", "Caterer", "Decorator", "Photographer", "Live Band", "Other"] as const;
+export const vendorCategories = ["DJ", "MC", "Caterer", "Decorator", "Photographer",
+  "Videographer", "Live Band", "Solo Artist", "Makeup Artist",
+  "Event Planner", "Sound Engineer", "Lighting",
+  "Security", "Bartender", "Baker", "Fashion Designer",
+  "Rental Equipment", "Venue", "Other"] as const;
 export type VendorCategory = typeof vendorCategories[number];
+
+export const eventCategories = [
+  "concert", "party", "house_party", "wedding", "birthday",
+  "corporate", "festival", "brunch", "private_gathering",
+  "conference", "comedy_show", "art_exhibition", "other"
+] as const;
+export type EventCategory = typeof eventCategories[number];
+
+export const eventCategoryLabels: Record<EventCategory, string> = {
+  concert: "Concert",
+  party: "Party",
+  house_party: "House Party",
+  wedding: "Wedding",
+  birthday: "Birthday",
+  corporate: "Corporate Event",
+  festival: "Festival",
+  brunch: "Brunch",
+  private_gathering: "Private Gathering",
+  conference: "Conference",
+  comedy_show: "Comedy Show",
+  art_exhibition: "Art Exhibition",
+  other: "Other",
+};
 
 /** "instagram" | "x" | "tiktok" | "youtube" — keyed by social platform */
 export const vendorSocialKeys = ["instagram", "x", "tiktok", "youtube"] as const;

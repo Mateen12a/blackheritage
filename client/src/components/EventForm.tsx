@@ -9,6 +9,7 @@ import { FlyerExtractPanel } from "@/components/FlyerExtractPanel";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
@@ -24,6 +25,28 @@ interface EventFormProps {
   onSubmit: (data: InsertEvent) => void;
   isLoading?: boolean;
 }
+
+const EVENT_TYPES: { value: string; label: string }[] = [
+  { value: "party", label: "Party" },
+  { value: "concert", label: "Concert" },
+  { value: "house_party", label: "House Party" },
+  { value: "wedding", label: "Wedding" },
+  { value: "birthday", label: "Birthday" },
+  { value: "corporate", label: "Corporate Event" },
+  { value: "festival", label: "Festival" },
+  { value: "brunch", label: "Brunch" },
+  { value: "private_gathering", label: "Private Gathering" },
+  { value: "conference", label: "Conference" },
+  { value: "comedy_show", label: "Comedy Show" },
+  { value: "art_exhibition", label: "Art Exhibition" },
+  { value: "other", label: "Other" },
+];
+
+const VISIBILITY_OPTIONS: { value: string; label: string; hint: string }[] = [
+  { value: "public", label: "Public", hint: "Listed on the platform. Anyone can find it and buy tickets." },
+  { value: "unlisted", label: "Unlisted", hint: "Off the listing. Only people with the link can open it." },
+  { value: "invite_only", label: "Invite Only", hint: "Guests need an access code or a personal invite link." },
+];
 
 export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) {
   const form = useForm<InsertEvent>({
@@ -51,6 +74,10 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
       checkoutFields: { phone: false, tableNote: true, dietaryNote: false },
       branding: null,
       theme: null,
+      visibility: "public",
+      accessCode: null,
+      eventType: "party",
+      eventTypeLabel: null,
       ...initialData,
     },
   });
@@ -155,6 +182,31 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={form.control}
+            name="eventType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">Event Type</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value || "party"}
+                >
+                  <FormControl>
+                    <SelectTrigger className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary transition-all">
+                      <SelectValue placeholder="What kind of event is it?" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {EVENT_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
             name="date"
             render={({ field }) => (
               <FormItem className="flex flex-col">
@@ -209,6 +261,99 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
             )}
           />
         </div>
+
+        {form.watch("eventType") === "other" && (
+          <FormField
+            control={form.control}
+            name="eventTypeLabel"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">Describe the event type</FormLabel>
+                <FormControl>
+                  <Input {...field} value={field.value || ""} className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary" placeholder="e.g. Album Listening Party" maxLength={40} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {/* Visibility: who can find and open this event. */}
+        <FormField
+          control={form.control}
+          name="visibility"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">Event Visibility</FormLabel>
+              <FormControl>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {VISIBILITY_OPTIONS.map((opt) => {
+                    const selected = (field.value || "public") === opt.value;
+                    return (
+                      <button
+                        type="button"
+                        key={opt.value}
+                        onClick={() => field.onChange(opt.value)}
+                        className={`text-left rounded-xl border p-4 transition-all cursor-pointer ${
+                          selected
+                            ? "border-primary bg-primary/10"
+                            : "border-white/10 bg-white/5 hover:border-white/25"
+                        }`}
+                      >
+                        <span className={`block font-bold text-sm ${selected ? "text-primary" : "text-white"}`}>{opt.label}</span>
+                        <span className="block mt-1 text-xs text-muted-foreground leading-relaxed">{opt.hint}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </FormControl>
+              <FormDescription className="text-xs text-muted-foreground mt-2">
+                You can change this any time. Invite-only events ask guests for an access code.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {form.watch("visibility") === "invite_only" && (
+          <FormField
+            control={form.control}
+            name="accessCode"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">Access Code</FormLabel>
+                <div className="flex gap-2">
+                  <FormControl>
+                    <Input
+                      {...field}
+                      value={field.value || ""}
+                      onChange={(e) => field.onChange(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))}
+                      className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary font-mono tracking-widest"
+                      placeholder="6-character code"
+                    />
+                  </FormControl>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-12 border-white/15 text-white hover:bg-white/10"
+                    onClick={() => {
+                      const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+                      let code = "";
+                      for (let i = 0; i < 6; i++) code += alphabet[Math.floor(Math.random() * alphabet.length)];
+                      field.onChange(code);
+                    }}
+                  >
+                    Generate
+                  </Button>
+                </div>
+                <FormDescription className="text-xs text-muted-foreground">
+                  Share this with your guest list. Guests enter it once to open the page. You can also send personal invite links from Manage Event, which skip the code entirely.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <div className="space-y-4">
           <div className="flex justify-between items-center">

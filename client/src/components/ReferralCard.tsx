@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Copy, Gift, Loader2 } from "lucide-react";
+import { Check, Copy, Gift } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ReferralInfo {
   code: string;
@@ -56,8 +57,12 @@ export function ReferralCard() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-ink">
-            <Loader2 className="w-4 h-4 animate-spin" /> Loading your code...
+          <div role="status" aria-live="polite">
+            <span className="sr-only">Loading your referral link</span>
+            <div className="flex flex-col sm:flex-row gap-2" aria-hidden="true">
+              <Skeleton className="h-11 flex-1" />
+              <Skeleton className="h-11 w-full sm:w-24" />
+            </div>
           </div>
         ) : data ? (
           <div className="space-y-3">

@@ -701,9 +701,9 @@ export default function Home() {
               Entertainment. All rights reserved.
             </p>
             <div className="flex items-center gap-5 text-xs text-muted-ink">
-              <a href="#" className="hover:text-gold transition-colors" aria-label="Instagram">Instagram</a>
-              <a href="#" className="hover:text-gold transition-colors" aria-label="Twitter / X">Twitter / X</a>
-              <a href="#" className="hover:text-gold transition-colors" aria-label="WhatsApp">WhatsApp</a>
+              <a href="https://instagram.com/blackhevents" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors" aria-label="Instagram">Instagram</a>
+              <a href="https://x.com/blackhevents" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors" aria-label="Twitter / X">Twitter / X</a>
+              <a href="https://wa.me/2349160aborede" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors" aria-label="WhatsApp">WhatsApp</a>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-ink/60">
               <ShieldCheck className="w-3.5 h-3.5 text-gold/40" aria-hidden="true" />
