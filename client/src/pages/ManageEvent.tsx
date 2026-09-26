@@ -283,7 +283,7 @@ export default function ManageEvent() {
           <Button 
             variant="outline" 
             className="flex-1 md:flex-none border-hairline h-10 px-4"
-            onClick={() => {/* Mock edit */ toast({ title: "Edit coming soon" })}}
+            onClick={() => setLocation(`/admin/events/${id}/edit`)}
           >
             <Edit className="w-4 h-4 mr-2" /> Edit
           </Button>

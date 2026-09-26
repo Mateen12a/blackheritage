@@ -24,7 +24,7 @@ import { initializePayment, verifyPayment, refundPayment, activeGateway, isPayst
 import { buildTicketPdf, generateTicketCode } from "./tickets";
 import { seedPlatform } from "./seed";
 import { sendManualTicketEmail, sendRefundEmail, sendFollowerDropEmail } from "./emails";
-import { extractEventFromFile, isAIConfigured, aiUploadLimiter } from "./ai";
+import { extractEventFromFile, isAIConfigured, aiUploadLimiter, suggestEventCopy } from "./ai";
 import { rateLimit } from "./auth";
 import { saveUpload, MAX_UPLOAD_BYTES } from "./media-storage";
 import { playbookPdf, PLAYBOOK_FILENAME, PLAYBOOK_PROMO_CODE } from "./playbook";
@@ -182,7 +182,7 @@ export async function registerRoutes(
       return res.status(403).json({ message: "Only organizer accounts can use extraction" });
     }
     if (!isAIConfigured()) {
-      return res.status(503).json({ message: "AI extraction is not configured yet" });
+      return res.status(503).json({ message: "The flyer reader is switched off right now. Ask the platform admin to enable AI tools." });
     }
     aiRateLimit(req, res, () => {
     aiUpload.single("file")(req, res, (err: any) => {
@@ -195,12 +195,36 @@ export async function registerRoutes(
         .then((details) => res.json({ details }))
         .catch((e: any) => {
           console.error("AI extraction failed:", e.message);
-          res.status(422).json({ message: e.message || "Could not read event details from that file" });
+          res.status(422).json({ message: e.message || "The flyer reader hit a snag. Try again in a moment." });
         });
     });
     });
   });
-  
+
+  // AI copy suggestion: description variants, announcement lines, hub bio.
+  // Same trust pattern as extraction: the model proposes, the organizer
+  // reviews and edits, nothing saves itself.
+  app.post("/api/ai/copy", (req: any, res: any) => {
+    if (!req.isAuthenticated() || (req.user as any).role === "user") {
+      return res.status(403).json({ message: "Only organizer accounts can use copy suggestions" });
+    }
+    if (!isAIConfigured()) {
+      return res.status(503).json({ message: "The writing helper is switched off right now. Ask the platform admin to enable AI tools." });
+    }
+    aiRateLimit(req, res, () => {
+      const kind = req.body?.kind;
+      if (kind !== "description" && kind !== "announcement" && kind !== "bio") {
+        return res.status(400).json({ message: "Unknown copy kind" });
+      }
+      suggestEventCopy({ kind, facts: req.body?.facts || {} })
+        .then((result) => res.json(result))
+        .catch((e: any) => {
+          console.error("AI copy failed:", e.message);
+          res.status(422).json({ message: e.message || "The writing helper hit a snag. Try again in a moment." });
+        });
+    });
+  });
+
   // Legacy Stripe intent, kept for older clients. Paystack owns ticket checkout.
   const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
@@ -294,7 +318,22 @@ export async function registerRoutes(
           return res.status(403).json({ requiresCode: true, title: doc.title });
         }
       }
-      res.json(mapEventLean(doc));
+      const payload = mapEventLean(doc);
+      // Same announcement attach as the id route: ticket pages Promise the
+      // organizer's live banner, whichever way the guest arrived.
+      if ((doc as any).organizerId) {
+        try {
+          const org = await User.findById((doc as any).organizerId).lean();
+          const ann = (org as any)?.announcement;
+          if (ann?.active && ann?.message) {
+            (payload as any).organizerAnnouncement = {
+              message: ann.message,
+              linkUrl: ann.linkUrl || "",
+            };
+          }
+        } catch {}
+      }
+      res.json(payload);
     } catch (err) {
       console.error("Slug lookup error:", err);
       res.status(500).json({ message: "We could not load that event just now. Try again in a moment." });
@@ -443,6 +482,21 @@ export async function registerRoutes(
           return res.status(403).json({ requiresCode: true, title: event.title });
         }
       }
+      // The organizer's live announcement rides along on ticket pages too
+      // (the brand panel promises "hub and ticket pages"), but only when the
+      // announcement is switched on and has something to say.
+      if ((event as any).organizerId) {
+        try {
+          const org = await User.findById((event as any).organizerId).lean();
+          const ann = (org as any)?.announcement;
+          if (ann?.active && ann?.message) {
+            (event as any).organizerAnnouncement = {
+              message: ann.message,
+              linkUrl: ann.linkUrl || "",
+            };
+          }
+        } catch {}
+      }
       res.json(event);
     } catch (err) {
       console.error("Event error:", err);
@@ -517,6 +571,48 @@ export async function registerRoutes(
             field: missing[0],
             missing,
           });
+        }
+      }
+      // Sold-ticket guard: people have already paid, so capacity and price
+      // changes cannot go below what has been sold. Everything else is free
+      // to edit, including dates and locations on live events.
+      if (input.capacity !== undefined || input.ticketTypes !== undefined) {
+        const { BookingModel } = await import("./models");
+        const soldRows = await BookingModel.find({ eventId: event.id, status: "paid" }).lean();
+        const totalSold = soldRows.reduce((a: number, b: any) => a + Number(b.quantity || 0), 0);
+        if (input.capacity !== undefined && Number(input.capacity) < totalSold) {
+          return res.status(400).json({
+            message: `${totalSold} tickets have already been sold. Capacity cannot go below that.`,
+            field: "capacity",
+          });
+        }
+        if (input.ticketTypes !== undefined) {
+          let newTiers: any[] = [];
+          try { newTiers = JSON.parse(String(input.ticketTypes)); } catch {}
+          // Per-tier sold counts, matched by tier name.
+          const soldByTier = new Map<string, number>();
+          for (const b of soldRows as any[]) {
+            const key = String(b.ticketType || "");
+            soldByTier.set(key, (soldByTier.get(key) || 0) + Number(b.quantity || 0));
+          }
+          const keptNames = new Set(newTiers.map((t) => String(t.name || "").trim()));
+          for (const tierName of Array.from(soldByTier.keys())) {
+            const sold = soldByTier.get(tierName) || 0;
+            if (sold <= 0) continue;
+            if (!keptNames.has(tierName)) {
+              return res.status(400).json({
+                message: `The "${tierName}" tier has ${sold} ticket${sold === 1 ? "" : "s"} sold and cannot be removed. You can rename or hide it instead.`,
+                field: "ticketTypes",
+              });
+            }
+            const tier = newTiers.find((t) => String(t.name || "").trim() === tierName);
+            if (tier && Number(tier.capacity) < sold) {
+              return res.status(400).json({
+                message: `"${tierName}" has ${sold} ticket${sold === 1 ? "" : "s"} sold. Its capacity cannot go below that.`,
+                field: "ticketTypes",
+              });
+            }
+          }
         }
       }
       const updated = await storage.updateEvent(event.id, input);
@@ -926,6 +1022,7 @@ export async function registerRoutes(
       spotifyPlaylistUrl: (organizer as any).spotifyPlaylistUrl || null,
       tourCities: (organizer as any).tourCities || [],
       followersCount: (organizer as any).followersCount || 0,
+      dnsTarget: process.env.DOMAIN_CNAME_TARGET || "cname.blackheritage.africa",
     });
   });
 
@@ -953,6 +1050,9 @@ export async function registerRoutes(
         spotifyPlaylistUrl,
         tourCities,
       } = req.body;
+
+      const currentOrganizer = await User.findById(orgId).lean();
+      if (!currentOrganizer) return res.status(404).json({ message: "That organizer account no longer exists." });
 
       let cleanSlug = typeof slug === "string" ? slug.toLowerCase().trim() : undefined;
       if (cleanSlug) {
@@ -991,7 +1091,14 @@ export async function registerRoutes(
       if (accentHex !== undefined) updateData.accentHex = accentHex;
       if (cleanDomain !== undefined) {
         updateData.customDomain = cleanDomain || null;
-        updateData.customDomainStatus = cleanDomain ? "active" : null;
+        // A domain only becomes "active" through the DNS verify endpoint —
+        // saving it alone proves nothing. Re-saving an unchanged domain keeps
+        // its existing status so verify results survive profile edits.
+        updateData.customDomainStatus = !cleanDomain
+          ? null
+          : currentOrganizer.customDomain === cleanDomain
+            ? currentOrganizer.customDomainStatus || "pending"
+            : "pending";
       }
       if (announcement !== undefined) {
         updateData.announcement = announcement;
@@ -1024,10 +1131,94 @@ export async function registerRoutes(
         spotifyPlaylistUrl: (updated as any).spotifyPlaylistUrl || null,
         tourCities: (updated as any).tourCities || [],
         followersCount: (updated as any).followersCount || 0,
+        dnsTarget: process.env.DOMAIN_CNAME_TARGET || "cname.blackheritage.africa",
       });
     } catch (err: any) {
       console.error("Update organizer profile error:", err);
       res.status(500).json({ message: "Could not save organizer profile" });
+    }
+  });
+
+  // ── Custom-domain DNS verification ──
+  // Resolves the domain's CNAME chain and only flips customDomainStatus to
+  // "active" when it actually points at our cname target. No fake timeouts.
+  app.post("/api/organizers/me/domain/verify", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
+    const user = req.user as any;
+    if (user.staffRole && user.staffRole !== "manager") {
+      return res.status(403).json({ message: "Only main organizers and managers can manage domains" });
+    }
+    const orgId = user.teamOwnerId || user._id.toString();
+
+    try {
+      const organizer = await User.findById(orgId).lean();
+      if (!organizer) return res.status(404).json({ message: "That organizer account no longer exists." });
+
+      const requested = String(req.body?.domain || "").toLowerCase().trim().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+      const domain = requested || (organizer as any).customDomain;
+      if (!domain) {
+        return res.status(400).json({ message: "Save a domain first, then test the connection." });
+      }
+
+      const target = process.env.DOMAIN_CNAME_TARGET || "cname.blackheritage.africa";
+      const dns = await import("dns/promises");
+
+      // Resolve the CNAME chain; fall back to A/AAAA so apex domains with
+      // ALIAS/ANAME flattening still verify.
+      let points: string[] = [];
+      let resolved = false;
+      try {
+        const cname = await dns.resolveCname(domain);
+        points = cname;
+      } catch {}
+      if (points.length === 0) {
+        try { points = await dns.resolve4(domain); } catch {}
+      }
+      if (points.length === 0) {
+        try { points = await dns.resolve6(domain); } catch {}
+      }
+
+      resolved = points.some(
+        (p) => p === target || p.endsWith("." + target) || p === domain + "." + target,
+      );
+
+      // A record pointing at our server IP is equally valid (apex domains).
+      if (!resolved && process.env.SERVER_PUBLIC_IP) {
+        resolved = points.includes(process.env.SERVER_PUBLIC_IP);
+      }
+
+      if (resolved) {
+        await User.updateOne(
+          { _id: orgId, customDomain: domain },
+          { $set: { customDomainStatus: "active" } },
+        );
+        return res.json({
+          verified: true,
+          domain,
+          target,
+          status: "active",
+          message: `${domain} is correctly pointed at ${target}. SSL will be issued automatically.`,
+        });
+      }
+
+      await User.updateOne(
+        { _id: orgId, customDomain: domain },
+        { $set: { customDomainStatus: "pending" } },
+      ).catch(() => {});
+
+      return res.json({
+        verified: false,
+        domain,
+        target,
+        status: "pending",
+        found: points.slice(0, 5),
+        message: points.length === 0
+          ? `No DNS records found for ${domain} yet. Add the CNAME record below and try again in a few minutes.`
+          : `${domain} currently points at ${points[0]} — it needs to point at ${target}. DNS changes can take up to an hour to spread.`,
+      });
+    } catch (err: any) {
+      console.error("Domain verify error:", err);
+      res.status(500).json({ message: "Could not run the DNS check. Try again in a moment." });
     }
   });
 

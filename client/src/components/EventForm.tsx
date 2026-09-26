@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
-import { insertEventSchema, type InsertEvent } from "@shared/schema";
+import { insertEventSchema, insertDraftEventSchema, type InsertEvent } from "@shared/schema";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FlyerExtractPanel } from "@/components/FlyerExtractPanel";
+import { CopySuggest } from "@/components/CopySuggest";
 import { ShareFlyerModal } from "@/components/ShareFlyerModal";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
@@ -25,6 +26,8 @@ interface EventFormProps {
   initialData?: Partial<InsertEvent>;
   onSubmit: (data: InsertEvent) => void;
   isLoading?: boolean;
+  /** Editing a live event hides Save-as-draft: it would unpublish it. */
+  allowDraft?: boolean;
 }
 
 const EVENT_TYPES: { value: string; label: string }[] = [
@@ -49,7 +52,7 @@ const VISIBILITY_OPTIONS: { value: string; label: string; hint: string }[] = [
   { value: "invite_only", label: "Invite Only", hint: "Guests need an access code or a personal invite link." },
 ];
 
-export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) {
+export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true }: EventFormProps) {
   const form = useForm<InsertEvent>({
     resolver: zodResolver(insertEventSchema),
     defaultValues: {
@@ -142,15 +145,25 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
   // Drafts skip the full-validation path server side: only a title is
   // required, so an organizer can park an early announcement and finish it
   // later from Manage Event.
+  // Drafts skip full validation on purpose: only a title is required so an
+  // organizer can park an early announcement and finish it later. Validating
+  // against the draft schema (not the publish schema) is what makes that
+  // work; the publish gate re-checks completeness on the server.
   const handleDraftSubmit = () => {
     const values = form.getValues();
     if (!values.title || !String(values.title).trim()) {
       form.setError("title", { message: "Give the event a title first" });
       return;
     }
+    const draftValues = { ...values, status: "draft" as const };
+    const draftCheck = insertDraftEventSchema.safeParse(draftValues);
+    if (!draftCheck.success) {
+      const first = draftCheck.error.errors[0];
+      if (first.path[0]) form.setError(first.path[0] as keyof InsertEvent, { message: first.message });
+      return;
+    }
     onSubmit({
-      ...values,
-      status: "draft",
+      ...draftValues,
       ticketTypes: JSON.stringify(ticketTypes),
       checkoutFields,
       gallery: JSON.stringify(gallery),
@@ -557,11 +570,29 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="eyebrow">Description</FormLabel>
+              <div className="flex items-center justify-between gap-3">
+                <FormLabel className="eyebrow">Description</FormLabel>
+                <CopySuggest
+                  kind="description"
+                  label="Draft it for me"
+                  facts={{
+                    title: form.watch("title"),
+                    date: form.watch("date"),
+                    location: form.watch("location"),
+                    eventType: form.watch("eventType"),
+                    price: form.watch("price"),
+                    tiers: ticketTypes.filter((t: any) => t.name).map((t: any) => ({ name: t.name, price: t.price })),
+                  }}
+                  onApply={(text) => form.setValue("description", text, { shouldDirty: true })}
+                />
+              </div>
               <FormControl>
                 <Textarea {...field} className="bg-surface-2 border-hairline text-ink min-h-[150px] rounded-md focus-visible:border-gold focus-visible:ring-0 transition-colors text-base resize-none" placeholder="Tell us more about the event..." />
               </FormControl>
               <FormMessage />
+              <FormDescription>
+                Drafts come from your event details. Edit freely before saving.
+              </FormDescription>
             </FormItem>
           )}
         />
@@ -951,15 +982,17 @@ export function EventForm({ initialData, onSubmit, isLoading }: EventFormProps) 
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isLoading}
-            onClick={handleDraftSubmit}
-            className="press sm:flex-none px-6 border-white/20 text-white hover:bg-white/10 font-medium text-base h-12 rounded-md"
-          >
-            Save as draft
-          </Button>
+          {allowDraft && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isLoading}
+              onClick={handleDraftSubmit}
+              className="press sm:flex-none px-6 border-white/20 text-white hover:bg-white/10 font-medium text-base h-12 rounded-md"
+            >
+              Save as draft
+            </Button>
+          )}
           <Button 
             type="submit" 
             disabled={isLoading}

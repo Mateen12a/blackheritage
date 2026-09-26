@@ -223,6 +223,11 @@ export async function quoteBooking(input: {
   if ((event as any).status === "draft" || (event as any).status === "unpublished") {
     return { ok: false, message: "Ticket sales are closed for this event" };
   }
+  // A past-dated event is over, whatever its publish status says. No charging
+  // cards for a show that already happened.
+  if ((event as any).date && new Date((event as any).date).getTime() < Date.now() - 6 * 60 * 60 * 1000) {
+    return { ok: false, message: "This event has ended. Tickets are no longer on sale." };
+  }
 
   const tiers: any[] = JSON.parse((event as any).ticketTypes || "[]");
   const tier = tiers.find((t) => t.name === input.tierName);

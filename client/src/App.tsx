@@ -9,6 +9,14 @@ import { Loader2 } from "lucide-react";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Explore from "@/pages/Explore";
+import EditEvent from "@/pages/EditEvent";
+
+/** Reads the :id off the admin edit route for the shared edit page. */
+function EditEventRoute() {
+  const [location] = useLocation();
+  const id = location.match(/^\/admin\/events\/([^/?#]+)\/edit/)?.[1] || "";
+  return <EditEvent id={id} />;
+}
 import Events from "@/pages/Events";
 import EventDetails from "@/pages/EventDetails";
 import Vendors from "@/pages/Vendors";
@@ -350,6 +358,9 @@ function Router() {
       </Route>
       <Route path="/admin/events/new">
         {() => <AdminRoute component={NewEvent} />}
+      </Route>
+      <Route path="/admin/events/:id/edit">
+        {() => <AdminRoute component={EditEventRoute} />}
       </Route>
       <Route path="/admin/events/:id">
         {() => <AdminRoute component={ManageEvent} />}

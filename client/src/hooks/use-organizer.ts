@@ -345,44 +345,24 @@ export function useOrganizer(slug: string | undefined) {
         } catch {}
       }
 
-      let savedProfile: any = {};
-      try {
-        savedProfile = JSON.parse(localStorage.getItem(`org_profile_${cleanSlug}`) || "{}");
-      } catch {}
-
-      let isFollowing = false;
-      try {
-        // Fallback path only: guests who followed by email. The server
-        // endpoint (path 1 above) already resolves session-based follows.
-        isFollowing = localStorage.getItem(`org_following_${cleanSlug}`) === "true";
-      } catch {}
-
+      // Fallback path derives everything from real event data only — no
+      // localStorage stand-ins, no demo defaults. Guests who followed by
+      // email before this session aren't resolvable here; the server
+      // endpoint (path 1) already covers that case.
       return {
         organizer: {
           id: primary.organizerId || cleanSlug,
           username: cleanSlug,
-          displayName: savedProfile.displayName || displayName,
+          displayName,
           slug: cleanSlug,
-          bio: savedProfile.bio || "Lagos live music, concerts, and cultural gala curators. Connecting artists, fans, and culture across Nigeria.",
-          logoUrl: savedProfile.logoUrl || logoUrl,
-          coverUrl: savedProfile.coverUrl || coverUrl,
-          socials: savedProfile.socials || {
-            instagram: "https://instagram.com/tundelive",
-            twitter: "https://x.com/tundelive",
-            whatsapp: "2348012345678",
-            website: "https://blackheritage.africa",
-          },
-          theme: savedProfile.theme || theme,
-          accentHex: savedProfile.accentHex || accentHex,
-          customDomain: savedProfile.customDomain || "tickets.tundelive.com",
-          customDomainStatus: savedProfile.customDomainStatus || "active",
-          announcement: savedProfile.announcement || {
-            message: "Early bird passes live for the Detty December Finale. Limited VIP tables available via WhatsApp.",
-            linkUrl: "",
-            active: true,
-          },
-          followersCount: (savedProfile.followersCount || 1420) + (isFollowing ? 1 : 0),
-          isFollowing,
+          bio: "",
+          logoUrl,
+          coverUrl,
+          socials: {},
+          theme,
+          accentHex,
+          followersCount: 0,
+          isFollowing: false,
         },
         upcomingEvents,
         pastEvents,
@@ -408,24 +388,18 @@ export function useFollowOrganizer(slug: string | undefined) {
   return useMutation({
     mutationFn: async (email?: string) => {
       const cleanSlug = String(slug || "").toLowerCase().trim();
-      try {
-        localStorage.setItem(`org_following_${cleanSlug}`, "true");
-      } catch {}
-
-      try {
-        const res = await fetch(`/api/organizers/${cleanSlug}/follow`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ email: email || undefined }),
-        });
-        const contentType = res.headers.get("content-type") || "";
-        if (res.ok && contentType.includes("application/json")) {
-          return await res.json();
-        }
-      } catch (e) {}
-
-      return { success: true, isFollowing: true };
+      const res = await fetch(`/api/organizers/${cleanSlug}/follow`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email: email || undefined }),
+      });
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
+        return await res.json();
+      }
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.message || "Could not follow this organizer. Try again in a moment.");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/organizers", slug] });
@@ -451,22 +425,16 @@ export function useUnfollowOrganizer(slug: string | undefined) {
   return useMutation({
     mutationFn: async () => {
       const cleanSlug = String(slug || "").toLowerCase().trim();
-      try {
-        localStorage.removeItem(`org_following_${cleanSlug}`);
-      } catch {}
-
-      try {
-        const res = await fetch(`/api/organizers/${cleanSlug}/follow`, {
-          method: "DELETE",
-          credentials: "include",
-        });
-        const contentType = res.headers.get("content-type") || "";
-        if (res.ok && contentType.includes("application/json")) {
-          return await res.json();
-        }
-      } catch (e) {}
-
-      return { success: true, isFollowing: false };
+      const res = await fetch(`/api/organizers/${cleanSlug}/follow`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
+        return await res.json();
+      }
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.message || "Could not unfollow this organizer. Try again in a moment.");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/organizers", slug] });
@@ -482,81 +450,26 @@ export function useOrganizerFollowers() {
   return useQuery<{ totalCount: number; followers: { id: string; email: string; createdAt: string }[] }>({
     queryKey: ["/api/organizers/me/followers"],
     queryFn: async () => {
-      try {
-        const res = await fetch("/api/organizers/me/followers", { credentials: "include" });
-        const contentType = res.headers.get("content-type") || "";
-        if (res.ok && contentType.includes("application/json")) {
-          return await res.json();
-        }
-      } catch (e) {}
-
-      return {
-        totalCount: 1420,
-        followers: [
-          { id: "1", email: "adebayo.sound@gmail.com", createdAt: new Date(Date.now() - 3600000 * 4).toISOString() },
-          { id: "2", email: "folake.vi@yahoo.com", createdAt: new Date(Date.now() - 3600000 * 24).toISOString() },
-          { id: "3", email: "chidi.events@lagos.ng", createdAt: new Date(Date.now() - 3600000 * 48).toISOString() },
-          { id: "4", email: "kemi.vip@gmail.com", createdAt: new Date(Date.now() - 3600000 * 72).toISOString() },
-        ],
-      };
+      const res = await fetch("/api/organizers/me/followers", { credentials: "include" });
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
+        return await res.json();
+      }
+      // Real numbers only: an unreachable endpoint shows zero, never a
+      // stand-in subscriber list.
+      return { totalCount: 0, followers: [] };
     },
   });
-}
-
-export function useOrganizerProfile() {
+}export function useOrganizerProfile() {
   return useQuery<OrganizerProfileData>({
     queryKey: ["/api/organizers/me/profile"],
     queryFn: async () => {
-      try {
-        const res = await fetch("/api/organizers/me/profile", { credentials: "include" });
-        const contentType = res.headers.get("content-type") || "";
-        if (res.ok && contentType.includes("application/json")) {
-          return await res.json();
-        }
-      } catch (e) {}
-
-      let events: any[] = [];
-      try {
-        const r = await fetch("/api/events");
-        if (r.ok) events = await r.json();
-      } catch {}
-
-      const primary = events.find(
-        (e: any) => e.branding?.displayName || e.organizerName
-      );
-
-      let saved: any = {};
-      try {
-        saved = JSON.parse(localStorage.getItem("org_profile_me") || "{}");
-      } catch {}
-
-      return {
-        id: "organizer-id",
-        username: "organizer",
-        displayName: saved.displayName || primary?.branding?.displayName || "Tunde Live Concepts",
-        slug: saved.slug || "tunde-live",
-        bio: saved.bio || "Lagos live music, concerts, and cultural gala curators. Connecting artists, fans, and culture across Nigeria.",
-        logoUrl: saved.logoUrl || primary?.branding?.logoUrl || "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=96&h=96&auto=format&fit=crop",
-        coverUrl: saved.coverUrl || primary?.imageUrl || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1600&auto=format&fit=crop",
-        socials: saved.socials || {
-          instagram: "https://instagram.com/tundelive",
-          twitter: "https://x.com/tundelive",
-          whatsapp: "2348012345678",
-          website: "https://blackheritage.africa",
-        },
-        theme: saved.theme || primary?.theme || "midnight-gold",
-        accentHex: saved.accentHex || primary?.branding?.accentHex || "#E3B23C",
-        customDomain: saved.customDomain || "tickets.tundelive.com",
-        announcement: saved.announcement || {
-          message: "Early bird passes live for the Detty December Finale. Limited VIP tables available via WhatsApp.",
-          linkUrl: "",
-          active: true,
-        },
-        videoLoopUrl: saved.videoLoopUrl || primary?.videoLoopUrl || "https://assets.mixkit.co/videos/preview/mixkit-crowd-at-a-concert-jumping-and-recording-with-their-phones-41484-large.mp4",
-        spotifyPlaylistUrl: saved.spotifyPlaylistUrl || primary?.spotifyPlaylistUrl || "https://open.spotify.com/playlist/37i9dQZF1DXaNKqZRgC6dw",
-        tourCities: saved.tourCities || primary?.tourCities || ["Lagos", "Abuja", "Port Harcourt", "London"],
-        followersCount: saved.followersCount || 1420,
-      };
+      const res = await fetch("/api/organizers/me/profile", { credentials: "include" });
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
+        return await res.json();
+      }
+      throw new Error("Could not load your brand profile. Sign in as an organizer and try again.");
     },
   });
 }
@@ -566,27 +479,18 @@ export function useUpdateOrganizerProfile() {
   const { toast } = useToast();
   return useMutation({
     mutationFn: async (data: Partial<OrganizerProfileData>) => {
-      try {
-        localStorage.setItem("org_profile_me", JSON.stringify(data));
-        if (data.slug) {
-          localStorage.setItem(`org_profile_${data.slug}`, JSON.stringify(data));
-        }
-      } catch {}
-
-      try {
-        const res = await fetch("/api/organizers/me/profile", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(data),
-        });
-        const contentType = res.headers.get("content-type") || "";
-        if (res.ok && contentType.includes("application/json")) {
-          return await res.json();
-        }
-      } catch (e) {}
-
-      return data;
+      const res = await fetch("/api/organizers/me/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      const contentType = res.headers.get("content-type") || "";
+      if (res.ok && contentType.includes("application/json")) {
+        return await res.json();
+      }
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.message || "Could not save your brand profile. Try again in a moment.");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/organizers/me/profile"] });

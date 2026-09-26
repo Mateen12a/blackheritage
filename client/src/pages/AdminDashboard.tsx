@@ -429,6 +429,15 @@ export default function AdminDashboard() {
                                 <Users className="w-3 h-3 mr-1" /> Bookings
                               </Button>
                             </Link>
+                            <Link href={`/admin/events/${event.id}/edit`}>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 border-hairline text-muted-ink text-xs hover:text-gold hover:border-gold/40 hover:bg-gold/5"
+                              >
+                                Edit
+                              </Button>
+                            </Link>
                             <Link href={`/admin/events/${event.id}`}>
                               <Button
                                 variant="outline"

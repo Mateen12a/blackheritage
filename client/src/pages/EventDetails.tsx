@@ -3,7 +3,7 @@ import { BookingModal } from "@/components/BookingModal";
 import { ShareFlyerModal } from "@/components/ShareFlyerModal";
 import { Button } from "@/components/ui/button";
 import { useRoute } from "wouter";
-import { Loader2, Calendar, MapPin, Users, Share2, ArrowLeft, Tag, Clock, MessageCircle, Copy } from "lucide-react";
+import { Loader2, Calendar, MapPin, Users, Share2, ArrowLeft, ArrowRight, Tag, Clock, MessageCircle, Copy } from "lucide-react";
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
@@ -81,6 +81,9 @@ export default function EventDetails() {
     .filter((ms) => ms > Date.now())
     .sort((a: number, b: number) => a - b)[0] ?? null;
   const countdown = useCountdown(earlyClose);
+  // The show is over: date passed more than six hours ago matches the
+  // server's sales cutoff, so the page and the checkout agree.
+  const eventEnded = !!event?.date && new Date(event.date).getTime() < Date.now() - 6 * 60 * 60 * 1000;
 
   // Public promo codes: fetched only when the organizer advertises them.
   // Keyed on the resolved event id, not the route param: on /e/:slug the
@@ -226,12 +229,43 @@ export default function EventDetails() {
 
   return (
     <div
-      className="min-h-screen bg-background pb-40 lg:pb-24"
+      className="min-h-screen bg-background pb-32 lg:pb-24"
       style={themeVars}
     >
       {/* Event-branded navbar when the organizer set a name/logo; the
           platform default renders elsewhere. Brand links still go home. */}
       <Navbar eventBrand={brand} overMedia />
+
+      {/* Organizer's live announcement — the same strip pinned on their
+          hub, riding on ticket pages so drop alerts follow the buyer.
+          Mobile: the navbar is fixed over it, so the strip starts below the
+          61px bar instead of fighting it for the same pixels. */}
+      {(event as any).organizerAnnouncement?.message && (
+        <div className="bg-surface border-b border-hairline px-4 py-2.5 text-xs text-ink sticky top-[61px] lg:top-0 z-30 shadow-md">
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
+              <span className="flex h-2 w-2 rounded-full bg-gold shrink-0 animate-ping" />
+              <span className="font-mono text-[10px] uppercase tracking-wider text-gold shrink-0 font-bold px-1.5 py-0.5 rounded bg-gold/10 border border-gold/20">
+                Announcement
+              </span>
+              <span className="truncate text-ink font-medium">
+                {(event as any).organizerAnnouncement.message}
+              </span>
+            </div>
+            {(event as any).organizerAnnouncement.linkUrl && (
+              <a
+                href={(event as any).organizerAnnouncement.linkUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 text-gold hover:underline inline-flex items-center gap-1 font-semibold"
+              >
+                Learn more
+                <ArrowRight className="w-3 h-3" />
+              </a>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Flyer hero: the photo leads, gradients sink it into the page */}
       <div className="relative h-[52vh] w-full overflow-hidden">
@@ -279,19 +313,19 @@ export default function EventDetails() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 -mt-28 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <div className="container mx-auto px-4 -mt-24 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-10">
           {/* Main column: editorial, no card box */}
           <div className="lg:col-span-2">
             <Reveal>
               <p className="eyebrow text-gold">
                 {(event as any).eventTypeLabel || EVENT_TYPE_LABELS[(event as any).eventType] || "Upcoming event"}
               </p>
-              <h1 className="mt-3 font-display text-4xl md:text-5xl font-bold text-ink leading-[1.1] tracking-tight">
+              <h1 className="mt-2 font-display text-3xl md:text-5xl font-bold text-ink leading-[1.12] tracking-tight">
                 {event.title}
               </h1>
-              <div className="mt-5 h-0.5 w-16 bg-gold" aria-hidden="true" />
-              <p className="mt-5 text-lg text-muted-ink">
+              <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
+              <p className="mt-4 text-base text-muted-ink">
                 {format(new Date(event.date), "EEEE, d MMMM yyyy")} ·{" "}
                 {format(new Date(event.date), "h:mm a")} · {event.location}
               </p>
@@ -433,8 +467,8 @@ export default function EventDetails() {
 
             {/* Public promo codes, only when the organizer advertises them */}
             {publicPromos.length > 0 && (
-              <Reveal className="mt-8">
-                <div className="rounded-md border border-gold/25 bg-gold/[0.06] p-5">
+              <Reveal className="mt-6">
+                <div className="rounded-md border border-gold/25 bg-gold/[0.06] p-4">
                   <p className="eyebrow text-gold flex items-center gap-2">
                     <Tag className="w-3.5 h-3.5" aria-hidden="true" /> Current offers
                   </p>
@@ -457,9 +491,9 @@ export default function EventDetails() {
             )}
 
             {/* About: plain editorial text */}
-            <Reveal className="mt-10">
+            <Reveal className="mt-8">
               <p className="eyebrow">About this event</p>
-              <p className="mt-4 text-muted-ink leading-relaxed whitespace-pre-line max-w-2xl">
+              <p className="mt-3 text-[15px] text-muted-ink leading-relaxed whitespace-pre-line max-w-2xl">
                 {event.description}
               </p>
             </Reveal>
@@ -493,12 +527,18 @@ export default function EventDetails() {
                   </p>
                 )}
 
-                <Button
-                  onClick={() => setIsBookingOpen(true)}
-                  className="press hidden lg:inline-flex mt-6 w-full h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md"
-                >
-                  Get Tickets
-                </Button>
+                {eventEnded ? (
+                  <div className="mt-6 rounded-md border border-hairline bg-surface-2/60 px-4 py-3 text-center text-sm text-muted-ink">
+                    This event has ended. Thanks to everyone who came out.
+                  </div>
+                ) : (
+                  <Button
+                    onClick={() => setIsBookingOpen(true)}
+                    className="press hidden lg:inline-flex mt-6 w-full h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md"
+                  >
+                    Get Tickets
+                  </Button>
+                )}
 
                 <Button
                   variant="outline"
@@ -560,12 +600,18 @@ export default function EventDetails() {
           >
             <Share2 className="w-5 h-5" />
           </Button>
-          <Button
-            onClick={() => setIsBookingOpen(true)}
-            className="press flex-1 h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md"
-          >
-            Get Tickets
-          </Button>
+          {eventEnded ? (
+            <div className="flex-1 h-12 flex items-center justify-center rounded-md border border-hairline bg-surface-2/60 text-sm text-muted-ink">
+              Event ended
+            </div>
+          ) : (
+            <Button
+              onClick={() => setIsBookingOpen(true)}
+              className="press flex-1 h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md"
+            >
+              Get Tickets
+            </Button>
+          )}
         </div>
         {waitlistEnabled && soldOut && <WaitlistInline eventId={String(event.id)} compact />}
       </div>

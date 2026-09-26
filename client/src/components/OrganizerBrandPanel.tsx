@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { themePresetList } from "@/components/ThemePicker";
 import { ShareFlyerModal } from "@/components/ShareFlyerModal";
+import { CopySuggest } from "@/components/CopySuggest";
 import {
   Globe,
   Instagram,
@@ -73,6 +74,8 @@ export function OrganizerBrandPanel() {
   const [isDirty, setIsDirty] = useState(false);
   const [isStoryFlyerOpen, setIsStoryFlyerOpen] = useState(false);
   const [isTestingDns, setIsTestingDns] = useState(false);
+  const [dnsTarget, setDnsTarget] = useState("cname.blackheritage.africa");
+  const [dnsMessage, setDnsMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile) {
@@ -85,6 +88,7 @@ export function OrganizerBrandPanel() {
       setAccentHex(profile.accentHex || "");
       setCustomDomain(profile.customDomain || "");
       setCustomDomainStatus(profile.customDomainStatus || (profile.customDomain ? "active" : null));
+      if ((profile as any).dnsTarget) setDnsTarget((profile as any).dnsTarget);
       const ann = profile.announcement || { message: "", linkUrl: "", active: false };
       setAnnouncementActive(!!ann.active);
       setAnnouncementMessage(ann.message || "");
@@ -350,7 +354,15 @@ export function OrganizerBrandPanel() {
 
           {/* Bio */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-ink font-medium">About / Bio</Label>
+            <div className="flex items-center justify-between gap-3">
+              <Label className="text-xs text-ink font-medium">About / Bio</Label>
+              <CopySuggest
+                kind="bio"
+                label="Draft it for me"
+                facts={{ organizerName: displayName || undefined }}
+                onApply={(text) => { setBio(text); setIsDirty(true); }}
+              />
+            </div>
             <Textarea
               value={bio}
               onChange={(e) => {
@@ -840,7 +852,18 @@ export function OrganizerBrandPanel() {
 
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs text-ink font-medium">Announcement Message</Label>
+            <div className="flex items-center justify-between gap-3">
+              <Label className="text-xs text-ink font-medium">Announcement Message</Label>
+              <CopySuggest
+                kind="announcement"
+                label="Draft it for me"
+                facts={{
+                  title: announcementMessage || undefined,
+                  organizerName: displayName || undefined,
+                }}
+                onApply={(text) => { setAnnouncementMessage(text); setIsDirty(true); }}
+              />
+            </div>
             <Input
               value={announcementMessage}
               onChange={(e) => {
@@ -905,16 +928,38 @@ export function OrganizerBrandPanel() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
+                onClick={async () => {
                   setIsTestingDns(true);
-                  setTimeout(() => {
-                    setIsTestingDns(false);
-                    setCustomDomainStatus("active");
-                    toast({
-                      title: "DNS connection verified",
-                      description: `${customDomain || "Domain"} is pointed to Black Heritage servers.`,
+                  setDnsMessage(null);
+                  try {
+                    const res = await fetch("/api/organizers/me/domain/verify", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify({ domain: customDomain.trim() }),
                     });
-                  }, 1000);
+                    const j = await res.json().catch(() => ({}));
+                    if (res.ok && j.verified) {
+                      setCustomDomainStatus("active");
+                      setDnsMessage(j.message || "DNS connection verified.");
+                      toast({
+                        title: "DNS connection verified",
+                        description: j.message || `${customDomain} is pointed to Black Heritage servers.`,
+                      });
+                    } else {
+                      setCustomDomainStatus("pending");
+                      setDnsMessage(j.message || "Could not verify yet. Add the CNAME record below and try again.");
+                      toast({
+                        title: "Not connected yet",
+                        description: j.message || "We could not find the DNS record. Follow the instructions below.",
+                        variant: "destructive",
+                      });
+                    }
+                  } catch {
+                    setDnsMessage("Network error while checking DNS. Try again in a moment.");
+                  } finally {
+                    setIsTestingDns(false);
+                  }
                 }}
                 disabled={isTestingDns || !customDomain}
                 className="press border-hairline text-ink hover:text-gold text-xs h-10 px-4 shrink-0"
@@ -935,6 +980,11 @@ export function OrganizerBrandPanel() {
             <p className="text-[11px] text-muted-ink mt-1">
               Enter the exact domain or subdomain you want your audience to visit.
             </p>
+            {dnsMessage && (
+              <p className={"text-[11px] mt-2 " + (customDomainStatus === "active" ? "text-emerald-400" : "text-amber-400")}>
+                {dnsMessage}
+              </p>
+            )}
           </div>
 
           <div className="rounded-xl border border-hairline bg-surface-2/40 p-4 space-y-3">
@@ -956,7 +1006,7 @@ export function OrganizerBrandPanel() {
                   <tr>
                     <td className="py-2 text-gold font-bold">CNAME</td>
                     <td className="py-2">{customDomain ? customDomain.split(".")[0] : "tickets"}</td>
-                    <td className="py-2">cname.blackheritage.africa</td>
+                    <td className="py-2">{dnsTarget}</td>
                     <td className="py-2 text-muted-ink">Auto / 3600</td>
                   </tr>
                 </tbody>
@@ -981,7 +1031,7 @@ export function OrganizerBrandPanel() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-mono font-bold text-gold bg-gold/10 border border-gold/20 px-3 py-1 rounded-md">
-                {audienceData?.totalCount || profile?.followersCount || 1420} Subscribers
+                {audienceData?.totalCount ?? 0} Subscribers
               </span>
             </div>
           </div>
@@ -996,9 +1046,25 @@ export function OrganizerBrandPanel() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
+                  const rows = audienceData?.followers || [];
+                  if (rows.length === 0) {
+                    toast({
+                      title: "Nothing to export yet",
+                      description: "No followers have subscribed so far.",
+                    });
+                    return;
+                  }
+                  const csv = "data:text/csv;charset=utf-8,email,subscribedAt\\n"
+                    + rows.map((r: any) => `${r.email},${new Date(r.createdAt).toISOString()}`).join("\\n");
+                  const link = document.createElement("a");
+                  link.setAttribute("href", encodeURI(csv));
+                  link.setAttribute("download", "audience-subscribers.csv");
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
                   toast({
                     title: "Subscriber list exported",
-                    description: "Downloaded audience CSV with subscriber emails.",
+                    description: `Downloaded CSV with ${rows.length} subscriber email${rows.length === 1 ? "" : "s"}.`,
                   });
                 }}
                 className="press h-7 text-[11px] text-muted-ink hover:text-gold"
@@ -1009,6 +1075,11 @@ export function OrganizerBrandPanel() {
             </div>
 
             <div className="divide-y divide-hairline">
+              {(audienceData?.followers || []).length === 0 && (
+                <div className="p-4 text-xs text-muted-ink text-center">
+                  No subscribers yet. Fans who follow you from your hub or event pages appear here.
+                </div>
+              )}
               {(audienceData?.followers || []).slice(0, 4).map((sub, i) => (
                 <div key={sub.id || i} className="p-3 flex items-center justify-between text-xs">
                   <span className="font-mono text-ink">{sub.email}</span>
