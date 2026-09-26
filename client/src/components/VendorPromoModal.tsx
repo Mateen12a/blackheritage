@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ import {
   renderFlyerToCanvas,
   downloadCanvasImage,
   getCanvasBlob,
+  brandThemeFromEvent,
   type FlyerFormat,
   type FlyerTheme,
 } from "@/lib/canvas-flyer";
@@ -57,6 +58,12 @@ export function VendorPromoModal({ open, onClose, vendor }: VendorPromoModalProp
   const ratingValue = ratings.data && ratings.data.count > 0 && ratings.data.average != null
     ? String(ratings.data.average)
     : "";
+  // The vendor profile's own palette (theme preset + accent), same tokens
+  // the public profile page renders with.
+  const brand = useMemo(() => brandThemeFromEvent(vendor), [vendor?.id, vendor?.branding, vendor?.theme]);
+  useEffect(() => {
+    if (open) setTheme(brand ? "brand" : "midnight");
+  }, [open, brand]);
 
   const redraw = useCallback(async () => {
     if (!canvasRef.current || !vendor) return;
@@ -72,7 +79,10 @@ export function VendorPromoModal({ open, onClose, vendor }: VendorPromoModalProp
         imageUrl: gallery[0] || null,
         qrUrl: profileUrl,
         showQr,
-        accentColor: vendor.branding?.accentHex || undefined,
+        // The "Brand" theme pulls the profile's own colors through; preset
+        // themes render their canonical look, untouched by brand colors.
+        brandTheme: theme === "brand" ? brand : null,
+        accentColor: theme === "brand" ? vendor.branding?.accentHex || undefined : undefined,
         vendorCategory: vendor.categoryLabel || vendor.category || "",
         vendorRating: ratingValue,
         vendorArea: area,
@@ -223,8 +233,9 @@ export function VendorPromoModal({ open, onClose, vendor }: VendorPromoModalProp
 
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink">Theme</Label>
-                <div className="grid grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-4 gap-2.5">
                   {([
+                    ...(brand ? [{ id: "brand" as const, name: "Brand", desc: "Your colors" }] : []),
                     { id: "midnight", name: "Midnight", desc: "Gold" },
                     { id: "stage", name: "Stage", desc: "Amber" },
                     { id: "editorial", name: "Editorial", desc: "White" },

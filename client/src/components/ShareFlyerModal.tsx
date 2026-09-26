@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -28,6 +28,7 @@ import {
   renderFlyerToCanvas,
   downloadCanvasImage,
   getCanvasBlob,
+  brandThemeFromEvent,
   type FlyerFormat,
   type FlyerTheme,
   type FlyerPresetType,
@@ -43,6 +44,10 @@ interface ShareFlyerModalProps {
   // Studio presets (teaser, private pass) are organizer tools. Attendee
   // surfaces keep the standard flyer unless the host enables this.
   enableStudio?: boolean;
+  // Guest mode: sharing only. Hides the design tools (theme, artwork,
+  // overlays) so guests get a clean share sheet, while organizers keep the
+  // full studio on their own surfaces.
+  guestMode?: boolean;
   // Provided when the caller wants an "Apply as event cover" action, e.g.
   // the event form. Receives an uploaded URL (never a data URL, so WhatsApp
   // link previews keep working).
@@ -65,6 +70,7 @@ export function ShareFlyerModal({
   attendeeName = "",
   ticketTier = "",
   enableStudio = false,
+  guestMode = false,
   onApplyCover,
 }: ShareFlyerModalProps) {
   const { toast } = useToast();
@@ -115,6 +121,14 @@ export function ShareFlyerModal({
     }
   }, [open, event]);
 
+  // Brand palette: the event's theme preset + organizer accent, the same
+  // tokens the event page renders with. When present, the flyer defaults to
+  // it so the card feels like the event's own brand.
+  const brand = useMemo(() => brandThemeFromEvent(event), [event?.id, event?.branding, event?.theme]);
+  useEffect(() => {
+    if (open) setTheme(brand ? "brand" : "midnight");
+  }, [open, brand]);
+
   // Re-draw canvas whenever options change or modal opens
   const redraw = useCallback(async () => {
     if (!canvasRef.current || !event) return;
@@ -137,7 +151,10 @@ export function ShareFlyerModal({
         isAttendeePass,
         attendeeName: attendeeNameState || attendeeName,
         ticketTier: ticketTier,
-        accentColor: event.branding?.accentHex || undefined,
+        // The "Brand" theme pulls the event's own palette through; preset
+        // themes render their canonical look, untouched by brand colors.
+        brandTheme: theme === "brand" ? brand : null,
+        accentColor: theme === "brand" ? event.branding?.accentHex || undefined : undefined,
         presetType: enableStudio ? preset : "standard",
         teaserLine,
         teaserBadge,
@@ -154,6 +171,7 @@ export function ShareFlyerModal({
   }, [
     format,
     theme,
+    brand,
     customImage,
     showQr,
     showPrice,
@@ -359,7 +377,8 @@ export function ShareFlyerModal({
     }
   };
 
-  const showPresetTabs = enableStudio && !isAttendeePass;
+  const showPresetTabs = enableStudio && !isAttendeePass && !guestMode;
+  const showDesignTools = !guestMode;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -373,12 +392,14 @@ export function ShareFlyerModal({
               </span>
               <div>
                 <DialogTitle className="font-display text-xl md:text-2xl font-bold text-ink">
-                  {showPresetTabs ? "Creative Studio" : "Flyer & Story Studio"}
+                  {showPresetTabs ? "Creative Studio" : guestMode ? "Share this event" : "Flyer & Story Studio"}
                 </DialogTitle>
                 <DialogDescription className="text-xs md:text-sm text-muted-ink mt-0.5">
                   {showPresetTabs
                     ? "Event flyers, mystery teasers, and private passes, sized for WhatsApp and Instagram."
-                    : "Create flyers and story cards sized for WhatsApp status and Instagram."}
+                    : guestMode
+                      ? "Grab a ready-made card for this event, sized for WhatsApp and Instagram."
+                      : "Create flyers and story cards sized for WhatsApp status and Instagram."}
                 </DialogDescription>
               </div>
             </div>
@@ -545,12 +566,16 @@ export function ShareFlyerModal({
               </div>
 
               {/* Theme Presets */}
+              {showDesignTools && (
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink">
                   Theme
                 </Label>
-                <div className="grid grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-4 gap-2.5">
                   {[
+                    ...(brand
+                      ? [{ id: "brand", name: "Brand", desc: "From this event" }]
+                      : []),
                     { id: "midnight", name: "Midnight", desc: "Obsidian & Gold" },
                     { id: "stage", name: "Stage", desc: "Indigo & Amber" },
                     { id: "editorial", name: "Editorial", desc: "Graphite & White" },
@@ -570,7 +595,13 @@ export function ShareFlyerModal({
                     </button>
                   ))}
                 </div>
+                {brand && (
+                  <p className="text-[11px] text-muted-ink">
+                    "Brand" uses this event's page colors. The other themes are fixed looks.
+                  </p>
+                )}
               </div>
+              )}
 
               {/* Teaser controls */}
               {showPresetTabs && preset === "teaser" && (
@@ -658,7 +689,7 @@ export function ShareFlyerModal({
               )}
 
               {/* Custom Flyer Artwork Upload (hidden on teaser: procedural by design) */}
-              {!(showPresetTabs && preset === "teaser") && (
+              {showDesignTools && !(showPresetTabs && preset === "teaser") && (
               <div className="space-y-2 rounded-xl border border-hairline bg-surface-2/40 p-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink flex items-center gap-1.5">
@@ -704,7 +735,7 @@ export function ShareFlyerModal({
               )}
 
               {/* Elements & Toggles: standard preset and attendee mode */}
-              {(!showPresetTabs || preset === "standard") && (
+              {showDesignTools && (!showPresetTabs || preset === "standard") && (
               <div className="space-y-3 rounded-xl border border-hairline bg-surface-2/40 p-4">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink">
                   Overlay Elements
@@ -777,7 +808,7 @@ export function ShareFlyerModal({
               )}
 
               {/* QR toggle for studio presets */}
-              {showPresetTabs && preset !== "standard" && (
+              {showDesignTools && showPresetTabs && preset !== "standard" && (
                 <div className="flex items-center justify-between rounded-xl border border-hairline bg-surface-2/40 p-4">
                   <div className="flex items-center gap-2">
                     <QrCode className="w-4 h-4 text-gold" />

@@ -1,8 +1,8 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { api, buildUrl } from "@shared/routes";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Trash2, Edit, ChevronLeft, Tag, UserPlus, MailPlus, Undo2, Activity, TrendingUp, Image as ImageIcon } from "lucide-react";
+import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Search, Trash2, Edit, ChevronLeft, Tag, UserPlus, MailPlus, Undo2, Activity, TrendingUp, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useLocation } from "wouter";
@@ -20,6 +20,16 @@ import {
   usePromos, useCreatePromo, useDeletePromo, useIssueManualTickets,
   useRefundBooking, useLiveStats,
 } from "@/hooks/use-organizer";
+
+/** Pill filter chip for the attendee list — same visual language as the
+ * Explore/Events filter rows, sized down for a table toolbar. */
+const attendeeChip = (selected: boolean) =>
+  cn(
+    "shrink-0 h-8 px-3.5 rounded-full border text-xs font-medium transition-colors duration-200",
+    selected
+      ? "bg-primary text-primary-foreground border-primary"
+      : "bg-transparent text-muted-ink border-hairline hover:border-gold/40 hover:text-ink",
+  );
 
 /**
  * Waitlist signups for this event, with CSV export for outreach. Query is
@@ -176,6 +186,32 @@ export default function ManageEvent() {
       toast({ title: "Verification Failed", description: err.message, variant: "destructive" });
     }
   });
+
+  // Attendee list: quick search + status filter, showing the first 25 by
+  // default so the table stays scannable on big events.
+  const [attendeeSearch, setAttendeeSearch] = useState("");
+  const [attendeeStatus, setAttendeeStatus] = useState("all");
+  const [attendeeLimit, setAttendeeLimit] = useState(25);
+
+  const attendeeStatuses = useMemo(() => {
+    const found = new Set<string>();
+    (bookings || []).forEach((b: any) => found.add(String(b.status || "unknown")));
+    return Array.from(found).sort();
+  }, [bookings]);
+
+  const filteredBookings = useMemo(() => {
+    const term = attendeeSearch.trim().toLowerCase();
+    return (bookings || []).filter((b: any) => {
+      if (attendeeStatus !== "all" && String(b.status || "unknown") !== attendeeStatus) return false;
+      if (!term) return true;
+      return (
+        String(b.name || "Guest").toLowerCase().includes(term) ||
+        String(b.email || "").toLowerCase().includes(term)
+      );
+    });
+  }, [bookings, attendeeSearch, attendeeStatus]);
+
+  const visibleBookings = filteredBookings.slice(0, attendeeLimit);
 
   if (eventLoading || bookingsLoading) {
     return (
@@ -385,12 +421,45 @@ export default function ManageEvent() {
                 variant="outline" 
                 size="sm"
                 className="border-hairline"
-                onClick={() => exportToCSV(bookings || [], `attendees-${event.id}.csv`)}
+                onClick={() => exportToCSV(filteredBookings, `attendees-${event.id}.csv`)}
               >
                 <Download className="w-4 h-4 mr-2" /> Export
               </Button>
             </CardHeader>
             <CardContent className="p-0">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-6 py-4 border-b border-hairline">
+                <div className="relative flex-1 sm:max-w-xs">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-ink pointer-events-none" />
+                  <Input
+                    value={attendeeSearch}
+                    onChange={(e) => { setAttendeeSearch(e.target.value); setAttendeeLimit(25); }}
+                    placeholder="Search name or email"
+                    className="pl-9 h-9 bg-surface-2 border-hairline text-sm"
+                    aria-label="Search attendees"
+                  />
+                </div>
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar" role="group" aria-label="Booking status filter">
+                  <button
+                    type="button"
+                    className={attendeeChip(attendeeStatus === "all")}
+                    aria-pressed={attendeeStatus === "all"}
+                    onClick={() => { setAttendeeStatus("all"); setAttendeeLimit(25); }}
+                  >
+                    All
+                  </button>
+                  {attendeeStatuses.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      className={attendeeChip(attendeeStatus === s)}
+                      aria-pressed={attendeeStatus === s}
+                      onClick={() => { setAttendeeStatus(s); setAttendeeLimit(25); }}
+                    >
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
                   <thead>
@@ -403,7 +472,7 @@ export default function ManageEvent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-hairline">
-                    {bookings?.map((booking) => (
+                    {visibleBookings.map((booking) => (
                       <tr key={booking.id} className="hover:bg-surface-2 transition-colors">
                         <td className="px-6 py-4">
                           <div className="font-medium text-ink">{booking.name || 'Guest'}</div>
@@ -438,9 +507,43 @@ export default function ManageEvent() {
                         </td>
                       </tr>
                     )}
+                    {bookings && bookings.length > 0 && filteredBookings.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center">
+                          <p className="text-muted-ink">No attendees match that search or filter.</p>
+                          <button
+                            type="button"
+                            className="text-xs text-gold underline underline-offset-4 mt-2"
+                            onClick={() => { setAttendeeSearch(""); setAttendeeStatus("all"); setAttendeeLimit(25); }}
+                          >
+                            Clear filters
+                          </button>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
+              {filteredBookings.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-t border-hairline">
+                  <p className="text-xs text-muted-ink">
+                    Showing {visibleBookings.length} of {filteredBookings.length}
+                    {(attendeeSearch || attendeeStatus !== "all") && (bookings || []).length !== filteredBookings.length
+                      ? ` (filtered from ${(bookings || []).length})`
+                      : ""}
+                  </p>
+                  {filteredBookings.length > visibleBookings.length && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-hairline"
+                      onClick={() => setAttendeeLimit((n) => n + 25)}
+                    >
+                      Load 25 more
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

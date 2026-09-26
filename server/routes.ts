@@ -735,6 +735,7 @@ export async function registerRoutes(
       pastEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       let isFollowing = false;
+      let isOwner = false;
       if (req.isAuthenticated()) {
         const { OrganizerFollowerModel } = await import("./models");
         const user = req.user as any;
@@ -743,6 +744,9 @@ export async function registerRoutes(
           $or: [{ userId: user._id.toString() }, { email: user.email }],
         }).lean();
         if (follow) isFollowing = true;
+        // The profile owner gets the studio tools on their own hub; other
+        // viewers get share-only surfaces.
+        isOwner = user._id?.toString() === orgId || user.role === "admin";
       }
 
       res.json({
@@ -765,6 +769,7 @@ export async function registerRoutes(
           spotifyPlaylistUrl: (organizer as any).spotifyPlaylistUrl || null,
           tourCities: (organizer as any).tourCities || [],
           isFollowing,
+          isOwner,
         },
         upcomingEvents: upcomingEvents.map((e) => ({
           ...e,
@@ -1807,17 +1812,30 @@ export async function registerRoutes(
       if (booking.status !== "paid") return res.status(400).json({ message: "Only paid bookings can be refunded" });
 
       if ((booking as any).paymentGateway === "flutterwave" && isFlutterwaveConfigured()) {
-        // Flutterwave refunds the numeric transaction id, stored on the booking
-        // at webhook time. Bookings fulfilled locally (tests) have none.
-        const txnId = Number((booking as any).gatewayTxnId);
-        if (txnId) {
+        // Verify first, refund second: a booking fulfilled locally (test
+        // webhook) has no real Flutterwave-side transaction, and refunding
+        // blind would abort on the gateway's generic error. Only refund when
+        // the gateway confirms it actually captured this payment.
+        const reference = String((booking as any).paymentReference || "");
+        let captured = false;
+        let txnId = Number((booking as any).gatewayTxnId) || null;
+        if (reference) {
           try {
-            await refundPayment({ reference: String((booking as any).paymentReference || ""), gateway: "flutterwave", transactionId: txnId });
+            const verification = await verifyPayment(reference);
+            captured = verification.status === "success";
+            if (verification.transactionId && !txnId) txnId = Number(verification.transactionId);
+          } catch (verifyErr: any) {
+            // "Not found" (either gateway wording) means no real charge to
+            // reverse. Any other verify failure is a gateway problem: abort.
+            if (!/not found|no transaction was found/i.test(String(verifyErr?.message || ""))) throw verifyErr;
+          }
+        }
+        if (captured && txnId) {
+          try {
+            await refundPayment({ reference, gateway: "flutterwave", transactionId: txnId });
           } catch (refundErr: any) {
-            // A locally-fulfilled booking (test webhook) has no Flutterwave-side
-            // transaction; only "not found" is tolerable. Real refund failures
-            // must still abort before tickets are voided.
-            if (!/not found/i.test(String(refundErr?.message || ""))) throw refundErr;
+            // Real refund failures must still abort before tickets are voided.
+            if (!/not found|no transaction was found/i.test(String(refundErr?.message || ""))) throw refundErr;
           }
         }
       } else if (isPaystackConfigured() && (booking as any).paymentGateway === "paystack") {
@@ -1830,7 +1848,7 @@ export async function registerRoutes(
           // A locally-fulfilled booking (test webhook) has no Paystack-side
           // transaction. Any other verify failure is a gateway problem: abort
           // here so tickets are only voided when the money story is settled.
-          if (!/not found/i.test(String(verifyErr?.message || ""))) throw verifyErr;
+          if (!/not found|no transaction was found/i.test(String(verifyErr?.message || ""))) throw verifyErr;
         }
         if (captured) {
           await refundPayment({ reference, gateway: "paystack" });

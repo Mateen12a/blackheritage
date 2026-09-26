@@ -233,6 +233,7 @@ export interface PublicOrganizerResponse {
     spotifyPlaylistUrl?: string | null;
     tourCities?: string[];
     isFollowing?: boolean;
+    isOwner?: boolean;
   };
   upcomingEvents: any[];
   pastEvents: any[];

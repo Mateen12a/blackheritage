@@ -1,7 +1,8 @@
 import { drawQRCode } from "./qr";
+import { getPreset } from "@shared/themes";
 
 export type FlyerFormat = "story" | "square"; // 9:16 (1080x1920) or 1:1 (1080x1080)
-export type FlyerTheme = "midnight" | "stage" | "editorial" | "vibrant";
+export type FlyerTheme = "midnight" | "stage" | "editorial" | "vibrant" | "brand"; // "brand" = derive from the event/organizer palette
 // Preset layouts. "standard" is the original event flyer; the rest serve
 // organizers announcing early, private gatherings, and vendor marketing.
 export type FlyerPresetType = "standard" | "teaser" | "private_pass" | "vendor_card";
@@ -45,6 +46,9 @@ export interface CreativeStudioOptions extends FlyerOptions {
   vendorArea?: string;
   vendorSlug?: string | null;
   vendorWhatsapp?: string | null;
+  // Brand colors from the event/organizer profile. When absent, callers can
+  // let renderFlyerToCanvas derive them via brandThemeFromEvent.
+  brandTheme?: FlyerBrandTheme | null;
   // Internal: the caller preloads the photo before layout math runs.
   __loadedImage?: HTMLImageElement | null;
 }
@@ -135,80 +139,250 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   });
 }
 
-/**
- * Text wrapping utility for HTML5 canvas.
- */
-function wrapText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  lineHeight: number,
-  maxLines = 3
-): number {
-  const words = text.split(" ");
-  let line = "";
-  let currentY = y;
-  let lineCount = 0;
-
-  for (let n = 0; n < words.length; n++) {
-    const testLine = line + words[n] + " ";
-    const metrics = ctx.measureText(testLine);
-    const testWidth = metrics.width;
-
-    if (testWidth > maxWidth && n > 0) {
-      lineCount++;
-      if (lineCount >= maxLines) {
-        // Truncate with ellipsis
-        ctx.fillText(line.trim() + "…", x, currentY);
-        return currentY + lineHeight;
-      }
-      ctx.fillText(line.trim(), x, currentY);
-      line = words[n] + " ";
-      currentY += lineHeight;
-    } else {
-      line = testLine;
-    }
-  }
-
-  ctx.fillText(line.trim(), x, currentY);
-  return currentY + lineHeight;
+// ─────────────────────────────────────────────────────────────────────────────
+// Brand theming: the event's palette (theme preset + organizer accent) flows
+// into the flyer so a branded page and its flyer feel like the same brand.
+// Everything is optional — with no brand data the built-in themes are used.
+// ─────────────────────────────────────────────────────────────────────────────
+export interface FlyerBrandTheme {
+  accent?: string; // hex, e.g. "#E3B23C"
+  background?: string; // hex base color of the event theme
+  text?: string; // hex primary text color
+  muted?: string; // hex muted text color
 }
 
-/** Centered multi-line title. Returns the y below the last line. */
-function wrapCentered(
+function parseHexColor(hex: string | null | undefined): [number, number, number] | null {
+  const m = /^#?([0-9a-fA-F]{6})$/.exec((hex || "").trim());
+  if (!m) return null;
+  const v = m[1];
+  return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16)];
+}
+
+function rgbToHex(rgb: [number, number, number]): string {
+  return "#" + rgb.map((c) => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+
+function relLuminance(rgb: [number, number, number]): number {
+  const lin = rgb.map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+}
+
+function contrastRatio(a: [number, number, number], b: [number, number, number]): number {
+  const la = relLuminance(a);
+  const lb = relLuminance(b);
+  const [hi, lo] = la >= lb ? [la, lb] : [lb, la];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+function mixColors(a: [number, number, number], b: [number, number, number], t: number): [number, number, number] {
+  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const rgb = parseHexColor(hex);
+  if (!rgb) return hex;
+  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
+}
+
+const FLYER_THEME_KEYS = ["midnight", "stage", "editorial", "vibrant"] as const;
+
+/**
+ * Blend the event's brand colors into a flyer theme. The built-in themes
+ * stay untouched when no brand data is present, so existing call sites
+ * render exactly as before. A custom background picks the built-in style
+ * with the closest base luminance (so scrims and shadows keep working) and
+ * recolors its tokens; the accent keeps its hue but is lifted toward the
+ * text color when it would sit muddy against the background.
+ */
+export function resolveFlyerTheme(
+  themeKey: string | null | undefined,
+  brand?: FlyerBrandTheme | null
+): { style: typeof THEME_STYLES[string]; accent: string; themeKey: string } {
+  let baseKey: string = themeKey && THEME_STYLES[themeKey] ? themeKey : "midnight";
+  const style = { ...THEME_STYLES[baseKey] };
+  if (!brand || typeof brand !== "object") return { style, accent: style.accent, themeKey: baseKey };
+
+  const bgRgb = parseHexColor(brand.background);
+  if (bgRgb) {
+    // Closest built-in base keeps the gradient/scrim behavior predictable.
+    const bgLum = relLuminance(bgRgb);
+    baseKey = FLYER_THEME_KEYS.reduce((best, k) => {
+      const d = Math.abs(relLuminance(parseHexColor(THEME_STYLES[k].bgBase) || [0, 0, 0]) - bgLum);
+      const bestD = Math.abs(relLuminance(parseHexColor(THEME_STYLES[best].bgBase) || [0, 0, 0]) - bgLum);
+      return d < bestD ? k : best;
+    }, baseKey);
+    Object.assign(style, THEME_STYLES[baseKey]);
+    style.bgBase = rgbToHex(bgRgb);
+    style.bgGradientBottom = style.bgBase;
+    const onLight = contrastRatio(bgRgb, [10, 10, 14]) > contrastRatio(bgRgb, [255, 255, 255]);
+    const textRgb: [number, number, number] = brand.text && parseHexColor(brand.text)
+      ? parseHexColor(brand.text)!
+      : onLight ? [26, 24, 20] : [250, 250, 252];
+    style.textPrimary = rgbToHex(textRgb);
+    style.textMuted = brand.muted && parseHexColor(brand.muted)
+      ? rgbToHex(parseHexColor(brand.muted)!)
+      : rgbToHex(mixColors(textRgb, bgRgb, 0.45));
+  }
+
+  let accent = style.accent;
+  const accentRgb = parseHexColor(brand.accent);
+  if (accentRgb) {
+    const bgForContrast = parseHexColor(style.bgBase) || [10, 10, 14];
+    if (contrastRatio(accentRgb, bgForContrast) < 2.2) {
+      // Too close to the background to read as an accent; lift toward the
+      // primary text color, keeping the brand hue.
+      const textRgb = parseHexColor(style.textPrimary) || [250, 250, 252];
+      accent = rgbToHex(mixColors(accentRgb, textRgb, 0.45));
+    } else {
+      accent = rgbToHex(accentRgb);
+    }
+    style.accent = accent;
+    style.accentGlow = hexToRgba(accent, baseKey === "editorial" ? 0.15 : 0.25);
+    style.badgeBg = hexToRgba(accent, baseKey === "editorial" ? 0.1 : 0.13);
+    style.badgeBorder = hexToRgba(accent, 0.45);
+    style.frameColor = hexToRgba(accent, baseKey === "editorial" ? 0.22 : 0.3);
+  }
+  return { style, accent, themeKey: baseKey };
+}
+
+/**
+ * Build a FlyerBrandTheme from an event (or event-like object) using the
+ * same theme preset + branding accent the event page itself renders with.
+ * Returns undefined when the event carries no brand info at all.
+ */
+export function brandThemeFromEvent(event: any): FlyerBrandTheme | undefined {
+  if (!event || typeof event !== "object") return undefined;
+  const accentHex = event.branding?.accentHex;
+  let background: string | undefined;
+  let text: string | undefined;
+  let muted: string | undefined;
+  try {
+    // Lazy import avoided: shared/themes has no side effects.
+    // (Imported at module scope at the bottom of this file.)
+    const preset = flyerPresetVars(event.theme);
+    background = preset?.background;
+    text = preset?.ink;
+    muted = preset?.mutedInk;
+  } catch {
+    // theme presets unavailable; accent-only branding still applies
+  }
+  const hasAny = Boolean(
+    (typeof accentHex === "string" && accentHex) || background || text || muted
+  );
+  if (!hasAny) return undefined;
+  return {
+    accent: typeof accentHex === "string" && accentHex ? accentHex : undefined,
+    background,
+    text,
+    muted,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Text fitting: measure first, then draw. Long titles shrink before they
+// wrap deeper, and wrapping never collides with neighbouring layers — the
+// same discipline the server-side PDF renderer follows.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Truncate text with an ellipsis so it never exceeds maxWidth at the current font. */
+function truncateToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  const t = (text || "").trim();
+  if (!t || ctx.measureText(t).width <= maxWidth) return t;
+  let out = t;
+  while (out.length > 1 && ctx.measureText(out + "…").width > maxWidth) {
+    out = out.slice(0, -1);
+  }
+  return out.trimEnd() + "…";
+}
+
+/** Word-wrap into at most maxLines lines. Reports whether content was cut. */
+function wrapLines(
   ctx: CanvasRenderingContext2D,
   text: string,
-  cx: number,
-  y: number,
   maxWidth: number,
-  lineHeight: number,
-  maxLines = 3
-): number {
-  const words = text.split(" ");
+  maxLines: number
+): { lines: string[]; truncated: boolean } {
+  const words = (text || "").split(/\s+/).filter(Boolean);
   const lines: string[] = [];
   let line = "";
-  for (let n = 0; n < words.length; n++) {
-    const test = line + words[n] + " ";
-    if (ctx.measureText(test).width > maxWidth && n > 0) {
-      lines.push(line.trim());
-      line = words[n] + " ";
-      if (lines.length === maxLines) break;
+  let i = 0;
+  for (; i < words.length; i++) {
+    const test = line ? `${line} ${words[i]}` : words[i];
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = words[i];
+      if (lines.length === maxLines) {
+        i++;
+        break;
+      }
     } else {
       line = test;
     }
   }
-  if (lines.length < maxLines && line.trim()) lines.push(line.trim());
-  const visible = lines.slice(0, maxLines);
-  visible.forEach((l, i) => {
-    if (i === maxLines - 1 && lines.length > maxLines) {
-      ctx.fillText(l + "…", cx, y + i * lineHeight);
-    } else {
-      ctx.fillText(l, cx, y + i * lineHeight);
-    }
+  let truncated = false;
+  if (lines.length === maxLines) {
+    // `line` holds the first word that did not fit; anything from it on is cut.
+    truncated = Boolean(line.trim()) || i < words.length;
+  } else if (line.trim()) {
+    lines.push(line.trim());
+  }
+  return { lines: lines.map((l) => l.trim()).filter(Boolean), truncated };
+}
+
+/** Draw pre-wrapped lines; returns the y below the last baseline's line box. */
+function drawTextLines(
+  ctx: CanvasRenderingContext2D,
+  lines: string[],
+  x: number,
+  y: number,
+  lineHeight: number,
+  align: "left" | "center",
+  cx?: number
+): number {
+  ctx.textAlign = align;
+  lines.forEach((l, i) => {
+    ctx.fillText(l, align === "center" ? (cx ?? x) : x, y + i * lineHeight);
   });
-  return y + visible.length * lineHeight;
+  return y + lines.length * lineHeight;
+}
+
+/**
+ * Fit a display title into maxLines: shrink the font from startSize toward
+ * minSize until the wrapped text fits the width without truncation, then
+ * ellipsize only if even the smallest size cannot hold it.
+ */
+function fitTitle(
+  ctx: CanvasRenderingContext2D,
+  title: string,
+  maxWidth: number,
+  maxLines: number,
+  startSize: number,
+  minSize: number,
+  weight = 800
+): { lines: string[]; size: number; truncated: boolean; lineHeight: number } {
+  const lineHeightAt = (s: number) => Math.round(s * 1.14);
+  let size = startSize;
+  while (size > minSize) {
+    ctx.font = `${weight} ${size}px 'Playfair Display', serif`;
+    const { lines, truncated } = wrapLines(ctx, title, maxWidth, maxLines);
+    const fits = lines.length > 0 && !truncated && lines.every((l) => ctx.measureText(l).width <= maxWidth);
+    if (fits) return { lines, size, truncated: false, lineHeight: lineHeightAt(size) };
+    size -= 4;
+  }
+  ctx.font = `${weight} ${minSize}px 'Playfair Display', serif`;
+  const fitted = wrapLines(ctx, title, maxWidth, maxLines);
+  const lines = fitted.lines;
+  if (fitted.truncated && lines.length > 0) {
+    const last = lines[lines.length - 1];
+    const candidate = (last.replace(/\s+\S*$/, "") || last).trimEnd();
+    if (ctx.measureText(candidate + "…").width <= maxWidth) {
+      lines[lines.length - 1] = candidate + "…";
+    }
+  }
+  return { lines, size: minSize, truncated: fitted.truncated, lineHeight: lineHeightAt(minSize) };
 }
 
 /** Shared date parts. Invalid or missing dates degrade to "UPCOMING". */
@@ -221,6 +395,18 @@ function eventDateParts(date: string | Date) {
     dateStr: invalid ? "" : d.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }).toUpperCase(),
     timeStr: invalid ? "" : d.toLocaleTimeString("en-NG", { hour: "numeric", minute: "2-digit", hour12: true }).toUpperCase(),
     monthYear: invalid ? "" : d.toLocaleDateString("en-NG", { month: "long", year: "numeric" }).toUpperCase(),
+  };
+}
+
+/** Theme preset colors (from shared/themes) as plain hex values. */
+function flyerPresetVars(themeKey: any): { background?: string; ink?: string; mutedInk?: string } | null {
+  const preset = getPreset(themeKey);
+  if (!preset) return null;
+  const v = preset.vars as Record<string, string>;
+  return {
+    background: v["--color-background"],
+    ink: v["--color-ink"],
+    mutedInk: v["--color-muted-ink"],
   };
 }
 
@@ -278,7 +464,7 @@ function drawPill(
   cy: number,
   style: typeof THEME_STYLES[string],
   accent: string,
-  opts?: { font?: string; fill?: string; textColor?: string; padX?: number; height?: number; radius?: number; borderColor?: string }
+  opts?: { font?: string; fill?: string; textColor?: string; padX?: number; height?: number; radius?: number; borderColor?: string; maxWidth?: number }
 ): number {
   const font = opts?.font ?? "600 24px 'DM Sans', sans-serif";
   const padX = opts?.padX ?? 24;
@@ -287,7 +473,9 @@ function drawPill(
   ctx.font = font;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  const w = ctx.measureText(text).width + padX * 2;
+  // Never let a long label push the pill past its bounds.
+  const label = opts?.maxWidth != null ? truncateToWidth(ctx, text, Math.max(40, opts.maxWidth - padX * 2)) : text;
+  const w = ctx.measureText(label).width + padX * 2;
   ctx.fillStyle = opts?.fill ?? "rgba(15, 15, 20, 0.75)";
   ctx.beginPath();
   ctx.roundRect(cx - w / 2, cy - h / 2, w, h, opts?.radius ?? h / 2);
@@ -296,7 +484,7 @@ function drawPill(
   ctx.lineWidth = 1;
   ctx.stroke();
   ctx.fillStyle = opts?.textColor ?? accent;
-  ctx.fillText(text, cx, cy + 1);
+  ctx.fillText(label, cx, cy + 1);
   ctx.restore();
   return h;
 }
@@ -364,11 +552,17 @@ function renderStandardFlyer(
     drawAmbientGlow(ctx, style, width, height, 0.35);
   }
 
-  // 3. Cinematic gradients & shadows
+  // 3. Cinematic gradients & shadows. Scrims follow the background's tone:
+  // dark scrims on dark brand palettes, white scrims on light ones, so a
+  // light brand flyer stays light instead of getting muddied by black ink.
+  const bgRgb = parseHexColor(style.bgBase) || [10, 10, 14];
+  const onLightBg = relLuminance(bgRgb) > 0.45;
+  const scrimRgb = onLightBg ? "255, 255, 255" : "5, 5, 8";
+  const scrimRgb2 = onLightBg ? "250, 250, 248" : "8, 8, 12";
   ctx.save();
   const topScrim = ctx.createLinearGradient(0, 0, 0, 320);
-  topScrim.addColorStop(0, "rgba(5, 5, 8, 0.85)");
-  topScrim.addColorStop(0.6, "rgba(5, 5, 8, 0.4)");
+  topScrim.addColorStop(0, `rgba(${scrimRgb}, 0.85)`);
+  topScrim.addColorStop(0.6, `rgba(${scrimRgb}, 0.4)`);
   topScrim.addColorStop(1, "transparent");
   ctx.fillStyle = topScrim;
   ctx.fillRect(0, 0, width, 320);
@@ -376,8 +570,8 @@ function renderStandardFlyer(
   const bottomGradientHeight = isStory ? 1050 : 720;
   const bottomGrad = ctx.createLinearGradient(0, height - bottomGradientHeight, 0, height);
   bottomGrad.addColorStop(0, "transparent");
-  bottomGrad.addColorStop(0.25, "rgba(8, 8, 12, 0.75)");
-  bottomGrad.addColorStop(0.55, style.bgBase + "FA");
+  bottomGrad.addColorStop(0.25, `rgba(${scrimRgb2}, 0.75)`);
+  bottomGrad.addColorStop(0.55, onLightBg ? hexToRgba(style.bgBase, 0.98) : style.bgBase + "FA");
   bottomGrad.addColorStop(1, style.bgBase);
   ctx.fillStyle = bottomGrad;
   ctx.fillRect(0, height - bottomGradientHeight, width, bottomGradientHeight);
@@ -387,7 +581,7 @@ function renderStandardFlyer(
     width / 2, height / 2, width * 0.9
   );
   radialVignette.addColorStop(0, "transparent");
-  radialVignette.addColorStop(1, "rgba(0, 0, 0, 0.65)");
+  radialVignette.addColorStop(1, onLightBg ? "rgba(255, 255, 255, 0.5)" : "rgba(0, 0, 0, 0.65)");
   ctx.fillStyle = radialVignette;
   ctx.fillRect(0, 0, width, height);
   ctx.restore();
@@ -410,7 +604,7 @@ function renderStandardFlyer(
   const pillHeight = 44;
   const pillY = headerY - pillHeight / 2;
 
-  ctx.fillStyle = "rgba(15, 15, 20, 0.75)";
+  ctx.fillStyle = onLightBg ? "rgba(255, 255, 255, 0.72)" : "rgba(15, 15, 20, 0.75)";
   ctx.beginPath();
   ctx.roundRect((width - presWidth) / 2, pillY, presWidth, pillHeight, 22);
   ctx.fill();
@@ -443,7 +637,10 @@ function renderStandardFlyer(
     ctx.restore();
   }
 
-  // 7. Event details block
+  // 7. Event details block — measured first, then drawn bottom-anchored, so
+  // a long title grows upward into the photo instead of crashing through the
+  // eyebrow above or the footer below. Title font shrinks (fitTitle) before
+  // the layout gives up on fitting.
   const paddingX = frameInset + (isStory ? 54 : 44);
   const contentWidth = width - paddingX * 2;
   const footerH = options.showQr ? (isStory ? 240 : 180) : isStory ? 140 : 100;
@@ -453,59 +650,98 @@ function renderStandardFlyer(
   ctx.save();
   ctx.textAlign = "left";
 
-  let currentY = isStory ? bottomAnchor - 380 : bottomAnchor - 280;
+  const eyebrowText = truncateToWidth(
+    ctx,
+    options.organizerName ? options.organizerName.toUpperCase() : "LIVE EVENT",
+    contentWidth
+  );
 
-  const eyebrowText = options.organizerName
-    ? options.organizerName.toUpperCase()
-    : "LIVE EVENT";
-  ctx.font = "700 20px 'DM Sans', sans-serif";
+  // Cap-height clearances: baseline-to-baseline gaps sized from the actual
+  // font sizes so ascenders never reach the row above.
+  const titleStart = isStory ? 76 : 62;
+  const titleMin = isStory ? 40 : 34;
+  const titleMaxLines = isStory ? 3 : 2;
+  const dateSize = 28;
+  const locSize = 25;
+  const hasPrice = Boolean(options.showPrice && options.price);
+  const hasAttendeeCard = Boolean(options.isAttendeePass && options.attendeeName);
+  const cardH = isStory ? 96 : 80;
+
+  // Measurement pass (identical steps to the draw pass below).
+  const fitted = fitTitle(ctx, options.title || "Untitled Event", contentWidth, titleMaxLines, titleStart, titleMin);
+  const eyebrowSize = 20;
+  // Eyebrow baseline → first title baseline: the title's ascent (~0.72×size)
+  // must clear the eyebrow's descender zone with room to spare.
+  const gapEyebrowTitle = Math.round(18 + fitted.size * 0.85);
+  const gapTitleRule = 12; // last title baseline → gold rule top
+  const ruleH = 4;
+  const gapRuleDate = 30; // rule bottom → date baseline
+  const gapDateLoc = 38; // date baseline → location baseline
+  const gapLocPrice = 18; // last text baseline → price pill top
+  const gapPriceCard = 12; // pill bottom → attendee card top
+  const showLoc = options.showLocation !== false && Boolean(options.location);
+
+  let blockH =
+    gapEyebrowTitle +
+    (fitted.lines.length - 1) * fitted.lineHeight +
+    gapTitleRule + ruleH + gapRuleDate;
+  if (showLoc) blockH += gapDateLoc;
+  if (hasPrice) blockH += gapLocPrice + 40;
+  if (hasAttendeeCard) blockH += gapPriceCard + cardH;
+  blockH += 8; // descender breathing room below the last baseline
+
+  // Top-anchored safety clamp: if the measured block somehow grows taller
+  // than the space under the header, keep it below the brand mark rather
+  // than colliding with it.
+  const headerZoneBottom = frameInset + (isStory ? 170 : 140) + (options.isAttendeePass ? 60 : 0);
+  const blockTop = Math.max(bottomAnchor - blockH, headerZoneBottom);
+
+  // ── Draw pass ──
+  let currentY = blockTop; // eyebrow baseline
+  ctx.font = `700 ${eyebrowSize}px 'DM Sans', sans-serif`;
   ctx.fillStyle = accent;
   ctx.letterSpacing = "2px";
   ctx.fillText(eyebrowText, paddingX, currentY);
-  currentY += 36;
+  ctx.letterSpacing = "0px";
 
-  ctx.font = "800 68px 'Playfair Display', serif";
-  if (!isStory) {
-    ctx.font = "800 56px 'Playfair Display', serif";
-  }
+  const titleBaseline = currentY + gapEyebrowTitle;
+  ctx.font = `800 ${fitted.size}px 'Playfair Display', serif`;
   ctx.fillStyle = style.textPrimary;
-  ctx.shadowColor = "rgba(0,0,0,0.85)";
+  ctx.shadowColor = onLightBg ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.85)";
   ctx.shadowBlur = 16;
   ctx.shadowOffsetY = 4;
-  currentY = wrapText(ctx, options.title, paddingX, currentY, contentWidth, isStory ? 80 : 66, isStory ? 3 : 2);
-
+  ctx.textAlign = "left";
+  fitted.lines.forEach((l, i) => ctx.fillText(l, paddingX, titleBaseline + i * fitted.lineHeight));
   ctx.shadowColor = "transparent";
+
+  let stackY = titleBaseline + (fitted.lines.length - 1) * fitted.lineHeight;
   ctx.fillStyle = accent;
-  ctx.fillRect(paddingX, currentY + 4, 80, 4);
-  currentY += 36;
+  ctx.fillRect(paddingX, stackY + gapTitleRule, 80, ruleH);
+  stackY += gapTitleRule + ruleH + gapRuleDate;
 
-  ctx.font = "600 28px 'DM Sans', sans-serif";
+  ctx.font = `600 ${dateSize}px 'DM Sans', sans-serif`;
   ctx.fillStyle = style.textPrimary;
-  const dateFormatted = `${parts.dayName}, ${parts.dateStr}${parts.timeStr ? ` • ${parts.timeStr}` : ""}`;
-  ctx.fillText(dateFormatted, paddingX, currentY);
-  currentY += 38;
+  const dateBits = [parts.dayName, parts.dateStr].filter(Boolean);
+  const dateFormatted = `${dateBits.join(", ")}${parts.timeStr ? ` • ${parts.timeStr}` : ""}`;
+  ctx.fillText(truncateToWidth(ctx, dateFormatted, contentWidth), paddingX, stackY);
 
-  if (options.showLocation !== false && options.location) {
-    ctx.font = "400 25px 'DM Sans', sans-serif";
+  if (showLoc) {
+    stackY += gapDateLoc;
+    ctx.font = `400 ${locSize}px 'DM Sans', sans-serif`;
     ctx.fillStyle = style.textMuted;
-    const locMetrics = ctx.measureText(options.location);
-    if (locMetrics.width > contentWidth) {
-      wrapText(ctx, options.location, paddingX, currentY, contentWidth, 32, 1);
-    } else {
-      ctx.fillText(options.location, paddingX, currentY);
-    }
-    currentY += 38;
+    ctx.fillText(truncateToWidth(ctx, options.location, contentWidth), paddingX, stackY);
   }
 
-  if (options.showPrice && options.price) {
-    const priceText = options.price.toUpperCase();
+  if (hasPrice) {
+    stackY += gapLocPrice;
+    const priceText = options.price!.toUpperCase();
     ctx.font = "700 22px 'DM Sans', sans-serif";
-    const priceW = ctx.measureText(priceText).width + 36;
+    const priceW = Math.min(ctx.measureText(priceText).width + 36, contentWidth);
     const priceH = 40;
 
-    ctx.fillStyle = "rgba(227, 178, 60, 0.15)";
+    ctx.fillStyle = hexToRgba(accent, 0.15);
     ctx.beginPath();
-    ctx.roundRect(paddingX, currentY, priceW, priceH, 6);
+    ctx.roundRect(paddingX, stackY, priceW, priceH, 6);
     ctx.fill();
 
     ctx.strokeStyle = accent;
@@ -513,30 +749,29 @@ function renderStandardFlyer(
     ctx.stroke();
 
     ctx.fillStyle = accent;
-    ctx.fillText(priceText, paddingX + 18, currentY + 26);
-    currentY += 56;
+    ctx.fillText(truncateToWidth(ctx, priceText, priceW - 36), paddingX + 18, stackY + 26);
+    stackY += priceH;
   }
 
-  if (options.isAttendeePass && options.attendeeName) {
-    const cardY = currentY + 10;
-    const cardH = isStory ? 100 : 80;
-
-    ctx.fillStyle = "rgba(25, 25, 31, 0.85)";
+  if (hasAttendeeCard) {
+    const cardY = stackY + gapPriceCard;
+    ctx.fillStyle = onLightBg ? "rgba(255, 255, 255, 0.85)" : "rgba(25, 25, 31, 0.85)";
     ctx.beginPath();
     ctx.roundRect(paddingX, cardY, contentWidth, cardH, 12);
     ctx.fill();
 
-    ctx.strokeStyle = "rgba(227, 178, 60, 0.35)";
+    ctx.strokeStyle = hexToRgba(accent, 0.35);
     ctx.lineWidth = 1;
     ctx.stroke();
 
+    ctx.textAlign = "left";
     ctx.font = "600 18px 'DM Sans', sans-serif";
     ctx.fillStyle = accent;
     ctx.fillText("TICKET HOLDER", paddingX + 24, cardY + 30);
 
     ctx.font = "700 28px 'DM Sans', sans-serif";
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillText(options.attendeeName, paddingX + 24, cardY + 68);
+    ctx.fillStyle = style.textPrimary;
+    ctx.fillText(truncateToWidth(ctx, options.attendeeName!, contentWidth - 48), paddingX + 24, cardY + 66);
 
     if (options.ticketTier) {
       ctx.textAlign = "right";
@@ -546,7 +781,7 @@ function renderStandardFlyer(
 
       ctx.font = "700 24px 'DM Sans', sans-serif";
       ctx.fillStyle = accent;
-      ctx.fillText(options.ticketTier, paddingX + contentWidth - 24, cardY + 68);
+      ctx.fillText(truncateToWidth(ctx, options.ticketTier, contentWidth - 120), paddingX + contentWidth - 24, cardY + 66);
       ctx.textAlign = "left";
     }
   }
@@ -652,21 +887,24 @@ function renderTeaserFlyer(
   const eyebrowY = isStory ? height * 0.3 : height * 0.27;
   ctx.save();
   ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
   ctx.font = "700 22px 'DM Sans', sans-serif";
   ctx.fillStyle = accent;
   ctx.letterSpacing = "6px";
   ctx.fillText("THE ANNOUNCEMENT", width / 2, eyebrowY);
   ctx.letterSpacing = "0px";
 
-  // Title, big and centered
-  ctx.font = `800 ${isStory ? 96 : 68}px 'Playfair Display', serif`;
+  // Title, big but fitted: shrink toward the minimum before wrapping
+  // deeper, so a long name stays clear of the eyebrow above and the teaser
+  // line below.
+  const fitted = fitTitle(ctx, options.title || "Something Is Coming", contentWidth, isStory ? 3 : 2, isStory ? 96 : 68, isStory ? 44 : 36);
+  ctx.font = `800 ${fitted.size}px 'Playfair Display', serif`;
   ctx.fillStyle = style.textPrimary;
   ctx.shadowColor = "rgba(0,0,0,0.7)";
   ctx.shadowBlur = 18;
-  const titleY = eyebrowY + (isStory ? 90 : 74);
-  const titleEnd = wrapCentered(ctx, options.title || "Something Is Coming", width / 2, titleY, contentWidth, isStory ? 108 : 80, isStory ? 3 : 2);
+  const titleBaseline = eyebrowY + Math.round(30 + fitted.size * 0.95);
+  fitted.lines.forEach((l, i) => ctx.fillText(l, width / 2, titleBaseline + i * fitted.lineHeight));
   ctx.shadowColor = "transparent";
+  const titleEnd = titleBaseline + (fitted.lines.length - 1) * fitted.lineHeight;
 
   // Gold rule
   ctx.fillStyle = accent;
@@ -683,9 +921,10 @@ function renderTeaserFlyer(
     ctx.textBaseline = "middle";
     ctx.font = `400 ${isStory ? 30 : 26}px 'DM Sans', sans-serif`;
     ctx.fillStyle = style.textMuted;
-    wrapCentered(ctx, teaserText, width / 2, belowRule, contentWidth, isStory ? 40 : 36, 2);
+    const teaserLines = wrapLines(ctx, teaserText, contentWidth, 2).lines;
+    teaserLines.forEach((l, i) => ctx.fillText(l, width / 2, belowRule + i * (isStory ? 40 : 36)));
     ctx.restore();
-    belowRule += isStory ? 90 : 76;
+    belowRule += (teaserLines.length - 1) * (isStory ? 40 : 36) + (isStory ? 90 : 76);
   }
 
   // Hype badge
@@ -698,7 +937,7 @@ function renderTeaserFlyer(
       belowRule,
       style,
       accent,
-      { fill: style.badgeBg, borderColor: accent, textColor: accent, font: "700 24px 'DM Sans', sans-serif", height: 52, padX: 32 }
+      { fill: style.badgeBg, borderColor: accent, textColor: accent, font: "700 24px 'DM Sans', sans-serif", height: 52, padX: 32, maxWidth: contentWidth }
     );
     belowRule += isStory ? 110 : 96;
   }
@@ -712,15 +951,16 @@ function renderTeaserFlyer(
       belowRule,
       style,
       accent,
-      { fill: "rgba(15,15,20,0.75)", textColor: style.textPrimary, font: "600 22px 'DM Sans', sans-serif", height: 46 }
+      { fill: "rgba(15,15,20,0.75)", textColor: style.textPrimary, font: "600 22px 'DM Sans', sans-serif", height: 46, maxWidth: contentWidth }
     );
   }
 
-  // Footer: follow CTA with optional QR
+  // Footer: follow CTA with optional QR. The QR sits high enough that its
+  // URL caption stays on the canvas with room below.
   const footerY = height - frameInset - (isStory ? 150 : 110);
   if (options.showQr && options.qrUrl) {
     const qrSize = isStory ? 130 : 100;
-    const qrY = footerY;
+    const qrY = height - frameInset - (isStory ? 195 : 155);
     ctx.save();
     ctx.fillStyle = "#FFFFFF";
     ctx.beginPath();
@@ -827,15 +1067,18 @@ function renderPrivatePassFlyer(
     { fill: style.badgeBg, borderColor: accent, font: "700 22px 'DM Sans', sans-serif", height: 48 }
   );
 
-  // Title
+  // Title: fitted like every other preset, so a long name shrinks instead
+  // of running over the invitation pill above or the dress-code chip below.
   const titleY = pillY + (isStory ? 92 : 76);
+  const titleFit = fitTitle(ctx, options.title || "A Private Gathering", contentWidth, 2, isStory ? 76 : 58, isStory ? 40 : 34);
   ctx.save();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = `800 ${isStory ? 76 : 58}px 'Playfair Display', serif`;
+  ctx.font = `800 ${titleFit.size}px 'Playfair Display', serif`;
   ctx.fillStyle = style.textPrimary;
-  const titleEnd = wrapCentered(ctx, options.title || "A Private Gathering", width / 2, titleY, contentWidth, isStory ? 88 : 68, 2);
+  titleFit.lines.forEach((l, i) => ctx.fillText(l, width / 2, titleY + i * titleFit.lineHeight));
   ctx.restore();
+  const titleEnd = titleY + titleFit.lines.length * titleFit.lineHeight;
 
   // Dress code chip
   let belowTitle = titleEnd + (isStory ? 46 : 36);
@@ -890,10 +1133,11 @@ function renderPrivatePassFlyer(
   ctx.letterSpacing = "0px";
   ctx.restore();
 
-  // QR to the gated link
+  // QR to the gated link. Kept well above the footer line so the caption
+  // and the brand footer never share a baseline zone.
   if (options.showQr && options.qrUrl) {
     const qrSize = isStory ? 140 : 110;
-    const qrY = height - frameInset - (isStory ? 250 : 200);
+    const qrY = height - frameInset - (isStory ? 290 : 230);
     ctx.save();
     ctx.fillStyle = "#FFFFFF";
     ctx.beginPath();
@@ -950,9 +1194,22 @@ function renderVendorCardFlyer(
   const headerText = (options.vendorArea || "LAGOS").toUpperCase() + " VENDOR";
   drawPill(ctx, headerText, width / 2, frameInset + (isStory ? 70 : 56), style, accent);
 
-  // Portrait: photo in a rounded window, or a monogram seal
-  const photoY = frameInset + (isStory ? 130 : 104);
-  const photoH = isStory ? height * 0.34 : height * 0.36;
+  // Portrait: photo in a rounded window, or a monogram seal. The photo
+  // shrinks when the rows below it are tall, so the stack always clears the
+  // CTA zone instead of colliding with it.
+  const photoTopPad = isStory ? 130 : 104;
+  const nameGap = isStory ? 92 : 84;
+  const chipH = 46;
+  const nameFit0 = fitTitle(ctx, options.title || "My Business", contentWidth, 2, isStory ? 68 : 60, isStory ? 40 : 34);
+  const chipAdvance = options.vendorCategory ? 92 : 0;
+  const ratingAdvance = options.vendorRating ? (isStory ? 76 : 66) : 0;
+  const ctaY = height - frameInset - (options.showQr && options.qrUrl ? (isStory ? 330 : 250) : (isStory ? 150 : 120));
+  const stackEndLimit = ctaY - 56 / 2 - (isStory ? 60 : 50);
+  const fixedBelowPhoto = nameGap + (nameFit0.lines.length - 1) * nameFit0.lineHeight + chipAdvance + ratingAdvance;
+  const photoHMax = isStory ? height * 0.34 : height * 0.36;
+  const photoHMin = isStory ? Math.round(height * 0.2) : Math.round(height * 0.22);
+  const photoH = Math.max(photoHMin, Math.min(photoHMax, stackEndLimit - photoTopPad - fixedBelowPhoto - 8));
+  const photoY = photoTopPad;
   const photoSource = options.customImageDataUrl || options.imageUrl;
   let photoDrawn = false;
   if (photoSource) {
@@ -1008,15 +1265,18 @@ function renderVendorCardFlyer(
     ctx.restore();
   }
 
-  // Name
-  const nameY = photoY + photoH + (isStory ? 92 : 84);
+  // Name — fitted so a long business name shrinks instead of colliding
+  // with the category chip below it.
+  const nameY = photoY + photoH + nameGap;
+  const nameFit = nameFit0;
   ctx.save();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = `800 ${isStory ? 68 : 60}px 'Playfair Display', serif`;
+  ctx.font = `800 ${nameFit.size}px 'Playfair Display', serif`;
   ctx.fillStyle = style.textPrimary;
-  const nameEnd = wrapCentered(ctx, options.title, width / 2, nameY, contentWidth, isStory ? 80 : 72, 2);
+  nameFit.lines.forEach((l, i) => ctx.fillText(l, width / 2, nameY + i * nameFit.lineHeight));
   ctx.restore();
+  const nameEnd = nameY + nameFit.lines.length * nameFit.lineHeight;
 
   // Category chip
   let belowName = nameEnd + (isStory ? 44 : 40);
@@ -1028,9 +1288,9 @@ function renderVendorCardFlyer(
       belowName + 22,
       style,
       accent,
-      { fill: style.badgeBg, borderColor: accent, font: "700 22px 'DM Sans', sans-serif", height: 46 }
+      { fill: style.badgeBg, borderColor: accent, font: "700 22px 'DM Sans', sans-serif", height: 46, maxWidth: contentWidth }
     );
-    belowName += 92;
+    belowName += chipAdvance;
   }
 
   // Rating row
@@ -1054,8 +1314,7 @@ function renderVendorCardFlyer(
     belowName += isStory ? 76 : 66;
   }
 
-  // CTA pill + link
-  const ctaY = height - frameInset - (options.showQr && options.qrUrl ? (isStory ? 330 : 250) : (isStory ? 150 : 120));
+  // CTA pill + link (ctaY computed above with the photo sizing)
   drawPill(
     ctx,
     "BOOK ME ON BLACK HERITAGE",
@@ -1063,7 +1322,7 @@ function renderVendorCardFlyer(
     ctaY,
     style,
     accent,
-    { fill: accent, borderColor: accent, textColor: "#0B0B0E", font: "800 24px 'DM Sans', sans-serif", height: 56, padX: 36 }
+    { fill: accent, borderColor: accent, textColor: "#0B0B0E", font: "800 24px 'DM Sans', sans-serif", height: 56, padX: 36, maxWidth: contentWidth }
   );
 
   const profileLine = options.vendorSlug
@@ -1147,12 +1406,18 @@ export async function renderFlyerToCanvas(
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  const style = THEME_STYLES[options.theme] || THEME_STYLES.midnight;
+  const studioOpts = options as CreativeStudioOptions;
+
+  // Brand theming: an explicit brandTheme wins; otherwise any event object
+  // attached as __event drives the palette. With neither, the built-in theme
+  // renders exactly as before.
+  const brand = studioOpts.brandTheme || brandThemeFromEvent((options as any).__event);
+  const resolved = resolveFlyerTheme(options.theme, brand);
+  const style = resolved.style;
   const accent = options.accentColor || style.accent;
   const frameInset = isStory ? 54 : 44;
 
   // Presets that draw a photo need it decoded before layout math runs.
-  const studioOpts = options as CreativeStudioOptions;
   if (preset === "vendor_card" || preset === "standard") {
     const source = options.customImageDataUrl || options.imageUrl;
     studioOpts.__loadedImage = source ? await loadImage(source) : null;

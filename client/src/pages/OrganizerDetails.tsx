@@ -835,6 +835,7 @@ export default function OrganizerDetails() {
         open={isStoryFlyerOpen}
         onClose={() => setIsStoryFlyerOpen(false)}
         event={hubFlyerEvent}
+        guestMode={!organizer?.isOwner}
       />
     </div>
   );

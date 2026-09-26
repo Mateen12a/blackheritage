@@ -506,7 +506,7 @@ export default function EventDetails() {
                   className="press hidden lg:inline-flex mt-2.5 w-full h-11 border-hairline text-ink hover:text-gold hover:border-gold/40 font-medium rounded-md items-center justify-center gap-2"
                 >
                   <Share2 className="w-4 h-4 text-gold" />
-                  Share &amp; Create Flyers
+                  Share Event
                 </Button>
 
                 {waitlistEnabled && soldOut && (
@@ -555,7 +555,7 @@ export default function EventDetails() {
             variant="outline"
             size="icon"
             onClick={() => setIsFlyerModalOpen(true)}
-            aria-label="Create event flyer or share"
+            aria-label="Share this event"
             className="press h-12 w-12 shrink-0 border-hairline text-ink hover:text-gold"
           >
             <Share2 className="w-5 h-5" />
@@ -588,6 +588,7 @@ export default function EventDetails() {
         open={isFlyerModalOpen}
         onClose={() => setIsFlyerModalOpen(false)}
         event={event}
+        guestMode
       />
     </div>
   );

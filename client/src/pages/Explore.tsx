@@ -12,28 +12,50 @@ import { FadeImg } from "@/components/motion";
 import { format } from "date-fns";
 import { useMemo, useState } from "react";
 import { NativeSponsorSpotlight } from "@/components/NativeSponsorSpotlight";
-import { StateFilter } from "@/components/StateFilter";
 import { stateForLocation, stateOptionsForEvents } from "@/lib/nigeria";
+import { cn } from "@/lib/utils";
 
 /**
- * App-style Explore: large title, always-present search, category chips,
+ * App-style Explore: large title, always-present search, one merged filter
+ * row (when / type / where — the same shape as the public Events page),
  * then a vertical event feed with a vendor rail. Eventbrite/Partyverse
  * structure; DESIGN.md surface (large Playfair title, gold chips, hairlines).
  * Desktop keeps the same feed in a centered column.
  */
 
-type Category = { key: string; label: string };
+type QuickFilter = "all" | "tonight" | "week" | "free" | "under10k" | "featured";
+type TypeFilter = "all" | string;
 
-const CATEGORIES: Category[] = [
-  { key: "all", label: "All Events" },
+const QUICK_FILTERS: { key: Exclude<QuickFilter, "all">; label: string }[] = [
+  { key: "tonight", label: "Tonight" },
   { key: "week", label: "This week" },
   { key: "free", label: "Free" },
   { key: "under10k", label: "Under ₦10k" },
   { key: "featured", label: "Featured" },
 ];
 
-function matchesCategory(event: any, key: string): boolean {
+const EVENT_TYPE_FILTERS: { key: Exclude<TypeFilter, "all">; label: string }[] = [
+  { key: "party", label: "Parties" },
+  { key: "concert", label: "Concerts" },
+  { key: "festival", label: "Festivals" },
+  { key: "brunch", label: "Brunches" },
+  { key: "wedding", label: "Weddings" },
+  { key: "corporate", label: "Corporate" },
+  { key: "comedy_show", label: "Comedy" },
+];
+
+function matchesQuick(event: any, key: QuickFilter): boolean {
   switch (key) {
+    case "tonight": {
+      const eventDate = new Date(event.date);
+      const now = new Date();
+      const isSameDay =
+        eventDate.getFullYear() === now.getFullYear() &&
+        eventDate.getMonth() === now.getMonth() &&
+        eventDate.getDate() === now.getDate();
+      const diffHours = (eventDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+      return isSameDay || (diffHours >= 0 && diffHours <= 18);
+    }
     case "week": {
       const inOneWeek = Date.now() + 7 * 24 * 60 * 60 * 1000;
       return new Date(event.date).getTime() <= inOneWeek;
@@ -49,20 +71,35 @@ function matchesCategory(event: any, key: string): boolean {
   }
 }
 
+function matchesType(event: any, key: TypeFilter): boolean {
+  if (key === "all") return true;
+  return (event.eventType || "party") === key;
+}
+
+const chipClass = (selected: boolean) =>
+  cn(
+    "shrink-0 h-9 px-4 rounded-full border text-sm font-medium transition-colors duration-200",
+    selected
+      ? "bg-primary text-primary-foreground border-primary"
+      : "bg-transparent text-muted-ink border-hairline hover:border-gold/40 hover:text-ink",
+  );
+
 export default function Explore() {
   const { user } = useAuth();
   const { data: events, isLoading, isError, refetch } = useEvents();
   const { data: vendors, isLoading: vendorsLoading } = useVendors();
   const [search, setSearch] = useState("");
   const [stateKey, setStateKey] = useState("all");
-  const [category, setCategory] = useState("all");
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
 
   const filtered = useMemo(() => {
     if (!events) return [];
     const term = search.trim().toLowerCase();
     return events
       .filter((e) => stateKey === "all" || stateForLocation(e.location)?.key === stateKey)
-      .filter((e) => matchesCategory(e, category))
+      .filter((e) => matchesQuick(e, quickFilter))
+      .filter((e) => matchesType(e, typeFilter))
       .filter(
         (e) =>
           !term ||
@@ -71,20 +108,26 @@ export default function Explore() {
           e.location.toLowerCase().includes(term)
       )
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [events, search, stateKey, category]);
+  }, [events, search, stateKey, quickFilter, typeFilter]);
 
   const stateOptions = useMemo(() => stateOptionsForEvents(events), [events]);
   const selectedState = stateOptions.find((option) => option.key === stateKey) ?? null;
-  const browsingOneState = stateKey !== "all" && !search && category === "all";
+  const browsingOneState = stateKey !== "all" && !search && quickFilter === "all" && typeFilter === "all";
+  const anyFilterActive = quickFilter !== "all" || typeFilter !== "all" || stateKey !== "all";
+  const clearAllFilters = () => {
+    setQuickFilter("all");
+    setTypeFilter("all");
+    setStateKey("all");
+  };
 
   // The hero follows the filter. Picking a state should change the page, not
   // only the list under it, so the state view leads with that state's featured
   // event and falls back to its next event.
   const spotlight = useMemo(() => {
-    if (search || category !== "all") return null;
+    if (search || quickFilter !== "all" || typeFilter !== "all") return null;
     const pool = stateKey === "all" ? events ?? [] : filtered;
     return pool.find((e) => e.isFeatured) ?? (stateKey === "all" ? null : pool[0] ?? null);
-  }, [events, filtered, stateKey, search, category]);
+  }, [events, filtered, stateKey, search, quickFilter, typeFilter]);
 
   const vendorRail = vendors?.filter((v) => v.status === "published") ?? [];
 
@@ -133,42 +176,71 @@ export default function Explore() {
         </div>
       </div>
 
-      {/* Where the events are. Chips carry live counts so the row reads as
-          inventory, not decoration. */}
-      <StateFilter
-        className="mt-4"
-        dense
-        options={stateOptions}
-        value={stateKey}
-        onChange={setStateKey}
-        allCount={events?.length ?? 0}
-      />
-
-      {/* Category chips: horizontally scrollable, gold when active */}
+      {/* One merged filter row, led by an "All" that resets every group:
+          when / type / where share a single scroller like the public Events
+          page, so filtering never teaches two different patterns. */}
       <div
         role="group"
-        aria-label="Filter events"
-        className="-mx-4 px-4 md:mx-0 md:px-0 mt-2.5 pb-1 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Event filters"
+        className="-mx-4 px-4 md:mx-0 md:px-0 mt-4 pb-1 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap"
       >
-        {CATEGORIES.map((c) => {
-          const active = category === c.key;
-          return (
+        <button
+          type="button"
+          aria-pressed={!anyFilterActive}
+          onClick={clearAllFilters}
+          className={chipClass(!anyFilterActive)}
+        >
+          All
+        </button>
+
+        <div role="group" aria-label="Filter by date" className="contents">
+          {QUICK_FILTERS.map((f) => (
             <button
-              key={c.key}
+              key={f.key}
               type="button"
-              aria-pressed={active}
-              onClick={() => setCategory(c.key)}
-              className={
-                "shrink-0 h-9 px-4 rounded-full border text-sm font-medium transition-colors duration-200 " +
-                (active
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-transparent text-muted-ink border-hairline hover:border-gold/40 hover:text-ink")
-              }
+              aria-pressed={quickFilter === f.key}
+              onClick={() => setQuickFilter((current) => (current === f.key ? "all" : f.key))}
+              className={chipClass(quickFilter === f.key)}
             >
-              {c.label}
+              {f.label}
             </button>
-          );
-        })}
+          ))}
+        </div>
+
+        <span aria-hidden="true" className="shrink-0 h-6 w-px bg-hairline" />
+
+        <div role="group" aria-label="Filter by event type" className="contents">
+          {EVENT_TYPE_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              aria-pressed={typeFilter === f.key}
+              onClick={() => setTypeFilter((current) => (current === f.key ? "all" : f.key))}
+              className={chipClass(typeFilter === f.key)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <span aria-hidden="true" className="shrink-0 h-6 w-px bg-hairline" />
+
+        {/* Where: only states with events on sale, with counts, so the row
+            never offers a filter that leads nowhere. */}
+        <div role="group" aria-label="Filter by state" className="contents">
+          {stateOptions.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              aria-pressed={stateKey === option.key}
+              onClick={() => setStateKey((current) => (current === option.key ? "all" : option.key))}
+              className={cn(chipClass(stateKey === option.key), "inline-flex items-center gap-1.5")}
+            >
+              {option.name}
+              <span className="opacity-60">{option.count}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {isError ? (
