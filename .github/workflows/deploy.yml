@@ -21,6 +21,8 @@ jobs:
           script: |
             echo "=== Pulling latest changes from main ==="
             cd /home/ubuntu/blackheritage
+            git checkout -- . || true
+            rm -f node_modules/.package-lock.json || true
             git pull origin main
 
             echo "=== Installing dependencies ==="
@@ -30,7 +32,7 @@ jobs:
             npm run build
 
             echo "=== Restarting PM2 process ==="
-            pm2 restart bh-api
+            pm2 restart bh-api --update-env
 
             echo "=== Reloading Nginx ==="
             sudo nginx -t && sudo systemctl reload nginx
