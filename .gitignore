@@ -26,6 +26,9 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Local uploads (user media lives on disk in dev; never commit it)
+uploads/
+
 # Editor & IDE Files
 .vscode/*
 !.vscode/extensions.json
@@ -53,7 +56,6 @@ scratch/
 *.local
 .agents/
 .claude/
-.claude/skills
-.freebuff/
+
+# Deployment script with sensitive credentials
 deploy.sh
-DEPLOY-ORACLE.md

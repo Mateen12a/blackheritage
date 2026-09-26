@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import { User, IUser } from "./models";
 import MongoStore from "connect-mongo";
 import { generateReferralCode } from "./referrals";
+import { EMAIL_HINT, isValidEmail, normalizeEmail } from "@shared/email";
 
 // DEV FALLBACK: when MongoDB is unreachable (local preview), users live in
 // memory so registration and login still work. Never used in production.
@@ -113,11 +114,11 @@ export function setupAuth(app: Express) {
           ? devUsersByUsername.get(username.toLowerCase())
           : await User.findOne({ username });
         if (!user || !user.password) {
-          return done(null, false, { message: "Invalid username or password" });
+          return done(null, false, { message: "Wrong username or password. Check both, then try again." });
         }
         const isValid = await bcrypt.compare(password, user.password);
         if (!isValid) {
-          return done(null, false, { message: "Invalid username or password" });
+          return done(null, false, { message: "Wrong username or password. Check both, then try again." });
         }
         return done(null, user);
       } catch (err) {
@@ -143,7 +144,12 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/auth/register", rateLimit(20, 15 * 60 * 1000), async (req, res) => {
-    const { username, email, password } = req.body;
+    const { username, password } = req.body;
+    // Trim the address here so a stray space never becomes part of the stored
+    // email. Case is left alone: older accounts already hold mixed-case ones.
+    const email = normalizeEmail(
+      typeof req.body.email === "string" ? req.body.email : "",
+    );
     // Referral: capture the code before anything else can fail. Attribution
     // must survive a failed attempt, so it rides on the session cookie and
     // resolves at the moment the account actually lands.
@@ -157,13 +163,13 @@ export function setupAuth(app: Express) {
       return res.status(400).json({ message: "You must accept the terms of service and privacy policy" });
     }
     if (typeof username !== "string" || username.trim().length < 3) {
-      return res.status(400).json({ message: "Username must be at least 3 characters" });
+      return res.status(400).json({ message: "Pick a username with at least 3 characters." });
     }
-    if (typeof email !== "string" || !email.includes("@")) {
-      return res.status(400).json({ message: "Enter a valid email address" });
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: EMAIL_HINT });
     }
     if (typeof password !== "string" || password.length < 8) {
-      return res.status(400).json({ message: "Password must be at least 8 characters" });
+      return res.status(400).json({ message: "Use a password with at least 8 characters." });
     }
     // Optional at signup: the name guests see on tickets, or the brand an
     // organizer runs events as. Editable later from settings.
@@ -185,7 +191,10 @@ export function setupAuth(app: Express) {
           )
         : await User.findOne({ $or: [{ username }, { email }] });
       if (existing) {
-        return res.status(400).json({ message: "Username or email already exists" });
+        return res.status(400).json({
+          message:
+            "That username or email already has an account. Sign in instead, or pick a different username.",
+        });
       }
       const hashedPassword = await bcrypt.hash(password, 10);
       if (usingDevStore()) {
@@ -246,16 +255,38 @@ export function setupAuth(app: Express) {
           .catch((e) => console.error("Welcome email failed:", e));
       }
       req.login(user, (err) => {
-        if (err) return res.status(500).json({ message: "Login failed after registration" });
+        if (err)
+          return res.status(500).json({
+            message:
+              "Your account was created, but signing you in did not work. Sign in from the login tab.",
+          });
         res.status(201).json(safeUser(user));
       });
     } catch (err: any) {
-      res.status(500).json({ message: err.message });
+      console.error("Registration failed:", err);
+      res.status(500).json({
+        message: "We could not create your account just now. Try again in a moment.",
+      });
     }
   });
 
-  app.post("/api/auth/login", rateLimit(30, 15 * 60 * 1000), passport.authenticate("local"), (req, res) => {
-    res.json(safeUser(req.user));
+  // Passport's default failure answer is a plain-text "Unauthorized" body,
+  // which the sign-in form could only ever render as a JSON parse error. The
+  // custom callback below always answers with a readable message.
+  app.post("/api/auth/login", rateLimit(30, 15 * 60 * 1000), (req, res, next) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) return next(err);
+      if (!user) {
+        return res.status(401).json({
+          message:
+            info?.message || "Wrong username or password. Check both, then try again.",
+        });
+      }
+      req.login(user, (loginErr) => {
+        if (loginErr) return next(loginErr);
+        res.json(safeUser(user));
+      });
+    })(req, res, next);
   });
 
   app.post("/api/auth/logout", (req, res, next) => {

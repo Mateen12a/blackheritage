@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -152,6 +153,26 @@ function RootRoute() {
       <Home />
     </PublicLayout>
   );
+}
+
+/**
+ * wouter keeps the window's scroll position across route changes, so opening
+ * a new page landed you halfway down it. Send every navigation to the top.
+ *
+ * Keyed on the path only: switching tabs on the auth page changes the query
+ * string and should leave the form where the reader is looking.
+ */
+function ScrollToTop() {
+  const [location] = useLocation();
+  const path = location.split(/[?#]/)[0];
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [path]);
+
+  return null;
 }
 
 function Router() {
@@ -355,6 +376,7 @@ function App() {
       <MotionProvider>
         <TooltipProvider>
           <Toaster />
+          <ScrollToTop />
           <Router />
         </TooltipProvider>
       </MotionProvider>

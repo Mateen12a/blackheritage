@@ -1,9 +1,11 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { ApiError, SESSION_EXPIRED_MESSAGE, errorFromResponse } from "./errors";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    // errorFromResponse reads the body safely (JSON, plain text, or nothing)
+    // and falls back to plain language for the status.
+    throw await errorFromResponse(res);
   }
 }
 
@@ -13,7 +15,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || "";
 
 // Wake up the backend immediately when this file is loaded
 fetch(`${BASE_URL}/api/health`).catch(() => {
-  // Silent fail, just a ping to wake up Render free tier
+  // Silent fail: this is only a warm-up ping, nothing to report to the user.
 });
 
 export async function apiRequest(
@@ -59,7 +61,7 @@ export const getQueryFn: <T>(options: {
       if (unauthorizedBehavior === "returnNull") {
         return null as any;
       }
-      throw new Error("401: Unauthorized");
+      throw new ApiError(401, SESSION_EXPIRED_MESSAGE);
     }
 
     await throwIfResNotOk(res);

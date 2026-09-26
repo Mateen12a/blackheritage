@@ -3,6 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 import { users } from "./models/auth";
+import { EMAIL_HINT, EMAIL_PATTERN } from "./email";
 
 export * from "./models/auth";
 
@@ -385,7 +386,7 @@ export type EventThemeKey = typeof eventThemeKeys[number];
 // Guests can join a waitlist with just a name and email.
 export const waitlistJoinSchema = z.object({
   name: z.string().trim().min(2, "Enter your name").max(120),
-  email: z.string().trim().email("Enter a valid email address"),
+  email: z.string().trim().regex(EMAIL_PATTERN, EMAIL_HINT),
   tierName: z.string().trim().max(60).optional(),
 });
 
@@ -405,7 +406,7 @@ export const bookingInitiateSchema = z.object({
   tierName: z.string().min(1).max(60),
   quantity: z.number().int().min(1).max(10),
   name: z.string().trim().min(2, "Enter the ticket holder's name").max(120),
-  email: z.string().trim().email("Enter a valid email address"),
+  email: z.string().trim().regex(EMAIL_PATTERN, EMAIL_HINT),
   promoCode: z.string().trim().max(40).optional(),
   tableNote: z.string().trim().max(300).optional(), // group size or seating preference for tables
   phone: z.string().trim().max(30).optional(), // organizer-toggled checkout fields
@@ -432,7 +433,7 @@ export const promoCreateSchema = z.object({
 
 export const manualTicketSchema = z.object({
   name: z.string().trim().min(2, "Enter the recipient's name").max(120),
-  email: z.string().trim().email("Enter a valid email address"),
+  email: z.string().trim().regex(EMAIL_PATTERN, EMAIL_HINT),
   tierName: z.string().trim().min(1).max(60).optional(),
   quantity: z.number().int().min(1).max(10).default(1),
 });
@@ -459,7 +460,7 @@ export const scanSyncSchema = z.object({
 
 export const teamCreateSchema = z.object({
   username: z.string().trim().min(3, "Use at least 3 characters").max(40),
-  email: z.string().trim().email("Enter a valid email address"),
+  email: z.string().trim().regex(EMAIL_PATTERN, EMAIL_HINT),
   password: z.string().min(8, "Use at least 8 characters").max(100),
   staffRole: z.enum(staffRoles),
 });

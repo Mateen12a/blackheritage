@@ -65,7 +65,9 @@ From your machine:
 git clone <YOUR_REPO_URL> && cd blackheritage
 # keep .env OFF git; scp it up once
 scp .env ubuntu@<PUBLIC_IP>:~/blackheritage/.env
-rsync -av --exclude node_modules --exclude .env --exclude .freebuff ./ ubuntu@<PUBLIC_IP>:~/blackheritage/
+# --exclude uploads matters: without it your local dev media is pushed over
+# the live media folder, and any --delete run erases every uploaded image.
+rsync -av --exclude node_modules --exclude .env --exclude .freebuff --exclude uploads ./ ubuntu@<PUBLIC_IP>:~/blackheritage/
 ```
 
 On the VM:
@@ -289,5 +291,39 @@ mongodump --uri="..." --out=~/backups/$(date +%F)   # cron this nightly
 Free-tier watch-outs:
 
 - The A1 quota is regional; if "out of capacity" appears, try another home region or retry off-peak.
-- Idle Always Free VMs with low utilization can be reclaimed; pm2 keeps the process up, and real traffic solves it anyway.
+- Idle Always Free VMs with low utilization can be stopped (roughly 7 days idle), and the instance is deleted about 90 days later. Converting the account to Pay As You Go stops idle reclamation, and real traffic solves it anyway.
 - 200 GB block storage is the ceiling across everything, so keep `uploads/` pruned if media grows; move to object storage when revenue starts.
+
+## 8. Media storage and backups
+
+Uploads (event covers, galleries, vendor portfolios, organizer logos, avatars) live in `~/blackheritage/uploads/portfolio/`, and Nginx proxies `/uploads/` to Node. **That folder survives pm2 restarts and redeploys.** It disappears only if the boot volume is lost, the instance is reclaimed, or a deploy runs `rsync --delete` without `--exclude uploads`.
+
+To move media off the VM, set all five of these in the production env and restart:
+
+```
+R2_ACCOUNT_ID=<cloudflare account id>
+R2_BUCKET=blackheritage-media
+R2_ACCESS_KEY_ID=<R2 API token id>
+R2_SECRET_ACCESS_KEY=<R2 API token secret>
+R2_PUBLIC_BASE_URL=https://cdn.blackhevents.com
+```
+
+Create the bucket, then an R2 API token with Object Read & Write scoped to that bucket. Do not use the `r2.dev` URL in production; it is rate limited. Connect a custom domain and keep it proxied through Cloudflare. If any one of the five is missing, storage stays on disk, so this is not a flag day: old `/uploads/portfolio/...` rows keep serving from the VM while new uploads go to R2.
+
+Verify: `curl -s https://blackhevents.com/api/health` answers `OK (media: r2)` with the keys set, and `OK (media: disk)` without them.
+
+### Backups
+
+MongoDB, the app, and every uploaded image share one boot volume, so a nightly dump that stays on that same disk is not a backup:
+
+```bash
+sudo mkdir -p /var/backups/blackheritage
+# crontab -e (03:15 nightly, 14-day local retention)
+15 3 * * * mongodump --host 127.0.0.1 --username bh_admin --password '<pw>' --authenticationDatabase admin --db blackheritage --archive=/var/backups/blackheritage/db-$(date +\%F).archive --gzip && tar -czf /var/backups/blackheritage/uploads-$(date +\%F).tar.gz -C /home/ubuntu/blackheritage uploads && find /var/backups/blackheritage -type f -mtime +14 -delete
+```
+
+Then copy those files off the VM (rclone to R2, or `scp` to another machine). A dump sitting on the same volume as the database only counts as recovery if the volume survives.
+
+### Warning: every boot re-seeds demo accounts
+
+`registerRoutes()` calls `seedPlatform()` on startup with no production check. The seed creates demo logins with published passwords (`admin`/`admin123`, `tunde_organizer`/`demo1234`, `gate_staff`/`demo1234`) and re-promotes their roles on each run, so on this VM **every `pm2 restart` restores an admin account anyone can log into**. Deleting or demoting it does not stick. Guard the seed for production, then rotate those passwords and remove the demo rows.

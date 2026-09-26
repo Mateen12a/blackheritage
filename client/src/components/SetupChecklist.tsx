@@ -43,8 +43,7 @@ export function SetupChecklist() {
           <div>
             <CardTitle className="text-ink text-base">Your setup</CardTitle>
             <CardDescription>
-              {complete} of {total} complete
-              {complete === 0 ? " — start with the first one below." : " — keep going."}
+              {complete} of {total} done. {complete === 0 ? "Start with the first step below." : "Keep going."}
             </CardDescription>
           </div>
           <span className="font-display text-2xl font-bold text-gold shrink-0">{pct}%</span>

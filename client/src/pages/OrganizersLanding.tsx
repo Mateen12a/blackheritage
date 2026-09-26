@@ -19,6 +19,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { EMAIL_HINT, isValidEmail } from "@shared/email";
+import { errorFromResponse, errorMessage } from "@/lib/errors";
+import { whatsappLink } from "@/lib/contact";
+
+// Pre-filled so the first reply from the team has context.
+const CHAT_GREETING =
+  "Hi Black Heritage, I am organizing an event and want to talk about selling tickets.";
 
 interface LeadFormState {
   name: string;
@@ -31,29 +38,21 @@ interface LeadFormState {
 
 const FAQS = [
   {
-    q: "How fast do ticket payouts land in my Nigerian bank account?",
-    a: "Payouts settle within 24 hours of ticket sales. You can connect any Nigerian commercial bank or fintech account (GTBank, Zenith, Access, Kuda, Providus) directly from your organizer settings.",
+    q: "How fast do payouts reach my bank account?",
+    a: "Ticket sales settle to your bank account within 24 hours. Add any Nigerian bank or fintech account (GTBank, Zenith, Access, Kuda, Providus) in your organizer settings.",
   },
   {
-    q: "Can bouncers scan tickets if mobile network drops at the venue?",
-    a: "Yes. The Black Heritage Gate Portal caches ticket hashes in the browser. Your bouncers and entry team can scan QR codes offline with zero lag, and check-ins sync automatically once connection returns.",
+    q: "Can the gate scan tickets when the network drops?",
+    a: "Yes. The gate page saves ticket data in the browser, so your entry team keeps scanning QR codes offline. Check-ins sync on their own when the connection comes back.",
   },
   {
-    q: "Can I issue VIP tables and private guestlists without paying fees?",
-    a: "Yes. From your organizer dashboard you can issue unlimited complimentary passes, sponsor wristbands, and artist guestlists with zero platform fees.",
+    q: "Do comps and guest lists cost anything?",
+    a: "No. Free passes, sponsor wristbands, and artist guest lists cost nothing from your dashboard. You pay the platform fee on paid tickets only.",
   },
   {
     q: "How does the 0% fee on the first 100 tickets work?",
-    a: "When you download the Playbook or register with code FOUNDER100, Black Heritage waives the 6% platform fee on your first 100 paid tickets. You only cover the standard Paystack payment processing fee.",
+    a: "Download the playbook or sign up with the code FOUNDER100 and we waive the platform fee on your first 100 paid tickets. The payment processor's own charge still applies.",
   },
-];
-
-const TRUST_LOGOS = [
-  { name: "Mainland Block Party", slug: "mainland-block-party" },
-  { name: "Alte Culture Circle", slug: "alte-culture-circle" },
-  { name: "Native Sound System", slug: "native-sound-system" },
-  { name: "Sip & Paint .NG", slug: "sip-and-paint-ng" },
-  { name: "Tunde Live Concepts", slug: "tunde-live" },
 ];
 
 export default function OrganizersLanding() {
@@ -84,10 +83,18 @@ export default function OrganizersLanding() {
 
   const handleSubmitLead = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.brandName || !formData.whatsapp || !formData.email) {
+    if (!formData.name.trim() || !formData.brandName.trim() || !formData.whatsapp.trim()) {
       toast({
-        title: "Required Fields Missing",
-        description: "Please enter your name, brand name, WhatsApp number, and email.",
+        title: "A few details are missing",
+        description: "Add your name, your brand or collective, and a WhatsApp number.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!isValidEmail(formData.email)) {
+      toast({
+        title: "Check that email address",
+        description: EMAIL_HINT,
         variant: "destructive",
       });
       return;
@@ -98,23 +105,22 @@ export default function OrganizersLanding() {
       const res = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, email: formData.email.trim() }),
       });
 
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to submit request");
+        throw await errorFromResponse(res);
       }
 
       setSubmitted(true);
       toast({
-        title: "Playbook Unlocked",
-        description: "Your 0% fee promo code FOUNDER100 is ready to use.",
+        title: "Playbook sent",
+        description: "Check your email for the PDF. Your code FOUNDER100 is ready to use.",
       });
-    } catch (err: any) {
+    } catch (err) {
       toast({
-        title: "Submission Failed",
-        description: err.message || "Please check your network and try again.",
+        title: "That did not send",
+        description: errorMessage(err, "Check your connection, then try again."),
         variant: "destructive",
       });
     } finally {
@@ -140,19 +146,19 @@ export default function OrganizersLanding() {
           <Reveal y={14} duration={0.5}>
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-surface/80 border border-gold/30 text-gold text-xs font-semibold uppercase tracking-wider mb-6">
               <span className="w-2 h-2 rounded-full bg-gold animate-pulse" />
-              For Nigerian Event Promoters & Cultural Curators
+              Sell tickets for your event
             </div>
           </Reveal>
 
           <Reveal y={18} delay={0.1} duration={0.6}>
             <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-ink leading-[1.08] tracking-tight">
-              The Event OS Built for Nigeria&apos;s Cultural Creators
+              Sell tickets. Scan the gate. Get paid.
             </h1>
           </Reveal>
 
           <Reveal y={16} delay={0.25} duration={0.6}>
             <p className="mt-6 mx-auto max-w-2xl text-base sm:text-lg text-ink/80 leading-relaxed">
-              Stop losing ticket revenue to gate fraud and delayed payouts. Instant WhatsApp QR delivery, 24-hour bank settlements, offline bouncer scanning, and your own custom branded hub.
+              Your buyers get their QR code on WhatsApp. Your gate keeps scanning when the network drops. Payouts go to your own bank account, and the attendee list stays yours.
             </p>
           </Reveal>
 
@@ -160,7 +166,7 @@ export default function OrganizersLanding() {
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/auth?mode=register&role=organizer">
                 <Button className="press h-13 px-8 bg-primary text-primary-foreground hover:bg-gold-soft font-semibold text-sm rounded-full w-full sm:w-auto shadow-lg shadow-gold/10">
-                  Start Selling Tickets · 0% on First 100
+                  Start selling tickets · 0% on first 100
                   <ArrowUpRight className="w-4 h-4 ml-1.5" />
                 </Button>
               </Link>
@@ -170,7 +176,7 @@ export default function OrganizersLanding() {
                   className="press h-13 px-7 border-white/20 bg-white/5 text-ink hover:bg-white/10 hover:text-gold font-medium text-sm rounded-full w-full sm:w-auto backdrop-blur-sm"
                 >
                   <Download className="w-4 h-4 mr-2 text-gold" />
-                  Get Free Gate Fraud Playbook
+                  Get the free gate-fraud playbook
                 </Button>
               </a>
             </div>
@@ -180,41 +186,23 @@ export default function OrganizersLanding() {
           <Reveal y={12} delay={0.45} duration={0.55}>
             <div className="mt-14 pt-8 border-t border-hairline/80 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
               <div>
-                <p className="font-display text-2xl sm:text-3xl font-bold text-gold tabular-nums">0%</p>
-                <p className="text-xs text-muted-ink mt-1 font-medium">Gate Pass-back Fraud</p>
+                <p className="font-display text-lg sm:text-xl font-bold text-gold">Offline gate scanning</p>
+                <p className="text-xs text-muted-ink mt-1 font-medium">Keeps working when the network drops</p>
               </div>
               <div>
-                <p className="font-display text-2xl sm:text-3xl font-bold text-gold tabular-nums">&lt; 0.2s</p>
-                <p className="text-xs text-muted-ink mt-1 font-medium">Offline Scanner Speed</p>
+                <p className="font-display text-lg sm:text-xl font-bold text-gold">Duplicate checks</p>
+                <p className="text-xs text-muted-ink mt-1 font-medium">One entry per ticket, flagged at the door</p>
               </div>
               <div>
-                <p className="font-display text-2xl sm:text-3xl font-bold text-gold tabular-nums">24h</p>
-                <p className="text-xs text-muted-ink mt-1 font-medium">Direct Bank Settlement</p>
+                <p className="font-display text-lg sm:text-xl font-bold text-gold tabular-nums">24h settlement</p>
+                <p className="text-xs text-muted-ink mt-1 font-medium">Ticket money straight to your bank</p>
               </div>
               <div>
-                <p className="font-display text-2xl sm:text-3xl font-bold text-gold tabular-nums">6%</p>
-                <p className="text-xs text-muted-ink mt-1 font-medium">Flat Fee vs 10%+ Legacy</p>
+                <p className="font-display text-lg sm:text-xl font-bold text-gold tabular-nums">6% flat fee</p>
+                <p className="text-xs text-muted-ink mt-1 font-medium">No monthly charge</p>
               </div>
             </div>
           </Reveal>
-        </div>
-      </section>
-
-      {/* ─── Social Proof: Curators on Black Heritage ─── */}
-      <section className="py-12 bg-surface/30 border-b border-hairline">
-        <div className="container max-w-5xl mx-auto px-4 text-center">
-          <p className="text-xs uppercase tracking-[0.2em] font-semibold text-muted-ink mb-6">
-            Curated by Nigeria&apos;s Leading Cultural Collectives
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10">
-            {TRUST_LOGOS.map((org) => (
-              <Link key={org.slug} href={"/o/" + org.slug}>
-                <span className="font-display text-sm sm:text-base font-semibold text-ink/70 hover:text-gold transition-colors cursor-pointer border border-hairline/60 bg-surface/50 px-4 py-2 rounded-full">
-                  {org.name}
-                </span>
-              </Link>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -222,7 +210,7 @@ export default function OrganizersLanding() {
       <section className="py-16 md:py-24 border-b border-hairline">
         <div className="container max-w-6xl mx-auto px-4">
           <Reveal>
-            <p className="text-xs uppercase tracking-[0.2em] font-semibold text-gold mb-3">Every kind of gathering</p>
+            <p className="text-xs uppercase tracking-[0.2em] font-semibold text-gold mb-3">What you can sell tickets for</p>
             <h2 className="mt-2 font-display text-3xl md:text-4xl font-bold text-ink">
               From 30-person house parties to 3,000-seat festivals
             </h2>
@@ -230,12 +218,12 @@ export default function OrganizersLanding() {
           </Reveal>
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { title: "House Parties & Private Events", hint: "Unlisted or invite-only. Off the public feed, on your guest list." },
-              { title: "Concerts & Festivals", hint: "Public listings, featured placement, tiered tickets, tables." },
+              { title: "House Parties & Private Events", hint: "Unlisted or invite-only, with a code you share yourself." },
+              { title: "Concerts & Festivals", hint: "Public listing, tiered tickets, tables, and a gate crew you can add later." },
               { title: "Weddings & Celebrations", hint: "Your branding on every ticket and invite link." },
-              { title: "Corporate Events & Conferences", hint: "Invite-only access codes, staffed gate, clean exports." },
+              { title: "Corporate Events & Conferences", hint: "Invite-only access codes, a staffed gate, and clean attendee exports." },
               { title: "Comedy Shows & Art Exhibitions", hint: "Seated or standing, promo codes, waitlists." },
-              { title: "Brunches & Day Parties", hint: "Quick setup, guest checkout, instant QR delivery." },
+              { title: "Brunches & Day Parties", hint: "Set up in minutes, guest checkout, QR codes on WhatsApp." },
             ].map((t, i) => (
               <Reveal key={t.title} delay={0.05 * i}>
                 <div className="h-full border border-hairline rounded-md bg-surface p-6 hover:border-white/20 transition-colors duration-200">
@@ -252,12 +240,12 @@ export default function OrganizersLanding() {
       <section className="py-16 md:py-24 border-b border-hairline">
         <div className="container max-w-5xl mx-auto px-4">
           <div className="text-center max-w-2xl mx-auto mb-14">
-            <p className="eyebrow">The Competitive Edge</p>
+            <p className="eyebrow">The platform</p>
             <h2 className="mt-2 font-display text-3xl md:text-4xl font-bold text-ink">
-              Why Nigeria&apos;s Best Organizers Are Switching
+              What you get on Black Heritage
             </h2>
             <p className="mt-3 text-sm text-muted-ink">
-              Built specifically for the realities of the Lagos and Nigerian nightlife economy.
+              Made for how Nigerian events actually run: a packed door, patchy network, and vendors who need paying on schedule.
             </p>
           </div>
 
@@ -266,9 +254,9 @@ export default function OrganizersLanding() {
               <div className="w-10 h-10 rounded-lg bg-gold/15 flex items-center justify-center text-gold mb-4">
                 <Smartphone className="w-5 h-5" />
               </div>
-              <h3 className="font-display text-lg font-bold text-ink">Instant WhatsApp Ticket Passes</h3>
+              <h3 className="font-display text-lg font-bold text-ink">Tickets land on WhatsApp</h3>
               <p className="mt-2 text-xs sm:text-sm text-muted-ink leading-relaxed">
-                Nigerian attendees check WhatsApp 10x more than email. Tickets and QR codes deliver directly to WhatsApp in 3 seconds. Zero lost tickets at the gate.
+                Most Nigerian attendees do not read email for tickets. The QR code goes to their WhatsApp right after checkout, so you hear fewer "I never got my ticket" at the door.
               </p>
             </div>
 
@@ -276,9 +264,9 @@ export default function OrganizersLanding() {
               <div className="w-10 h-10 rounded-lg bg-gold/15 flex items-center justify-center text-gold mb-4">
                 <ShieldCheck className="w-5 h-5" />
               </div>
-              <h3 className="font-display text-lg font-bold text-ink">Zero-Lag Offline Bouncer Scanner</h3>
+              <h3 className="font-display text-lg font-bold text-ink">The gate works when the network doesn&apos;t</h3>
               <p className="mt-2 text-xs sm:text-sm text-muted-ink leading-relaxed">
-                Network always fails at beach clubs and packed venues. Our free scanner checks tickets offline in under 0.2 seconds and alerts on duplicate or pass-back attempts.
+                Signal dies at beach clubs and packed halls. The gate page saves tickets in the browser, so your staff keep scanning offline and it flags a ticket that has already been used. Gate staff accounts are free.
               </p>
             </div>
 
@@ -286,9 +274,9 @@ export default function OrganizersLanding() {
               <div className="w-10 h-10 rounded-lg bg-gold/15 flex items-center justify-center text-gold mb-4">
                 <CreditCard className="w-5 h-5" />
               </div>
-              <h3 className="font-display text-lg font-bold text-ink">Next-Day Direct Bank Settlements</h3>
+              <h3 className="font-display text-lg font-bold text-ink">Payouts in 24 hours, not 14 days</h3>
               <p className="mt-2 text-xs sm:text-sm text-muted-ink leading-relaxed">
-                No 14-day hold times. Ticket revenue lands in your Nigerian bank account within 24 hours so you can pay stage sound and vendors on schedule.
+                Ticket money goes to the bank account you add in settings within 24 hours. You can pay the sound engineer and the vendors when you said you would.
               </p>
             </div>
 
@@ -296,9 +284,9 @@ export default function OrganizersLanding() {
               <div className="w-10 h-10 rounded-lg bg-gold/15 flex items-center justify-center text-gold mb-4">
                 <Building2 className="w-5 h-5" />
               </div>
-              <h3 className="font-display text-lg font-bold text-ink">Your Own Branded Hub</h3>
+              <h3 className="font-display text-lg font-bold text-ink">A hub page for your brand</h3>
               <p className="mt-2 text-xs sm:text-sm text-muted-ink leading-relaxed">
-                Share a luxury link (blackhevents.com/o/yourbrand) with your video backdrop, Spotify playlist, and zero banner ads for competitor events.
+                blackhevents.com/o/yourbrand holds your shows, video backdrop, and playlist. No banner ads for other people&apos;s parties on your page.
               </p>
             </div>
 
@@ -306,9 +294,9 @@ export default function OrganizersLanding() {
               <div className="w-10 h-10 rounded-lg bg-gold/15 flex items-center justify-center text-gold mb-4">
                 <Users className="w-5 h-5" />
               </div>
-              <h3 className="font-display text-lg font-bold text-ink">100% Fan Ownership & CRM</h3>
+              <h3 className="font-display text-lg font-bold text-ink">You keep the attendee list</h3>
               <p className="mt-2 text-xs sm:text-sm text-muted-ink leading-relaxed">
-                Export verified attendee phone numbers and emails anytime. Retarget past attendees for your next tour stop via 1-tap WhatsApp broadcasts.
+                Export phone numbers and emails whenever you want. Before the next show, message the crowd that came to the last one.
               </p>
             </div>
 
@@ -316,9 +304,9 @@ export default function OrganizersLanding() {
               <div className="w-10 h-10 rounded-lg bg-gold/15 flex items-center justify-center text-gold mb-4">
                 <Zap className="w-5 h-5" />
               </div>
-              <h3 className="font-display text-lg font-bold text-ink">Flat 6% vs 10%+ Legacy Fees</h3>
+              <h3 className="font-display text-lg font-bold text-ink">One flat fee: 6%</h3>
               <p className="mt-2 text-xs sm:text-sm text-muted-ink leading-relaxed">
-                Keep thousands of Naira more per event. Transparent flat rate, zero hidden maintenance deductions, and free gate staff accounts.
+                We take 6% of each ticket sold. No setup fee, no monthly charge, and no deduction you find out about after the show.
               </p>
             </div>
           </div>
@@ -329,12 +317,12 @@ export default function OrganizersLanding() {
       <section className="py-16 md:py-24 bg-surface/20 border-b border-hairline">
         <div className="container max-w-4xl mx-auto px-4">
           <div className="text-center max-w-xl mx-auto mb-10">
-            <p className="eyebrow">Financial Impact</p>
+            <p className="eyebrow">Fees</p>
             <h2 className="mt-2 font-display text-3xl font-bold text-ink">
-              Calculate Your Ticket Earnings & Savings
+              See what you keep
             </h2>
             <p className="mt-2 text-xs sm:text-sm text-muted-ink">
-              See what you keep with Black Heritage compared to traditional 10% ticketing portals.
+              Move the sliders. The comparison assumes a 10% fee at a traditional ticketing portal.
             </p>
           </div>
 
@@ -343,7 +331,7 @@ export default function OrganizersLanding() {
               {/* Attendees Slider */}
               <div>
                 <div className="flex justify-between items-center text-sm font-medium mb-2">
-                  <span className="text-ink">Expected Attendees</span>
+                  <span className="text-ink">Expected attendees</span>
                   <span className="text-gold font-bold tabular-nums text-base">{attendees.toLocaleString()} people</span>
                 </div>
                 <input
@@ -366,7 +354,7 @@ export default function OrganizersLanding() {
               {/* Average Ticket Price */}
               <div>
                 <div className="flex justify-between items-center text-sm font-medium mb-2">
-                  <span className="text-ink">Average Ticket Price</span>
+                  <span className="text-ink">Average ticket price</span>
                   <span className="text-gold font-bold tabular-nums text-base">₦{ticketPrice.toLocaleString()}</span>
                 </div>
                 <input
@@ -390,21 +378,21 @@ export default function OrganizersLanding() {
             {/* Calculations Breakdown */}
             <div className="mt-8 pt-6 border-t border-hairline grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
               <div className="p-4 rounded-xl bg-surface-2/60 border border-hairline/60">
-                <p className="text-xs text-muted-ink">Total Gross Sales</p>
+                <p className="text-xs text-muted-ink">Ticket sales</p>
                 <p className="text-xl sm:text-2xl font-bold font-display text-ink mt-1 tabular-nums">
                   ₦{grossRevenue.toLocaleString()}
                 </p>
               </div>
 
               <div className="p-4 rounded-xl bg-surface-2/60 border border-hairline/60">
-                <p className="text-xs text-muted-ink">Traditional Portal Fee (10%)</p>
+                <p className="text-xs text-muted-ink">Traditional portal fee (10%)</p>
                 <p className="text-xl sm:text-2xl font-bold font-display text-destructive mt-1 tabular-nums">
                   ₦{legacyFee.toLocaleString()}
                 </p>
               </div>
 
               <div className="p-4 rounded-xl bg-gold/10 border border-gold/30">
-                <p className="text-xs text-gold font-semibold uppercase tracking-wider">You Save with Black Heritage</p>
+                <p className="text-xs text-gold font-semibold uppercase tracking-wider">You save with Black Heritage</p>
                 <p className="text-xl sm:text-2xl font-bold font-display text-gold mt-1 tabular-nums">
                   ₦{totalSavings.toLocaleString()}
                 </p>
@@ -414,7 +402,7 @@ export default function OrganizersLanding() {
             <div className="mt-6 text-center">
               <Link href="/auth?mode=register&role=organizer">
                 <Button className="press h-12 px-8 bg-primary text-primary-foreground hover:bg-gold-soft font-semibold text-sm rounded-full">
-                  Keep More of Your Money · Register Now
+                  Create an organizer account
                 </Button>
               </Link>
             </div>
@@ -436,27 +424,27 @@ export default function OrganizersLanding() {
               <div className="lg:col-span-7">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gold/15 text-gold text-xs font-semibold uppercase tracking-wider mb-4">
                   <Flame className="w-3.5 h-3.5" />
-                  Free Promoter Resource & Voucher
+                  Free download
                 </div>
                 <h2 className="font-display text-2xl sm:text-3xl font-bold text-ink leading-tight">
-                  The 2026 Nigeria Event Production & Zero-Gate-Fraud Playbook
+                  The gate-fraud playbook for Nigerian promoters
                 </h2>
                 <p className="mt-3 text-xs sm:text-sm text-ink/80 leading-relaxed">
-                  The exact operational framework used by top Lagos and Abuja festival organizers to eliminate gate pass-backs, avoid ticket duplication, and pack their venue before midnight.
+                  How promoters in Lagos and Abuja run the door: stop pass-backs, catch duplicate tickets, and get the crowd in before midnight.
                 </p>
 
                 <div className="mt-5 space-y-2.5">
                   <div className="flex items-start gap-2.5 text-xs sm:text-sm text-ink/90">
                     <CheckCircle className="w-4 h-4 text-gold shrink-0 mt-0.5" />
-                    <span>The 12-point bouncer gate checklist to stop fake QR codes</span>
+                    <span>The 12-point gate checklist your bouncers can run</span>
                   </div>
                   <div className="flex items-start gap-2.5 text-xs sm:text-sm text-ink/90">
                     <CheckCircle className="w-4 h-4 text-gold shrink-0 mt-0.5" />
-                    <span>Sponsor pitch deck structure that lands corporate alcohol and bank partnerships</span>
+                    <span>A sponsor pitch outline for alcohol brands and banks</span>
                   </div>
                   <div className="flex items-start gap-2.5 text-xs sm:text-sm text-ink/90">
                     <CheckCircle className="w-4 h-4 text-gold shrink-0 mt-0.5" />
-                    <span>Instant voucher: 0% platform fee on your first 100 tickets</span>
+                    <span>A code for 0% platform fee on your first 100 tickets</span>
                   </div>
                 </div>
               </div>
@@ -468,14 +456,24 @@ export default function OrganizersLanding() {
                     <div className="w-12 h-12 rounded-full bg-gold/20 text-gold flex items-center justify-center mx-auto mb-3">
                       <CheckCircle className="w-6 h-6" />
                     </div>
-                    <h3 className="font-display text-lg font-bold text-ink">You are In</h3>
+                    <h3 className="font-display text-lg font-bold text-ink">Check your email</h3>
                     <p className="text-xs text-ink/80 mt-1">
-                      Check your WhatsApp for the direct download link. Your voucher code <span className="font-mono text-gold font-bold">FOUNDER100</span> is unlocked.
+                      The playbook PDF is on its way to your inbox. Your code <span className="font-mono text-gold font-bold">FOUNDER100</span> waives the platform fee on your first 100 tickets.
+                    </p>
+                    <p className="text-xs mt-2">
+                      <a
+                        href="/api/playbook.pdf"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-gold hover:underline"
+                      >
+                        Open the playbook now
+                      </a>
                     </p>
                     <div className="mt-4 pt-4 border-t border-hairline">
                       <Link href="/auth?mode=register&role=organizer">
                         <Button className="press w-full h-11 bg-primary text-primary-foreground font-semibold text-xs rounded-full">
-                          Create Your Organizer Hub Now
+                          Create your organizer account
                         </Button>
                       </Link>
                     </div>
@@ -484,7 +482,7 @@ export default function OrganizersLanding() {
                   <form onSubmit={handleSubmitLead} className="space-y-3.5">
                     <div>
                       <label className="text-[11px] font-semibold text-muted-ink uppercase tracking-wider block mb-1">
-                        Your Name
+                        Your name
                       </label>
                       <input
                         type="text"
@@ -498,7 +496,7 @@ export default function OrganizersLanding() {
 
                     <div>
                       <label className="text-[11px] font-semibold text-muted-ink uppercase tracking-wider block mb-1">
-                        Brand or Collective Name
+                        Brand or collective
                       </label>
                       <input
                         type="text"
@@ -512,7 +510,7 @@ export default function OrganizersLanding() {
 
                     <div>
                       <label className="text-[11px] font-semibold text-muted-ink uppercase tracking-wider block mb-1">
-                        WhatsApp Phone Number
+                        WhatsApp number
                       </label>
                       <input
                         type="tel"
@@ -526,7 +524,7 @@ export default function OrganizersLanding() {
 
                     <div>
                       <label className="text-[11px] font-semibold text-muted-ink uppercase tracking-wider block mb-1">
-                        Work Email
+                        Email
                       </label>
                       <input
                         type="email"
@@ -541,7 +539,7 @@ export default function OrganizersLanding() {
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-[11px] font-semibold text-muted-ink uppercase tracking-wider block mb-1">
-                          Primary City
+                          City
                         </label>
                         <select
                           value={formData.city}
@@ -558,7 +556,7 @@ export default function OrganizersLanding() {
 
                       <div>
                         <label className="text-[11px] font-semibold text-muted-ink uppercase tracking-wider block mb-1">
-                          Expected Crowd
+                          Expected crowd
                         </label>
                         <select
                           value={formData.estimatedAttendance}
@@ -568,7 +566,6 @@ export default function OrganizersLanding() {
                           <option value="Under 50">Under 50</option>
                           <option value="50-100">50 to 100</option>
                           <option value="100-500">100 to 500</option>
-                          <option value="Under 500">Under 500</option>
                           <option value="500-1500">500 to 1,500</option>
                           <option value="1500-5000">1,500 to 5,000</option>
                           <option value="5000+">5,000+</option>
@@ -581,7 +578,7 @@ export default function OrganizersLanding() {
                       disabled={isSubmitting}
                       className="press w-full h-11 bg-primary text-primary-foreground hover:bg-gold-soft font-semibold text-xs rounded-full mt-2"
                     >
-                      {isSubmitting ? "Generating Download..." : "Download Playbook + Claim 0% Fee"}
+                      {isSubmitting ? "Sending..." : "Send me the playbook"}
                     </Button>
                   </form>
                 )}
@@ -595,7 +592,7 @@ export default function OrganizersLanding() {
       <section className="py-16 md:py-24 border-b border-hairline">
         <div className="container max-w-3xl mx-auto px-4">
           <div className="text-center mb-12">
-            <p className="eyebrow">Clear Answers</p>
+            <p className="eyebrow">Questions</p>
             <h2 className="mt-2 font-display text-3xl font-bold text-ink">
               Frequently Asked Questions
             </h2>
@@ -637,20 +634,20 @@ export default function OrganizersLanding() {
       <section className="py-16 md:py-20 text-center">
         <div className="container max-w-3xl mx-auto px-4">
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-ink">
-            Ready to Sell Out Your Next Event?
+            Ready to sell tickets for your next event?
           </h2>
           <p className="mt-3 text-sm text-muted-ink max-w-xl mx-auto">
-            Set up your ticket tiers, customize your page link, and start selling passes in under 3 minutes.
+            Add your tiers and your page link, then put the event on sale. It takes a few minutes.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/auth?mode=register&role=organizer">
               <Button className="press h-13 px-8 bg-primary text-primary-foreground hover:bg-gold-soft font-semibold text-sm rounded-full w-full sm:w-auto">
-                Create Free Organizer Account
+                Create an organizer account
                 <ArrowUpRight className="w-4 h-4 ml-1.5" />
               </Button>
             </Link>
             <a
-              href="https://wa.me/2348000000000?text=Hi%20Black%20Heritage,%20I%20want%20to%20host%20an%20event"
+              href={whatsappLink(CHAT_GREETING)}
               target="_blank"
               rel="noreferrer"
             >
@@ -659,7 +656,7 @@ export default function OrganizersLanding() {
                 className="press h-13 px-7 border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-medium text-sm rounded-full w-full sm:w-auto"
               >
                 <MessageCircle className="w-4 h-4 mr-2" />
-                Chat with Platform Team
+                Chat with the team
               </Button>
             </a>
           </div>

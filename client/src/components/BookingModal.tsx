@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Event } from "@shared/schema";
+import { EMAIL_HINT, isValidEmail } from "@shared/email";
 import React, { useState, useEffect } from "react";
 import {
   useBookingQuote,
@@ -123,6 +124,16 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
         variant: "destructive",
         title: "Almost there",
         description: "Add your name and email so your ticket has somewhere to go.",
+      });
+      return;
+    }
+    // The ticket is delivered by email, so a typo here means a buyer with no
+    // ticket. Catch it before taking their money.
+    if (!isValidEmail(email)) {
+      toast({
+        variant: "destructive",
+        title: "Check that email address",
+        description: EMAIL_HINT,
       });
       return;
     }

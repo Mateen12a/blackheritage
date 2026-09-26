@@ -3,6 +3,7 @@ import "./env-load";
 import { registerRoutes } from "./routes";
 import { createServer } from "http";
 import { connectDB } from "./db";
+import { mediaBackend } from "./media-storage";
 import { setupAuth } from "./auth";
 import { setupGoogleAuth } from "./google-auth";
 import https from "https";
@@ -58,9 +59,10 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization", "Cookie"]
 }));
 
-// Pre-define health check before routes
+// Pre-define health check before routes. The media backend rides along so a
+// deploy that lost its R2 keys is visible from outside, not just in the logs.
 app.get("/api/health", (_req, res) => {
-  res.status(200).send("OK");
+  res.status(200).send(`OK (media: ${mediaBackend})`);
 });
 
 // Referral share links: /r/CODE forwards into the SPA, which stashes the

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
+import { errorFromResponse } from "@/lib/errors";
 
 // Same-origin API in dev/preview (vite proxies /api → localhost:3001);
 // production can override with VITE_API_URL.
@@ -32,8 +33,9 @@ export function useAuth() {
         credentials: "include"
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Login failed");
+        // errorFromResponse copes with a JSON body, a plain-text one, or an
+        // empty one, and never surfaces a parse error to the user.
+        throw await errorFromResponse(res);
       }
       return res.json();
     },
@@ -51,8 +53,7 @@ export function useAuth() {
         credentials: "include"
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Registration failed");
+        throw await errorFromResponse(res);
       }
       return res.json();
     },
@@ -77,6 +78,7 @@ export function useAuth() {
     user,
     isLoading,
     isAuthenticated: !!user,
+    isSigningIn: loginMutation.isPending || registerMutation.isPending,
     login: loginMutation.mutateAsync,
     register: registerMutation.mutateAsync,
     logout: logoutMutation.mutateAsync

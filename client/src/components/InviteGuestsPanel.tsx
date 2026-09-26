@@ -95,7 +95,7 @@ export function InviteGuestsPanel({ event }: { event: any }) {
         <Textarea
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
-          placeholder={"Adaeze Obi, adaeze@example.com\nEmeka N., emeka@example.com\nIfy (no email — share the code instead)"}
+          placeholder={"Adaeze Obi, adaeze@example.com\nEmeka N., emeka@example.com\nIfy (no email, share the code instead)"}
           rows={6}
           className="bg-surface-2 border-hairline text-ink rounded-md focus-visible:border-gold font-mono text-sm"
         />
@@ -132,7 +132,7 @@ export function InviteGuestsPanel({ event }: { event: any }) {
                   {invites.map((inv) => (
                     <tr key={inv.id} className="border-t border-hairline">
                       <td className="px-4 py-2.5 text-ink">{inv.name}</td>
-                      <td className="px-4 py-2.5 text-muted-ink truncate max-w-[16rem]">{inv.email || "—"}</td>
+                      <td className="px-4 py-2.5 text-muted-ink truncate max-w-[16rem]">{inv.email || "None"}</td>
                       <td className={`px-4 py-2.5 font-medium ${statusStyle[inv.status] || "text-muted-ink"}`}>
                         {inv.status}
                       </td>

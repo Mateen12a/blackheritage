@@ -20,11 +20,31 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { EMAIL_HINT, isValidEmail } from "@shared/email";
+import { errorMessage } from "@/lib/errors";
 import type { Event } from "@shared/schema";
 import logoImg from "../assets/logo.png";
 
 type Mode = "login" | "register";
 type Audience = "attendee" | "organizer" | "vendor";
+
+type FieldName =
+  | "username"
+  | "email"
+  | "password"
+  | "confirmPassword"
+  | "terms";
+type FieldErrors = Partial<Record<FieldName, string>>;
+
+/** Inline error under a field. Toasts disappear; this stays where the fix is. */
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p className="text-xs text-destructive" role="alert">
+      {message}
+    </p>
+  );
+}
 
 const AUDIENCES: {
   key: Audience;
@@ -40,7 +60,7 @@ const AUDIENCES: {
     label: "I'm here for the events",
     benefit: "Stop guessing which event is worth your night.",
     cta: "Start Exploring",
-    success: "You're in. See what Lagos is up to this weekend.",
+    success: "You're in. Your tickets and saved events are ready.",
   },
   {
     key: "organizer",
@@ -110,6 +130,8 @@ export default function AuthPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const { login, register } = useAuth();
   const { toast } = useToast();
   const { data: events } = useEvents();
@@ -162,29 +184,58 @@ export default function AuthPage() {
     return returnTo || "/dashboard";
   };
 
+  /** Clear a field's error as soon as the person edits it. */
+  const clearFieldError = (field: FieldName) =>
+    setFieldErrors((prev) =>
+      prev[field] ? { ...prev, [field]: undefined } : prev,
+    );
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (isRegister && password !== confirmPassword) {
+    setFieldErrors({});
+
+    const cleanUsername = username.trim();
+    const cleanEmail = email.trim();
+
+    // Check the form here first. The browser's type="email" hint does not
+    // block a submit, and a round trip to be told the email is malformed is a
+    // slower way to learn the same thing.
+    const problems: FieldErrors = {};
+    if (isRegister) {
+      if (cleanUsername.length < 3) {
+        problems.username = "Pick a username with at least 3 characters.";
+      }
+      if (!isValidEmail(cleanEmail)) problems.email = EMAIL_HINT;
+      if (password.length < 8) {
+        problems.password = "Use at least 8 characters.";
+      }
+      if (password !== confirmPassword) {
+        problems.confirmPassword = "These two passwords do not match.";
+      }
+      if (!agreedToTerms) {
+        problems.terms = "Tick the box to agree to the terms and privacy policy.";
+      }
+    } else {
+      if (!cleanUsername) problems.username = "Enter the username you signed up with.";
+      if (!password) problems.password = "Enter your password.";
+    }
+
+    if (Object.keys(problems).length > 0) {
+      setFieldErrors(problems);
       toast({
         variant: "destructive",
-        title: "Passwords don't match",
-        description: "Check both password fields and try again.",
+        title: isRegister ? "Almost there" : "We need both fields",
+        description: Object.values(problems)[0],
       });
       return;
     }
-    if (isRegister && !agreedToTerms) {
-      toast({
-        variant: "destructive",
-        title: "Accept the terms first",
-        description: "Tick the box to agree to the terms and privacy policy.",
-      });
-      return;
-    }
+
+    setSubmitting(true);
     try {
       const user = isRegister
         ? await register({
-            username,
-            email,
+            username: cleanUsername,
+            email: cleanEmail,
             password,
             displayName: fullName.trim() || undefined,
             phone: phone.trim() || undefined,
@@ -193,7 +244,7 @@ export default function AuthPage() {
             audience: audience,
             ...(referralCode ? { referredBy: referralCode } : {}),
           })
-        : await login({ username, password });
+        : await login({ username: cleanUsername, password });
       toast({
         title: isRegister ? activeAudience.success : "Welcome back.",
         description: isRegister ? undefined : "Good to have you.",
@@ -202,12 +253,14 @@ export default function AuthPage() {
         ? destinationFor((user as any)?.role)
         : returnTo || destinationFor((user as any)?.role);
       setLocation(dest);
-    } catch (err: any) {
+    } catch (err) {
       toast({
         variant: "destructive",
-        title: "That didn't go through",
-        description: err.message || "Give it another shot in a moment.",
+        title: isRegister ? "We could not create that account" : "That did not work",
+        description: errorMessage(err, "Give it another shot in a moment."),
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -299,7 +352,7 @@ export default function AuthPage() {
               </p>
             </div>
             <h2 className="font-display text-3xl xl:text-4xl font-bold text-ink leading-[1.15] tracking-tight">
-              Where Lagos comes out to{" "}
+              Where Nigeria comes out to{" "}
               <span className="italic text-gold">play</span>
             </h2>
             <div className="mt-3.5 h-0.5 w-12 bg-gold" aria-hidden="true" />
@@ -439,11 +492,11 @@ export default function AuthPage() {
                   <span className="font-display font-bold text-gold tabular-nums">
                     {events?.length ?? 0}
                   </span>{" "}
-                  shows on sale across Lagos
+                  shows on sale right now
                 </span>
               </span>
               <span className="text-[10px] uppercase tracking-wider text-muted-ink/70">
-                Lagos, NG
+                Nigeria
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-muted-ink">
@@ -516,12 +569,12 @@ export default function AuthPage() {
           </div>
 
           <h2 className="font-display text-3xl font-bold text-ink tracking-tight">
-            {isRegister ? "Join Lagos" : "Welcome back"}
+            {isRegister ? "Create your account" : "Welcome back"}
           </h2>
           <p className="mt-2 text-muted-ink">
             {isRegister
               ? "It takes a minute. Pick how you're joining."
-              : "Your tickets, dashboard, and vendor profile are where you left them."}
+              : "Sign in with the username and password you chose. Your tickets and dashboard are where you left them."}
           </p>
 
           {/* Google sign-in button */}
@@ -635,11 +688,19 @@ export default function AuthPage() {
               <Input
                 id="username"
                 autoComplete="username"
+                autoFocus
+                autoCapitalize="none"
+                spellCheck={false}
+                aria-invalid={!!fieldErrors.username}
                 className="h-12 bg-surface-2 border-hairline text-ink rounded-md focus-visible:border-gold focus-visible:ring-0"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  clearFieldError("username");
+                }}
                 required
               />
+              <FieldError message={fieldErrors.username} />
             </div>
 
             {isRegister && (
@@ -693,12 +754,20 @@ export default function AuthPage() {
                 <Input
                   id="email"
                   type="email"
+                  inputMode="email"
                   autoComplete="email"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  aria-invalid={!!fieldErrors.email}
                   className="h-12 bg-surface-2 border-hairline text-ink rounded-md focus-visible:border-gold focus-visible:ring-0"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    clearFieldError("email");
+                  }}
                   required
                 />
+                <FieldError message={fieldErrors.email} />
               </div>
             )}
 
@@ -712,8 +781,12 @@ export default function AuthPage() {
                     isRegister ? "new-password" : "current-password"
                   }
                   className="h-12 bg-surface-2 border-hairline text-ink pr-12 rounded-md focus-visible:border-gold focus-visible:ring-0"
+                  aria-invalid={!!fieldErrors.password}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    clearFieldError("password");
+                  }}
                   required
                 />
                 <button
@@ -731,6 +804,10 @@ export default function AuthPage() {
                   )}
                 </button>
               </div>
+              <FieldError message={fieldErrors.password} />
+              {isRegister && !fieldErrors.password && (
+                <p className="text-[11px] text-muted-ink">At least 8 characters.</p>
+              )}
             </div>
 
             {isRegister && (
@@ -741,10 +818,15 @@ export default function AuthPage() {
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
                   className="h-12 bg-surface-2 border-hairline text-ink rounded-md focus-visible:border-gold focus-visible:ring-0"
+                  aria-invalid={!!fieldErrors.confirmPassword}
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    clearFieldError("confirmPassword");
+                  }}
                   required
                 />
+                <FieldError message={fieldErrors.confirmPassword} />
               </div>
             )}
 
@@ -758,14 +840,16 @@ export default function AuthPage() {
             )}
 
             {isRegister && (
-              <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={agreedToTerms}
-                  onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 accent-[#E3B23C]"
-                  required
-                />
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">                  <input
+                    type="checkbox"
+                    checked={agreedToTerms}
+                    onChange={(e) => {
+                      setAgreedToTerms(e.target.checked);
+                      clearFieldError("terms");
+                    }}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[#E3B23C]"
+                    required
+                  />
                 <span className="text-xs leading-relaxed text-muted-ink">
                   I agree to the{" "}
                   <a
@@ -790,15 +874,22 @@ export default function AuthPage() {
               </label>
             )}
 
+            {isRegister && <FieldError message={fieldErrors.terms} />}
+
             <Button
               type="submit"
+              disabled={submitting}
               className="press w-full h-14 bg-primary text-primary-foreground hover:bg-gold-soft font-medium text-base rounded-full"
             >
-              {isRegister
-                ? agreedToTerms
-                  ? activeAudience.cta
-                  : "Agree & create account"
-                : "Sign In"}
+              {submitting
+                ? isRegister
+                  ? "Creating your account…"
+                  : "Signing you in…"
+                : isRegister
+                  ? agreedToTerms
+                    ? activeAudience.cta
+                    : "Agree & create account"
+                  : "Sign in"}
             </Button>
 
             {isRegister && (

@@ -628,15 +628,15 @@ export function OrganizerBrandPanel() {
         </CardContent>
       </Card>
 
-      {/* Alive & Kinetic Experience Studio Card */}
+      {/* Hub media card: hero video, Spotify clip, tour stops */}
       <Card className="bg-surface border-hairline">
         <CardHeader>
           <CardTitle className="text-ink flex items-center gap-2">
             <Film className="w-5 h-5 text-gold" />
-            Alive & Kinetic Experience Studio
+            Hub media
           </CardTitle>
           <CardDescription className="text-xs sm:text-sm text-muted-ink">
-            Elevate your public link hub with live concert video loops, Spotify soundbites, and multi-city tour stops.
+            Add a looping hero video, a Spotify clip, and your tour dates to your public hub page.
           </CardDescription>
         </CardHeader>
 

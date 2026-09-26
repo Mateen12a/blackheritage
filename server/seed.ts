@@ -1226,7 +1226,7 @@ export async function seedPlatform(): Promise<void> {
     if (!privateEv) {
       privateEv = await EventModel.create({
         title: "Aunty Amara 50th Surprise Dinner",
-        description: "A closed family celebration. Strictly by invitation — this page is hidden from the public listing and opens with a personal code.",
+        description: "A closed family celebration. Strictly by invitation. This page is hidden from the public listing and opens with a personal code.",
         date: inDays(21),
         location: "Private Residence, Ikoyi, Lagos",
         price: 0,

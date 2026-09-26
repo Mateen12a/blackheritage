@@ -2,12 +2,78 @@
 // ticketing lifecycle and prints PASS/FAIL per assertion.
 const BASE = "http://localhost:3001";
 const crypto = require("crypto");
+const zlib = require("zlib");
 let cookie = "";
 let pass = 0, fail = 0;
 
 function ok(name, cond, detail = "") {
   if (cond) { pass++; console.log("PASS " + name); }
   else { fail++; console.log("FAIL " + name + (detail ? " :: " + detail : "")); }
+}
+
+// pdf-lib hex-encodes every text run ("<464F554E...> Tj") and deflates the
+// streams, so a plain substring search over the file finds nothing. Flatten the
+// streams and decode the hex back to readable text.
+function pdfText(buf) {
+  const parts = [];
+  const collect = (str) => {
+    for (const m of str.matchAll(/<([0-9A-Fa-f]{4,})>\s*Tj/g)) {
+      parts.push(Buffer.from(m[1], "hex").toString("latin1"));
+    }
+  };
+  const raw = buf.toString("latin1");
+  collect(raw);
+  const re = />>\s*stream\r?\n/g;
+  let m;
+  while ((m = re.exec(raw))) {
+    const start = m.index + m[0].length;
+    const end = raw.indexOf("endstream", start);
+    if (end < 0) continue;
+    try { collect(zlib.inflateSync(buf.subarray(start, end)).toString("latin1")); } catch { /* not a deflate stream */ }
+    re.lastIndex = end;
+  }
+  return parts.join("\n");
+}
+
+// pdf-lib draws every run at an absolute baseline ("1 0 0 1 56 787.89 Tm"),
+// so the content streams carry enough geometry to catch a colliding layout
+// without rendering the page. Fonts are named per use, hence the loose match.
+function pdfOverlaps(buf) {
+  const runRe = /\/[A-Za-z-]+[\w-]* ([\d.]+) Tf\s+[\d.]+ TL\s+1 0 0 1 ([\d.]+) ([\d.]+) Tm\s*<([0-9A-Fa-f]+)>/g;
+  const problems = [];
+  const scan = (str) => {
+    runRe.lastIndex = 0;
+    let prev = null;
+    let m;
+    while ((m = runRe.exec(str))) {
+      const size = Number(m[1]);
+      const y = Number(m[3]);
+      const text = Buffer.from(m[4], "hex").toString("latin1");
+      // Only runs drawn lower than the previous one can collide with it; a
+      // higher y means a new page or a fresh block.
+      if (prev && y < prev.y && prev.y - y < size * 0.717) {
+        problems.push({
+          gap: +(prev.y - y).toFixed(2),
+          needed: +(size * 0.717).toFixed(2),
+          size,
+          text: text.slice(0, 40),
+        });
+      }
+      prev = { y, size };
+    }
+  };
+  const raw = buf.toString("latin1");
+  scan(raw);
+  const re = />>\s*stream\r?\n/g;
+  let m;
+  while ((m = re.exec(raw))) {
+    const start = m.index + m[0].length;
+    const end = raw.indexOf("endstream", start);
+    if (end < 0) continue;
+    try { scan(zlib.inflateSync(buf.subarray(start, end)).toString("latin1")); } catch { /* not deflate */ }
+    re.lastIndex = end;
+  }
+  return problems;
 }
 
 // Load .env so webhook signing matches the server's gateway config. Mirrors
@@ -766,11 +832,45 @@ async function api(method, path, body, useCookie = true) {
       body: form,
     });
     const j = await res.json().catch(() => ({}));
-    ok("studio cover upload works", res.status === 201 && typeof j.url === "string" && j.url.startsWith("/uploads/portfolio/"), "status=" + res.status + " " + JSON.stringify(j).slice(0, 100));
+    // Local disk returns /uploads/portfolio/..., R2 returns an absolute URL.
+    const localUpload = typeof j.url === "string" && j.url.startsWith("/uploads/portfolio/");
+    const remoteUpload = typeof j.url === "string" && /^https:\/\//.test(j.url);
+    ok(
+      "studio cover upload works",
+      res.status === 201 && (localUpload || remoteUpload),
+      "status=" + res.status + " " + JSON.stringify(j).slice(0, 100),
+    );
     if (j.url) {
-      const imgRes = await fetch(BASE + j.url);
+      const imgRes = await fetch(localUpload ? BASE + j.url : j.url);
       ok("cover upload served back", imgRes.status === 200, "status=" + imgRes.status);
     }
+  }
+
+  // ── Gate-fraud playbook (lead magnet) ──
+  {
+    const res = await fetch(BASE + "/api/playbook.pdf");
+    const buf = Buffer.from(await res.arrayBuffer());
+    const isPdf = buf.subarray(0, 4).toString() === "%PDF";
+    ok("playbook pdf serves", res.status === 200 && isPdf, "status=" + res.status + " bytes=" + buf.length);
+    const text = pdfText(buf);
+    ok(
+      "playbook pdf carries the gate checklist and voucher",
+      text.includes("12-point gate checklist") && text.includes("FOUNDER100"),
+      "bytes=" + buf.length + " text=" + text.length,
+    );
+    // The cover header used to overlap: a fixed 16pt step put a 26pt title's
+    // ascenders through the gold eyebrow. Guard the whole document now.
+    const overlaps = pdfOverlaps(buf);
+    ok(
+      "playbook pdf text baselines never collide",
+      overlaps.length === 0,
+      overlaps.length ? JSON.stringify(overlaps[0]) : "no collisions",
+    );
+    ok(
+      "playbook pdf repeats its running header",
+      (text.match(/BLACK HERITAGE EVENTS/g) || []).length >= 2,
+      "header runs=" + (text.match(/BLACK HERITAGE EVENTS/g) || []).length,
+    );
   }
 
   // ── Unsubscribe route: bad token redirects calmly, never error-dumps ──

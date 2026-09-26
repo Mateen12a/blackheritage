@@ -13,6 +13,7 @@ import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import type { Event } from "@shared/schema";
 import { NativeSponsorSpotlight } from "@/components/NativeSponsorSpotlight";
+import { WHATSAPP_DISPLAY, whatsappLink } from "@/lib/contact";
 import logoImg from "../assets/logo.png";
 
 /**
@@ -703,7 +704,7 @@ export default function Home() {
             <div className="flex items-center gap-5 text-xs text-muted-ink">
               <a href="https://instagram.com/blackhevents" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors" aria-label="Instagram">Instagram</a>
               <a href="https://x.com/blackhevents" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors" aria-label="Twitter / X">Twitter / X</a>
-              <a href="https://wa.me/2349160aborede" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors" aria-label="WhatsApp">WhatsApp</a>
+              <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors" aria-label={`WhatsApp ${WHATSAPP_DISPLAY}`}>WhatsApp</a>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-ink/60">
               <ShieldCheck className="w-3.5 h-3.5 text-gold/40" aria-hidden="true" />

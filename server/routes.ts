@@ -4,9 +4,9 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
-import { randomBytes } from "crypto";
 import { storage, mapEventLean, mapVendor } from "./storage";
 import { api } from "@shared/routes";
+import { EMAIL_HINT, isValidEmail } from "@shared/email";
 import {
   insertDraftEventSchema, missingEventPublishFields, insertMessageSchema, bookingInitiateSchema, bookingFinalizeSchema,
   promoCreateSchema, manualTicketSchema, scanRequestSchema, scanOverrideSchema,
@@ -26,6 +26,9 @@ import { seedPlatform } from "./seed";
 import { sendManualTicketEmail, sendRefundEmail, sendFollowerDropEmail } from "./emails";
 import { extractEventFromFile, isAIConfigured, aiUploadLimiter } from "./ai";
 import { rateLimit } from "./auth";
+import { saveUpload, MAX_UPLOAD_BYTES } from "./media-storage";
+import { playbookPdf, PLAYBOOK_FILENAME, PLAYBOOK_PROMO_CODE } from "./playbook";
+import { isEmailConfigured, sendPlaybookEmail } from "./emails";
 import crypto from "crypto";
 
 const uploadRoot = process.cwd();
@@ -39,22 +42,16 @@ function slugify(title: string): string {
     .slice(0, 60);
 }
 
-// ── Portfolio uploads ──
-// Files land in uploads/portfolio and are served at /uploads/portfolio/*.
-// Local-disk storage: the right call for this deployment. A hosted store
-// (S3, Cloudinary) is the upgrade path when multi-instance matters.
+// ── Media uploads ──
+// Content goes to Cloudflare R2 when it is configured, and to
+// uploads/portfolio on disk otherwise (dev and tests). See media-storage.ts.
 const UPLOAD_DIR = path.resolve(process.cwd(), "uploads", "portfolio");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const portfolioUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, Date.now() + "-" + randomBytes(4).toString("hex") + ext);
-    },
-  }),
-  limits: { fileSize: 50 * 1024 * 1024 },
+  // Buffered, then handed to media-storage: that module picks R2 or the disk.
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_UPLOAD_BYTES },
   fileFilter: (_req, file, cb) => {
     const okType = file.mimetype.startsWith("image/") || file.mimetype === "video/mp4" || file.mimetype === "video/quicktime" || file.mimetype === "video/webm";
     if (!okType) return cb(new Error("Only images, MP4, WebM or MOV files are allowed"));
@@ -80,10 +77,10 @@ export async function registerRoutes(
   // One read, honest conditions, no gamification: what is actually left
   // before the organizer's first clean launch.
   app.get("/api/setup-checklist", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in first" });
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
     const user = req.user as any;
     if (user.role === "user" && !user.teamOwnerId) {
-      return res.status(403).json({ message: "Organizer access required" });
+      return res.status(403).json({ message: "This page is for organizer accounts. Sign in as an organizer, or create one." });
     }
     try {
       const uid = (user.teamOwnerId || user._id).toString();
@@ -227,14 +224,14 @@ export async function registerRoutes(
       res.json(events);
     } catch (err) {
       console.error("Events error:", err);
-      res.status(500).json({ message: "Failed to fetch events" });
+      res.status(500).json({ message: "We could not load events just now. Try again in a moment." });
     }
   });
 
   // Verify context must register before /api/events/:id or "verify-context"
   // would be swallowed as an event id.
   app.get("/api/events/verify-context", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in first" });
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
     const user = req.user as any;
     const organizerId = user.teamOwnerId || user._id.toString();
     try {
@@ -268,13 +265,13 @@ export async function registerRoutes(
       const key = String(req.params.slug).toLowerCase();
       const doc = await EventModel.findOne({ slug: key }).lean()
         || await EventModel.findOne({ slugAliases: key }).lean();
-      if (!doc) return res.status(404).json({ message: "Event not found" });
+      if (!doc) return res.status(404).json({ message: "That event no longer exists, or the link is wrong." });
       // Drafts are workshop-only: invisible to everyone but the owner until
       // they are published, same answer a missing event would give.
       if ((doc as any).status === "draft") {
         const viewer = req.user as any;
         const isOwner = viewer && ((doc as any).organizerId === viewer._id?.toString() || viewer.role === "admin");
-        if (!isOwner) return res.status(404).json({ message: "Event not found" });
+        if (!isOwner) return res.status(404).json({ message: "That event no longer exists, or the link is wrong." });
       }
       // Same invite-only gate as the id route: code, invite token, or the
       // organizer themself. Everything else gets the requiresCode marker.
@@ -300,7 +297,7 @@ export async function registerRoutes(
       res.json(mapEventLean(doc));
     } catch (err) {
       console.error("Slug lookup error:", err);
-      res.status(500).json({ message: "Failed to fetch event" });
+      res.status(500).json({ message: "We could not load that event just now. Try again in a moment." });
     }
   });
 
@@ -386,7 +383,7 @@ export async function registerRoutes(
           || await EventModel.findOne({ slugAliases: param.toLowerCase() }).lean();
         if (doc) event = mapEventLean(doc);
       }
-      if (!event) return res.status(404).json({ message: "Event not found" });
+      if (!event) return res.status(404).json({ message: "That event no longer exists, or the link is wrong." });
       if ((event as any).visibility !== "invite_only") return res.json({ ok: true });
       const supplied = String(req.query.code || "").trim().toUpperCase();
       const stored = String((event as any).accessCode || "").trim().toUpperCase();
@@ -404,7 +401,7 @@ export async function registerRoutes(
     try {
       const event = await storage.getEvent(req.params.id);
       if (!event) {
-        return res.status(404).json({ message: "Event not found" });
+        return res.status(404).json({ message: "That event no longer exists, or the link is wrong." });
       }
       // Pretty-link promotion: only a real address-bar navigation (or a
       // tool like curl with no Sec-Fetch-Mode at all) 301s to /e/:slug so
@@ -421,7 +418,7 @@ export async function registerRoutes(
       if ((event as any).status === "draft") {
         const viewer = req.user as any;
         const isOwner = viewer && (event.organizerId === viewer._id?.toString() || viewer.role === "admin");
-        if (!isOwner) return res.status(404).json({ message: "Event not found" });
+        if (!isOwner) return res.status(404).json({ message: "That event no longer exists, or the link is wrong." });
       }
       // Invite-only gate: the page stays invisible until the right access
       // code arrives (?code= on this request, a prior /access check, or an
@@ -449,13 +446,13 @@ export async function registerRoutes(
       res.json(event);
     } catch (err) {
       console.error("Event error:", err);
-      res.status(500).json({ message: "Failed to fetch event" });
+      res.status(500).json({ message: "We could not load that event just now. Try again in a moment." });
     }
   });
 
   app.post(api.events.create.path, async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role === 'user') {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
     try {
       // Drafts may omit description, date, location, and image. The publish
@@ -498,13 +495,13 @@ export async function registerRoutes(
 
   app.patch(api.events.update.path, async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role === 'user') {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
     const event = await storage.getEvent(req.params.id);
-    if (!event) return res.status(404).json({ message: "Not found" });
+    if (!event) return res.status(404).json({ message: "We could not find that." });
     
     if ((req.user as any).role !== 'admin' && event.organizerId !== (req.user as any)._id.toString()) {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }      const wasPublished = event.status === "published";
     try {
       const input = api.events.update.input.parse(req.body);
@@ -548,12 +545,12 @@ export async function registerRoutes(
   // duplicating the completeness rules on the client.
   app.get("/api/events/:id/publish-readiness", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role === "user") {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
     const event = await storage.getEvent(req.params.id);
-    if (!event) return res.status(404).json({ message: "Not found" });
+    if (!event) return res.status(404).json({ message: "We could not find that." });
     if ((req.user as any).role !== "admin" && event.organizerId !== (req.user as any)._id.toString()) {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
     const missing = missingEventPublishFields(event as any);
     res.json({ ready: missing.length === 0, missing });
@@ -690,7 +687,7 @@ export async function registerRoutes(
       }
 
       if (!organizer) {
-        return res.status(404).json({ message: "Organizer not found" });
+        return res.status(404).json({ message: "That organizer account no longer exists." });
       }
 
       const orgId = (organizer as any)._id.toString();
@@ -801,7 +798,7 @@ export async function registerRoutes(
       const organizer = await User.findOne({
         $or: [{ organizerSlug: rawSlug }, { username: rawSlug }],
       });
-      if (!organizer) return res.status(404).json({ message: "Organizer not found" });
+      if (!organizer) return res.status(404).json({ message: "That organizer account no longer exists." });
 
       const orgId = organizer._id.toString();
       let email = "";
@@ -845,7 +842,7 @@ export async function registerRoutes(
       const organizer = await User.findOne({
         $or: [{ organizerSlug: rawSlug }, { username: rawSlug }],
       });
-      if (!organizer) return res.status(404).json({ message: "Organizer not found" });
+      if (!organizer) return res.status(404).json({ message: "That organizer account no longer exists." });
 
       const orgId = organizer._id.toString();
       let email = "";
@@ -876,7 +873,7 @@ export async function registerRoutes(
 
   // Organizer audience: view followers list
   app.get("/api/organizers/me/followers", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
     const user = req.user as any;
     const orgId = user.teamOwnerId || user._id.toString();
     const { OrganizerFollowerModel } = await import("./models");
@@ -900,11 +897,11 @@ export async function registerRoutes(
 
   // ── Organizer profile management ──
   app.get("/api/organizers/me/profile", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
     const user = req.user as any;
     const orgId = user.teamOwnerId || user._id.toString();
     const organizer = await User.findById(orgId).lean();
-    if (!organizer) return res.status(404).json({ message: "Organizer not found" });
+    if (!organizer) return res.status(404).json({ message: "That organizer account no longer exists." });
 
     res.json({
       id: String((organizer as any)._id),
@@ -928,7 +925,7 @@ export async function registerRoutes(
   });
 
   app.patch("/api/organizers/me/profile", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
     const user = req.user as any;
     if (user.staffRole && user.staffRole !== "manager") {
       return res.status(403).json({ message: "Only main organizers and managers can update brand profile" });
@@ -1051,12 +1048,12 @@ export async function registerRoutes(
    */
   app.get(api.events.stats.path, async (req, res) => {
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
+      return res.status(401).json({ message: "Sign in to continue." });
     }
     const user = req.user as any;
     const isAdmin = user.role === 'admin' || !!user.isAdmin;
     if (!isAdmin && user.role !== 'organizer' && !user.teamOwnerId) {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
     try {
       const organizerId = isAdmin ? undefined : String(user.teamOwnerId || user._id);
@@ -1071,13 +1068,13 @@ export async function registerRoutes(
   // Bookings API
   app.get(api.bookings.listByEvent.path, async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role === 'user') {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
     const event = await storage.getEvent(req.params.id);
-    if (!event) return res.status(404).json({ message: "Not found" });
+    if (!event) return res.status(404).json({ message: "We could not find that." });
 
     if ((req.user as any).role !== 'admin' && event.organizerId !== (req.user as any)._id.toString()) {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
 
     const bookings = await storage.getBookingsByEvent(event.id);
@@ -1135,7 +1132,7 @@ export async function registerRoutes(
     try {
       const input = bookingInitiateSchema.parse(req.body);
       const event = await storage.getEvent(input.eventId);
-      if (!event) return res.status(404).json({ message: "Event not found" });
+      if (!event) return res.status(404).json({ message: "That event no longer exists, or the link is wrong." });
 
       // Guest checkout is a per-event choice. Signed-in buyers are unaffected.
       if (!req.isAuthenticated() && event.guestCheckout === false) {
@@ -1157,7 +1154,7 @@ export async function registerRoutes(
       // string column, so Mongo array filters don't apply; the re-read closes
       // most of the race window and finalize re-validates against availability.
       const fresh = await storage.getEvent(String(event.id));
-      if (!fresh) return res.status(404).json({ message: "Event not found" });
+      if (!fresh) return res.status(404).json({ message: "That event no longer exists, or the link is wrong." });
       const freshTiers = JSON.parse(fresh.ticketTypes || "[]");
       const freshTier = freshTiers.find((t: any) => t.name === input.tierName);
       if (!freshTier || freshTier.sold + input.quantity > freshTier.capacity) {
@@ -1419,7 +1416,7 @@ export async function registerRoutes(
       const tickets = await TicketModel.find({ bookingId: req.params.id }).lean();
       if (tickets.length === 0) return res.status(404).json({ message: "No tickets for that booking" });
       const event = await storage.getEvent(String(tickets[0].eventId));
-      if (!event) return res.status(404).json({ message: "Event not found" });
+      if (!event) return res.status(404).json({ message: "That event no longer exists, or the link is wrong." });
 
       let orgBranding = (event as any).branding ? { ...(event as any).branding } : null;
       if (event.organizerId) {
@@ -1460,7 +1457,7 @@ export async function registerRoutes(
 
   app.post("/api/bookings/:id/verify", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role === 'user') {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
     try {
       const booking = await storage.verifyBooking(req.params.id);
@@ -1475,7 +1472,7 @@ export async function registerRoutes(
   // belong to. Finance sees money; entry staff see only verification.
   const requireStaffAccess = async (req: any, res: any): Promise<{ user: any; organizerId: string | null } | null> => {
     if (!req.isAuthenticated()) {
-      res.status(401).json({ message: "Sign in first" });
+      res.status(401).json({ message: "Sign in to continue." });
       return null;
     }
     const user = req.user as any;
@@ -1491,7 +1488,7 @@ export async function registerRoutes(
     if (!ctx) return null;
     const event = await storage.getEvent(req.params.id);
     if (!event) {
-      res.status(404).json({ message: "Event not found" });
+      res.status(404).json({ message: "That event no longer exists, or the link is wrong." });
       return null;
     }
     const isAdmin = ctx.user.role === "admin";
@@ -1611,7 +1608,7 @@ export async function registerRoutes(
   app.get("/api/events/:id/pulse", async (req, res) => {
     try {
       const event = await storage.getEvent(req.params.id);
-      if (!event) return res.status(404).json({ message: "Event not found" });
+      if (!event) return res.status(404).json({ message: "That event no longer exists, or the link is wrong." });
 
       const bookings = (await storage.getBookingsByEvent(String(event.id))) as any[];
       const paid = bookings.filter((b) => b.status === "paid");
@@ -1645,7 +1642,7 @@ export async function registerRoutes(
   app.post("/api/events/:id/waitlist", async (req, res) => {
     try {
       const event = await storage.getEvent(req.params.id);
-      if (!event) return res.status(404).json({ message: "Event not found" });
+      if (!event) return res.status(404).json({ message: "That event no longer exists, or the link is wrong." });
       if (event.waitlistEnabled !== true) {
         return res.status(400).json({ message: "This event is not running a waitlist" });
       }
@@ -1939,7 +1936,7 @@ export async function registerRoutes(
 
   // ── Supervisor override: admit an already-used ticket, logged ──
   app.post("/api/verify/override", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in first" });
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
     const user = req.user as any;
     if (user.role !== "admin" && user.staffRole && user.staffRole !== "manager") {
       return res.status(403).json({ message: "Only supervisors can override" });
@@ -1966,7 +1963,7 @@ export async function registerRoutes(
 
   // ── Offline sync: batch results from the cached portal ──
   app.post("/api/verify/sync", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in first" });
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
     const user = req.user as any;
     if (user.role !== "admin" && user.role !== "organizer" && !user.staffRole && !user.teamOwnerId) {
       return res.status(403).json({ message: "Staff access only" });
@@ -2005,7 +2002,7 @@ export async function registerRoutes(
 
   // ── Offline cache: valid tickets for one event, loaded at portal login ──
   app.get("/api/events/:id/valid-tickets", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in first" });
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
     const ctx = await requireEventScope(req, res);
     if (!ctx) return;
     const tickets = await TicketModel.find({
@@ -2017,7 +2014,7 @@ export async function registerRoutes(
 
   // ── Live event stats for the organizer dashboard and gate tally ──
   app.get("/api/events/:id/live-stats", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in first" });
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
     const ctx = await requireEventScope(req, res);
     if (!ctx) return;
     const eventId = new mongoose.Types.ObjectId(String(ctx.event.id));
@@ -2086,14 +2083,14 @@ export async function registerRoutes(
   // ── Platform settings (admin): commission rates ──
   app.get("/api/platform/settings", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
-      return res.status(403).json({ message: "Admin only" });
+      return res.status(403).json({ message: "This area is for platform admins." });
     }
     res.json(await getPlatformSettings());
   });
 
   app.patch("/api/platform/settings", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
-      return res.status(403).json({ message: "Admin only" });
+      return res.status(403).json({ message: "This area is for platform admins." });
     }
     try {
       const input = platformSettingsSchema.parse(req.body);
@@ -2126,14 +2123,14 @@ export async function registerRoutes(
     try {
       const vendor = await storage.getVendor(req.params.id);
       if (!vendor) {
-        return res.status(404).json({ message: "Vendor not found" });
+        return res.status(404).json({ message: "That vendor listing no longer exists." });
       }
       // Draft/unpublished profiles stay private to their owner and admins
       const user = req.user as any;
       const isOwner = req.isAuthenticated() && vendor.ownerId === user._id.toString();
       const isAdmin = req.isAuthenticated() && user.role === 'admin';
       if (vendor.status !== 'published' && !isOwner && !isAdmin) {
-        return res.status(404).json({ message: "Vendor not found" });
+        return res.status(404).json({ message: "That vendor listing no longer exists." });
       }
       // Same pretty-link contract as events: a real address-bar navigation
       // (Sec-Fetch-Mode absent or "navigate") 301s to /v/:slug when the
@@ -2146,7 +2143,7 @@ export async function registerRoutes(
       res.json(vendor);
     } catch (err) {
       console.error("Vendor error:", err);
-      res.status(500).json({ message: "Failed to fetch vendor" });
+      res.status(500).json({ message: "We could not load that vendor just now. Try again in a moment." });
     }
   });
 
@@ -2157,7 +2154,7 @@ export async function registerRoutes(
   app.get("/api/vendors/:id/trust", async (req, res) => {
     try {
       const vendor = await storage.getVendor(req.params.id);
-      if (!vendor) return res.status(404).json({ message: "Vendor not found" });
+      if (!vendor) return res.status(404).json({ message: "That vendor listing no longer exists." });
 
       const vendorId = String(vendor.id);
       const ownerId = vendor.ownerId ? String(vendor.ownerId) : null;
@@ -2234,12 +2231,12 @@ export async function registerRoutes(
       const key = String(req.params.slug).toLowerCase();
       const doc = await VendorModel.findOne({ slug: key }).lean()
         || await VendorModel.findOne({ slugAliases: key }).lean();
-      if (!doc) return res.status(404).json({ message: "Vendor not found" });
-      if (doc.status !== "published") return res.status(404).json({ message: "Vendor not found" });
+      if (!doc) return res.status(404).json({ message: "That vendor listing no longer exists." });
+      if (doc.status !== "published") return res.status(404).json({ message: "That vendor listing no longer exists." });
       res.json(mapVendor(doc));
     } catch (err) {
       console.error("Vendor slug lookup error:", err);
-      res.status(500).json({ message: "Failed to fetch vendor" });
+      res.status(500).json({ message: "We could not load that vendor just now. Try again in a moment." });
     }
   });
 
@@ -2247,10 +2244,10 @@ export async function registerRoutes(
   // One endpoint because vendors own the whole surface (no team roles like
   // events have). Empty slug returns to the auto slug from the name.
   app.patch("/api/vendors/:id/link", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(403).json({ message: "Forbidden" });
+    if (!req.isAuthenticated()) return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     try {
       const vendor = await storage.getVendor(req.params.id);
-      if (!vendor) return res.status(404).json({ message: "Vendor not found" });
+      if (!vendor) return res.status(404).json({ message: "That vendor listing no longer exists." });
       const me = req.user as any;
       if (me.role !== "admin" && vendor.ownerId !== me._id.toString()) {
         return res.status(403).json({ message: "You can only edit your own profile link" });
@@ -2285,10 +2282,10 @@ export async function registerRoutes(
   });
 
   app.patch("/api/vendors/:id/look", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(403).json({ message: "Forbidden" });
+    if (!req.isAuthenticated()) return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     try {
       const vendor = await storage.getVendor(req.params.id);
-      if (!vendor) return res.status(404).json({ message: "Vendor not found" });
+      if (!vendor) return res.status(404).json({ message: "That vendor listing no longer exists." });
       const me = req.user as any;
       if (me.role !== "admin" && vendor.ownerId !== me._id.toString()) {
         return res.status(403).json({ message: "You can only edit your own profile look" });
@@ -2328,7 +2325,7 @@ export async function registerRoutes(
     // registers vendor-intent users with the plain "user" role (the User
     // model has no "vendor" role; ownership lives on the vendor document).
     if (!req.isAuthenticated()) {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
     try {
       const input = api.vendors.create.input.parse(req.body);
@@ -2352,13 +2349,13 @@ export async function registerRoutes(
     // Any signed-in user can edit their own vendor profile (vendor profiles
     // are user-owned; there is no "vendor" role).
     if (!req.isAuthenticated()) {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
     const vendor = await storage.getVendor(req.params.id);
-    if (!vendor) return res.status(404).json({ message: "Not found" });
+    if (!vendor) return res.status(404).json({ message: "We could not find that." });
 
     if ((req.user as any).role !== 'admin' && vendor.ownerId !== (req.user as any)._id.toString()) {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
 
     try {
@@ -2398,10 +2395,18 @@ export async function registerRoutes(
       if (!req.file) {
         return res.status(400).json({ message: "Choose a file to upload" });
       }
-      res.status(201).json({
-        url: "/uploads/portfolio/" + req.file.filename,
-        kind: req.file.mimetype.startsWith("video/") ? "video" : "image",
-      });
+      saveUpload(req.file.buffer, req.file.originalname, req.file.mimetype)
+        .then(({ url, backend }) => {
+          res.status(201).json({
+            url,
+            kind: req.file!.mimetype.startsWith("video/") ? "video" : "image",
+            storage: backend,
+          });
+        })
+        .catch((uploadErr) => {
+          console.error("Upload to media storage failed:", uploadErr);
+          res.status(502).json({ message: "Upload failed. Try again in a moment." });
+        });
     });
   });
 
@@ -2502,7 +2507,7 @@ export async function registerRoutes(
   // Payments API
   app.post(api.payments.createIntent.path, async (req, res) => {
     if (!req.isAuthenticated()) {
-       return res.status(401).json({ message: "Unauthorized" });
+       return res.status(401).json({ message: "Sign in to continue." });
     }
     
     if (!stripe) {
@@ -2526,13 +2531,13 @@ export async function registerRoutes(
 
   app.delete(api.events.update.path, async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role === 'user') {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
     const event = await storage.getEvent(req.params.id);
-    if (!event) return res.status(404).json({ message: "Not found" });
+    if (!event) return res.status(404).json({ message: "We could not find that." });
     
     if ((req.user as any).role !== 'admin' && event.organizerId !== (req.user as any)._id.toString()) {
-      return res.status(403).json({ message: "Forbidden" });
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
 
     try {
@@ -2547,7 +2552,7 @@ export async function registerRoutes(
 
   // ── Account settings: every signed-in user can edit their own profile ──
   app.patch("/api/account/profile", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
     const user = req.user as any;
     const body = (req.body || {}) as Record<string, unknown>;
     const update: Record<string, unknown> = {};
@@ -2579,18 +2584,18 @@ export async function registerRoutes(
     }
 
     const updated = await User.findByIdAndUpdate(user._id, { $set: update }, { new: true }).lean();
-    if (!updated) return res.status(404).json({ message: "Account not found" });
+    if (!updated) return res.status(404).json({ message: "That account no longer exists." });
     res.json(safeUserShape(updated));
   });
 
   app.patch("/api/account/password", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Not authenticated" });
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
     const { currentPassword, newPassword } = req.body as Record<string, string>;
     if (typeof newPassword !== "string" || newPassword.length < 8) {
       return res.status(400).json({ message: "New password must be at least 8 characters" });
     }
     const user = await User.findById((req.user as any)._id);
-    if (!user) return res.status(404).json({ message: "Account not found" });
+    if (!user) return res.status(404).json({ message: "That account no longer exists." });
     if (user.password) {
       const ok = await bcrypt.compare(String(currentPassword || ""), user.password);
       if (!ok) return res.status(403).json({ message: "Current password is wrong" });
@@ -2655,7 +2660,7 @@ export async function registerRoutes(
     const comment = typeof req.body?.comment === "string" ? req.body.comment.trim().slice(0, 500) : null;
     const { VendorRatingModel, VendorModel } = await import("./models");
     const vendor = await VendorModel.findById(req.params.id).lean();
-    if (!vendor) return res.status(404).json({ message: "Vendor not found" });
+    if (!vendor) return res.status(404).json({ message: "That vendor listing no longer exists." });
     if ((vendor as any).ownerId === user._id.toString()) {
       return res.status(403).json({ message: "You cannot review your own shop" });
     }
@@ -2725,7 +2730,7 @@ export async function registerRoutes(
 
   app.get("/api/sponsors", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
-      return res.status(403).json({ message: "Admin access required" });
+      return res.status(403).json({ message: "This area is for platform admins." });
     }
     const sponsors = await NativeSponsorModel.find().sort({ createdAt: -1 }).lean();
     res.json(sponsors.map((s: any) => ({
@@ -2746,7 +2751,7 @@ export async function registerRoutes(
 
   app.post("/api/sponsors", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
-      return res.status(403).json({ message: "Admin access required" });
+      return res.status(403).json({ message: "This area is for platform admins." });
     }
     const { title, sponsorName, tagline, badgeText, imageUrl, targetUrl, placement, active } = req.body;
     if (!title || !sponsorName || !tagline || !imageUrl || !targetUrl) {
@@ -2830,12 +2835,34 @@ export async function registerRoutes(
     }
   });
 
+  // ── The gate-fraud playbook ──
+  // Built on demand from server/playbook.ts so there is no stale static PDF.
+  app.get("/api/playbook.pdf", async (_req, res) => {
+    try {
+      const pdf = await playbookPdf();
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="${PLAYBOOK_FILENAME}"`);
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      return res.send(Buffer.from(pdf));
+    } catch (err) {
+      console.error("Playbook PDF failed:", err);
+      return res.status(500).json({ message: "Could not build the playbook. Try again." });
+    }
+  });
+
   // ── Organizer Leads & Playbook Downloads (Lead Magnet) ──
   app.post("/api/leads", async (req, res) => {
     try {
       const { name, brandName, whatsapp, email, city, estimatedAttendance, notes } = req.body;
       if (!name || !brandName || !whatsapp || !email) {
-        return res.status(400).json({ error: "Name, brand name, WhatsApp number, and email are required." });
+        return res.status(400).json({
+          error: "Add your name, brand name, WhatsApp number, and email.",
+        });
+      }
+      // The email is how the playbook reaches them, so reject typos here
+      // rather than storing a lead nobody can reply to.
+      if (!isValidEmail(email)) {
+        return res.status(400).json({ error: EMAIL_HINT });
       }
 
       // Clean phone number (e.g. +234, 080...)
@@ -2852,10 +2879,29 @@ export async function registerRoutes(
         notes: notes ? String(notes).trim() : "",
       });
 
+      // Deliver the playbook: PDF attached, plus a link for the browser copy.
+      try {
+        if (await isEmailConfigured()) {
+          const pdf = await playbookPdf();
+          await sendPlaybookEmail(
+            { name: lead.name, email: lead.email },
+            {
+              promoCode: PLAYBOOK_PROMO_CODE,
+              playbookUrl: `${process.env.PUBLIC_APP_URL || "http://localhost:5000"}/api/playbook.pdf`,
+              pdfBase64: Buffer.from(pdf).toString("base64"),
+            },
+          );
+        }
+      } catch (mailErr) {
+        // The lead is already saved; a failed email must not lose it.
+        console.error("Playbook email failed:", mailErr);
+      }
+
       return res.status(201).json({
         success: true,
-        message: "Playbook unlocked. Your 0% fee promotion code is active.",
-        promoCode: "FOUNDER100",
+        message: "Playbook sent to your email.",
+        promoCode: PLAYBOOK_PROMO_CODE,
+        playbookUrl: "/api/playbook.pdf",
         leadId: lead._id,
       });
     } catch (err: any) {

@@ -357,7 +357,7 @@ export default function EventDetails() {
                       try {
                         await (navigator as any).share({
                           title: event.title,
-                          text: `${event.title} — ${format(new Date(event.date), "EEE d MMM")}`,
+                          text: `${event.title} · ${format(new Date(event.date), "EEE d MMM")}`,
                           url: window.location.href,
                         });
                       } catch {
