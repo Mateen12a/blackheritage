@@ -5,11 +5,12 @@ import path from "path";
 import fs from "fs";
 import multer from "multer";
 import { storage, mapEventLean, mapVendor } from "./storage";
+import { buildEventIcs } from "./calendar";
 import { api } from "@shared/routes";
 import { EMAIL_HINT, isValidEmail } from "@shared/email";
 import {
   insertDraftEventSchema, missingEventPublishFields, insertMessageSchema, bookingInitiateSchema, bookingFinalizeSchema,
-  promoCreateSchema, manualTicketSchema, scanRequestSchema, scanOverrideSchema,
+  promoCreateSchema, manualTicketSchema, gateSaleSchema, scanRequestSchema, scanOverrideSchema,
   scanSyncSchema, teamCreateSchema, platformSettingsSchema,
   eventSettingsSchema, brandingSchema, waitlistJoinSchema,
   type InsertEvent,
@@ -19,7 +20,7 @@ import Stripe from "stripe";
 import bcrypt from "bcryptjs";
 import { User, TicketModel, ScanEventModel, PlatformSettingModel, BookingModel, WaitlistModel, NativeSponsorModel, OrganizerLeadModel } from "./models";
 import mongoose from "mongoose";
-import { fulfillBooking, quoteBooking, validatePromo, getPlatformSettings } from "./booking";
+import { fulfillBooking, quoteBooking, validatePromo, getPlatformSettings, createGateSale } from "./booking";
 import { initializePayment, verifyPayment, refundPayment, activeGateway, isPaystackConfigured, isFlutterwaveConfigured, isPaystackSignatureValid, isFlutterwaveSignatureValid } from "./payments";
 import { buildTicketPdf, generateTicketCode } from "./tickets";
 import { seedPlatform } from "./seed";
@@ -142,21 +143,63 @@ export async function registerRoutes(
         const dateStr = new Date(event.date).toLocaleString("en-NG", {
           weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
         });
-        const title = escapeHtml(event.title || "Black Heritage Events");
-        const desc = escapeHtml(`${dateStr} · ${event.location || "Lagos"}`);
+        const title = event.title || "Black Heritage Events";
+        const desc = `${dateStr} · ${event.location || "Lagos"}`;
         const image = /^https?:\/\//.test(event.imageUrl || "") ? event.imageUrl : `${base}${event.imageUrl || "/favicon.png"}`;
         const url = (event as any).slug ? `${base}/e/${(event as any).slug}` : `${base}/events/${event.id}`;
+
+        // Crawlers take the first og: tag they meet, so the shell's generic
+        // tags must go before the event's tags are injected. WhatsApp and
+        // Instagram previews then resolve to exactly one clean set instead
+        // of competing with the favicon.
+        html = html
+          .replace(/<meta\s[^>]*property="(?:og|twitter):[^"]*"[^>]*>/gi, "")
+          .replace(/<meta\s[^>]*name="(?:og|twitter):[^"]*"[^>]*>/gi, "")
+          .replace(/<title>[^<]*<\/title>/i, () => `<title>${escapeHtml(title)} · Black Heritage Events</title>`);
+
+        // Cheapest live tier in naira for the search-engine offer block;
+        // malformed tiers fall back to the legacy price field.
+        let minPrice = Math.round((event.price || 0) / 100);
+        try {
+          const tiers = JSON.parse((event as any).ticketTypes || "[]");
+          const tierPrices = tiers
+            .filter((t: any) => t && t.saleOpen !== false && Number(t.price) > 0)
+            .map((t: any) => Math.round(Number(t.price) / 100));
+          if (tierPrices.length) minPrice = Math.min(minPrice === 0 ? Infinity : minPrice, ...tierPrices);
+        } catch { /* keep legacy price */ }
+
+        const ld = {
+          "@context": "https://schema.org",
+          "@type": "Event",
+          name: title,
+          startDate: new Date(event.date).toISOString(),
+          eventStatus: "https://schema.org/EventScheduled",
+          image: [image],
+          description: `${desc}. ${String(event.description || "").slice(0, 160)}`.trim(),
+          location: { "@type": "Place", name: event.location || "Lagos", address: event.location || "Lagos" },
+          offers: {
+            "@type": "Offer",
+            url,
+            priceCurrency: "NGN",
+            price: String(minPrice),
+            availability: "https://schema.org/InStock",
+          },
+        };
+        const ldScript = `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>`;
+
         const tags =
-          `<meta property="og:title" content="${title}" />\n` +
-          `<meta property="og:description" content="${desc}" />\n` +
+          `<meta property="og:title" content="${escapeHtml(title)}" />\n` +
+          `<meta property="og:description" content="${escapeHtml(desc)}" />\n` +
           `<meta property="og:image" content="${escapeHtml(image)}" />\n` +
           `<meta property="og:url" content="${escapeHtml(url)}" />\n` +
           `<meta property="og:type" content="website" />\n` +
+          `<meta property="og:site_name" content="Black Heritage Events" />\n` +
           `<meta name="twitter:card" content="summary_large_image" />\n` +
-          `<meta name="twitter:title" content="${title}" />\n` +
-          `<meta name="twitter:description" content="${desc}" />\n` +
-          `<meta name="twitter:image" content="${escapeHtml(image)}" />`;
-        html = html.replace(/<meta property="og:title"[^>]*>/, tags);
+          `<meta name="twitter:title" content="${escapeHtml(title)}" />\n` +
+          `<meta name="twitter:description" content="${escapeHtml(desc)}" />\n` +
+          `<meta name="twitter:image" content="${escapeHtml(image)}" />\n` +
+          ldScript;
+        html = html.replace("</head>", () => `${tags}\n  </head>`);
       }
 
       res.set("Cache-Control", "public, max-age=300");
@@ -168,6 +211,54 @@ export async function registerRoutes(
   };
   app.get("/e/:slug", (req, res) => { void sendEventPageWithMeta(String(req.params.slug), res); });
   app.get("/events/:id", (req, res) => { void sendEventPageWithMeta(String(req.params.id), res); });
+
+  // Reminder opt-out: one click from any reminder email, no login needed.
+  // The token is the booking id, which is unguessable enough for a per-
+  // booking, low-stakes preference. Marks only this booking, never the
+  // buyer's account-wide email preferences.
+  app.get("/api/bookings/:id/reminders/unsubscribe", async (req, res) => {
+    try {
+      const b = await BookingModel.findByIdAndUpdate(String(req.params.id), { remindersDisabled: true });
+      if (!b) return res.status(404).send("This booking no longer exists.");
+      res.set("Content-Type", "text/html");
+      return res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reminders stopped</title></head><body style="font-family:Arial,Helvetica,sans-serif;background:#f4f2ee;margin:0;padding:48px 16px;text-align:center;"><div style="max-width:420px;margin:0 auto;background:#fff;border:1px solid #e5e2dc;border-radius:12px;padding:32px 24px;"><div style="font-size:22px;font-weight:bold;">Reminders stopped</div><p style="color:#555;font-size:14px;line-height:1.5;">You will not get any more reminder emails for this event. Your tickets stay valid and download any time on the My Tickets page.</p></div></body></html>`);
+    } catch (err: any) {
+      console.error("Reminder unsubscribe error:", err?.message);
+      return res.status(500).send("Something went wrong. Try again.");
+    }
+  });
+
+  // ── Universal calendar file: /api/events/:id/calendar.ics ──
+  // One .ics covers Apple Calendar, Outlook, Google, and Samsung. Public
+  // route (no auth): ticket emails and guest devices must fetch it without
+  // a session. Draft and unpublished events 404 so private links stay private.
+  app.get("/api/events/:id/calendar.ics", async (req, res) => {
+    try {
+      const event = await storage.getEvent(String(req.params.id));
+      if (!event || (event as any).status === "draft" || (event as any).status === "unpublished") {
+        return res.status(404).send("Not found");
+      }
+      const base = process.env.PUBLIC_APP_URL || "https://blackhevents.com";
+      const ics = buildEventIcs(
+        {
+          id: event.id,
+          title: event.title,
+          date: event.date,
+          location: event.location,
+          description: event.description,
+          slug: (event as any).slug,
+        },
+        base,
+      );
+      res.set("Content-Type", "text/calendar; charset=utf-8");
+      res.set("Content-Disposition", `attachment; filename="event-${event.id}.ics"`);
+      res.set("Cache-Control", "public, max-age=600");
+      return res.send(ics);
+    } catch (err: any) {
+      console.error("ICS route error:", err?.message);
+      return res.status(500).send("Server error");
+    }
+  });
 
   // ── AI event extraction: flyer/document upload → form prefill JSON ──
   // Organizer-only, rate limited, files stay in memory and go to the model,
@@ -1022,7 +1113,7 @@ export async function registerRoutes(
       spotifyPlaylistUrl: (organizer as any).spotifyPlaylistUrl || null,
       tourCities: (organizer as any).tourCities || [],
       followersCount: (organizer as any).followersCount || 0,
-      dnsTarget: process.env.DOMAIN_CNAME_TARGET || "cname.blackheritage.africa",
+      dnsTarget: process.env.DOMAIN_CNAME_TARGET || "cname.blackhevents.com",
     });
   });
 
@@ -1131,7 +1222,7 @@ export async function registerRoutes(
         spotifyPlaylistUrl: (updated as any).spotifyPlaylistUrl || null,
         tourCities: (updated as any).tourCities || [],
         followersCount: (updated as any).followersCount || 0,
-        dnsTarget: process.env.DOMAIN_CNAME_TARGET || "cname.blackheritage.africa",
+        dnsTarget: process.env.DOMAIN_CNAME_TARGET || "cname.blackhevents.com",
       });
     } catch (err: any) {
       console.error("Update organizer profile error:", err);
@@ -1160,7 +1251,7 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Save a domain first, then test the connection." });
       }
 
-      const target = process.env.DOMAIN_CNAME_TARGET || "cname.blackheritage.africa";
+      const target = process.env.DOMAIN_CNAME_TARGET || "cname.blackhevents.com";
       const dns = await import("dns/promises");
 
       // Resolve the CNAME chain; fall back to A/AAAA so apex domains with
@@ -1766,6 +1857,37 @@ export async function registerRoutes(
       if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
       console.error("Manual tickets error:", err);
       res.status(500).json({ message: "Could not issue those tickets" });
+    }
+  });
+
+  // ── Gate sales: tickets sold at the door for cash, POS, or transfer ──
+  app.post("/api/events/:id/gate-sales", async (req, res) => {
+    const ctx = await requireEventScope(req, res);
+    if (!ctx) return;
+    if (!ctx.canEdit) return res.status(403).json({ message: "Only main organizers and managers can record gate sales" });
+    try {
+      const input = gateSaleSchema.parse(req.body);
+      const result = await createGateSale({
+        eventId: String(ctx.event.id),
+        issuedById: ctx.user._id.toString(),
+        tierName: input.tierName,
+        quantity: input.quantity,
+        unitPriceKobo: input.unitPriceKobo,
+        method: input.method,
+        buyerName: input.buyerName,
+        buyerEmail: input.buyerEmail || undefined,
+        buyerPhone: input.buyerPhone || undefined,
+      });
+      if (!result.ok) return res.status(400).json({ message: result.message });
+      res.status(201).json({
+        bookingRef: result.booking?.paymentReference,
+        totalKobo: result.booking?.totalAmount,
+        tickets: (result.tickets || []).map((t: any) => ({ code: t.code, tierName: t.tierName, seat: t.seat })),
+      });
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      console.error("Gate sale error:", err);
+      res.status(500).json({ message: "Could not record that sale" });
     }
   });
 
@@ -2550,6 +2672,16 @@ export async function registerRoutes(
           field: err.errors[0].path.join('.'),
         });
       }
+      // Mongoose schema validation (e.g. an empty required bio). Without
+      // this, a careless empty-form submit escapes as an unhandled rejection.
+      if ((err as any)?.name === "ValidationError") {
+        const errors: any = (err as any).errors || {};
+        const first = Object.values(errors)[0] as any;
+        return res.status(400).json({
+          message: first?.message || "Some required details are missing.",
+          field: first?.path,
+        });
+      }
       throw err;
     }
   });
@@ -2576,6 +2708,16 @@ export async function registerRoutes(
         return res.status(400).json({
           message: err.errors[0].message,
           field: err.errors[0].path.join('.'),
+        });
+      }
+      // Same guard as create: required-field failures must read as friendly
+      // 400s, never as escaped rejections.
+      if ((err as any)?.name === "ValidationError") {
+        const errors: any = (err as any).errors || {};
+        const first = Object.values(errors)[0] as any;
+        return res.status(400).json({
+          message: first?.message || "Some required details are missing.",
+          field: first?.path,
         });
       }
       throw err;

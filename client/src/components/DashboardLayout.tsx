@@ -98,8 +98,11 @@ function tabsFor(role?: string, isAdmin?: boolean, isTeamStaff?: boolean, isVend
     ];
   }
 
-  // Attendees and vendor owners. Verify is staff-only upstream, so it
-  // deliberately does not appear here.
+  // Attendees and talent (DJs, MCs, caterers, entertainers — anyone the
+  // directory serves). Verify is staff-only upstream, so it deliberately does
+  // not appear here. My Shop is always present: the studio page doubles as
+  // the "get listed" onboarding for people who haven't created a profile yet,
+  // so a freshly signed-up talent is never orphaned from their own portal.
   return [
     {
       href: "/",
@@ -126,16 +129,12 @@ function tabsFor(role?: string, isAdmin?: boolean, isTeamStaff?: boolean, isVend
       icon: MessageSquare,
       match: (loc) => loc.startsWith("/messages"),
     },
-    // My Shop only appears once a vendor profile exists. Guests and attendees
-    // get the invitation from the vendors directory instead of a dead tab.
-    ...(isVendor
-      ? [{
-          href: "/vendor-dashboard",
-          label: "My Shop",
-          icon: Store,
-          match: (loc: string) => loc.startsWith("/vendor-dashboard"),
-        }]
-      : []),
+    {
+      href: "/vendor-dashboard",
+      label: "My Shop",
+      icon: Store,
+      match: (loc: string) => loc.startsWith("/vendor-dashboard"),
+    },
   ];
 }
 
@@ -217,9 +216,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <span className="block text-sm font-medium text-ink truncate">
                   {user?.username}
                 </span>
-                <span className="block text-[11px] text-muted-ink capitalize">
-                  {isOrg ? "Organizer" : isVendor ? "Vendor" : "Attendee"}
-                </span>
+              <span className="block text-[11px] text-muted-ink capitalize">
+                {isOrg ? "Organizer" : isVendor ? "Talent" : "Attendee"}
+              </span>
               </span>
             </button>
           </div>
@@ -322,7 +321,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 {user?.username}
               </p>
               <p className="text-xs text-muted-ink capitalize">
-                {isOrg ? "Organizer" : isVendor ? "Vendor" : "Attendee"} account
+                {isOrg ? "Organizer" : isVendor ? "Talent" : "Attendee"} account
               </p>
             </div>
           </div>

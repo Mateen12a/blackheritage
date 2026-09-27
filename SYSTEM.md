@@ -4,7 +4,7 @@ Everything about the platform in one file. Written from the actual code, not int
 
 ## What this is
 
-Black Heritage Events is a Nigerian events marketplace and ticketing system: guests discover events and buy tickets with instant e-ticket delivery, organizers run the full event lifecycle (tiers, promos, gate scanning, refunds, payouts), and vendors sell their services into the same audience. The positioning from GROWTH-PLAN.md holds: the competitor is not another ticketing site, it is WhatsApp coordination, DMs to vendors, and transfers with screenshots. Production domains referenced in the code are blackheritage.africa (app) and blackhevents.com (SEO surface).
+Black Heritage Events is a Nigerian events marketplace and ticketing system: guests discover events and buy tickets with instant e-ticket delivery, organizers run the full event lifecycle (tiers, promos, gate scanning, refunds, payouts), and vendors sell their services into the same audience. The positioning from GROWTH-PLAN.md holds: the competitor is not another ticketing site, it is WhatsApp coordination, DMs to vendors, and transfers with screenshots. The production domain is blackhevents.com.
 
 ## Where the system stands
 
@@ -55,7 +55,7 @@ Terms gate: signup requires `acceptedTerms`, recorded as `termsAcceptedAt` (cons
 - Built: unique slugs per event and vendor (`/e/:slug`, `/v/:slug`), 301 promotion from raw id URLs to pretty slugs on real browser navigation only, share buttons copy the pretty link.
 - Built: three theme presets (Midnight Gold, Ivory Editorial, Sunset Poster) applied as scoped CSS variables per event or vendor, with organizer logo and accent color layered on top; WCAG AA text pairs per preset.
 - Built: custom booking link settings with event logo replacing the platform brand on branded pages, plus `Powered by BlackHeritage` credit everywhere.
-- Mapped but not built (WHITE-LABEL.md): subdomains (`tunde.blackheritage.africa`, stage 2) and full custom domains with DNS verification (stage 4; the user model and CORS trusted-suffix plumbing exist).
+- Mapped but not built (WHITE-LABEL.md): subdomains (`tunde.blackhevents.com`, stage 2) and full custom domains with DNS verification (stage 4; the user model and CORS trusted-suffix plumbing exist).
 
 ### AI (Gemini)
 - `server/ai.ts` owns the Gemini boundary. `POST /api/ai/extract-event`: organizer uploads a flyer image, PDF, or text document up to 15MB; Gemini vision returns strict JSON (title, description, date, venue, tiers with naira prices, organizer name, notes) which prefills the New Event form for human review. Nothing is created or published by the model. Guards: 403 for guests, 503 without key, 10 extractions per 10 minutes per organizer, mime allowlist. Planned next: Flyer Studio generation onto the existing 577-line canvas renderer with public/private toggle.

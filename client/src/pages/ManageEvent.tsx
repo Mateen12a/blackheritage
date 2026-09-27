@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { api, buildUrl } from "@shared/routes";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Search, Trash2, Edit, ChevronLeft, Tag, UserPlus, MailPlus, Undo2, Activity, TrendingUp, Image as ImageIcon } from "lucide-react";
+import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Search, Trash2, Edit, ChevronLeft, Tag, UserPlus, MailPlus, Undo2, Activity, TrendingUp, Image as ImageIcon, Banknote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useLocation } from "wouter";
@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
   usePromos, useCreatePromo, useDeletePromo, useIssueManualTickets,
-  useRefundBooking, useLiveStats,
+  useRefundBooking, useLiveStats, useCreateGateSale,
 } from "@/hooks/use-organizer";
 
 /** Pill filter chip for the attendee list — same visual language as the
@@ -624,6 +624,12 @@ export default function ManageEvent() {
 
 const naira = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG")}`;
 
+/** Price of a tier from its JSON blob; 0 when absent or free. */
+const tierUnitPrice = (tiers: any[], name: string) => {
+  const tier = tiers.find((t) => t.name === name);
+  return tier ? Math.round(Number(tier.price || 0)) : 0;
+};
+
 function OrganizerTools({ event, bookings }: { event: any; bookings: any[] }) {
   const eventId = String(event.id);
   const { toast } = useToast();
@@ -631,6 +637,7 @@ function OrganizerTools({ event, bookings }: { event: any; bookings: any[] }) {
   const createPromo = useCreatePromo(eventId);
   const deletePromo = useDeletePromo(eventId);
   const manualTickets = useIssueManualTickets(eventId);
+  const gateSale = useCreateGateSale(eventId);
   const refund = useRefundBooking(eventId);
   const stats = useLiveStats(eventId);
 
@@ -645,6 +652,12 @@ function OrganizerTools({ event, bookings }: { event: any; bookings: any[] }) {
   const [mtEmail, setMtEmail] = useState("");
   const [mtQty, setMtQty] = useState(1);
   const [mtTier, setMtTier] = useState("Guest list");
+
+  // Gate sale form state
+  const [gsName, setGsName] = useState("");
+  const [gsTier, setGsTier] = useState("");
+  const [gsMethod, setGsMethod] = useState<"cash" | "pos" | "transfer" | "free">("cash");
+  const [gsQty, setGsQty] = useState(1);
 
   const tiers: any[] = (() => {
     try { return JSON.parse(event.ticketTypes || "[]"); } catch { return []; }
@@ -684,6 +697,24 @@ function OrganizerTools({ event, bookings }: { event: any; bookings: any[] }) {
       tierName: mtTier,
     });
     setMtName(""); setMtEmail(""); setMtQty(1);
+  };
+
+  const submitGateSale = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!gsName.trim() || !gsTier) {
+      toast({ title: "Add the buyer's name and pick a tier", variant: "destructive" });
+      return;
+    }
+    const unit = tierUnitPrice(tiers, gsTier);
+    const isFree = gsMethod === "free";
+    gateSale.mutate({
+      buyerName: gsName.trim(),
+      tierName: gsTier,
+      quantity: gsQty,
+      unitPriceKobo: isFree ? 0 : unit,
+      method: gsMethod,
+    });
+    setGsName(""); setGsQty(1);
   };
 
   return (
@@ -743,6 +774,74 @@ function OrganizerTools({ event, bookings }: { event: any; bookings: any[] }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Gate sales */}
+        <Card className="bg-surface border-hairline">
+          <CardHeader>
+            <CardTitle className="text-ink flex items-center gap-2 text-base">
+              <Banknote className="w-4 h-4 text-gold" aria-hidden="true" /> Sell at the Gate
+            </CardTitle>
+            <CardDescription>
+              Cash, POS, or transfer sales at the door. Counts against capacity like any online sale — the ledger includes the door.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={submitGateSale} className="space-y-3">
+              <Input
+                placeholder="Buyer name"
+                value={gsName}
+                onChange={(e) => setGsName(e.target.value)}
+                className="h-11 bg-surface-2 border-hairline text-ink focus-visible:border-gold focus-visible:ring-0"
+                required
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <select
+                  value={gsTier}
+                  onChange={(e) => setGsTier(e.target.value)}
+                  className="h-11 bg-surface-2 border border-hairline rounded-md px-3 text-sm text-ink"
+                  aria-label="Tier"
+                >
+                  <option value="" disabled>Pick a tier…</option>
+                  {tiers.map((t) => (
+                    <option key={t.name} value={t.name}>
+                      {t.name} — {naira(Math.round(Number(t.price || 0)))}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={gsMethod}
+                  onChange={(e) => setGsMethod(e.target.value as typeof gsMethod)}
+                  className="h-11 bg-surface-2 border border-hairline rounded-md px-3 text-sm text-ink"
+                  aria-label="Payment method"
+                >
+                  <option value="cash">Cash</option>
+                  <option value="pos">POS</option>
+                  <option value="transfer">Transfer</option>
+                  <option value="free">Free entry</option>
+                </select>
+              </div>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={gsQty}
+                onChange={(e) => setGsQty(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+                className="h-11 bg-surface-2 border-hairline text-ink focus-visible:border-gold focus-visible:ring-0"
+                aria-label="Quantity"
+              />
+              <Button
+                type="submit"
+                disabled={gateSale.isPending}
+                className="w-full h-11 bg-primary text-primary-foreground hover:bg-gold-soft font-medium press"
+              >
+                {gateSale.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Record sale"}
+              </Button>
+              <p className="text-xs text-muted-ink">
+                Real scannable tickets. Ref shows in bookings; no email needed unless you add one later.
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+
         {/* Manual tickets */}
         <Card className="bg-surface border-hairline">
           <CardHeader>

@@ -6,10 +6,26 @@ import { connectDB } from "./db";
 import { mediaBackend } from "./media-storage";
 import { setupAuth } from "./auth";
 import { setupGoogleAuth } from "./google-auth";
+import { startReminderScheduler } from "./reminders";
 import https from "https";
 import cors from "cors";
 
 const app = express();
+// nginx terminates TLS and forwards X-Forwarded-Proto; without this Express
+// never sees req.secure, and express-session silently skips Set-Cookie for
+// secure cookies — no login (password or Google) survives behind the proxy.
+app.set("trust proxy", 1);
+
+// A rejected promise from any route must never take the whole server down.
+// The express error middleware handles awaited failures; this catches the
+// ones that escape it (event-emitter callbacks, fire-and-forget tasks).
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception:", err);
+});
+
 const httpServer = createServer(app);
 
 // Update CORS to allow requests from your frontend domains
@@ -25,9 +41,10 @@ const ALLOWED_ORIGINS = [
 
 // Custom organizer domains (WHITE-LABEL.md stage 4) serve the same app from
 // their own origin. Any origin whose host ends in a suffix listed here is
-// trusted; add your root domain (e.g. blackheritage.africa) once live.
+// trusted; add your root domain (e.g. blackhevents.com) once live.
 const TRUSTED_ORIGIN_SUFFIXES = [
-  process.env.TRUSTED_ORIGIN_SUFFIX, // e.g. blackheritage.africa
+  process.env.TRUSTED_ORIGIN_SUFFIX,
+  "blackhevents.com",
   "vercel.app",
   "onrender.com",
 ].filter(Boolean) as string[];
@@ -181,6 +198,10 @@ app.use((req, res, next) => {
     listenOptions,
     () => {
       log(`serving on port ${port}`);
+      // Reminder emails ride the same process: every five minutes it sends
+      // paid bookings their 7-day, 1-day, and 2-hour touches. The dedupe
+      // ledger in Mongo makes restarts safe.
+      startReminderScheduler();
     },
   );
 })();

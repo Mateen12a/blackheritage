@@ -1,42 +1,46 @@
-import type { Express } from "express";
-import bcrypt from "bcryptjs";
-import { User } from "./models";
-
 /**
  * Google OAuth routes.
  *
- * To enable Google sign-in, set these environment variables:
+ * To enable Google sign-in, set these environment variables in .env:
  *   GOOGLE_CLIENT_ID     : from Google Cloud Console
  *   GOOGLE_CLIENT_SECRET : from Google Cloud Console
+ *   BASE_URL             : production domain (e.g. https://blackhevents.com)
  *
  * The callback URL is: {BASE_URL}/api/auth/google/callback
  *
- * When the env vars are not set, the endpoints return a helpful error
- * instead of crashing.
+ * Localhost requests route the OAuth round-trip through
+ * http://localhost:3001 (the registered dev redirect URI) and land back on
+ * http://localhost:5000; everything else uses the production domain.
  */
+import type { Express, Request } from "express";
+import bcrypt from "bcryptjs";
+import { User } from "./models";
+import { generateReferralCode } from "./referrals";
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const BASE_URL =
-  process.env.BACKEND_URL ||
-  process.env.VITE_API_URL ||
-  "http://localhost:3001";
-
-function isConfigured() {
-  return !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+function getGoogleCredentials() {
+  return {
+    clientId: process.env.GOOGLE_CLIENT_ID?.trim(),
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET?.trim(),
+  };
 }
 
-/**
- * Frontend origin to redirect back to after sign-in. FRONTEND_URL wins
- * (production). Outside production it defaults to the Vite dev server on
- * port 5000, which proxies /api to this backend. Empty string means a
- * relative redirect for same-origin deployments where the backend serves
- * the built client.
- */
-function frontendOrigin(): string {
-  if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL.replace(/\/$/, "");
-  if (process.env.NODE_ENV !== "production") return "http://localhost:5000";
-  return "";
+function isConfigured() {
+  const { clientId, clientSecret } = getGoogleCredentials();
+  return Boolean(clientId && clientSecret);
+}
+
+function getRedirectUri(req: Request): string {
+  const host = req.get("host") || "";
+  const isLocal = host.includes("localhost") || host.includes("127.0.0.1");
+  if (isLocal) {
+    return "http://localhost:3001/api/auth/google/callback";
+  }
+  const base =
+    process.env.BASE_URL ||
+    process.env.BACKEND_URL ||
+    process.env.VITE_API_URL ||
+    "https://blackhevents.com";
+  return `${base.replace(/\/$/, "")}/api/auth/google/callback`;
 }
 
 function safeDestination(dest: unknown): string {
@@ -45,7 +49,13 @@ function safeDestination(dest: unknown): string {
 }
 
 // Simple state store for CSRF protection (in-memory, single-instance)
-const pendingStates = new Map<string, { returnTo: string; timestamp: number }>();
+interface OAuthState {
+  returnTo: string;
+  redirectUri: string;
+  audience: string;
+  timestamp: number;
+}
+const pendingStates = new Map<string, OAuthState>();
 
 function generateState() {
   const chars =
@@ -67,12 +77,18 @@ export function setupGoogleAuth(app: Express) {
       });
     }
 
+    const { clientId } = getGoogleCredentials();
     const state = generateState();
-    const redirectUri = `${BASE_URL}/api/auth/google/callback`;
+    const redirectUri = getRedirectUri(req);
     const returnTo = typeof req.query.returnTo === "string" ? req.query.returnTo : "";
+    // Which signup card started this flow. Only the organizer card gets an
+    // elevated role — vendors onboard with an attendee account and build their
+    // profile from the vendor dashboard, exactly like the password path.
+    const audience = typeof req.query.audience === "string" ? req.query.audience : "";
+    const role = audience === "organizer" ? "organizer" : "user";
 
-    // Store state with a 10-minute expiry
-    pendingStates.set(state, { returnTo, timestamp: Date.now() });
+    // Store state and redirectUri with a 10-minute expiry
+    pendingStates.set(state, { returnTo, redirectUri, audience, timestamp: Date.now() });
 
     // Clean old states
     Array.from(pendingStates.entries()).forEach(([key, val]) => {
@@ -82,13 +98,17 @@ export function setupGoogleAuth(app: Express) {
     });
 
     const params = new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID!,
+      client_id: clientId!,
       redirect_uri: redirectUri,
       response_type: "code",
       scope: "openid email profile",
       state,
-      prompt: "select_account",
     });
+    // No hardcoded `prompt`: forcing select_account re-shows Google's account
+    // and consent screens on every sign-in. Returning users who already
+    // consented now flow straight back to the callback. Passing
+    // ?prompt=select_account on this endpoint opts back into the picker for
+    // "switch Google account" links.
 
     res.redirect(
       `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
@@ -111,19 +131,24 @@ export function setupGoogleAuth(app: Express) {
       return res.redirect("/auth?error=invalid_state");
     }
 
-    const returnTo = pendingStates.get(state)?.returnTo;
+    const pending = pendingStates.get(state);
+    const returnTo = pending?.returnTo;
+    const redirectUri = pending?.redirectUri || getRedirectUri(req);
+    const role = pending?.audience === "organizer" ? "organizer" : "user";
     pendingStates.delete(state);
 
+    const { clientId, clientSecret } = getGoogleCredentials();
+
     try {
-      // Exchange authorization code for tokens
+      // Exchange authorization code for tokens using the EXACT same redirect_uri
       const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
           code: code as string,
-          client_id: GOOGLE_CLIENT_ID!,
-          client_secret: GOOGLE_CLIENT_SECRET!,
-          redirect_uri: `${BASE_URL}/api/auth/google/callback`,
+          client_id: clientId!,
+          client_secret: clientSecret!,
+          redirect_uri: redirectUri,
           grant_type: "authorization_code",
         }),
       });
@@ -150,21 +175,53 @@ export function setupGoogleAuth(app: Express) {
       }
 
       // Find or create user
-      let user = await User.findOne({ email: profile.email });
+      let user = await User.findOne({ email: profile.email.toLowerCase().trim() });
+      const isNewUser = !user;
 
       if (!user) {
-        // Create new account from Google profile
+        // Create collision-safe username
+        const baseUsername = (profile.name || profile.email.split("@")[0])
+          .toLowerCase()
+          .replace(/[^a-z0-9_]/g, "")
+          .slice(0, 20) || "user";
+
+        let candidateUsername = baseUsername;
+        let suffix = 1;
+        while (await User.findOne({ username: candidateUsername })) {
+          candidateUsername = `${baseUsername.slice(0, 14)}_${suffix++}`;
+        }
+
         const randomPassword = await bcrypt.hash(
-          Math.random().toString(36).slice(2),
+          Math.random().toString(36).slice(2) + Date.now().toString(36),
           10
         );
+
         user = new User({
-          username: profile.name || profile.email.split("@")[0],
-          email: profile.email,
+          username: candidateUsername,
+          email: profile.email.toLowerCase().trim(),
           password: randomPassword,
-          role: "user", // Default to attendee; they can upgrade later
+          role, // organizer card creates an organizer; everyone else is an attendee
+          displayName: profile.name || undefined,
+          avatarUrl: profile.picture || undefined,
+          referralCode: generateReferralCode(),
+          termsAcceptedAt: new Date(),
         });
         await user.save();
+        // Match the password signup path: the audience decides the variant —
+        // organizers get next-steps, talent get profile-setup guidance,
+        // attendees get discovery. Fire-and-forget: the redirect never waits.
+        const emailRole: "user" | "organizer" | "vendor" =
+          role === "organizer" ? "organizer" : pending?.audience === "vendor" ? "vendor" : "user";
+        if (process.env.RESEND_API_KEY) {
+          import("./emails")
+            .then(({ sendWelcomeEmail }) =>
+              sendWelcomeEmail(
+                { name: String(profile.name || candidateUsername), email: String(user!.email) },
+                emailRole,
+              ),
+            )
+            .catch((e) => console.error("Welcome email failed:", e));
+        }
       }
 
       // Log in via passport session
@@ -173,13 +230,30 @@ export function setupGoogleAuth(app: Express) {
           console.error("Google auth login failed:", err);
           return res.redirect("/auth?error=session_failed");
         }
-        // Redirect to the appropriate dashboard on the frontend origin
-        const role = (user as any).role;
+        // Redirect to the appropriate destination on the correct frontend.
+        // A brand-new signup lands where its audience card says — a stale
+        // returnTo (e.g. /admin left in the URL from someone else's sign-out)
+        // must never send a fresh vendor or organizer to the wrong portal.
+        // Returning users: an explicit returnTo wins, else the account's real
+        // role decides (an organizer or admin lands on /admin).
+        const userRole = (user as any).role;
         const dest = safeDestination(
-          returnTo ||
-            (role === "admin" || role === "organizer" ? "/admin" : "/dashboard")
+          isNewUser
+            ? userRole === "organizer"
+              ? "/admin"
+              : pending?.audience === "vendor"
+                ? "/vendor-dashboard"
+                : "/dashboard"
+            : returnTo ||
+              (userRole === "admin" || userRole === "organizer"
+                ? "/admin"
+                : "/dashboard")
         );
-        res.redirect(`${frontendOrigin()}${dest}`);
+        const isLocal = redirectUri.includes("localhost");
+        const frontendBase = isLocal
+          ? "http://localhost:5000"
+          : (process.env.FRONTEND_URL?.replace(/\/$/, "") || "");
+        res.redirect(`${frontendBase}${dest}`);
       });
     } catch (err) {
       console.error("Google OAuth error:", err);
@@ -192,3 +266,4 @@ export function setupGoogleAuth(app: Express) {
     res.json({ configured: isConfigured() });
   });
 }
+

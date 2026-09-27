@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { TicketModel, BookingModel, PromoCodeModel, PayoutModel, PlatformSettingModel, EventModel } from "./models";
 import { generateTicketCode, buildTicketPdf } from "./tickets";
 import { activeGateway } from "./payments";
+import { buildEventIcs } from "./calendar";
 
 
 
@@ -142,13 +143,26 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
           totalPaidKobo: total,
           bookingRef: (booking as any).paymentReference || String(booking._id ?? booking.id).slice(-8).toUpperCase(),
           pdfBase64: Buffer.from(pdf).toString("base64"),
+          icsBase64: Buffer.from(
+            buildEventIcs(
+              {
+                id: String((event as any)._id ?? (event as any).id),
+                title: eventTitle,
+                date: (event as any).date,
+                location: (event as any)?.location || "To be announced",
+                description: (event as any)?.description || "",
+                slug: (event as any)?.slug,
+              },
+              process.env.PUBLIC_APP_URL || "https://blackhevents.com",
+            ),
+            "utf8",
+          ).toString("base64"),
         },
       );
     }
   } catch (emailErr) {
     console.error("Ticket email failed:", emailErr);
   }
-
   return {
     bookingId,
     tickets: tickets.map((t: any) => ({
@@ -283,3 +297,117 @@ export async function getPlatformSettings() {
   }
   return doc;
 }
+
+// ── Gate sales ───────────────────────────────────────────────────────────
+// A ticket sold at the door for cash, POS, or transfer is a real sale: it
+// holds seats against the tier exactly like online checkout, becomes a paid
+// booking in the ledger (paymentGateway "manual" marks it offline money), and
+// mints scannable tickets via the same fulfillment engine. Comps stay on the
+// complimentary route; this one is for money that changed hands.
+export interface GateSaleInput {
+  eventId: string;
+  issuedById: string;
+  tierName: string;
+  quantity: number;
+  unitPriceKobo: number;
+  method: "cash" | "pos" | "transfer" | "free";
+  buyerName: string;
+  buyerEmail?: string;
+  buyerPhone?: string;
+}
+
+const GATE_METHOD_LABEL: Record<GateSaleInput["method"], string> = {
+  cash: "Cash",
+  pos: "POS",
+  transfer: "Bank transfer",
+  free: "Free",
+};
+
+export async function createGateSale(input: GateSaleInput): Promise<{ ok: boolean; message?: string; booking?: any; tickets?: any[] }> {
+  const event = await EventModel.findById(input.eventId).lean();
+  if (!event) return { ok: false, message: "Event not found" };
+
+  const tiers: any[] = JSON.parse((event as any).ticketTypes || "[]");
+  const tier = tiers.find((t) => t.name === input.tierName);
+  if (!tier) return { ok: false, message: "Choose a ticket tier" };
+
+  // Same seat math as quoteBooking: the door competes with online buyers for
+  // the same capacity, so a gate sale must never overshoot it.
+  const available = Math.max(0, Number(tier.capacity || 0) - Number(tier.sold || 0));
+  if (input.quantity > available) {
+    return { ok: false, message: `Only ${available} ticket${available === 1 ? "" : "s"} left for ${tier.name}` };
+  }
+
+  const isFree = input.method === "free" || input.unitPriceKobo <= 0;
+  const totalKobo = isFree ? 0 : Math.round(input.unitPriceKobo) * input.quantity;
+
+  // Hold the seats, mirroring the initiate route (tier.sold, event capacity).
+  const fresh = await EventModel.findById(input.eventId).lean();
+  if (!fresh) return { ok: false, message: "Event not found" };
+  const freshTiers = JSON.parse((fresh as any).ticketTypes || "[]");
+  const freshTier = freshTiers.find((t: any) => t.name === input.tierName);
+  if (!freshTier || Number(freshTier.sold || 0) + input.quantity > Number(freshTier.capacity || 0)) {
+    return { ok: false, message: `Only ${freshTier ? Number(freshTier.capacity || 0) - Number(freshTier.sold || 0) : 0} left in ${input.tierName}. Someone was faster.` };
+  }
+  freshTier.sold = Number(freshTier.sold || 0) + input.quantity;
+  await EventModel.updateOne(
+    { _id: fresh._id },
+    {
+      $set: {
+        ticketTypes: JSON.stringify(freshTiers),
+        capacity: Math.max(0, Number((fresh as any).capacity || 0) - input.quantity),
+      },
+    },
+  );
+
+  try {
+    const reference = `GATE-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const booking = await BookingModel.create({
+      email: input.buyerEmail || "gate@blackhevents.com",
+      name: input.buyerName,
+      eventId: new mongoose.Types.ObjectId(input.eventId),
+      ticketType: input.tierName,
+      quantity: input.quantity,
+      totalAmount: totalKobo,
+      status: "paid",
+      paymentIntentId: null,
+      paymentReference: reference,
+      paymentGateway: "manual",
+      gatewayTxnId: `gate:${input.method}`,
+      phone: input.buyerPhone || null,
+      paidAt: new Date(),
+      isVerified: false,
+      remindersDisabled: true, // they bought at the door; no pre-event drips
+    });
+
+    const fulfillment = await fulfillBooking(String(booking._id));
+    return { ok: true, booking, tickets: fulfillment.tickets };
+  } catch (err: any) {
+    // Roll back the seat hold so a failed sale never leaks capacity.
+    try {
+      const rollback = await EventModel.findById(input.eventId).lean();
+      if (rollback) {
+        const rollbackTiers = JSON.parse((rollback as any).ticketTypes || "[]");
+        const rollbackTier = rollbackTiers.find((t: any) => t.name === input.tierName);
+        if (rollbackTier) {
+          rollbackTier.sold = Math.max(0, Number(rollbackTier.sold || 0) - input.quantity);
+          await EventModel.updateOne(
+            { _id: rollback._id },
+            {
+              $set: {
+                ticketTypes: JSON.stringify(rollbackTiers),
+                capacity: Number((rollback as any).capacity || 0) + input.quantity,
+              },
+            },
+          );
+        }
+      }
+    } catch {
+      // Best effort; the booking never landed, so the count is off by at most
+      // one sale and the organizer can edit the tier.
+    }
+    console.error("Gate sale failed:", err);
+    return { ok: false, message: "Could not record that sale. The seats were released; try again." };
+  }
+}
+

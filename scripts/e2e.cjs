@@ -484,6 +484,32 @@ async function api(method, path, body, useCookie = true) {
   r = await api("GET", "/api/events/" + event.id, null, false);
   ok("event payload carries organizer announcement", r.status === 200 && typeof r.json?.organizerAnnouncement === "object" && !!r.json?.organizerAnnouncement?.message, "msg=" + (r.json?.organizerAnnouncement?.message || "none").slice(0, 60));
 
+  // ── 29e. Social link previews: event pages serve real OG tags ──
+  // WhatsApp/Instagram read raw HTML, so /e/:slug must return the shell
+  // with the event's title, flyer image, and Event JSON-LD injected, and
+  // exactly one og: set (no stale favicon tags left behind).
+  if (slug) {
+    const page = await fetch(BASE + "/e/" + slug, { headers: { Accept: "text/html" } });
+    const html = await page.text();
+    const count = (re) => (html.match(re) || []).length;
+    ok("event page injects og:title", page.status === 200 && count(/property="og:title"/g) === 1 && html.includes(`content="${event.title}"`), "og:title x" + count(/property="og:title"/g));
+    ok("event page injects og:image (flyer, not favicon)", count(/property="og:image"/g) === 1 && /property="og:image" content="https?:/i.test(html), html.match(/property="og:image" content="[^"]{0,60}/)?.[0]);
+    ok("event page title tag is the event name", /<title>[^<]+ · Black Heritage Events<\/title>/.test(html) && !/<title>Error<\/title>/.test(html), html.match(/<title>[^<]{0,70}/)?.[0]);
+    ok("event page carries Event JSON-LD", html.includes('"@type":"Event"') && html.includes('"@type":"Offer"') && html.includes('"priceCurrency":"NGN"'), "jsonld ok");
+  }
+
+  // ── 29f. Calendar files and reminder plumbing ──
+  // The .ics is the universal calendar attachment: it must be public,
+  // RFC-shaped (UID/DTSTAMP/DTRS), and hidden for drafts.
+  {
+    const icsRes = await fetch(BASE + "/api/events/" + event.id + "/calendar.ics");
+    const ics = await icsRes.text();
+    ok("calendar ics serves published event", icsRes.status === 200 && (icsRes.headers.get("content-type") || "").includes("text/calendar"), icsRes.headers.get("content-type"));
+    ok("ics carries RFC fields", ics.startsWith("BEGIN:VCALENDAR") && ics.includes("UID:") && ics.includes("DTSTAMP:") && ics.includes("DTSTART:") && ics.includes("SUMMARY:"), ics.slice(0, 60));
+    const missing = await fetch(BASE + "/api/events/000000000000000000000000/calendar.ics");
+    ok("ics 404s unknown event", missing.status === 404, "status=" + missing.status);
+  }
+
   // ── 30. Booking link editor: slug rename with collision suffixing ──
   if (slug) {
     const renamed = slug + "-renamed";

@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
+const nairaKobo = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG")}`;
+
 export interface PromoView {
   id: string;
   code: string;
@@ -98,6 +100,44 @@ export function useIssueManualTickets(eventId: string) {
     },
     onError: (err: Error) =>
       toast({ title: "Tickets not issued", description: err.message, variant: "destructive" }),
+  });
+}
+
+export function useCreateGateSale(eventId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (input: {
+      buyerName: string;
+      buyerEmail?: string;
+      buyerPhone?: string;
+      tierName: string;
+      quantity: number;
+      unitPriceKobo: number;
+      method: "cash" | "pos" | "transfer" | "free";
+    }) => {
+      const res = await fetch(`/api/events/${eventId}/gate-sales`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+        credentials: "include",
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || "Could not record that sale");
+      return body as { bookingRef: string; totalKobo: number; tickets: { code: string; tierName: string; seat: number }[] };
+    },
+    onSuccess: (data) => {
+      // Capacity, bookings, and live gate stats all shift on a sale.
+      queryClient.invalidateQueries({ queryKey: ["/api/events", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/events", eventId, "live-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/events"] });
+      toast({
+        title: `Sold ${data.tickets.length} ticket${data.tickets.length > 1 ? "s" : ""} — ${nairaKobo(data.totalKobo)}`,
+        description: `Ref ${data.bookingRef} · codes scan at the gate`,
+      });
+    },
+    onError: (err: Error) =>
+      toast({ title: "Sale not recorded", description: err.message, variant: "destructive" }),
   });
 }
 

@@ -438,6 +438,23 @@ export const manualTicketSchema = z.object({
   quantity: z.number().int().min(1).max(10).default(1),
 });
 
+// A ticket sold at the door for cash, POS, transfer — or comped on the spot.
+// Records real offline money in the same ledger as online sales.
+export const gateSaleSchema = z.object({
+  buyerName: z.string().trim().min(2, "Enter the buyer's name").max(120),
+  buyerEmail: z
+    .string()
+    .trim()
+    .regex(EMAIL_PATTERN, EMAIL_HINT)
+    .optional()
+    .or(z.literal("")),
+  buyerPhone: z.string().trim().max(24).optional().or(z.literal("")),
+  tierName: z.string().trim().min(1, "Choose a ticket tier").max(60),
+  quantity: z.number().int().min(1, "At least one ticket").max(20),
+  unitPriceKobo: z.number().int().min(0),
+  method: z.enum(["cash", "pos", "transfer", "free"]),
+});
+
 export const scanRequestSchema = z.object({
   code: z.string().trim().min(4).max(40),
   clientTime: z.string().optional(), // when the scan happened on-device

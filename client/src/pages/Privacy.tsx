@@ -43,7 +43,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
     title: "Your rights",
     body: [
       "You can see and correct your details any time on the settings page.",
-      "You can download your data or ask us to delete your account by writing to hello@blackheritage.africa. We will action it within 30 days, keeping only what the law makes us keep.",
+      "You can download your data or ask us to delete your account by writing to hello@blackhevents.com. We will action it within 30 days, keeping only what the law makes us keep.",
       "You can unsubscribe from follower emails with the link in any of them.",
       "You can complain to the Nigeria Data Protection Commission if you think we mishandled your data. We would rather you came to us first so we can fix it.",
     ],
@@ -68,7 +68,7 @@ export default function Privacy() {
         </h1>
         <p className="mt-3 text-sm text-muted-ink">
           Last updated: 22 September 2026. We follow the Nigeria Data
-          Protection Act 2023. Write to hello@blackheritage.africa with any
+          Protection Act 2023. Write to hello@blackhevents.com with any
           question and a person will answer.
         </p>
 

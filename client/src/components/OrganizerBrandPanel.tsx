@@ -74,7 +74,7 @@ export function OrganizerBrandPanel() {
   const [isDirty, setIsDirty] = useState(false);
   const [isStoryFlyerOpen, setIsStoryFlyerOpen] = useState(false);
   const [isTestingDns, setIsTestingDns] = useState(false);
-  const [dnsTarget, setDnsTarget] = useState("cname.blackheritage.africa");
+  const [dnsTarget, setDnsTarget] = useState("cname.blackhevents.com");
   const [dnsMessage, setDnsMessage] = useState<string | null>(null);
 
   useEffect(() => {

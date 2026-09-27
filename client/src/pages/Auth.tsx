@@ -73,10 +73,10 @@ const AUDIENCES: {
   {
     key: "vendor",
     icon: Store,
-    label: "I'm a vendor or entertainer",
-    benefit: "Get booked on your work, not just who knows you.",
-    cta: "List My Business",
-    success: "Account created. Let's set up your vendor profile.",
+    label: "I'm a talent or entertainer",
+    benefit: "DJs, MCs, caterers, performers. Get booked on your work, not just who knows you.",
+    cta: "Set Up My Profile",
+    success: "Account created. Let's build your profile.",
   },
 ];
 
@@ -267,8 +267,12 @@ export default function AuthPage() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
-      // Google OAuth flow: redirect to backend OAuth endpoint
-      window.location.href = `${BASE_URL}/api/auth/google`;
+      // Google OAuth flow: redirect to the backend OAuth endpoint. The
+      // audience rides along so an organizer-card signup lands with the
+      // organizer role, and a pending destination survives the round trip.
+      const params = new URLSearchParams({ audience });
+      if (returnTo) params.set("returnTo", returnTo);
+      window.location.href = `${BASE_URL}/api/auth/google?${params.toString()}`;
     } catch {
       setIsGoogleLoading(false);
       toast({

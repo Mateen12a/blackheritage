@@ -7,7 +7,7 @@ most involved. Stages 1 and 3 are built; the rest is mapped.
 
 Every event gets a slug (organizer-set or derived from the title, unique,
 Collision-safe with suffixes). Share links are `/e/:slug`
-(`blackheritage.africa/e/easter-sunday-cultural-gala` in production):
+(`blackhevents.com/e/easter-sunday-cultural-gala` in production):
 
 - `GET /api/events/by-slug/:slug` resolves the slug to the event
 - Visiting the raw `/api/events/:id` URL in a browser 301s to `/e/:slug`,
@@ -45,22 +45,22 @@ origins via `TRUSTED_ORIGIN_SUFFIXES` for stage 4.
 
 ## Stage 2: subdomains (1 to 2 weeks, wildcard cert) — not built
 
-`tunde.blackheritage.africa` serves that organizer's public event list with
+`tunde.blackhevents.com` serves that organizer's public event list with
 their branding applied.
 
 How it works:
 
-1. **DNS**: one wildcard A record `*.blackheritage.africa` -> the VM IP.
-2. **TLS**: one wildcard certificate covering `*.blackheritage.africa`
+1. **DNS**: one wildcard A record `*.blackhevents.com` -> the VM IP.
+2. **TLS**: one wildcard certificate covering `*.blackhevents.com`
    (Let Encrypt issues these via the DNS-01 challenge; renew on a timer).
-3. **Routing**: Nginx `server_name *.blackheritage.africa` proxies to the
+3. **Routing**: Nginx `server_name *.blackhevents.com` proxies to the
    same Node app. The app reads the `Host` header, looks up the organizer
    (a `slug` or `subdomain` column on the organizer user or a new org
    profile), and serves their page. No per-tenant processes.
 4. **Subdomain claim**: organizer sets it in settings; reserved words
    (`www`, `api`, `admin`, platform names) are blocked; uniqueness enforced.
 5. **Cookies**: session cookie must be set on the parent domain
-   (`.blackheritage.africa`) so login works across subdomains.
+   (`.blackhevents.com`) so login works across subdomains.
 
 ## Stage 4: custom domains (only when paying customers ask) — not built
 

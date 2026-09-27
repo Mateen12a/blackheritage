@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { CalendarPlus, Check, Copy, MessageCircle, PartyPopper, Image as ImageIcon } from "lucide-react";
+import { buildOutlookCalendarUrl } from "@/lib/calendar-links";
 import {
   Dialog,
   DialogContent,
@@ -90,6 +91,13 @@ export function TicketReveal({
   const [isFlyerModalOpen, setIsFlyerModalOpen] = useState(false);
   const accent = accentHex || "#E3B23C";
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+  // The universal calendar file. The event prop carries the id when the
+  // reveal is opened from a real booking; the fallback keeps the preview
+  // flow working when only title/date/location are known.
+  const icsHref =
+    (event as any)?.id
+      ? `/api/events/${(event as any).id}/calendar.ics`
+      : buildCalendarUrl(eventTitle, eventDate, location);
 
   const resolvedEvent = event || {
     title: eventTitle,
@@ -205,36 +213,64 @@ export function TicketReveal({
                 Share Story Card
               </Button>
 
-              <div className="grid grid-cols-2 gap-3">
+              {/* Calendar: every major app. Google and Outlook open prefilled
+                  events; the .ics download covers Apple, Samsung, and the
+                  rest, straight from the server. */}
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   asChild
                   variant="outline"
-                  className="press h-11 border-hairline text-ink hover:bg-surface-2 font-medium rounded-md"
+                  className="press h-11 border-hairline text-ink hover:bg-surface-2 font-medium rounded-md text-xs px-2"
                 >
                   <a
                     href={buildCalendarUrl(eventTitle, eventDate, location)}
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <CalendarPlus className="w-4 h-4 mr-2" aria-hidden="true" />
-                    Calendar
+                    <CalendarPlus className="w-4 h-4 mr-1.5" aria-hidden="true" />
+                    Google
                   </a>
                 </Button>
                 <Button
                   asChild
                   variant="outline"
-                  className="press h-11 border-hairline text-ink hover:bg-surface-2 font-medium rounded-md"
+                  className="press h-11 border-hairline text-ink hover:bg-surface-2 font-medium rounded-md text-xs px-2"
                 >
                   <a
-                    href={buildWhatsAppShare(eventTitle, eventDate, location, shareUrl)}
+                    href={buildOutlookCalendarUrl({ title: eventTitle, date: eventDate, location })}
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <MessageCircle className="w-4 h-4 mr-2" aria-hidden="true" />
-                    WhatsApp
+                    <CalendarPlus className="w-4 h-4 mr-1.5" aria-hidden="true" />
+                    Outlook
+                  </a>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="press h-11 border-hairline text-ink hover:bg-surface-2 font-medium rounded-md text-xs px-2"
+                >
+                  <a href={icsHref} download="event-calendar.ics">
+                    <CalendarPlus className="w-4 h-4 mr-1.5" aria-hidden="true" />
+                    Apple
                   </a>
                 </Button>
               </div>
+
+              <Button
+                asChild
+                variant="outline"
+                className="press h-11 border-hairline text-ink hover:bg-surface-2 font-medium rounded-md"
+              >
+                <a
+                  href={buildWhatsAppShare(eventTitle, eventDate, location, shareUrl)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" aria-hidden="true" />
+                  Share on WhatsApp
+                </a>
+              </Button>
             </motion.div>
 
             <motion.p

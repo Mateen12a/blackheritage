@@ -190,6 +190,7 @@ export interface IBooking extends Document {
   gatewayTxnId?: string | null;
   isVerified: boolean; // Added isVerified
   verifiedAt?: Date; // Added verifiedAt
+  remindersDisabled?: boolean; // guest opt-out for event reminder emails
   createdAt: Date;
 }
 
@@ -212,6 +213,7 @@ const BookingSchema: Schema = new Schema({
   paidAt: { type: Date },
   isVerified: { type: Boolean, default: false }, // Added isVerified
   verifiedAt: { type: Date }, // Added verifiedAt
+  remindersDisabled: { type: Boolean, default: false }, // guest opt-out for event reminder emails
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -220,6 +222,25 @@ export const BookingModel = mongoose.models.Booking || model<IBooking>("Booking"
 // Paid bookings feed scarcity, pulse stats, and the attendee export.
 BookingSchema.index({ eventId: 1, status: 1 });
 BookingSchema.index({ email: 1, createdAt: -1 });
+
+// ── Automated event reminders ──
+// One row per (booking, kind) sent, so a backend restart can never double-
+// email a guest. The scheduler scans this table every few minutes.
+export interface IEventReminder extends Document {
+  bookingId: mongoose.Types.ObjectId;
+  kind: 'week' | 'day' | 'soon';
+  sentAt: Date;
+}
+
+const EventReminderSchema: Schema = new Schema({
+  bookingId: { type: Schema.Types.ObjectId, ref: 'Booking', required: true },
+  kind: { type: String, enum: ['week', 'day', 'soon'], required: true },
+  sentAt: { type: Date, default: Date.now },
+});
+
+export const EventReminderModel = mongoose.models.EventReminder || model<IEventReminder>("EventReminder", EventReminderSchema);
+
+EventReminderSchema.index({ bookingId: 1, kind: 1 }, { unique: true });
 
 export interface IVendor extends Document {
   businessName: string;

@@ -157,7 +157,7 @@ export async function buildTicketPdf(
     page.drawText(footerText, { x: 48, y: 60, size: 9, font: helv, color: MUTED });
 
     if (event.branding?.slug) {
-      page.drawText(`Organizer Hub: blackheritage.africa/o/${event.branding.slug}`, {
+      page.drawText(`Organizer Hub: blackhevents.com/o/${event.branding.slug}`, {
         x: 48, y: 46, size: 8, font: mono, color: GOLD,
       });
     }

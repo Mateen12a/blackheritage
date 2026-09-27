@@ -138,7 +138,7 @@ export default function VendorDashboard() {
       {/* Header */}
       <div className="mb-10 pt-2">
         <Reveal>
-          <p className="eyebrow">Vendor portal</p>
+          <p className="eyebrow">Talent studio</p>
           <h1 className="mt-3 font-display text-3xl md:text-4xl font-bold text-ink tracking-tight">
             {isCreate ? "Get listed" : existing?.businessName}
           </h1>

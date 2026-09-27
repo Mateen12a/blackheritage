@@ -40,8 +40,8 @@ export async function seedPlatform(): Promise<void> {
     return User.create({ username, email, password: pwd, role, ...extra });
   };
 
-  const admin = await ensureUser("admin", "admin@blackheritage.africa", "admin", {}, await bcrypt.hash("admin123", 10));
-  const organizer = await ensureUser("tunde_organizer", "tunde@blackheritage.africa", "organizer", {
+  const admin = await ensureUser("admin", "admin@blackhevents.com", "admin", {}, await bcrypt.hash("admin123", 10));
+  const organizer = await ensureUser("tunde_organizer", "tunde@blackhevents.com", "organizer", {
     organizerSlug: "tunde-live",
     displayName: "Tunde Live Concepts",
     bio: "Lagos live music, concerts, and cultural gala curators. Connecting artists, fans, and culture across Nigeria.",
@@ -54,7 +54,7 @@ export async function seedPlatform(): Promise<void> {
       instagram: "https://instagram.com/tundelive",
       twitter: "https://x.com/tundelive",
       whatsapp: "2348000000000",
-      website: "https://blackheritage.africa",
+      website: "https://blackhevents.com",
     },
     theme: "midnight-gold",
     accentHex: "#E3B23C",
@@ -81,7 +81,7 @@ export async function seedPlatform(): Promise<void> {
       instagram: "https://instagram.com/tundelive",
       twitter: "https://x.com/tundelive",
       whatsapp: "2348000000000",
-      website: "https://blackheritage.africa",
+      website: "https://blackhevents.com",
     };
     organizer.theme = "midnight-gold";
     organizer.accentHex = "#E3B23C";
@@ -187,11 +187,11 @@ export async function seedPlatform(): Promise<void> {
   const attendee = await ensureUser("ayo_attendee", "ayo@example.com", "user");
   const vendorOwner = await ensureUser("naija_vendor", "naija@example.com", "user");
 
-  const gateStaff = await ensureUser("gate_staff", "gate@blackheritage.africa", "user", {
+  const gateStaff = await ensureUser("gate_staff", "gate@blackhevents.com", "user", {
     teamOwnerId: organizer._id.toString(),
     staffRole: "entry",
   });
-  const financeStaff = await ensureUser("finance_staff", "finance@blackheritage.africa", "user", {
+  const financeStaff = await ensureUser("finance_staff", "finance@blackhevents.com", "user", {
     teamOwnerId: organizer._id.toString(),
     staffRole: "finance",
   });
@@ -881,7 +881,7 @@ export async function seedPlatform(): Promise<void> {
         quantity: 1,
         totalAmount: ga ? ga.price : 500000,
         name: "Demo Allow Entry",
-        email: "demo-walkin@blackheritage.africa",
+        email: "demo-walkin@blackhevents.com",
         status: "paid",
         paymentReference: "DEMO_WALKIN_1",
         paymentGateway: "simulated",
@@ -890,7 +890,7 @@ export async function seedPlatform(): Promise<void> {
       await TicketModel.create({
         code: demoCode, eventId: flagship._id, bookingId: demoBooking._id, seat: 1,
         tierName: ga ? ga.name : "General Admission", attendeeName: "Demo Allow Entry",
-        attendeeEmail: "demo-walkin@blackheritage.africa", amountPaid: ga ? ga.price : 500000,
+        attendeeEmail: "demo-walkin@blackhevents.com", amountPaid: ga ? ga.price : 500000,
         status: "valid",
       });
       console.log("Seed: demo walk-in ticket created (code BH-DEMOTICK)");

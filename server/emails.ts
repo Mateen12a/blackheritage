@@ -101,6 +101,7 @@ export interface TicketEmailData {
   totalPaidKobo: number;
   bookingRef: string;
   pdfBase64?: string; // omitted for refund-only sends
+  icsBase64?: string; // calendar file, attached when provided
   branding?: Branding | null;
 }
 
@@ -109,6 +110,7 @@ export async function sendTicketEmail(to: EmailAddress, data: TicketEmailData): 
   const dateStr = data.eventDate.toLocaleString("en-NG", {
     weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit",
   });
+  const appUrl = process.env.PUBLIC_APP_URL || "http://localhost:5000";
 
   await resend.emails.send({
     from: FROM,
@@ -132,19 +134,23 @@ export async function sendTicketEmail(to: EmailAddress, data: TicketEmailData): 
       </table>
 
       <p style="margin:20px 0 0;font-size:13px;color:#444;">Your PDF ticket is attached. Present the code at the gate, on your phone or printed. Each code works once.</p>
+      <p style="margin:8px 0 0;font-size:13px;color:#444;">A calendar file is attached too, one tap adds the date to your phone's calendar.</p>
       <p style="margin:8px 0 0;font-size:13px;">
-        <a href="${process.env.PUBLIC_APP_URL || "http://localhost:5000"}/tickets" style="color:#111;font-weight:bold;">Re-download your tickets any time</a>
+        <a href="${appUrl}/tickets" style="color:#111;font-weight:bold;">Re-download your tickets any time</a>
       </p>`,
       data.branding,
     ),
-    attachments: data.pdfBase64
-      ? [
-          {
+    attachments: [
+      ...(data.pdfBase64
+        ? [{
             filename: `blackheritage-tickets-${data.bookingRef}.pdf`,
             content: data.pdfBase64,
-          },
-        ]
-      : undefined,
+          }]
+        : []),
+      ...(data.icsBase64
+        ? [{ filename: "event-calendar.ics", content: data.icsBase64 }]
+        : []),
+    ],
   });
 }
 
@@ -243,7 +249,7 @@ export async function sendWelcomeEmail(
       <p style="margin:0;font-size:14px;color:#444;">Questions? Reply to this email, a person reads it.</p>`,
     },
     vendor: {
-      subject: "Your vendor profile is ready to set up",
+      subject: "Your talent profile is ready to set up",
       title: "Let's get you booked",
       html: `
       <p style="margin:0 0 20px;font-size:14px;">Hi ${esc(to.name)},</p>
@@ -310,6 +316,87 @@ export async function sendFollowerDropEmail(
 
 export async function isEmailConfigured(): Promise<boolean> {
   return Boolean(process.env.RESEND_API_KEY);
+}
+
+// ── Automated event reminders ──
+// Three touches per paid booking: a week out (plan ahead), a day out
+// (essentials), and two hours out (it is happening now). All three share
+// one builder so the wording stays consistent and the calendar file rides
+// along on every touch.
+export type ReminderKind = "week" | "day" | "soon";
+
+const REMINDER_COPY: Record<ReminderKind, { subject: (t: string) => string; heading: string; lede: (n: string, t: string) => string; cta: string }> = {
+  week: {
+    subject: (t) => `One week to go: ${t}`,
+    heading: "One week to go",
+    lede: (n, t) => `Hi ${n}, your tickets for ${t} are one week away. Plan your route now so the day itself is easy.`,
+    cta: "View your tickets",
+  },
+  day: {
+    subject: (t) => `Tomorrow: ${t}`,
+    heading: "Tomorrow is the day",
+    lede: (n, t) => `Hi ${n}, ${t} starts tomorrow. Here is everything you need, all in one place.`,
+    cta: "Open your tickets",
+  },
+  soon: {
+    subject: (t) => `Starting soon: ${t}`,
+    heading: "It is happening today",
+    lede: (n, t) => `Hi ${n}, ${t} is starting soon. Charge your phone, your ticket code is what gets you in.`,
+    cta: "Show your ticket",
+  },
+};
+
+export async function sendEventReminderEmail(
+  to: EmailAddress,
+  data: {
+    kind: ReminderKind;
+    eventTitle: string;
+    eventDate: Date;
+    eventLocation: string;
+    ticketsUrl: string;
+    bookingId: string;
+    icsBase64?: string;
+    branding?: Branding | null;
+  },
+): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const copy = REMINDER_COPY[data.kind];
+  const dateStr = data.eventDate.toLocaleString("en-NG", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit",
+  });
+  const appUrl = process.env.PUBLIC_APP_URL || "http://localhost:5000";
+
+  await resend.emails.send({
+    from: FROM,
+    to: [to.email],
+    subject: copy.subject(data.eventTitle),
+    html: shell(
+      copy.heading,
+      `
+      <p style="margin:0 0 4px;font-size:14px;">${copy.lede(esc(to.name), esc(data.eventTitle))}</p>
+
+      <div style="background:#faf9f7;border:1px solid #e5e2dc;border-radius:8px;padding:16px;margin:20px 0;">
+        <div style="font-size:16px;font-weight:bold;">${esc(data.eventTitle)}</div>
+        <div style="font-size:13px;color:#666;margin-top:4px;">${dateStr}</div>
+        <div style="font-size:13px;color:#666;">${esc(data.eventLocation)}</div>
+      </div>
+
+      <p style="margin:0 0 8px;font-size:14px;">
+        <a href="${escAttr(data.ticketsUrl || `${appUrl}/tickets`)}" style="display:inline-block;background:#111114;color:#ffffff;font-weight:bold;font-size:13px;padding:12px 24px;border-radius:8px;text-decoration:none;">${copy.cta}</a>
+      </p>
+      <p style="margin:16px 0 0;font-size:12px;color:#777;">
+        Your calendar file is attached, one tap adds the event to your phone.
+        <a href="${escAttr(`${appUrl}/tickets`)}" style="color:#111;">Your tickets live here any time.</a>
+      </p>
+      <p style="margin:12px 0 0;font-size:11px;color:#999;">
+        <a href="${escAttr(`${appUrl}/api/bookings/${data.bookingId}/reminders/unsubscribe`)}" style="color:#999;">Stop reminder emails for this event</a>.
+      </p>`,
+      data.branding,
+    ),
+    attachments: data.icsBase64
+      ? [{ filename: "event-calendar.ics", content: data.icsBase64 }]
+      : undefined,
+  });
 }
 
 // ── Organizer playbook (lead magnet) ──

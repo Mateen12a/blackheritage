@@ -5,7 +5,7 @@ const SECTIONS: { title: string; body: string[] }[] = [
   {
     title: "1. Who these terms apply to",
     body: [
-      "Black Heritage Events runs this platform at blackheritage.africa. These terms are an agreement between you and Black Heritage Events. They apply whether you buy a ticket, list an event, run a vendor or professional profile, work gate staff, or just browse.",
+      "Black Heritage Events runs this platform at blackhevents.com. These terms are an agreement between you and Black Heritage Events. They apply whether you buy a ticket, list an event, run a vendor or professional profile, work gate staff, or just browse.",
       "You must be at least 18 to create an account, or 13 or older with permission from a parent or guardian who accepts these terms for you. Organizers and vendors must be 18 and legally able to enter contracts.",
       "By creating an account or buying a ticket you accept these terms. If you do not accept them, do not use the platform.",
     ],
@@ -99,7 +99,7 @@ export default function Terms() {
         </h1>
         <p className="mt-3 text-sm text-muted-ink">
           Last updated: 22 September 2026. Questions about anything here? Write
-          to hello@blackheritage.africa and a person will answer.
+          to hello@blackhevents.com and a person will answer.
         </p>
 
         <div className="mt-10 space-y-10">
