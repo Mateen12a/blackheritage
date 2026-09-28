@@ -116,6 +116,11 @@ export function setupAuth(app: Express) {
         if (!user || !user.password) {
           return done(null, false, { message: "Wrong username or password. Check both, then try again." });
         }
+        // A closed account is a tombstone: it holds the transaction history,
+        // not a person. Never sign one back in.
+        if ((user as any).deletedAt) {
+          return done(null, false, { message: "This account was closed. You can create a new one with the same email." });
+        }
         const isValid = await bcrypt.compare(password, user.password);
         if (!isValid) {
           return done(null, false, { message: "Wrong username or password. Check both, then try again." });

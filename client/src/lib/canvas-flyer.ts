@@ -1458,3 +1458,181 @@ export function downloadCanvasImage(canvas: HTMLCanvasElement, filename: string)
   link.click();
   document.body.removeChild(link);
 }
+
+/* ────────────────────────── Video export ────────────────────────── */
+
+/**
+ * A short clip of the card, made from the very same canvas the studio already
+ * renders — no render service, no per-export cost, and the colours, artwork
+ * and QR code are the organizer's real ones rather than a generated look.
+ *
+ * The motion is deliberately small: a slow push-in with a brief fade up. That
+ * is enough to read as "alive" on a story without fighting the poster.
+ */
+export interface FlyerClipOptions {
+  /** Clip length in seconds. Default 6. */
+  seconds?: number;
+  /** Capture frame rate. Default 30. */
+  fps?: number;
+  /** Output width; height follows the source aspect. Default 720. */
+  width?: number;
+  /** 0 → 1 as the clip records, for a progress indicator. */
+  onProgress?: (fraction: number) => void;
+}
+
+/** First container/codec this browser will actually record, or null. */
+export function flyerClipMimeType(): string | null {
+  if (typeof window === "undefined" || typeof (window as any).MediaRecorder === "undefined") {
+    return null;
+  }
+  const candidates = [
+    "video/webm;codecs=vp9",
+    "video/webm;codecs=vp8",
+    "video/webm",
+    "video/mp4",
+  ];
+  for (const type of candidates) {
+    try {
+      if (MediaRecorder.isTypeSupported(type)) return type;
+    } catch {
+      // Older Safari throws instead of returning false.
+    }
+  }
+  return null;
+}
+
+/** Convenience for UI copy: does this browser support clip export at all? */
+export function canRecordFlyerClip(): boolean {
+  return flyerClipMimeType() !== null;
+}
+
+export function flyerClipExtension(mimeType: string): string {
+  return mimeType.includes("mp4") ? "mp4" : "webm";
+}
+
+/**
+ * Records the supplied (already rendered) flyer canvas into a video blob.
+ * Rejects with a readable message when the browser cannot record.
+ */
+export async function recordFlyerClip(
+  source: HTMLCanvasElement,
+  options: FlyerClipOptions = {},
+): Promise<Blob> {
+  const mimeType = flyerClipMimeType();
+  if (!mimeType) {
+    throw new Error("This browser cannot save video. Try Chrome, Edge, or Safari 16+.");
+  }
+  if (!source.width || !source.height) {
+    throw new Error("Nothing to record yet. Wait for the flyer to finish rendering.");
+  }
+
+  const seconds = Math.max(1, options.seconds ?? 6);
+  const fps = Math.max(10, options.fps ?? 30);
+  const outWidth = Math.max(240, Math.round(options.width ?? 720));
+  // Keep even dimensions: some encoders reject odd heights.
+  const outHeight = Math.round((outWidth * source.height) / source.width / 2) * 2;
+
+  const out = document.createElement("canvas");
+  out.width = outWidth;
+  out.height = outHeight;
+  const ctx = out.getContext("2d");
+  if (!ctx) throw new Error("Could not prepare the video canvas.");
+
+  const capture = (out as any).captureStream;
+  if (typeof capture !== "function") {
+    throw new Error("This browser cannot capture video from a canvas.");
+  }
+
+  let stream: MediaStream;
+  try {
+    stream = capture.call(out, fps) as MediaStream;
+  } catch {
+    stream = capture.call(out) as MediaStream;
+  }
+
+  const chunks: BlobPart[] = [];
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4_500_000 });
+
+  const finished = new Promise<Blob>((resolve, reject) => {
+    recorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) chunks.push(e.data);
+    };
+    recorder.onstop = () => {
+      if (chunks.length === 0) {
+        reject(new Error("The clip came out empty. Try again."));
+      } else {
+        resolve(new Blob(chunks, { type: mimeType }));
+      }
+    };
+    recorder.onerror = () => reject(new Error("Recording failed. Try again."));
+  });
+
+  // Draw one frame immediately so the very first captured frame is not blank.
+  ctx.drawImage(source, 0, 0, outWidth, outHeight);
+  recorder.start();
+
+  const startedAt = performance.now();
+  const durationMs = seconds * 1000;
+
+  await new Promise<void>((resolve) => {
+    const tick = () => {
+      const elapsed = performance.now() - startedAt;
+      const p = Math.min(1, elapsed / durationMs);
+
+      // Slow push-in: 1.0 → 1.055 over the whole clip, centred.
+      const scale = 1 + 0.055 * p;
+      const drawW = outWidth * scale;
+      const drawH = outHeight * scale;
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, outWidth, outHeight);
+      ctx.drawImage(
+        source,
+        (outWidth - drawW) / 2,
+        (outHeight - drawH) / 2,
+        drawW,
+        drawH,
+      );
+
+      // Fade up from black, then a short settle at the end.
+      const fadeIn = Math.min(1, elapsed / 380);
+      const settle = Math.min(1, Math.max(0, (durationMs - elapsed) / 420));
+      const black = 1 - Math.min(fadeIn, settle);
+      if (black > 0.001) {
+        ctx.fillStyle = `rgba(0,0,0,${black})`;
+        ctx.fillRect(0, 0, outWidth, outHeight);
+      }
+
+      options.onProgress?.(p);
+
+      if (elapsed >= durationMs) {
+        resolve();
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+
+  recorder.stop();
+  // Capture tracks keep the encoder alive; stop them once the blob is built.
+  const blob = await finished;
+  stream.getTracks().forEach((track) => track.stop());
+  options.onProgress?.(1);
+  return blob;
+}
+
+/** Saves a recorded clip to disk. */
+export function downloadCanvasVideo(blob: Blob, filename: string) {
+  const extension = blob.type.includes("mp4") ? "mp4" : "webm";
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.download = filename.endsWith(`.${extension}`) ? filename : `${filename}.${extension}`;
+  link.href = url;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  // Give the browser a moment to start the download before revoking.
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}

@@ -60,6 +60,10 @@ const UserSchema: Schema = new Schema({
     default: null,
   },
   followersCount: { type: Number, default: 0 },
+  // Set when the account holder closes their account. The row stays as a
+  // tombstone so bookings, tickets and payouts keep their audit trail; every
+  // personal field is scrubbed and sign-in is refused everywhere.
+  deletedAt: { type: Date, default: null },
   avatarUrl: { type: String, default: null },
   phone: { type: String, default: null },
   termsAcceptedAt: { type: Date, default: null }, // consent record set at registration

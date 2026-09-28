@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { useUpdateAccountProfile, useChangePassword } from "@/hooks/use-account";
+import { useUpdateAccountProfile, useChangePassword, useCloseAccount } from "@/hooks/use-account";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +13,11 @@ import { ReferralCard } from "@/components/ReferralCard";
 
 function SettingsForm() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const profile = useUpdateAccountProfile();
   const password = useChangePassword();
+  const closeAccount = useCloseAccount();
+  const [closeConfirm, setCloseConfirm] = useState("");
 
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
@@ -25,6 +30,25 @@ function SettingsForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const isOrganizer = user?.role === "organizer" || user?.role === "admin";
+  // The server refuses to close an account that still has live events. Read
+  // the same list it will check, so the card explains the block up front
+  // instead of letting someone type DELETE and fail.
+  const { data: manageEvents } = useQuery<any[]>({
+    queryKey: ["/api/events", "manage", "close-account-check"],
+    queryFn: async () => {
+      const res = await fetch("/api/events?manage=true", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user,
+  });
+  const liveEvents = (manageEvents || []).filter(
+    (e: any) =>
+      e.organizerId === (user as any)?._id &&
+      e.status === "published" &&
+      new Date(e.date).getTime() >= Date.now() - 6 * 60 * 60 * 1000,
+  );
+  const closeAccountBlocked = liveEvents.length > 0;
 
   useEffect(() => {
     if (!user) return;
@@ -278,6 +302,71 @@ function SettingsForm() {
 
       <Reveal>
         <ReferralCard />
+      </Reveal>
+
+      {/* Closing an account: say exactly what happens, then ask for the word.
+          Vague danger zones get clicked by accident; concrete ones do not. */}
+      <Reveal>
+        <Card className="border-red-500/30 bg-surface">
+          <CardHeader>
+            <CardTitle className="text-ink">Close this account</CardTitle>
+            <CardDescription>
+              This signs you out for good. Tickets you already bought stay valid, and the
+              organizer still has your name on their door list — but you will not be able to
+              sign in and view them.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <ul className="space-y-2 text-sm text-muted-ink">
+              <li>• Your name, photo, bio, phone and links are removed.</li>
+              <li>• Your email and username are freed, so you can sign up again later.</li>
+              {isOrganizer && (
+                <li>• Your hub link stops working and your vendor listing leaves the directory.</li>
+              )}
+              {isOrganizer && (
+                <li>
+                  • Your events stay online as recaps for attendees, without your name on them.
+                </li>
+              )}
+              <li>• Followers are removed from both sides — they stop hearing from you.</li>
+              <li>• Past sales, tickets and payouts are kept. Money records do not get deleted.</li>
+            </ul>
+
+            {closeAccountBlocked && (
+              <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+                You have {liveEvents.length} upcoming published event
+                {liveEvents.length === 1 ? "" : "s"} ({liveEvents.map((e: any) => e.title).slice(0, 2).join(", ")}
+                {liveEvents.length > 2 ? "…" : ""}). Unpublish them first — closing the account
+                now would leave people holding tickets for shows that disappear.
+              </p>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="confirm-close">
+                Type <span className="font-mono text-ink">DELETE</span> to confirm
+              </Label>
+              <Input
+                id="confirm-close"
+                value={closeConfirm}
+                onChange={(e) => setCloseConfirm(e.target.value)}
+                placeholder="DELETE"
+                autoComplete="off"
+              />
+            </div>
+
+            <Button
+              variant="outline"
+              disabled={closeConfirm.trim().toUpperCase() !== "DELETE" || closeAccount.isPending}
+              onClick={() => closeAccount.mutate(closeConfirm.trim().toUpperCase(), {
+                onSuccess: () => navigate("/"),
+              })}
+              className="border-red-500/40 text-red-300 hover:bg-red-500/10 hover:text-red-200"
+            >
+              {closeAccount.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Close my account
+            </Button>
+          </CardContent>
+        </Card>
       </Reveal>
     </div>
   );

@@ -23,12 +23,17 @@ import {
   Loader2,
   Sparkles,
   EyeOff,
+  Video,
 } from "lucide-react";
 import {
   renderFlyerToCanvas,
   downloadCanvasImage,
   getCanvasBlob,
   brandThemeFromEvent,
+  recordFlyerClip,
+  downloadCanvasVideo,
+  canRecordFlyerClip,
+  flyerClipMimeType,
   type FlyerFormat,
   type FlyerTheme,
   type FlyerPresetType,
@@ -87,6 +92,8 @@ export function ShareFlyerModal({
   const [isAttendeePass, setIsAttendeePass] = useState(isAttendee);
   const [attendeeNameState, setAttendeeNameState] = useState(attendeeName);
   const [isRendering, setIsRendering] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [clipProgress, setClipProgress] = useState(0);
   const [copiedImage, setCopiedImage] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -246,6 +253,66 @@ export function ShareFlyerModal({
       title: "Flyer downloaded",
       description: `High-resolution ${format === "story" ? "9:16 Story" : "1:1 Square"} saved as PNG.`,
     });
+  };
+
+  // Export: short animated clip, recorded from the canvas the studio already
+  // drew. Slow push-in, brand-accurate, and no render service in the loop.
+  const handleExportClip = async (mode: "download" | "share") => {
+    if (!canvasRef.current || !event || isRecording) return;
+    const mimeType = flyerClipMimeType();
+    if (!mimeType) {
+      toast({
+        title: "Video export is not available here",
+        description: "Your browser cannot record canvas video. Chrome, Edge, or Safari 16+ can.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const safeTitle = (event.title || "event")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+    const baseName = `flyer-${preset}-${safeTitle}-${format}`;
+
+    setIsRecording(true);
+    setClipProgress(0);
+    try {
+      const blob = await recordFlyerClip(canvasRef.current, {
+        seconds: 6,
+        onProgress: setClipProgress,
+      });
+      const extension = blob.type.includes("mp4") ? "mp4" : "webm";
+
+      if (mode === "share" && typeof navigator !== "undefined" && navigator.canShare) {
+        const file = new File([blob], `${baseName}.${extension}`, { type: blob.type });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: event.title,
+            text: `Check out ${event.title} on Black Heritage: ${canonicalUrl}`,
+          });
+          toast({
+            title: "Video shared",
+            description: "Post it to your story or status straight from there.",
+          });
+          return;
+        }
+      }
+
+      downloadCanvasVideo(blob, baseName);
+      toast({
+        title: "Video saved",
+        description: `6-second ${format === "story" ? "9:16" : "1:1"} clip, ready for stories and status.`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not make the clip.";
+      // A cancelled share is not a failure worth shouting about.
+      if (message.toLowerCase().includes("cancel")) return;
+      toast({ title: "Video export failed", description: message, variant: "destructive" });
+    } finally {
+      setIsRecording(false);
+      setClipProgress(0);
+    }
   };
 
   // Export: WhatsApp Share with prefilled link & auto-download
@@ -431,6 +498,63 @@ export function ShareFlyerModal({
                   </span>
                   <span className="text-[11px]">PNG export</span>
                 </div>
+
+                {/* Video: a story-ready clip of this exact card */}
+                {canRecordFlyerClip() && (
+                  <div className="mt-3 w-full rounded-xl border border-hairline bg-surface-2/40 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Video className="w-4 h-4 text-gold shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-ink">Animated story clip</p>
+                          <p className="text-[11px] text-muted-ink">
+                            This exact card, moving, for 6 seconds — ready for stories and status.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={isRecording || isRendering}
+                          onClick={() => handleExportClip("share")}
+                          title="Share as video"
+                          aria-label="Share as video"
+                          className="press border-hairline text-ink hover:bg-surface-2 hover:text-gold h-9 text-xs rounded-lg"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={isRecording || isRendering}
+                          onClick={() => handleExportClip("download")}
+                          className="press border-hairline text-ink hover:bg-surface-2 hover:text-gold h-9 text-xs rounded-lg gap-1.5 min-w-[92px]"
+                        >
+                          {isRecording ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              {Math.round(clipProgress * 100)}%
+                            </>
+                          ) : (
+                            <>
+                              <Download className="w-3.5 h-3.5" />
+                              Save clip
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                    {isRecording && (
+                      <div className="mt-2 h-1 w-full rounded-full bg-hairline overflow-hidden">
+                        <div
+                          className="h-full bg-gold transition-[width] duration-200 ease-linear"
+                          style={{ width: `${Math.round(clipProgress * 100)}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons Under Preview */}

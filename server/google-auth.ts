@@ -174,8 +174,10 @@ export function setupGoogleAuth(app: Express) {
         return res.redirect("/auth?error=no_email");
       }
 
-      // Find or create user
+      // Find or create user. A closed account keeps a tombstone row for the
+      // transaction history and never a login: signing in again starts fresh.
       let user = await User.findOne({ email: profile.email.toLowerCase().trim() });
+      if (user && (user as any).deletedAt) user = null;
       const isNewUser = !user;
 
       if (!user) {

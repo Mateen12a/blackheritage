@@ -375,7 +375,15 @@ export class MongoStorage implements IStorage {
       // are reachable by direct link but never appear in the directory.
       const docs = await EventModel.find({ status: 'published', visibility: { $ne: 'invite_only' } });
       const mapped = docs.map(mapEvent);
-      return mapped.filter(e => e.visibility !== 'unlisted');
+      // Finished events leave the directory. The page itself survives as a
+      // recap for anyone holding the link, but a last-month show must never
+      // sit in Explore or the homepage pretending to be bookable. Same 6-hour
+      // grace the booking gate uses, so a party running past midnight is not
+      // pulled out from under the people still inside.
+      const gate = Date.now() - 6 * 60 * 60 * 1000;
+      return mapped.filter(
+        e => e.visibility !== 'unlisted' && new Date(e.date).getTime() >= gate,
+      );
     } catch (e) {
       return mockEvents;
     }

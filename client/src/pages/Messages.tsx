@@ -7,6 +7,7 @@ import {
   useOptimisticThread,
   type ConversationSummary,
 } from "@/hooks/use-messages";
+import { useMessagesStream } from "@/hooks/use-messages-stream";
 import { HeaderSkeleton, LoadError } from "@/components/AsyncStates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,9 @@ export default function Messages() {
   const parts = pathname.split("/").filter(Boolean); // ["messages", maybe id]
   const selectedId = parts.length > 1 ? parts[1] : null;
 
+  // This page sits outside DashboardLayout, so it opens the live stream for
+  // itself; the refcount keeps it to a single connection per tab.
+  useMessagesStream(!!user);
   const conversations = useConversations();
   const me = user?._id as string | undefined;
 

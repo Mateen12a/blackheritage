@@ -28,6 +28,7 @@ import { sendManualTicketEmail, sendRefundEmail, sendFollowerDropEmail } from ".
 import { extractEventFromFile, isAIConfigured, aiUploadLimiter, suggestEventCopy } from "./ai";
 import { rateLimit } from "./auth";
 import { saveUpload, MAX_UPLOAD_BYTES } from "./media-storage";
+import { publishToUser, subscribeToStream } from "./realtime";
 import { playbookPdf, PLAYBOOK_FILENAME, PLAYBOOK_PROMO_CODE } from "./playbook";
 import { isEmailConfigured, sendPlaybookEmail } from "./emails";
 import crypto from "crypto";
@@ -59,6 +60,84 @@ function respondMongooseValidation(err: any, res: Response): boolean {
     field: first?.path,
   });
   return true;
+}
+
+/**
+ * Normalizes a human display name into hub-link shape: "Sip & Paint .NG" →
+ * "sip-paint-ng". Same rule the client uses when it has no slug to work with.
+ */
+function hubSlugGuess(name: string): string {
+  return String(name || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Resolves an organizer from a hub link.
+ *
+ * This has to be tolerant. The client can render a working-looking hub for any
+ * link it can build — including one derived from a display name when an event
+ * payload carried no slug — so a strict lookup here produced the worst kind of
+ * bug: a page that looks fine and a Follow button that says the account "no
+ * longer exists". Every /api/organizers/:slug route uses this one lookup so a
+ * link the app can show is a link the app can act on.
+ */
+async function resolveOrganizerBySlug(rawSlug: string): Promise<any | null> {
+  const slug = String(rawSlug || "").trim().toLowerCase();
+  if (!slug) return null;
+
+  const direct = await User.findOne({
+    $or: [{ organizerSlug: slug }, { username: slug }],
+  }).lean();
+  if (direct) return direct;
+
+  if (mongoose.Types.ObjectId.isValid(slug)) {
+    const byId = await User.findById(slug).lean();
+    if (byId) return byId;
+  }
+
+  // Display-name approximation, e.g. the exact link the event page fallback
+  // builds. Only accepted when it identifies one account: two organizers can
+  // share a display name, and opening the wrong hub would be worse than 404.
+  //
+  // No projection here on purpose: callers read the whole organizer (bio,
+  // logo, followersCount, theme). Trimming the fields to just the ones this
+  // lookup needs turned a working hub into a blank one.
+  const candidates = await User.find({ role: { $in: ["organizer", "admin"] } }).lean();
+  const matches = candidates.filter(
+    (u: any) => hubSlugGuess(u.displayName) === slug || hubSlugGuess(u.username) === slug,
+  );
+  return matches.length === 1 ? matches[0] : null;
+}
+
+/**
+ * Events store the organizer's name but not their hub slug, so event pages
+ * used to guess a slug from the display name. Attaching the real one keeps
+ * share links, follows and notifications pointing at the same page.
+ */
+async function withOrganizerSlug<T extends { organizerId?: string | null }>(events: T[]): Promise<(T & { organizerSlug: string | null })[]> {
+  const ids = Array.from(
+    new Set(
+      events
+        .map((e) => e?.organizerId)
+        .filter((id): id is string => !!id && mongoose.Types.ObjectId.isValid(id)),
+    ),
+  );
+  if (ids.length === 0) return events.map((e) => ({ ...e, organizerSlug: (e as any).organizerSlug ?? null }));
+
+  const orgs = await User.find({ _id: { $in: ids } })
+    .select("organizerSlug username")
+    .lean();
+  const slugById = new Map<string, string | null>();
+  orgs.forEach((o: any) => {
+    slugById.set(String(o._id), o.organizerSlug || o.username || null);
+  });
+
+  return events.map((e) => ({
+    ...e,
+    organizerSlug: (e as any).organizerSlug ?? slugById.get(String(e.organizerId)) ?? null,
+  }));
 }
 
 // ── Media uploads ──
@@ -353,8 +432,10 @@ export async function registerRoutes(
       } else {
         events = await storage.getEvents();
       }
-      
-      res.json(events);
+
+      // Public payloads carry the real hub slug so /o/:slug links are never a
+      // display-name guess. (Manage views get it too — harmless and consistent.)
+      res.json(await withOrganizerSlug(events as any[]));
     } catch (err) {
       console.error("Events error:", err);
       res.status(500).json({ message: "We could not load events just now. Try again in a moment." });
@@ -709,7 +790,10 @@ export async function registerRoutes(
           return res.status(403).json({ requiresCode: true, title: event.title });
         }
       }
-      res.json(event);
+      // The real hub slug, so "organized by" links resolve instead of being
+      // guessed from the display name (see withOrganizerSlug).
+      const [withSlug] = await withOrganizerSlug([event as any]);
+      res.json(withSlug ?? event);
     } catch (err) {
       console.error("Event error:", err);
       res.status(500).json({ message: "We could not load that event just now. Try again in a moment." });
@@ -761,6 +845,13 @@ export async function registerRoutes(
         date: input.date as Date | undefined,
       } as Parameters<typeof storage.createEvent>[0]);
       res.status(201).json(event);
+      // An event saved straight to published is a drop too: followers heard
+      // about every draft that went live later, never about this path.
+      if ((event as any).status === "published") {
+        void notifyFollowersOfDrop(event).catch((err) =>
+          console.error("Follower drop blast failed:", err),
+        );
+      }
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({
@@ -997,20 +1088,12 @@ export async function registerRoutes(
   // ── Organizer public profile and hub: /o/:slug ──
   app.get("/api/organizers/:slug", async (req, res) => {
     try {
-      const rawSlug = req.params.slug.trim().toLowerCase();
-      let organizer = await User.findOne({
-        $or: [
-          { organizerSlug: rawSlug },
-          { username: rawSlug },
-        ],
-      }).lean();
-
-      if (!organizer && mongoose.Types.ObjectId.isValid(rawSlug)) {
-        organizer = await User.findById(rawSlug).lean();
-      }
+      const organizer = await resolveOrganizerBySlug(req.params.slug);
 
       if (!organizer) {
-        return res.status(404).json({ message: "That organizer account no longer exists." });
+        return res.status(404).json({
+          message: "We could not find that organizer. Open their page from one of their events.",
+        });
       }
 
       const orgId = (organizer as any)._id.toString();
@@ -1122,11 +1205,13 @@ export async function registerRoutes(
   app.post("/api/organizers/:slug/follow", async (req, res) => {
     try {
       const { OrganizerFollowerModel } = await import("./models");
-      const rawSlug = req.params.slug.toLowerCase().trim();
-      const organizer = await User.findOne({
-        $or: [{ organizerSlug: rawSlug }, { username: rawSlug }],
-      });
-      if (!organizer) return res.status(404).json({ message: "That organizer account no longer exists." });
+      const found = await resolveOrganizerBySlug(req.params.slug);
+      if (!found) {
+        return res.status(404).json({ message: "We could not find that organizer's page. Try the link on one of their events." });
+      }
+      // A fresh doc: the follower counter below needs a live model instance.
+      const organizer = await User.findById(found._id);
+      if (!organizer) return res.status(404).json({ message: "We could not find that organizer's page. Try the link on one of their events." });
 
       const orgId = organizer._id.toString();
       let email = "";
@@ -1166,11 +1251,12 @@ export async function registerRoutes(
   app.delete("/api/organizers/:slug/follow", async (req, res) => {
     try {
       const { OrganizerFollowerModel } = await import("./models");
-      const rawSlug = req.params.slug.toLowerCase().trim();
-      const organizer = await User.findOne({
-        $or: [{ organizerSlug: rawSlug }, { username: rawSlug }],
-      });
-      if (!organizer) return res.status(404).json({ message: "That organizer account no longer exists." });
+      const found = await resolveOrganizerBySlug(req.params.slug);
+      if (!found) {
+        return res.status(404).json({ message: "We could not find that organizer's page. Try the link on one of their events." });
+      }
+      const organizer = await User.findById(found._id);
+      if (!organizer) return res.status(404).json({ message: "We could not find that organizer's page. Try the link on one of their events." });
 
       const orgId = organizer._id.toString();
       let email = "";
@@ -2921,6 +3007,29 @@ export async function registerRoutes(
     }
   });
 
+  // Live message stream. Registered before /api/messages/:userId so "stream"
+  // is not parsed as a user id. The frame payload is deliberately thin — the
+  // client reacts by re-reading through the normal authenticated endpoints.
+  app.get("/api/messages/stream", (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Sign in to see your messages" });
+    }
+    const me = (req.user as any)._id.toString();
+    res.status(200);
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    // nginx buffers proxied responses by default, which would sit on every
+    // frame until the buffer filled. X-Accel-Buffering turns that off.
+    res.setHeader("X-Accel-Buffering", "no");
+    if (typeof (res as any).flushHeaders === "function") (res as any).flushHeaders();
+    // Ask the browser to retry quickly if the connection drops.
+    res.write("retry: 2000\n\n");
+
+    const unsubscribe = subscribeToStream(me, res);
+    res.on("close", unsubscribe);
+  });
+
   app.get("/api/messages/:userId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Sign in to see your messages" });
@@ -2932,7 +3041,14 @@ export async function registerRoutes(
         return res.status(404).json({ message: "That account no longer exists" });
       }
       const messages = await storage.getMessages(me, req.params.userId);
+      const hadUnread = messages.some((m: any) => m.recipientId === me && !m.readAt);
       await storage.markConversationRead(me, req.params.userId);
+      // Tell the sender their message was seen, and clear this user's badge
+      // on their other tabs immediately.
+      if (hadUnread) {
+        publishToUser(req.params.userId, "message:read", { byUserId: me });
+        publishToUser(me, "messages:changed", { reason: "read" });
+      }
       res.json({
         messages,
         other: {
@@ -2962,11 +3078,16 @@ export async function registerRoutes(
         vendorId: req.body.vendorId,
         body: req.body.body,
       });
-      const message = await storage.sendMessage((req.user as any)._id.toString(), {
+      const me = (req.user as any)._id.toString();
+      const message = await storage.sendMessage(me, {
         recipientId: recipient._id.toString(),
         vendorId: input.vendorId,
         body: input.body,
       });
+      // Recipient: a new message landed. Sender: their other tabs (and the
+      // inbox list) need to show the new conversation.
+      publishToUser(recipient._id.toString(), "message:new", { fromUserId: me });
+      publishToUser(me, "messages:changed", { reason: "sent" });
       res.status(201).json(message);
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -3059,6 +3180,108 @@ export async function registerRoutes(
     const updated = await User.findByIdAndUpdate(user._id, { $set: update }, { new: true }).lean();
     if (!updated) return res.status(404).json({ message: "That account no longer exists." });
     res.json(safeUserShape(updated));
+  });
+
+  // ── Close an account ──
+  // Deliberately not a hard delete. Money, tickets and door lists have to
+  // survive a person leaving: the attendee still holds a ticket, the
+  // organizer still owes (or is owed) a payout, and a refund dispute months
+  // later needs the row. So the account becomes a tombstone — every personal
+  // field scrubbed, sign-in refused, public identity removed — while the
+  // transactions stay intact. The email is freed so someone can sign up again.
+  app.delete("/api/account", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
+    const user = req.user as any;
+    const userId = user._id.toString();
+
+    const typed = String((req.body || {}).confirm || "").trim().toUpperCase();
+    if (typed !== "DELETE") {
+      return res.status(400).json({ message: "Type DELETE to confirm you want to close your account." });
+    }
+
+    try {
+      const { EventModel, VendorModel, OrganizerFollowerModel } = await import("./models");
+      const cutoff = Date.now() - 6 * 60 * 60 * 1000;
+
+      // Upcoming published events hold other people's money. Closing the
+      // account under them would strand ticket buyers, so those go first.
+      const upcoming = await EventModel.find({
+        organizerId: userId,
+        status: "published",
+        date: { $gte: new Date(cutoff) },
+      })
+        .select("title date")
+        .lean();
+      if (upcoming.length > 0) {
+        return res.status(409).json({
+          message: `You still have ${upcoming.length} upcoming published event${upcoming.length === 1 ? "" : "s"}. Unpublish ${upcoming.length === 1 ? "it" : "them"} first so nobody is left holding a ticket for a show that disappears.`,
+          events: upcoming.map((e: any) => e.title),
+        });
+      }
+
+      // Staff accounts belong to the people using them, not to the account
+      // being closed: hand them back rather than deleting anyone's login.
+      const staff = await User.updateMany(
+        { teamOwnerId: userId },
+        { $set: { teamOwnerId: null } },
+      );
+
+      // A vendor listing is a marketplace identity. It leaves the directory;
+      // the row stays so past bookings still resolve to someone.
+      const vendors = await VendorModel.updateMany(
+        { ownerId: userId },
+        { $set: { status: "unpublished", ownerId: null } },
+      );
+
+      // Follow rows are other people's personal data in both directions:
+      // this organizer's audience, and the organizers this account followed.
+      const follows = await OrganizerFollowerModel.deleteMany({
+        $or: [{ organizerId: userId }, { userId }],
+      });
+
+      // Their events stay for attendees, without a public identity attached.
+      await EventModel.updateMany(
+        { organizerId: userId },
+        { $set: { status: "unpublished", organizerName: null, branding: null } },
+      );
+
+      const randomPassword = await bcrypt.hash(crypto.randomUUID(), 10);
+      await User.updateOne(
+        { _id: userId },
+        {
+          $set: {
+            email: `closed+${userId}@blackhevents.invalid`,
+            username: `closed-${userId}`,
+            displayName: null,
+            bio: null,
+            phone: null,
+            avatarUrl: null,
+            logoUrl: null,
+            coverUrl: null,
+            socials: null,
+            googleId: null,
+            organizerSlug: null,
+            followersCount: 0,
+            password: randomPassword,
+            deletedAt: new Date(),
+          },
+        },
+      );
+
+      // End the session last so the client can still read this response.
+      req.logout(() => {
+        res.json({
+          ok: true,
+          message: "Your account is closed. Tickets you already bought stay valid.",
+          detachedStaff: (staff as any).modifiedCount ?? 0,
+          vendorsUnlisted: (vendors as any).modifiedCount ?? 0,
+          followsRemoved: (follows as any).deletedCount ?? 0,
+        });
+      });
+    } catch (err) {
+      console.error("Account deletion failed:", err);
+      res.status(500).json({ message: "We could not close your account just now. Try again in a moment." });
+    }
   });
 
   // ── Become an organizer ──

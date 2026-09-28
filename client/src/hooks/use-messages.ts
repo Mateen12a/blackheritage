@@ -1,5 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { isMessagesStreamLive } from "./use-messages-stream";
+
+/**
+ * Polling cadence. The SSE stream is the primary path now, so these intervals
+ * are the safety net: quick when the stream is down, slow when it is up.
+ * Evaluated on every tick, so it follows the stream as it reconnects.
+ */
+function fallbackInterval(liveMs: number, offlineMs: number) {
+  return () => (isMessagesStreamLive() ? liveMs : offlineMs);
+}
 
 export interface ConversationSummary {
   otherUserId: string;
@@ -39,7 +49,7 @@ export function useConversations() {
   return useQuery<ConversationSummary[]>({
     queryKey: ["/api/messages/conversations"],
     queryFn: () => getJSON("/api/messages/conversations"),
-    refetchInterval: 8000,
+    refetchInterval: fallbackInterval(30_000, 8_000),
   });
 }
 
@@ -48,7 +58,7 @@ export function useThread(otherUserId: string | null) {
     queryKey: ["/api/messages", otherUserId],
     queryFn: () => getJSON("/api/messages/" + otherUserId),
     enabled: !!otherUserId,
-    refetchInterval: 4000,
+    refetchInterval: fallbackInterval(20_000, 4_000),
   });
 }
 
@@ -80,7 +90,7 @@ export function useUnreadCount() {
   const q = useQuery<{ count: number }>({
     queryKey: ["/api/messages/unread/count"],
     queryFn: () => getJSON("/api/messages/unread/count"),
-    refetchInterval: 8000,
+    refetchInterval: fallbackInterval(45_000, 8_000),
   });
   return q.data?.count ?? 0;
 }

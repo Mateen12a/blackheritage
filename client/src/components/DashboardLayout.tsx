@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useMyVendors } from "@/hooks/use-vendors";
 import { useUnreadCount } from "@/hooks/use-messages";
+import { useMessagesStream } from "@/hooks/use-messages-stream";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -153,6 +154,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: myVendors } = useMyVendors(!!user);
   const isVendor = !!myVendors && myVendors.length > 0;
   const tabs = tabsFor(user?.role, isAdmin, isTeamStaff, isVendor);
+  // Keeps the shared SSE connection open across every dashboard page, so the
+  // inbox badge and open threads update the moment a message is sent.
+  useMessagesStream(!!user);
   const unread = useUnreadCount();
   const isTabActive = (tab: Tab) => tab.match(location);
 

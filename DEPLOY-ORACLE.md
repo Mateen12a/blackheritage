@@ -337,3 +337,25 @@ buyers see the platform name at checkout. The initialize call already sends
 currency, reference, and metadata; there is no `business_name` API field to
 set in code. Also verify Settings → Webhooks still points at
 `https://blackhevents.com/api/payments/webhook` after any domain change.
+
+## Live messages (SSE) and nginx
+
+`GET /api/messages/stream` is a server-sent-events endpoint. It sends
+`X-Accel-Buffering: no` on every response, which is enough for nginx to pass
+frames through instead of holding them in its proxy buffer. If a proxy of your
+own sits in front (Cloudflare is fine), keep `proxy_buffering off;` for that
+location and leave `proxy_read_timeout` above 30s — the server pings every 25s
+so an idle stream is never closed.
+
+Nothing else is required: the client falls back to polling on its own if the
+stream cannot be opened.
+
+## WARNING: local boots write to whatever MONGODB_URI points at
+
+`registerRoutes()` calls `seedPlatform()` on every boot, and parts of that seed
+force-write demo values (event theme + branding, vendor showcase branding,
+selling preferences) onto existing rows. In development `.env` points at the
+production cluster, so `npm run dev` on a laptop rewrites live demo data.
+
+Before onboarding real organizers, either point local `.env` at a local
+database, or make those showcase writes opt-in (`SEED_DEMO_SHOWCASE=true`).
