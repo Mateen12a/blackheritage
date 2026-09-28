@@ -213,6 +213,10 @@ const dateInput = z.union([z.string(), z.date()])
   .refine((v) => !isNaN(v.getTime()), "Enter a valid date");
 
 export const insertEventSchema = createInsertSchema(events).omit({ id: true }).extend({
+  // An event without a title used to reach Mongo and fail there, leaving the
+  // create form stuck on a disabled Save button. Reject it up front instead:
+  // the form shows this message inline, before any request goes out.
+  title: z.string().trim().min(1, "Give the event a title"),
   slug: z
     .string()
     .trim()
@@ -258,6 +262,12 @@ export type InsertBusinessBooking = z.infer<typeof insertBusinessBookingSchema>;
 export const insertVendorSchema = createInsertSchema(vendors)
   .omit({ id: true, createdAt: true, updatedAt: true })
   .extend({
+    // A blank name or bio used to slip through on update (Mongoose validators
+    // are skipped by findByIdAndUpdate), which published a nameless listing to
+    // the directory. Both fields are required, so say so here with wording a
+    // person can act on.
+    businessName: z.string().trim().min(1, "Give your business or stage name"),
+    bio: z.string().trim().min(1, "Add a line or two about what you do"),
     category: z.enum(vendorCategories, {
       errorMap: () => ({ message: "Select a category" }),
     }),

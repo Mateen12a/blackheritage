@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Response } from "express";
 import type { Server } from "http";
 import express from "express";
 import path from "path";
@@ -41,6 +41,24 @@ function slugify(title: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
+}
+
+/**
+ * Mongoose validation failures (an empty required field, a bad enum) arrive
+ * here as ValidationErrors. Express 4 does not forward rejections from async
+ * handlers, so letting one escape leaves the request unanswered forever — the
+ * browser keeps spinning and the submit button stays disabled. Answer with the
+ * offending field so the form can point at it.
+ * Returns true when the response has been sent.
+ */
+function respondMongooseValidation(err: any, res: Response): boolean {
+  if (err?.name !== "ValidationError") return false;
+  const first = Object.values((err.errors || {}) as Record<string, any>)[0] as any;
+  res.status(400).json({
+    message: first?.message || "Some required details are missing.",
+    field: first?.path,
+  });
+  return true;
 }
 
 // ── Media uploads ──
@@ -607,6 +625,19 @@ export async function registerRoutes(
       const input = (draftFirst.success && draftFirst.data.status === "draft")
         ? draftFirst.data
         : api.events.create.input.parse(req.body);
+      // Publishing is the same completeness gate on create as it is on update.
+      // Without it, hitting Save on a half-filled form put a listing with no
+      // description and no image straight into the public directory.
+      if (input.status === "published") {
+        const missing = missingEventPublishFields(input as Partial<InsertEvent>);
+        if (missing.length > 0) {
+          return res.status(400).json({
+            message: `Complete these before publishing: ${missing.join(", ")}`,
+            field: missing[0],
+            missing,
+          });
+        }
+      }
       // Slug: organizer-provided wins; otherwise derived from the title.
       // Collisions get a numeric suffix; the unique index is the backstop.
       let slug = input.slug?.toLowerCase() || slugify(input.title);
@@ -634,6 +665,7 @@ export async function registerRoutes(
           field: err.errors[0].path.join('.'),
         });
       }
+      if (respondMongooseValidation(err, res)) return;
       throw err;
     }
   });
@@ -723,6 +755,7 @@ export async function registerRoutes(
           field: err.errors[0].path.join('.'),
         });
       }
+      if (respondMongooseValidation(err, res)) return;
       throw err;
     }
   });
@@ -2674,14 +2707,7 @@ export async function registerRoutes(
       }
       // Mongoose schema validation (e.g. an empty required bio). Without
       // this, a careless empty-form submit escapes as an unhandled rejection.
-      if ((err as any)?.name === "ValidationError") {
-        const errors: any = (err as any).errors || {};
-        const first = Object.values(errors)[0] as any;
-        return res.status(400).json({
-          message: first?.message || "Some required details are missing.",
-          field: first?.path,
-        });
-      }
+      if (respondMongooseValidation(err, res)) return;
       throw err;
     }
   });
@@ -2712,14 +2738,7 @@ export async function registerRoutes(
       }
       // Same guard as create: required-field failures must read as friendly
       // 400s, never as escaped rejections.
-      if ((err as any)?.name === "ValidationError") {
-        const errors: any = (err as any).errors || {};
-        const first = Object.values(errors)[0] as any;
-        return res.status(400).json({
-          message: first?.message || "Some required details are missing.",
-          field: first?.path,
-        });
-      }
+      if (respondMongooseValidation(err, res)) return;
       throw err;
     }
   });
@@ -3028,6 +3047,7 @@ export async function registerRoutes(
       if (err?.code === 11000) {
         return res.status(409).json({ message: "You already reviewed this vendor" });
       }
+      if (respondMongooseValidation(err, res)) return;
       throw err;
     }
   });
