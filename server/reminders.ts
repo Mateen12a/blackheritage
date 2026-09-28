@@ -36,6 +36,8 @@ export async function runReminderSweepOnce(): Promise<{ sent: number; skipped: n
     const bookings = await BookingModel.find({
       status: "paid",
       remindersDisabled: { $ne: true },
+      // Gate/walk-in tickets carry a synthetic address; never mail them.
+      email: { $not: /^walk-in\+no-email@blackhevents\.com$/i },
     })
       .sort({ _id: -1 })
       .limit(2000)

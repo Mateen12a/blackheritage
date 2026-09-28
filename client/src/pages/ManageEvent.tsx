@@ -35,6 +35,111 @@ const attendeeChip = (selected: boolean) =>
  * Waitlist signups for this event, with CSV export for outreach. Query is
  * enabled only when the tab can render, i.e. waitlist is on.
  */
+/**
+ * Live sponsor/vendor applications for this event. Rows arrive from the
+ * public "Partner With Us" modal on the event page; the organizer emails
+ * applicants directly from here.
+ */
+function BusinessApplicationsPanel({ eventId }: { eventId: string }) {
+  const { toast } = useToast();
+  const apps = useQuery<any[]>({
+    queryKey: ["/api/business-applications"],
+    queryFn: async () => {
+      const res = await fetch("/api/business-applications", { credentials: "include" });
+      if (!res.ok) throw new Error("Could not load applications");
+      return res.json();
+    },
+  });
+  const setStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const res = await fetch(`/api/business-applications/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || "Could not update that application");
+      }
+      return res.json();
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/business-applications"] });
+      toast({ title: vars.status === "paid" ? "Application confirmed" : vars.status === "cancelled" ? "Application declined" : "Moved back to pending" });
+    },
+    onError: (err: any) => toast({ variant: "destructive", title: "Update failed", description: err?.message }),
+  });
+
+  const mine = (apps.data || []).filter((a: any) => a.eventId === eventId);
+  const money = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG")}`;
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <Card className="bg-surface border-hairline">
+        <CardHeader>
+          <CardTitle className="text-ink">Business Applications</CardTitle>
+          <CardDescription>Sponsors and vendors who applied through your event page</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {apps.isLoading ? (
+            <div className="py-10 text-center text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>
+          ) : mine.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Briefcase className="w-12 h-12 text-muted-foreground mb-4 opacity-20" />
+              <p className="text-muted-foreground">No applications received yet.</p>
+              <p className="text-xs text-muted-foreground mt-2">The "Partner With Us" button on your event page sends them here.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {mine.map((a: any) => (
+                <div key={a.id} className="p-4 bg-surface-2 rounded-md border border-hairline">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-medium text-ink truncate">{a.businessName}</div>
+                      <div className="text-xs text-muted-ink">{a.contactPerson} · {a.phoneNumber}{a.email ? ` · ${a.email}` : ""}</div>
+                    </div>
+                    <span className={cn("shrink-0 text-[10px] uppercase tracking-wide px-2 py-1 rounded border", a.type === "sponsor" ? "text-gold border-gold/40" : "text-ink border-hairline")}>
+                      {a.type}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-ink mt-2">{a.packageName} · {money(a.price)}</div>
+                  <p className="text-sm text-muted-ink mt-2">{a.description}</p>
+                  <div className="flex items-center gap-2 mt-3">
+                    <a
+                      href={`tel:${a.phoneNumber}`}
+                      className="text-xs text-gold underline underline-offset-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Call
+                    </a>
+                    {a.email && (
+                      <a href={`mailto:${a.email}`} className="text-xs text-gold underline underline-offset-2">
+                        Email
+                      </a>
+                    )}
+                    <span className="flex-1" />
+                    <select
+                      value={a.status}
+                      onChange={(e) => setStatus.mutate({ id: a.id, status: e.target.value })}
+                      className="text-xs bg-surface border border-hairline rounded px-2 py-1 text-ink"
+                      aria-label="Application status"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="paid">Confirmed</option>
+                      <option value="cancelled">Declined</option>
+                    </select>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function WaitlistPanel({ eventId }: { eventId: string }) {
   const entries = useQuery<any[]>({
     queryKey: ["/api/events", eventId, "waitlist"],
@@ -122,6 +227,30 @@ export default function ManageEvent() {
     // organizer keeps the dashboard open on event day.
     refetchInterval: 20000,
   });
+
+  // Quick settings (sponsor/vendor applications) — settings PATCH, then
+  // refresh the event so the toggle reflects what the server stored.
+  const saveSettings = useMutation({
+    mutationFn: async (patch: Record<string, unknown>) => {
+      const res = await fetch(`/api/events/${id}/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(patch),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.message || "Could not save that setting");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [buildUrl(api.events.get.path, { id: id as string })] });
+      toast({ title: "Setting saved" });
+    },
+    onError: (err: any) => toast({ variant: "destructive", title: "Could not save", description: err.message }),
+  });
+  const settingsSaving = saveSettings.isPending;
 
   const updateStatusMutation = useMutation({
     mutationFn: async (status: string) => {
@@ -321,7 +450,10 @@ export default function ManageEvent() {
       </div>
 
       <Tabs defaultValue="attendees" className="space-y-6">
-        <TabsList className="bg-surface border border-hairline max-w-full overflow-x-auto no-scrollbar">
+        {/* Tabs wrap on phones instead of scrolling sideways: Organizer Tools
+            and door sales were invisible off-screen in the old scroller, and
+            nothing signposted that more tabs existed. */}
+        <TabsList className="bg-surface border border-hairline max-w-full flex-wrap h-auto justify-start gap-y-1 p-1">
           <TabsTrigger value="attendees">Ticket Buyers</TabsTrigger>
           <TabsTrigger value="tools">Organizer Tools</TabsTrigger>
           <TabsTrigger value="link">Booking Link</TabsTrigger>
@@ -565,43 +697,32 @@ export default function ManageEvent() {
         </TabsContent>
 
         <TabsContent value="sponsors">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="bg-surface border-hairline">
-              <CardHeader>
-                <CardTitle className="text-ink">Business Applications</CardTitle>
-                <CardDescription>Sponsors and Vendors interested in this event</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <Briefcase className="w-12 h-12 text-muted-foreground mb-4 opacity-20" />
-                <p className="text-muted-foreground">No applications received yet.</p>
-              </CardContent>
-            </Card>
-          </div>
+          <BusinessApplicationsPanel eventId={String(event.id)} />
         </TabsContent>
 
         <TabsContent value="settings">
           <Card className="bg-surface border-hairline">
             <CardHeader>
               <CardTitle className="text-ink">Quick Settings</CardTitle>
-              <CardDescription>Sponsor and vendor applications for this event.</CardDescription>
+              <CardDescription>Who can apply to be part of this event.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-surface-2 rounded-md border border-hairline">
-                <div>
-                  <div className="font-medium text-ink">Sponsor Bookings</div>
-                  <div className="text-sm text-muted-ink">Business sponsorship applications</div>
+                <div className="min-w-0 pr-3">
+                  <div className="font-medium text-ink">Sponsor &amp; vendor applications</div>
+                  <div className="text-sm text-muted-ink">Show the "Partner With Us" box on your public event page. Applications arrive here with an email to you.</div>
                 </div>
-                <Button variant="outline" className="border-gold/40 text-gold">Enabled</Button>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-surface-2 rounded-md border border-hairline">
-                <div>
-                  <div className="font-medium text-ink">Vendor Bookings</div>
-                  <div className="text-sm text-muted-ink">Vendor space applications</div>
-                </div>
-                <Button variant="outline" className="border-gold/40 text-gold">Enabled</Button>
+                <Button
+                  variant="outline"
+                  disabled={settingsSaving}
+                  onClick={() => saveSettings.mutate({ businessApplicationsEnabled: !event.businessApplicationsEnabled })}
+                  className={cn("shrink-0 border-gold/40", event.businessApplicationsEnabled !== false ? "text-gold" : "text-muted-ink")}
+                >
+                  {event.businessApplicationsEnabled !== false ? "Enabled" : "Off"}
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Selling preferences, themes, and branding live in the Organizer Tools and Booking Link tabs.
+                Selling preferences, templates, and branding live in the Organizer Tools and Booking Link tabs.
               </p>
             </CardContent>
           </Card>

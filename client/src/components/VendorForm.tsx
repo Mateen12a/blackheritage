@@ -207,10 +207,14 @@ export function VendorForm({
                     Describe your service
                   </FormLabel>
                   <FormControl>
+                    {/* The old placeholder was 46 chars but the field caps at
+                        40 — filling it verbatim failed validation with no
+                        idea why. Placeholder now fits, with the cap stated. */}
                     <Input
                       {...field}
                       value={field.value ?? ""}
-                      placeholder="e.g. Saxophonist, Makeup Artist, Grill Master"
+                      maxLength={40}
+                      placeholder="e.g. Saxophonist or Makeup Artist (max 40)"
                       className="h-12 bg-surface-2 border-hairline text-ink rounded-md focus-visible:border-gold focus-visible:ring-0"
                     />
                   </FormControl>

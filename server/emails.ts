@@ -477,3 +477,97 @@ export async function sendEventInvite(
   });
   return result.data?.id;
 }
+
+/**
+ * Organizer notification: a real money sale on one of their events. One
+ * concise email per paid booking — the dashboard has the full ledger.
+ */
+export async function sendOrganizerSaleEmail(
+  to: EmailAddress,
+  data: {
+    eventTitle: string;
+    eventDate: Date;
+    buyerName: string;
+    buyerEmail: string;
+    tierName: string;
+    quantity: number;
+    totalKobo: number;
+    bookingRef: string;
+    branding?: Branding | null;
+  },
+): Promise<void> {
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to.email)) return;
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const dateStr = data.eventDate.toLocaleString("en-NG", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
+  await resend.emails.send({
+    from: FROM,
+    to: [to.email],
+    subject: `Sold: ${data.quantity}× ${data.tierName} — ${data.eventTitle}`,
+    html: shell(
+      "New ticket sale",
+      `
+      <p style="margin:0 0 20px;font-size:14px;">Someone just bought tickets to your event.</p>
+      <div style="background:#faf9f7;border:1px solid #e5e2dc;border-left:3px solid ${safeHex(data.branding?.accentHex)};border-radius:8px;padding:16px;margin-bottom:20px;">
+        <div style="font-size:16px;font-weight:bold;">${esc(data.eventTitle)}</div>
+        <div style="font-size:13px;color:#666;margin-top:4px;">${dateStr}</div>
+        <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:13px;">
+          <tr><td style="padding:4px 0;color:#666;">Buyer</td><td style="text-align:right;font-weight:bold;">${esc(data.buyerName)}</td></tr>
+          <tr><td style="padding:4px 0;color:#666;">Ticket</td><td style="text-align:right;">${esc(data.tierName)} × ${data.quantity}</td></tr>
+          <tr><td style="padding:4px 0;color:#666;">Reference</td><td style="text-align:right;">${esc(data.bookingRef)}</td></tr>
+          <tr><td style="padding:8px 0;color:#666;border-top:1px solid #e5e2dc;">Total paid</td><td style="text-align:right;font-weight:bold;font-size:15px;border-top:1px solid #e5e2dc;">${formatNaira(data.totalKobo)}</td></tr>
+        </table>
+      </div>
+      <p style="margin:0;font-size:13px;color:#444;">Open your dashboard for the full attendee list and earnings.</p>`,
+      data.branding,
+    ),
+  });
+}
+
+/**
+ * Organizer notification: a business applied to sponsor or vend at their
+ * event. These arrive through the public event page, so the organizer may
+ * not know the sender.
+ */
+export async function sendBusinessApplicationEmail(
+  to: EmailAddress,
+  data: {
+    eventTitle: string;
+    businessType: "sponsor" | "vendor";
+    packageName: string;
+    packagePriceKobo: number;
+    businessName: string;
+    contactPerson: string;
+    phoneNumber: string;
+    email?: string;
+    description: string;
+    branding?: Branding | null;
+  },
+): Promise<void> {
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to.email)) return;
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const label = data.businessType === "sponsor" ? "Sponsorship" : "Vendor spot";
+  await resend.emails.send({
+    from: FROM,
+    to: [to.email],
+    subject: `${label} application: ${data.businessName} — ${data.eventTitle}`,
+    html: shell(
+      `New ${data.businessType} application`,
+      `
+      <p style="margin:0 0 20px;font-size:14px;">A business applied for a ${label.toLowerCase()} at <strong>${esc(data.eventTitle)}</strong>.</p>
+      <div style="background:#faf9f7;border:1px solid #e5e2dc;border-radius:8px;padding:16px;margin-bottom:20px;font-size:13px;">
+        <div style="font-size:16px;font-weight:bold;">${esc(data.businessName)}</div>
+        <table style="width:100%;border-collapse:collapse;margin-top:12px;">
+          <tr><td style="padding:4px 0;color:#666;">Contact</td><td style="text-align:right;font-weight:bold;">${esc(data.contactPerson)}</td></tr>
+          <tr><td style="padding:4px 0;color:#666;">Phone</td><td style="text-align:right;">${esc(data.phoneNumber)}</td></tr>
+          ${data.email ? `<tr><td style="padding:4px 0;color:#666;">Email</td><td style="text-align:right;">${esc(data.email)}</td></tr>` : ""}
+          <tr><td style="padding:4px 0;color:#666;">Package</td><td style="text-align:right;">${esc(data.packageName)} · ${formatNaira(data.packagePriceKobo)}</td></tr>
+        </table>
+        <p style="margin:12px 0 0;color:#444;">${esc(data.description)}</p>
+      </div>
+      <p style="margin:0;font-size:13px;color:#444;">Reply to them directly to confirm the spot — their details are above, and the application is saved under your event's Sponsors &amp; Vendors tab.</p>`,
+      data.branding,
+    ),
+  });
+}

@@ -208,7 +208,9 @@ export const vendorsRelations = relations(vendors, ({ one }) => ({
 // JSON transport carries dates as ISO strings; normalize once so create and
 // update routes both accept what real clients send, and reject junk with 400
 // instead of a storage-layer cast error.
-const dateInput = z.union([z.string(), z.date()])
+const dateInput = z.union([z.string(), z.date()], {
+  errorMap: () => ({ message: "Pick the event date" }),
+})
   .transform((v) => (typeof v === "string" ? new Date(v) : v))
   .refine((v) => !isNaN(v.getTime()), "Enter a valid date");
 
@@ -377,6 +379,8 @@ export const eventSettingsSchema = z.object({
   waitlistEnabled: z.boolean().default(false),
   guestCheckout: z.boolean().default(true),
   promoCodesPublic: z.boolean().default(false),
+  // Sponsor/vendor applications through the public "Partner With Us" modal.
+  businessApplicationsEnabled: z.boolean().default(true),
   checkoutFields: z.object({
     phone: z.boolean().default(false),
     tableNote: z.boolean().default(true), // table bookings always had this; toggle can widen it

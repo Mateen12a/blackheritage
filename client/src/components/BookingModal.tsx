@@ -394,7 +394,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
                       setPromoCode(e.target.value.toUpperCase());
                       setPromoTouched(true);
                     }}
-                    className="h-12 pl-10 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base uppercase"
+                    className="h-12 pl-10 pr-4 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md text-base uppercase"
                   />
                 </div>
                 {pricing?.promoApplied ? (

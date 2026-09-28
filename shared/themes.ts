@@ -1,32 +1,51 @@
 import type { CSSProperties } from "react";
 
 /**
- * Event theme presets: curated token sets the organizer picks from.
- * Each preset is a full palette in CSS-variable form, applied to the event
- * page wrapper as inline style so nothing global is ever mutated.
+ * Event TEMPLATES (formerly "themes").
  *
- * Archetypes follow the high-end-visual-design direction:
- *  - midnight-gold    Ethereal Deep Tone: the platform look, indigo-black + gold
- *  - ivory-editorial  Editorial Luxury: warm ivory paper, espresso ink, serif calm
- *  - sunset-poster    Bold poster night: ember orange accent on near-black plum
+ * A template is not a color swap. Each one owns three things:
+ *   1. palette  — CSS-variable tokens, used as-is when the organizer has not
+ *                 picked a brand color (falls back to the Black Heritage gold)
+ *   2. layout   — the page structure the event page renders:
+ *                   poster    = flyer hero on top, editorial column under it
+ *                   billboard = full-bleed poster with the ticket card docked
+ *                               on the flyer itself, details unfold below
+ *                   editorial = calm paper look: content column first, flyer
+ *                               framed mid-page, serif-led
+ *   3. motion   — the entrance animation applied to the page's sections
+ *                 (rise = staggered slide-up, bloom = soft scale-fade,
+ *                  slide = lateral reveal)
  *
- * Keys mirror the Event.theme enum in shared/schema.ts.
+ * COLOR IS NOT THE TEMPLATE. The organizer's brand accent recolors buttons,
+ * links and highlights inside any template; if they never picked one, the
+ * template's own accent — ultimately the Black Heritage gold — shows. Keys
+ * mirror the Event.theme enum in shared/schema.ts, so existing rows keep
+ * working and no migration is needed.
  */
 
 export type ThemeVars = Record<string, string> & CSSProperties;
 
-export interface ThemePreset {
+export type TemplateLayout = "poster" | "billboard" | "editorial";
+export type TemplateMotion = "rise" | "bloom" | "slide";
+
+export interface TemplatePreset {
   key: "midnight-gold" | "ivory-editorial" | "sunset-poster";
   name: string;
   tagline: string;
+  /** What actually differs — the structure the page renders. */
+  layout: TemplateLayout;
+  /** How sections animate in. */
+  motion: TemplateMotion;
   vars: ThemeVars;
 }
 
-export const themePresets: Record<string, ThemePreset> = {
+export const templatePresets: Record<string, TemplatePreset> = {
   "midnight-gold": {
     key: "midnight-gold",
     name: "Midnight Gold",
-    tagline: "The platform look. Indigo-black, warm gold, hairlines.",
+    tagline: "Poster hero up top, editorial story below. The platform look.",
+    layout: "poster",
+    motion: "rise",
     vars: {
       ["--color-background" as any]: "#0F0F14",
       ["--color-surface" as any]: "#19191F",
@@ -45,7 +64,9 @@ export const themePresets: Record<string, ThemePreset> = {
   "ivory-editorial": {
     key: "ivory-editorial",
     name: "Ivory Editorial",
-    tagline: "Warm paper, espresso ink. Gallery calm for daytime events.",
+    tagline: "Story first, framed flyer mid-page. Gallery calm for daytime.",
+    layout: "editorial",
+    motion: "bloom",
     vars: {
       ["--color-background" as any]: "#F4EFE6",
       ["--color-surface" as any]: "#FBF8F2",
@@ -64,7 +85,9 @@ export const themePresets: Record<string, ThemePreset> = {
   "sunset-poster": {
     key: "sunset-poster",
     name: "Sunset Poster",
-    tagline: "Ember orange on deep plum. Loud, for the big night.",
+    tagline: "Full-bleed billboard with the ticket card on the art. Loud.",
+    layout: "billboard",
+    motion: "slide",
     vars: {
       ["--color-background" as any]: "#150D14",
       ["--color-surface" as any]: "#20121F",
@@ -82,8 +105,20 @@ export const themePresets: Record<string, ThemePreset> = {
   },
 };
 
-export function getPreset(key: string | null | undefined): ThemePreset | null {
-  return (key && themePresets[key]) || null;
+// Back-compat: the old export name is still referenced by existing imports.
+export const themePresets = templatePresets;
+
+export type TemplateKey = TemplatePreset["key"];
+
+export function getTemplate(key: string | null | undefined): TemplatePreset | null {
+  return (key && templatePresets[key]) || null;
+}
+
+// Back-compat alias for getPreset.
+export const getPreset = getTemplate;
+
+export function templatePresetList(): TemplatePreset[] {
+  return Object.values(templatePresets);
 }
 
 function isHex(value: string | null | undefined): value is string {
@@ -102,23 +137,27 @@ function luminance(hex: string): number {
   return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
 }
 
+/** Platform fallback accent: the Black Heritage gold, used when the
+ *  organizer has not picked a brand color. */
+export const PLATFORM_ACCENT = "#E3B23C";
+
 /**
- * Organizer accent override, derived from the chosen theme so the custom
- * color stays legible everywhere. Three layers:
- *  1. interactive accent = their color, with a hover step at +10% lightness
- *     (a saturated color reads darker than its hex suggests, so hover goes
- *     lighter rather than darker)
- *  2. text/icon legibility: text sitting on the accent flips to light or
- *     dark based on contrast ratio against their color, per theme background
- *  3. the faded inline tint used by soft badges (accent at 6-8% alpha)
- *
- * Returns vars to spread AFTER the theme preset vars. No color = no vars.
+ * Brand accent override, derived from the chosen template so the custom
+ * color stays legible everywhere. The ACCENT is always the organizer's
+ * brand color when set — the template changes structure and motion, never
+ * whose color the buttons are. Three layers:
+ *  1. interactive accent = their color (or the template's own when unset,
+ *     which itself falls back to Black Heritage gold), with a hover step
+ *  2. text/icon legibility: text sitting on the accent flips light/dark
+ *     based on contrast ratio, per template background
+ *  3. the faded inline tint used by soft badges (accent at ~8% alpha)
  */
 export function accentOverrides(themeKey: string | null | undefined, accentHex: string | null | undefined): Record<string, string> {
-  if (!isHex(accentHex)) return {};
-  const preset = getPreset(themeKey ?? undefined) || themePresets["midnight-gold"];
+  const preset = getTemplate(themeKey ?? undefined) || templatePresets["midnight-gold"];
+  const effective = isHex(accentHex) ? (accentHex as string) : (preset.vars["--color-gold"] as string) || PLATFORM_ACCENT;
+  const accentHexSafe = effective;
   const onLight = preset.key === "ivory-editorial";
-  const lum = luminance(accentHex);
+  const lum = luminance(accentHexSafe);
   const contrastWithInk = (lum + 0.05) / (luminance(onLight ? "#221A12" : "#F7F5EF") + 0.05);
   const textOnAccent = contrastWithInk >= 3 ? (onLight ? "#221A12" : "#F7F5EF") : onLight ? "#FBF8F2" : "#12100B";
   const mix = (hex: string, white: number, black = 0): string => {
@@ -127,14 +166,49 @@ export function accentOverrides(themeKey: string | null | undefined, accentHex: 
     return "#" + c.map(to255).join("").toUpperCase();
   };
   return {
-    ["--color-gold"]: accentHex.toUpperCase(),
-    ["--color-gold-soft"]: mix(accentHex, 0.12),
-    ["--color-primary"]: accentHex.toUpperCase(),
+    ["--color-gold"]: accentHexSafe.toUpperCase(),
+    ["--color-gold-soft"]: mix(accentHexSafe, 0.12),
+    ["--color-primary"]: accentHexSafe.toUpperCase(),
     ["--color-primary-foreground"]: textOnAccent,
-    ["--color-accent"]: accentHex.toUpperCase(),
+    ["--color-accent"]: accentHexSafe.toUpperCase(),
     ["--color-accent-foreground"]: textOnAccent,
-    ["--color-ring"]: accentHex.toUpperCase(),
+    ["--color-ring"]: accentHexSafe.toUpperCase(),
     // Soft badge tint used inline on the event page (gold/[0.06] etc.)
-    ["--accent-tint"]: accentHex.toUpperCase() + "14",
+    ["--accent-tint"]: accentHexSafe.toUpperCase() + "14",
   };
+}
+
+/** Layout + motion for an event's chosen template, with safe defaults. */
+export function templateFor(themeKey: string | null | undefined): { layout: TemplateLayout; motion: TemplateMotion } {
+  const t = getTemplate(themeKey);
+  return { layout: t?.layout ?? "poster", motion: t?.motion ?? "rise" };
+}
+
+/** Entrance animation presets per template motion. Sections spread the
+ *  delay by index for the stagger. */
+export function sectionMotion(motion: TemplateMotion, index: number) {
+  switch (motion) {
+    case "bloom":
+      return {
+        initial: { opacity: 0, scale: 0.97 },
+        whileInView: { opacity: 1, scale: 1 },
+        viewport: { once: true, margin: "-40px" },
+        transition: { duration: 0.55, delay: index * 0.06, ease: [0.22, 1, 0.36, 1] as const },
+      };
+    case "slide":
+      return {
+        initial: { opacity: 0, x: -28 },
+        whileInView: { opacity: 1, x: 0 },
+        viewport: { once: true, margin: "-40px" },
+        transition: { duration: 0.5, delay: index * 0.05, ease: [0.22, 1, 0.36, 1] as const },
+      };
+    case "rise":
+    default:
+      return {
+        initial: { opacity: 0, y: 26 },
+        whileInView: { opacity: 1, y: 0 },
+        viewport: { once: true, margin: "-40px" },
+        transition: { duration: 0.55, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] as const },
+      };
+  }
 }

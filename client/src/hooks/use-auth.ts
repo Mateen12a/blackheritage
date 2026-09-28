@@ -81,6 +81,7 @@ export function useAuth() {
     isSigningIn: loginMutation.isPending || registerMutation.isPending,
     login: loginMutation.mutateAsync,
     register: registerMutation.mutateAsync,
+    refetch: () => queryClient.invalidateQueries({ queryKey: [`${BASE_URL}/api/auth/user`] }),
     logout: logoutMutation.mutateAsync
   };
 }

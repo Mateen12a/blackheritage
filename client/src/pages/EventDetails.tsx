@@ -3,9 +3,10 @@ import { BookingModal } from "@/components/BookingModal";
 import { ShareFlyerModal } from "@/components/ShareFlyerModal";
 import { Button } from "@/components/ui/button";
 import { useRoute } from "wouter";
-import { Loader2, Calendar, MapPin, Users, Share2, ArrowLeft, ArrowRight, Tag, Clock, MessageCircle, Copy } from "lucide-react";
+import { Loader2, Calendar, MapPin, Users, Share2, ArrowLeft, Tag, Clock, MessageCircle, Copy } from "lucide-react";
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 import { BusinessModal } from "@/components/BusinessModal";
 import { Reveal, FadeImg } from "@/components/motion";
@@ -14,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/Navbar";
 import { BookingReturnHandler } from "@/components/BookingReturnHandler";
-import { getPreset, accentOverrides } from "@shared/themes";
+import { getTemplate, accentOverrides, templateFor } from "@shared/themes";
 import { useEventPulse } from "@/hooks/use-pulse";
 import { useCountdown } from "@/hooks/use-countdown";
 
@@ -50,7 +51,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
  */
 function useEventThemeVars(event: any): React.CSSProperties {
   return {
-    ...(getPreset(event?.theme)?.vars || {}),
+    ...(getTemplate(event?.theme)?.vars || {}),
     ...accentOverrides(event?.theme, event?.branding?.accentHex),
   } as React.CSSProperties;
 }
@@ -219,6 +220,12 @@ export default function EventDetails() {
   const showAttendeeCount = (event as any).showAttendeeCount === true;
   const waitlistEnabled = (event as any).waitlistEnabled === true;
   const themeVars = useEventThemeVars(event);
+  // The chosen TEMPLATE decides structure and motion; the organizer's brand
+  // color decides the hue. No template set = the classic poster layout.
+  const template = templateFor((event as any).theme);
+  const isBillboard = template.layout === "billboard";
+  const isEditorial = template.layout === "editorial";
+  const motionVariant = template.motion;
   const brand = (event as any).branding || null;
   const soldOut =
     ticketTypes.length > 0 &&
@@ -236,39 +243,15 @@ export default function EventDetails() {
           platform default renders elsewhere. Brand links still go home. */}
       <Navbar eventBrand={brand} overMedia />
 
-      {/* Organizer's live announcement — the same strip pinned on their
-          hub, riding on ticket pages so drop alerts follow the buyer.
-          Mobile: the navbar is fixed over it, so the strip starts below the
-          61px bar instead of fighting it for the same pixels. */}
-      {(event as any).organizerAnnouncement?.message && (
-        <div className="bg-surface border-b border-hairline px-4 py-2.5 text-xs text-ink sticky top-[61px] lg:top-0 z-30 shadow-md">
-          <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
-              <span className="flex h-2 w-2 rounded-full bg-gold shrink-0 animate-ping" />
-              <span className="font-mono text-[10px] uppercase tracking-wider text-gold shrink-0 font-bold px-1.5 py-0.5 rounded bg-gold/10 border border-gold/20">
-                Announcement
-              </span>
-              <span className="truncate text-ink font-medium">
-                {(event as any).organizerAnnouncement.message}
-              </span>
-            </div>
-            {(event as any).organizerAnnouncement.linkUrl && (
-              <a
-                href={(event as any).organizerAnnouncement.linkUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="shrink-0 text-gold hover:underline inline-flex items-center gap-1 font-semibold"
-              >
-                Learn more
-                <ArrowRight className="w-3 h-3" />
-              </a>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Flyer hero: the photo leads, gradients sink it into the page */}
-      <div className="relative h-[52vh] w-full overflow-hidden">
+      {/* Flyer hero. Height follows the TEMPLATE: billboard goes full-bleed
+          and tall (the ticket card docks on it), editorial ducks low so the
+          story leads, poster keeps the classic 52vh banner. */}
+      <div
+        className={cn(
+          "relative w-full overflow-hidden",
+          isBillboard ? "h-[86vh]" : isEditorial ? "h-[36vh]" : "h-[52vh]",
+        )}
+      >
         <FadeImg
           src={event.imageUrl}
           alt={event.title}
@@ -317,7 +300,7 @@ export default function EventDetails() {
         <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-10">
           {/* Main column: editorial, no card box */}
           <div className="lg:col-span-2">
-            <Reveal>
+            <Reveal variant={motionVariant}>
               <p className="eyebrow text-gold">
                 {(event as any).eventTypeLabel || EVENT_TYPE_LABELS[(event as any).eventType] || "Upcoming event"}
               </p>
@@ -413,7 +396,7 @@ export default function EventDetails() {
             </Reveal>
 
             {/* The details: one hairline-separated list, gold icons */}
-            <Reveal className="mt-10">
+            <Reveal className="mt-10" variant={motionVariant}>
               <dl className="border-t border-hairline">
                 <div className="flex items-start gap-4 py-5 border-b border-hairline">
                   <Calendar className="w-5 h-5 text-gold shrink-0 mt-0.5" aria-hidden="true" />
@@ -467,7 +450,7 @@ export default function EventDetails() {
 
             {/* Public promo codes, only when the organizer advertises them */}
             {publicPromos.length > 0 && (
-              <Reveal className="mt-6">
+              <Reveal className="mt-6" variant={motionVariant}>
                 <div className="rounded-md border border-gold/25 bg-gold/[0.06] p-4">
                   <p className="eyebrow text-gold flex items-center gap-2">
                     <Tag className="w-3.5 h-3.5" aria-hidden="true" /> Current offers
@@ -491,7 +474,7 @@ export default function EventDetails() {
             )}
 
             {/* About: plain editorial text */}
-            <Reveal className="mt-8">
+            <Reveal className="mt-8" variant={motionVariant}>
               <p className="eyebrow">About this event</p>
               <p className="mt-3 text-[15px] text-muted-ink leading-relaxed whitespace-pre-line max-w-2xl">
                 {event.description}
@@ -501,9 +484,11 @@ export default function EventDetails() {
             <PastEventProof event={event} />
           </div>
 
-          {/* Sidebar: the primary action surface on the page */}
+          {/* Sidebar: the primary action surface on the page. Billboard
+              keeps it unstuck below the tall flyer so the docked mobile bar
+              and the poster art share the first viewport. */}
           <aside className="lg:col-span-1">
-            <div className="sticky top-28 space-y-4">
+            <div className={cn("space-y-4", !isBillboard && "sticky top-28")}>
               <div className="bg-surface border border-hairline rounded-md p-7">
                 <p className="eyebrow">Tickets from</p>
                 <div className="mt-3 flex items-baseline gap-2">
@@ -558,6 +543,7 @@ export default function EventDetails() {
                 </p>
               </div>
 
+              {(event as any).businessApplicationsEnabled !== false && (
               <div className="rounded-xl border border-gold/25 bg-gradient-to-b from-gold/[0.08] to-transparent p-6 shadow-[0_0_40px_-16px_rgba(227,178,60,0.35)]">
                 <p className="eyebrow">Sponsors &amp; vendors</p>
                 <h2 className="mt-2 font-display text-lg font-bold text-ink leading-snug">
@@ -574,6 +560,7 @@ export default function EventDetails() {
                   Apply as Sponsor or Vendor
                 </Button>
               </div>
+              )}
             </div>
           </aside>
         </div>

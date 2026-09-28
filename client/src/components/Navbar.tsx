@@ -34,6 +34,9 @@ function BrandLockup({ logo, title, tag }: { logo: React.ReactNode; title: strin
     <>
       <span className="shrink-0 flex items-center">{logo}</span>
       <span className="flex min-w-0 flex-col items-start gap-[3px]">
+        {/* Fixed caps above; tight viewports are handled by the brand link's
+            min-w-0 below — flex shrinks the whole lockup and the title
+            truncates instead of colliding with the Sign In / Menu pills. */}
         <span className="font-display text-sm md:text-[15px] font-bold leading-none tracking-wide text-ink truncate max-w-[140px] sm:max-w-[180px] md:max-w-[230px]">
           {title}
         </span>
@@ -203,12 +206,14 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
           )}
         </div>
 
-        {/* Mobile: bare brand left, Sign In + Menu pills right, like the reference */}
+        {/* Mobile: bare brand left, Sign In + Menu pills right. min-w-0 lets
+            the lockup shrink on narrow screens so a long event title
+            truncates rather than overlapping the action pills. */}
         <Link
           href="/"
           aria-label={eventBrand?.displayName ? `${eventBrand.displayName} on BlackHeritage` : "Black Heritage Events home"}
           className={cn(
-            "lg:hidden flex items-center gap-2.5",
+            "lg:hidden flex items-center gap-2.5 min-w-0",
             // On event pages the brand sits over arbitrary flyers: a soft
             // scrim keeps it legible on light or busy images, branded or not.
             overMedia && "rounded-xl bg-background/60 backdrop-blur-md px-2.5 py-1.5 -ml-1"
@@ -219,14 +224,14 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
         <div className="lg:hidden flex items-center gap-2 shrink-0">
           {!user && (
             <Link href="/auth">
-              <span className="press inline-flex items-center h-11 px-5 rounded-xl text-sm font-semibold bg-primary text-primary-foreground border border-gold-soft/30 shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:bg-gold-soft transition-colors cursor-pointer">
+              <span className="press inline-flex items-center h-11 px-4 rounded-xl text-sm font-semibold bg-primary text-primary-foreground border border-gold-soft/30 shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:bg-gold-soft transition-colors cursor-pointer">
                 Sign In
               </span>
             </Link>
           )}
           <button
             className={cn(
-              "press flex items-center gap-2 h-11 pl-3.5 pr-4 rounded-xl text-sm font-semibold transition-colors duration-200",
+              "press flex items-center gap-2 h-11 pl-3 pr-3.5 min-[380px]:pl-3.5 min-[380px]:pr-4 rounded-xl text-sm font-semibold transition-colors duration-200",
               mobilePill,
               isMobileMenuOpen ? "text-ink" : "text-muted-ink hover:text-ink"
             )}
@@ -239,7 +244,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
             ) : (
               <Menu size={20} strokeWidth={2.5} />
             )}
-            Menu
+            <span className="hidden min-[380px]:inline">Menu</span>
           </button>
         </div>
       </div>

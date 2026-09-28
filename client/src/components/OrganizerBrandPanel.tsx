@@ -25,7 +25,6 @@ import {
   AlertCircle,
   Link as LinkIcon,
   Bell,
-  Megaphone,
   Radio,
   Users,
   Download,
@@ -55,9 +54,6 @@ export function OrganizerBrandPanel() {
   const [accentHex, setAccentHex] = useState("");
   const [customDomain, setCustomDomain] = useState("");
   const [customDomainStatus, setCustomDomainStatus] = useState<string | null>(null);
-  const [announcementActive, setAnnouncementActive] = useState(false);
-  const [announcementMessage, setAnnouncementMessage] = useState("");
-  const [announcementLink, setAnnouncementLink] = useState("");
   const [instagram, setInstagram] = useState("");
   const [twitter, setTwitter] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -89,10 +85,6 @@ export function OrganizerBrandPanel() {
       setCustomDomain(profile.customDomain || "");
       setCustomDomainStatus(profile.customDomainStatus || (profile.customDomain ? "active" : null));
       if ((profile as any).dnsTarget) setDnsTarget((profile as any).dnsTarget);
-      const ann = profile.announcement || { message: "", linkUrl: "", active: false };
-      setAnnouncementActive(!!ann.active);
-      setAnnouncementMessage(ann.message || "");
-      setAnnouncementLink(ann.linkUrl || "");
       const soc = profile.socials || {};
       setInstagram(soc.instagram || "");
       setTwitter(soc.twitter || "");
@@ -193,11 +185,6 @@ export function OrganizerBrandPanel() {
       videoLoopUrl: videoLoopUrl.trim() || null,
       spotifyPlaylistUrl: spotifyPlaylistUrl.trim() || null,
       tourCities: tourCities,
-      announcement: {
-        message: announcementMessage.trim(),
-        linkUrl: announcementLink.trim(),
-        active: announcementActive,
-      },
       socials: {
         instagram: instagram.trim(),
         twitter: twitter.trim(),
@@ -818,74 +805,6 @@ export function OrganizerBrandPanel() {
             <p className="text-[11px] text-muted-ink">
               Renders interactive city filter buttons on your hub so attendees can quickly browse upcoming dates by location.
             </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Live Broadcast Announcement Card */}
-      <Card className="bg-surface border-hairline">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <CardTitle className="text-ink flex items-center gap-2">
-                <Megaphone className="w-5 h-5 text-gold" />
-                Live Broadcast Announcement
-              </CardTitle>
-              <CardDescription className="text-xs sm:text-sm text-muted-ink">
-                Pin a high-priority message banner across the top of your public organizer hub and ticket pages.
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-ink hidden sm:inline font-mono">
-                {announcementActive ? "Active" : "Disabled"}
-              </span>
-              <Switch
-                checked={announcementActive}
-                onCheckedChange={(val) => {
-                  setAnnouncementActive(val);
-                  setIsDirty(true);
-                }}
-              />
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-3">
-              <Label className="text-xs text-ink font-medium">Announcement Message</Label>
-              <CopySuggest
-                kind="announcement"
-                label="Draft it for me"
-                facts={{
-                  title: announcementMessage || undefined,
-                  organizerName: displayName || undefined,
-                }}
-                onApply={(text) => { setAnnouncementMessage(text); setIsDirty(true); }}
-              />
-            </div>
-            <Input
-              value={announcementMessage}
-              onChange={(e) => {
-                setAnnouncementMessage(e.target.value);
-                setIsDirty(true);
-              }}
-              placeholder="e.g. Early bird passes unlock Friday 6:00 PM • Table packages available via WhatsApp"
-              className="bg-surface-2 border-hairline text-ink text-xs h-10"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-ink">Action Link URL (optional)</Label>
-            <Input
-              value={announcementLink}
-              onChange={(e) => {
-                setAnnouncementLink(e.target.value);
-                setIsDirty(true);
-              }}
-              placeholder="https://... or link to ticket page"
-              className="bg-surface-2 border-hairline text-ink text-xs h-10 font-mono"
-            />
           </div>
         </CardContent>
       </Card>

@@ -390,6 +390,138 @@ export async function registerRoutes(
     }
   });
 
+  // ── Business applications (sponsor / vendor spots on an event) ──
+  // Public POST from the event page's Partner modal. Stored as a pending
+  // business_booking; the organizer gets an email and sees it in Manage Event.
+  app.post("/api/events/:id/business-applications", async (req, res) => {
+    try {
+      const { EventModel, BusinessBookingModel } = await import("./models");
+      const event = await EventModel.findById(req.params.id).lean();
+      if (!event) return res.status(404).json({ message: "That event no longer exists." });
+
+      const body = req.body || {};
+      const type = body.type === "sponsor" ? "sponsor" : body.type === "vendor" ? "vendor" : null;
+      const businessName = String(body.businessName || "").trim();
+      const contactPerson = String(body.contactPerson || "").trim();
+      const phoneNumber = String(body.phoneNumber || "").trim();
+      const email = String(body.email || "").trim();
+      const description = String(body.description || "").trim();
+      const packageName = String(body.packageName || "").trim();
+
+      const problems: string[] = [];
+      if (!type) problems.push("Choose sponsor or vendor");
+      if (businessName.length < 2) problems.push("Add your business name");
+      if (contactPerson.length < 2) problems.push("Add a contact person");
+      if (phoneNumber.replace(/\D/g, "").length < 7) problems.push("Add a valid phone number");
+      if (description.length < 3) problems.push("Tell the organizer what you sell or promote");
+      if (!packageName) problems.push("Pick a package");
+      if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) problems.push("That email address looks wrong");
+      if (problems.length) return res.status(400).json({ message: problems[0] });
+
+      const doc = await BusinessBookingModel.create({
+        eventId: new mongoose.Types.ObjectId(String(event._id)),
+        type,
+        packageName,
+        price: Math.max(0, Math.round(Number(body.price) || 0)),
+        businessName,
+        contactPerson,
+        phoneNumber,
+        email: email || undefined,
+        description,
+        status: "pending",
+      });
+
+      // Notify the organizer (fire-and-forget; the row is already saved).
+      try {
+        const { User } = await import("./models");
+        const organizer = await User.findById((event as any).organizerId).lean();
+        if (organizer?.email) {
+          const { sendBusinessApplicationEmail } = await import("./emails");
+          await sendBusinessApplicationEmail(
+            { name: (organizer as any).name || (organizer as any).username || "Organizer", email: organizer.email },
+            {
+              eventTitle: (event as any).title,
+              businessType: type as "sponsor" | "vendor",
+              packageName,
+              packagePriceKobo: Math.max(0, Math.round(Number(body.price) || 0)),
+              businessName,
+              contactPerson,
+              phoneNumber,
+              email: email || undefined,
+              description,
+              branding: (event as any).branding || null,
+            },
+          );
+        }
+      } catch (notifyErr) {
+        console.error("Business application notification failed:", notifyErr);
+      }
+
+      res.status(201).json({ id: String(doc._id), status: "pending" });
+    } catch (err) {
+      console.error("Business application error:", err);
+      res.status(500).json({ message: "Could not send that application. Try again." });
+    }
+  });
+
+  // Organizer view: all applications across their events, newest first.
+  app.get("/api/business-applications", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
+    const user = req.user as any;
+    const organizerId = user.teamOwnerId || user._id.toString();
+    try {
+      const { EventModel, BusinessBookingModel } = await import("./models");
+      const own = await EventModel.find({ organizerId }).select("_id title").lean();
+      const ids = own.map((e: any) => String(e._id));
+      if (!ids.length) return res.json([]);
+      const apps = await BusinessBookingModel.find({ eventId: { $in: ids.map((i: string) => new mongoose.Types.ObjectId(i)) } })
+        .sort({ createdAt: -1 })
+        .limit(200)
+        .lean();
+      const titleOf = new Map(own.map((e: any) => [String(e._id), e.title]));
+      res.json(apps.map((a: any) => ({
+        id: String(a._id),
+        eventId: String(a.eventId),
+        eventTitle: titleOf.get(String(a.eventId)) || "Event",
+        type: a.type,
+        packageName: a.packageName,
+        price: a.price,
+        businessName: a.businessName,
+        contactPerson: a.contactPerson,
+        phoneNumber: a.phoneNumber,
+        email: a.email,
+        description: a.description,
+        status: a.status,
+        createdAt: a.createdAt,
+      })));
+    } catch (err) {
+      console.error("List business applications failed:", err);
+      res.status(500).json({ message: "Could not load applications" });
+    }
+  });
+
+  app.patch("/api/business-applications/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
+    const user = req.user as any;
+    const organizerId = user.teamOwnerId || user._id.toString();
+    const status = req.body?.status;
+    if (!"pending|paid|cancelled".split("|").includes(status)) {
+      return res.status(400).json({ message: "Unknown status" });
+    }
+    try {
+      const { EventModel, BusinessBookingModel } = await import("./models");
+      const app2 = await BusinessBookingModel.findById(req.params.id).lean();
+      if (!app2) return res.status(404).json({ message: "Application not found" });
+      const ev = await EventModel.findOne({ _id: app2.eventId, organizerId }).select("_id").lean();
+      if (!ev) return res.status(403).json({ message: "This application is not on your event" });
+      await BusinessBookingModel.findByIdAndUpdate(app2._id, { $set: { status } });
+      res.json({ ok: true, status });
+    } catch (err) {
+      console.error("Update business application failed:", err);
+      res.status(500).json({ message: "Could not update that application" });
+    }
+  });
+
   // Slug lookup. Registered before /api/events/:id so "by-slug" is not
   // swallowed as an id. 301s raw ids to the pretty link when a slug exists.
   app.get("/api/events/by-slug/:slug", async (req, res) => {
@@ -428,20 +560,6 @@ export async function registerRoutes(
         }
       }
       const payload = mapEventLean(doc);
-      // Same announcement attach as the id route: ticket pages Promise the
-      // organizer's live banner, whichever way the guest arrived.
-      if ((doc as any).organizerId) {
-        try {
-          const org = await User.findById((doc as any).organizerId).lean();
-          const ann = (org as any)?.announcement;
-          if (ann?.active && ann?.message) {
-            (payload as any).organizerAnnouncement = {
-              message: ann.message,
-              linkUrl: ann.linkUrl || "",
-            };
-          }
-        } catch {}
-      }
       res.json(payload);
     } catch (err) {
       console.error("Slug lookup error:", err);
@@ -590,21 +708,6 @@ export async function registerRoutes(
         if (!inviteOk && !organizer && (!supplied || supplied !== stored)) {
           return res.status(403).json({ requiresCode: true, title: event.title });
         }
-      }
-      // The organizer's live announcement rides along on ticket pages too
-      // (the brand panel promises "hub and ticket pages"), but only when the
-      // announcement is switched on and has something to say.
-      if ((event as any).organizerId) {
-        try {
-          const org = await User.findById((event as any).organizerId).lean();
-          const ann = (org as any)?.announcement;
-          if (ann?.active && ann?.message) {
-            (event as any).organizerAnnouncement = {
-              message: ann.message,
-              linkUrl: ann.linkUrl || "",
-            };
-          }
-        } catch {}
       }
       res.json(event);
     } catch (err) {
@@ -2956,6 +3059,29 @@ export async function registerRoutes(
     const updated = await User.findByIdAndUpdate(user._id, { $set: update }, { new: true }).lean();
     if (!updated) return res.status(404).json({ message: "That account no longer exists." });
     res.json(safeUserShape(updated));
+  });
+
+  // ── Become an organizer ──
+  // Self-serve upgrade for Attendee/Talent accounts. No vetting gate: the
+  // trust layer is payment escrow + published event quality, not signup.
+  app.patch("/api/account/become-organizer", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
+    const user = req.user as any;
+    if (user.role === "organizer" || user.role === "admin") {
+      return res.status(400).json({ message: "You are already an organizer." });
+    }
+    try {
+      const updated = await User.findByIdAndUpdate(
+        user._id,
+        { $set: { role: "organizer" } },
+        { new: true },
+      ).lean();
+      if (!updated) return res.status(404).json({ message: "That account no longer exists." });
+      res.json(safeUserShape(updated));
+    } catch (err) {
+      console.error("Become-organizer failed:", err);
+      res.status(500).json({ message: "Could not switch your account. Try again." });
+    }
   });
 
   app.patch("/api/account/password", async (req, res) => {

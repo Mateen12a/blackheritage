@@ -62,7 +62,10 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
       price: 0,
       capacity: 0,
       imageUrl: "",
-      date: new Date(),
+      // No default date: a placeholder nudges the organizer to pick the real
+      // one. Defaulting to "today" published stale one-day events that sat
+      // on the listing with an EXPIRED chip.
+      date: null as unknown as Date,
       isFeatured: false,
       status: "published",
       sponsorPackages: "[]",
@@ -155,7 +158,11 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
       form.setError("title", { message: "Give the event a title first" });
       return;
     }
+    // The form boots with no date ("Pick a date"). A draft may omit it —
+    // that is the point of defaulting to nothing instead of "today", which
+    // used to publish stale listings wearing an EXPIRED chip.
     const draftValues = { ...values, status: "draft" as const };
+    if (!draftValues.date) delete (draftValues as any).date;
     const draftCheck = insertDraftEventSchema.safeParse(draftValues);
     if (!draftCheck.success) {
       const first = draftCheck.error.errors[0];
@@ -504,13 +511,17 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                   type="button"
                   variant="outline"
                   onClick={() => setStudioOpen(true)}
-                  className="press w-full h-12 border-gold/50 text-gold hover:bg-gold/10 rounded-xl font-medium"
+                  className="press w-full h-12 border-gold/50 text-gold hover:bg-gold/10 rounded-xl font-medium whitespace-normal leading-tight px-4"
                 >
-                  <ImageIcon className="w-4 h-4 mr-2" />
-                  Design with Studio, no flyer needed
+                  <ImageIcon className="w-4 h-4 mr-2 shrink-0" />
+                  <span className="text-left">Design with Studio, no flyer needed</span>
                 </Button>
-                <div className="relative group">
-                  <Input
+                <div className="relative">
+                  {/* Hidden native input + custom label: browser-styled "Choose
+                      File" buttons truncate on 320–390px rows, so the trigger
+                      is drawn by us and the filename is shown where it fits. */}
+                  <input
+                    id="event-form-flyer-upload"
                     type="file"
                     accept="image/*"
                     onChange={(e) => {
@@ -523,9 +534,16 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                         reader.readAsDataURL(file);
                       }
                     }}
-                    className="h-12 bg-surface-2 border-hairline text-ink cursor-pointer file:bg-primary file:text-primary-foreground file:border-0 file:rounded-md file:px-4 file:h-full file:mr-4 file:font-medium hover:file:bg-gold-soft transition-colors text-sm sm:text-base"
+                    className="sr-only"
                   />
-                  <ImageIcon className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none w-5 h-5" />
+                  <label
+                    htmlFor="event-form-flyer-upload"
+                    className="h-12 w-full flex items-center gap-3 px-4 bg-surface-2 border border-hairline rounded-md cursor-pointer hover:border-gold/40 transition-colors"
+                  >
+                    <span className="shrink-0 inline-flex items-center h-8 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium">Choose file</span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-muted-ink">{field.value ? "Flyer attached" : "PNG or JPG, up to 15MB"}</span>
+                    <ImageIcon className="shrink-0 w-5 h-5 text-muted-foreground" />
+                  </label>
                 </div>
                 {field.value && (
                   <div className="relative aspect-video rounded-md overflow-hidden border border-hairline group">
@@ -687,11 +705,11 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
           </div>
         </div>
 
-        {/* ── Theme: three curated looks, one pick ── */}
+        {/* ── Template: layout + motion, one pick ── */}
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
-          <h3 className="text-white font-bold uppercase tracking-wider text-sm">Theme</h3>
+          <h3 className="text-white font-bold uppercase tracking-wider text-sm">Page template</h3>
           <p className="text-xs text-muted-foreground mt-1 mb-4">
-            Curated looks for your event page. Pick one, then add your logo and color below. Each preview shows your branding inside the theme.
+            Choose how your event page is built — each template has its own layout and entrance animation. Your brand color sets the colors; if you skip it, the Black Heritage gold shows.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {Object.values(themePresets).map((preset) => (

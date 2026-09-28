@@ -175,34 +175,6 @@ export default function OrganizerDetails() {
 
   return (
     <div style={themeVars} className="min-h-screen bg-background text-ink pb-24 selection:bg-gold/20 selection:text-gold">
-      {/* Pinned Broadcast Announcement Strip */}
-      {organizer.announcement?.active && organizer.announcement?.message && (
-        <div className="bg-surface border-b border-hairline px-4 py-2.5 text-xs text-ink sticky top-0 z-30 shadow-md">
-          <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <span className="flex h-2 w-2 rounded-full bg-gold shrink-0 animate-ping" />
-              <span className="font-mono text-[10px] uppercase tracking-wider text-gold shrink-0 font-bold px-1.5 py-0.5 rounded bg-gold/10 border border-gold/20">
-                Live Announcement
-              </span>
-              <span className="truncate text-ink font-medium">
-                {organizer.announcement.message}
-              </span>
-            </div>
-            {organizer.announcement.linkUrl && (
-              <a
-                href={organizer.announcement.linkUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="shrink-0 text-gold hover:underline inline-flex items-center gap-1 font-semibold"
-              >
-                Learn more
-                <ArrowRight className="w-3 h-3" />
-              </a>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Cover Banner Hero */}
       <div className="relative h-64 sm:h-80 md:h-96 w-full overflow-hidden bg-surface-2 border-b border-hairline">
         {organizer.videoLoopUrl ? (

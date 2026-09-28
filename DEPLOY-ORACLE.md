@@ -327,3 +327,13 @@ Then copy those files off the VM (rclone to R2, or `scp` to another machine). A 
 ### Warning: every boot re-seeds demo accounts
 
 `registerRoutes()` calls `seedPlatform()` on startup with no production check. The seed creates demo logins with published passwords (`admin`/`admin123`, `tunde_organizer`/`demo1234`, `gate_staff`/`demo1234`) and re-promotes their roles on each run, so on this VM **every `pm2 restart` restores an admin account anyone can log into**. Deleting or demoting it does not stick. Guard the seed for production, then rotate those passwords and remove the demo rows.
+
+## Paystack checkout branding
+
+The merchant name and support email shown on the Paystack payment page come
+from the **Paystack dashboard** (Settings → Preferences → Business name/
+support email), not from the API. Set them to "Black Heritage Events" so
+buyers see the platform name at checkout. The initialize call already sends
+currency, reference, and metadata; there is no `business_name` API field to
+set in code. Also verify Settings → Webhooks still points at
+`https://blackhevents.com/api/payments/webhook` after any domain change.

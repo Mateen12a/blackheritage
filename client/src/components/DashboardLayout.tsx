@@ -5,6 +5,7 @@ import { useUnreadCount } from "@/hooks/use-messages";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import {
   Compass,
   LayoutDashboard,
@@ -14,6 +15,7 @@ import {
   Ticket,
   LogOut,
   UserCog,
+  Rocket,
 } from "lucide-react";
 import { useState } from "react";
 import logoImg from "../assets/logo.png";
@@ -139,9 +141,11 @@ function tabsFor(role?: string, isAdmin?: boolean, isTeamStaff?: boolean, isVend
 }
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout } = useAuth();
+  const { user, logout, refetch: refetchUser } = useAuth();
   const [location, navigate] = useLocation();
   const [accountOpen, setAccountOpen] = useState(false);
+  const { toast } = useToast();
+  const [upgrading, setUpgrading] = useState(false);
 
   const isAdmin = user?.role === "admin" || user?.isAdmin;
   const isOrg = isAdmin || user?.role === "organizer";
@@ -347,6 +351,39 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="pt-4 border-t border-hairline space-y-1">
+            {/* Self-serve upgrade: attendees and talent can start selling
+                without a new account. Flips their role and lands them in the
+                organizer dashboard. */}
+            {!isOrg && (
+              <button
+                type="button"
+                disabled={upgrading}
+                onClick={async () => {
+                  setUpgrading(true);
+                  try {
+                    const res = await fetch("/api/account/become-organizer", {
+                      method: "PATCH",
+                      credentials: "include",
+                    });
+                    if (!res.ok) {
+                      const j = await res.json().catch(() => ({}));
+                      throw new Error(j.message || "Could not switch your account");
+                    }
+                    await refetchUser();
+                    setAccountOpen(false);
+                    navigate("/admin");
+                  } catch (err: any) {
+                    toast({ variant: "destructive", title: "Upgrade failed", description: err?.message });
+                  } finally {
+                    setUpgrading(false);
+                  }
+                }}
+                className="w-full flex items-center gap-3 px-2 py-3 rounded-md text-gold hover:bg-surface-2 transition-colors text-left"
+              >
+                <Rocket size={18} strokeWidth={1.5} aria-hidden="true" />
+                <span className="text-sm font-medium">{upgrading ? "Switching your account…" : "Become an organizer"}</span>
+              </button>
+            )}
             {/* Organizer-vendors keep their shop one tap away without a
                 sixth bottom-bar tab. */}
             {isOrg && isVendor && (

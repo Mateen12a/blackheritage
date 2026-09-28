@@ -6,6 +6,7 @@ import { Event } from "@shared/schema";
 import { useState } from "react";
 import { Loader2, ArrowLeft, CheckCircle2, Building2, Store } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 
 interface BusinessModalProps {
   event: Event;
@@ -16,9 +17,11 @@ interface BusinessModalProps {
 type Step = 1 | 2 | 3 | 4;
 
 export function BusinessModal({ event, isOpen, onClose }: BusinessModalProps) {
+  const { toast } = useToast();
   const [step, setStep] = useState<Step>(1);
   const [type, setType] = useState<"sponsor" | "vendor" | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     businessName: "",
     contactPerson: "",
@@ -39,6 +42,37 @@ export function BusinessModal({ event, isOpen, onClose }: BusinessModalProps) {
 
   const handleNext = () => {
     if (step < 4) setStep((s) => (s + 1) as Step);
+  };
+
+  // Applications go to the organizer, not to a generic inbox: the row is
+  // stored against their event and they get an email with the details.
+  const submitApplication = async () => {
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/events/${event.id}/business-applications`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type,
+          packageName: selectedPackage?.name || "",
+          price: selectedPackage?.price || 0,
+          ...formData,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || "Could not send the application. Try again.");
+      }
+      setStep(4);
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Application not sent",
+        description: err?.message || "Check your connection and try again.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleBack = () => {
@@ -189,11 +223,11 @@ export function BusinessModal({ event, isOpen, onClose }: BusinessModalProps) {
                     />
                   </div>
                   <Button 
-                    onClick={handleNext}
-                    disabled={!formData.businessName || !formData.contactPerson || !formData.phoneNumber || !formData.description}
+                    onClick={submitApplication}
+                    disabled={submitting || !formData.businessName || !formData.contactPerson || !formData.phoneNumber || !formData.description}
                     className="press w-full h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md mt-4"
                   >
-                    Submit Application
+                    {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending…</> : "Submit Application"}
                   </Button>
                 </div>
               )}
@@ -206,8 +240,7 @@ export function BusinessModal({ event, isOpen, onClose }: BusinessModalProps) {
                   <div className="space-y-2">
                     <h3 className="text-2xl sm:text-3xl font-display font-bold text-ink">Application Sent!</h3>
                     <p className="text-muted-ink text-base px-2 sm:px-6">
-                      We have received your details for <strong className="text-ink">{formData.businessName}</strong>. 
-                      Our team will call you within 24 hours.
+                      Your application for <strong className="text-ink">{formData.businessName}</strong> is with the organizer of {event.title}. They will reach you on {formData.phoneNumber} to confirm the spot.
                     </p>
                   </div>
                   <Button onClick={reset} className="press w-full h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md">

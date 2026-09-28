@@ -163,6 +163,34 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
   } catch (emailErr) {
     console.error("Ticket email failed:", emailErr);
   }
+
+  // Tell the organizer money moved on their event. Never blocks fulfillment.
+  try {
+    const organizerId = (event as any)?.organizerId;
+    if (organizerId) {
+      const { User } = await import("./models");
+      const organizer = await User.findById(organizerId).lean();
+      if (organizer?.email) {
+        const { sendOrganizerSaleEmail } = await import("./emails");
+        await sendOrganizerSaleEmail(
+          { name: (organizer as any).name || (organizer as any).username || "Organizer", email: organizer.email },
+          {
+            eventTitle,
+            eventDate: new Date((event as any).date),
+            buyerName: (booking as any).name || "Guest",
+            buyerEmail: (booking as any).email || "",
+            tierName: (booking as any).ticketType || "General",
+            quantity: qty,
+            totalKobo: total,
+            bookingRef: (booking as any).paymentReference || String(booking._id).slice(-8).toUpperCase(),
+            branding: (event as any)?.branding || null,
+          },
+        );
+      }
+    }
+  } catch (notifyErr) {
+    console.error("Organizer sale notification failed:", notifyErr);
+  }
   return {
     bookingId,
     tickets: tickets.map((t: any) => ({
@@ -363,7 +391,12 @@ export async function createGateSale(input: GateSaleInput): Promise<{ ok: boolea
   try {
     const reference = `GATE-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     const booking = await BookingModel.create({
-      email: input.buyerEmail || "gate@blackhevents.com",
+      // Walk-in sales often have no email. The placeholder used to be a
+      // plausible-looking address (gate@blackhevents.com) that silently
+      // swallowed the CSV and any later receipt. This one is unmistakably
+      // synthetic, so the attendee list stays honest and nothing real is
+      // ever mailed by accident.
+      email: input.buyerEmail || "walk-in+no-email@blackhevents.com",
       name: input.buyerName,
       eventId: new mongoose.Types.ObjectId(input.eventId),
       ticketType: input.tierName,

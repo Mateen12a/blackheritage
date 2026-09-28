@@ -1,5 +1,6 @@
 import { MotionConfig, motion, type HTMLMotionProps } from "framer-motion";
 import type { ReactNode } from "react";
+import type { TemplateMotion } from "@shared/themes";
 
 /**
  * Motion system (see DESIGN.md → "Motion").
@@ -28,6 +29,10 @@ interface RevealProps {
   /** Vertical offset in px. Keep it small — 14 or less. */
   y?: number;
   duration?: number;
+  /** Event-page templates can drive the entrance style. Default is the
+   *  platform's quiet rise; "bloom" scales in softly, "slide" enters
+   *  from the left. Reduced-motion users always get instant states. */
+  variant?: TemplateMotion;
 }
 
 /** Quiet scroll-in reveal: fades and rises once, then never animates again. */
@@ -37,12 +42,19 @@ export function Reveal({
   delay = 0,
   y = 14,
   duration = 0.5,
+  variant = "rise",
 }: RevealProps) {
+  const styles =
+    variant === "bloom"
+      ? { hidden: { opacity: 0, scale: 0.975 }, shown: { opacity: 1, scale: 1 } }
+      : variant === "slide"
+        ? { hidden: { opacity: 0, x: -22 }, shown: { opacity: 1, x: 0 } }
+        : { hidden: { opacity: 0, y }, shown: { opacity: 1, y: 0 } };
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={styles.hidden}
+      whileInView={styles.shown}
       viewport={{ once: true, amount: 0.25 }}
       transition={{ duration, delay, ease: EASE_OUT }}
     >

@@ -92,6 +92,72 @@ function HeroEmbers() {
 }
 
 /**
+ * Scarcity state for one event, computed from its real tier data:
+ * fill %, the tag that fill earns, and how hot the badge should burn.
+ * Tiers with sale closed or zero capacity are ignored; no tier data at all
+ * means "On Sale" with no percentage rather than an invented one.
+ */
+function scarcityFor(event: Event): { tag: string; pct: number | null; hot: 0 | 1 | 2 } {
+  let capacity = 0;
+  let sold = 0;
+  try {
+    const tiers = JSON.parse((event as any).ticketTypes || "[]");
+    for (const t of tiers) {
+      const cap = Number(t.capacity || 0);
+      if (!cap || t.saleOpen === false) continue;
+      capacity += cap;
+      sold += Math.min(Number(t.sold || 0), cap);
+    }
+  } catch { /* malformed tiers → no data */ }
+  if (capacity <= 0) return { tag: "On Sale", pct: null, hot: 0 };
+  const pct = Math.round((sold / capacity) * 100);
+  if (pct >= 90) return { tag: "Last Few Spots", pct, hot: 2 };
+  if (pct >= 60) return { tag: "Selling Fast", pct, hot: 2 };
+  if (pct >= 25) return { tag: "Filling Up", pct, hot: 1 };
+  return { tag: "On Sale", pct, hot: 0 };
+}
+
+const SCARCITY_HOT = {
+  2: { border: "border-gold/40", text: "text-gold", flame: true },
+  1: { border: "border-gold/20", text: "text-gold/90", flame: false },
+  0: { border: "border-white/15", text: "text-ink/80", flame: false },
+} as const;
+
+/**
+ * The live scarcity badge on each poster. The flame only breathes when the
+ * event is genuinely hot, and a one-beat delay on mount keeps the flip
+ * between posters from feeling like a constant blink.
+ */
+function ScarcityBadge({ event, slideKey }: { event: Event; slideKey: string }) {
+  const { tag, pct, hot } = scarcityFor(event);
+  const [shown, setShown] = useState(false);
+  useEffect(() => {
+    setShown(false);
+    const t = setTimeout(() => setShown(true), 350);
+    return () => clearTimeout(t);
+  }, [slideKey]);
+  const skin = SCARCITY_HOT[hot];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -6 }}
+      animate={shown ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className={cn(
+        "absolute top-4 left-4 z-10 flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface/85 backdrop-blur-md border text-[11px] font-semibold shadow-lg pointer-events-none",
+        skin.border,
+        skin.text,
+      )}
+    >
+      <Flame className={cn("w-3.5 h-3.5", skin.flame ? "animate-pulse" : "opacity-60")} />
+      <span>
+        {tag}
+        {pct !== null && <span className="opacity-80"> · {pct}% booked</span>}
+      </span>
+    </motion.div>
+  );
+}
+
+/**
  * The live poster deck: real on-sale events rotate like gig posters outside a
  * venue. Auto-advances with a slow push-in, pauses on hover, and any poster
  * can be called up by its thumb. One event is always on screen.
@@ -145,11 +211,14 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
           aria-hidden="true"
           className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/10 to-transparent pointer-events-none"
         />
-        {/* Real-time ticket scarcity / pulse badge */}
-        <div className="absolute top-4 left-4 z-10 flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface/85 backdrop-blur-md border border-gold/30 text-[11px] font-semibold text-gold shadow-lg pointer-events-none">
-          <Flame className="w-3.5 h-3.5 text-gold animate-pulse" />
-          <span>Selling Fast · {80 + (current.id.charCodeAt(0) % 15)}% Booked</span>
-        </div>
+        {/* Real ticket scarcity, keyed to this poster. Every poster used to
+            wear the same "Selling Fast · 89% Booked" sticker — computed from
+            the event id, i.e. invented. Now the fill rate comes from the
+            tiers the organizer actually set, the tag and heat change with it
+            (On Sale → Selling Fast → Almost Gone → Last Few), and the ticket
+            glyph flips a beat after the slide changes so the badge feels
+            alive rather than constantly blinking. */}
+        <ScarcityBadge event={current} slideKey={current.id} />
         <div className="absolute inset-x-4 bottom-4 flex items-center justify-between gap-3 pointer-events-none">
           <div className="min-w-0">
             <p className="eyebrow">{format(new Date(current.date), "EEE d MMM · h a")}</p>
@@ -158,9 +227,9 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
             </p>
           </div>
           <Link href={"/events/" + current.id} className="pointer-events-auto">
-            <span className="press inline-flex items-center gap-1 h-9 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium hover:bg-gold-soft transition-colors cursor-pointer">
+            <span className="press inline-flex items-center gap-1 h-9 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium hover:bg-gold-soft transition-colors cursor-pointer whitespace-nowrap">
               Get Tickets
-              <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={2} />
+              <ArrowUpRight className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
             </span>
           </Link>
         </div>
