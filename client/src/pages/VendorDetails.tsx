@@ -114,7 +114,7 @@ export default function VendorDetails() {
       encodeURIComponent(
         "Hello " +
           vendor.businessName +
-          ", I found your profile on Black Heritage Events and I'd like to ask about your services."
+          ", I found your profile on Black Heritage Entertainment & Events and I'd like to ask about your services."
       )
     : null;
 

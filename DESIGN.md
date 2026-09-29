@@ -1,4 +1,4 @@
-# DESIGN.md — Black Heritage Events & Entertainment
+# DESIGN.md — Black Heritage Entertainment & Events
 
 This is the locked visual direction for the product. Every new page, component,
 or prompt should inherit from this file. If a change conflicts with it, the
@@ -94,7 +94,7 @@ and stays within these tiers:
 
 ## Voice & copy (locked)
 
-The product is a **Lagos-first marketplace for events and entertainment** —
+The product is a **Nigerian marketplace for entertainment and events** (rooted in Lagos, reaching Abuja, Port Harcourt, and nationwide) —
 not a generic ticketing utility. Copy carries that positioning:
 
 - **Voice:** warm, confident, Lagos-specific. Concrete nouns (owambe, Lekki,

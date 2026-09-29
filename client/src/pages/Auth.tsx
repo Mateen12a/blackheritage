@@ -333,7 +333,7 @@ export default function AuthPage() {
             <div className="flex items-center gap-3 cursor-pointer group w-fit">
               <img
                 src={logoImg}
-                alt="Black Heritage Events"
+                alt="Black Heritage Entertainment & Events"
                 className="h-10 w-10 object-contain"
               />
               <div className="leading-none">
@@ -524,13 +524,13 @@ export default function AuthPage() {
           <div className="flex flex-col items-center cursor-pointer group">
             <img
               src={logoImg}
-              alt="Black Heritage Events"
+              alt="Black Heritage Entertainment & Events"
               className="h-14 w-14 object-contain mb-3"
             />
             <h1 className="text-2xl font-display font-bold text-ink group-hover:text-gold transition-colors">
               Black Heritage
             </h1>
-            <p className="eyebrow mt-1">Events &amp; Entertainment</p>
+            <p className="eyebrow mt-1">Entertainment &amp; Events</p>
           </div>
         </Link>
 

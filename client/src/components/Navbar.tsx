@@ -111,7 +111,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
   ) : (
     <BrandLockup
       title="Black Heritage"
-      tag="Events & Entertainment"
+      tag="Entertainment & Events"
       logo={<img src={logoImg} alt="" className="h-8 w-8 object-contain" />}
     />
   );
@@ -130,7 +130,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
         {/* Brand segment (desktop): full-round left corners, tight right corners */}
         <Link
           href="/"
-          aria-label={eventBrand?.displayName ? `${eventBrand.displayName} on BlackHeritage` : "Black Heritage Events home"}
+          aria-label={eventBrand?.displayName ? `${eventBrand.displayName} on BlackHeritage` : "Black Heritage Entertainment & Events home"}
           className={cn(
             "press shrink-0 h-[52px] pl-3.5 pr-5 rounded-l-full rounded-r-lg hidden lg:flex items-center gap-2.5",
             surface
@@ -211,7 +211,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
             truncates rather than overlapping the action pills. */}
         <Link
           href="/"
-          aria-label={eventBrand?.displayName ? `${eventBrand.displayName} on BlackHeritage` : "Black Heritage Events home"}
+          aria-label={eventBrand?.displayName ? `${eventBrand.displayName} on BlackHeritage` : "Black Heritage Entertainment & Events home"}
           className={cn(
             "lg:hidden flex items-center gap-2.5 min-w-0",
             // On event pages the brand sits over arbitrary flyers: a soft

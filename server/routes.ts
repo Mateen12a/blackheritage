@@ -240,8 +240,8 @@ export async function registerRoutes(
         const dateStr = new Date(event.date).toLocaleString("en-NG", {
           weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
         });
-        const title = event.title || "Black Heritage Events";
-        const desc = `${dateStr} · ${event.location || "Lagos"}`;
+        const title = event.title || "Black Heritage Entertainment & Events";
+        const desc = `${dateStr} · ${event.location || "Nigeria"}`;
         const image = /^https?:\/\//.test(event.imageUrl || "") ? event.imageUrl : `${base}${event.imageUrl || "/favicon.png"}`;
         const url = (event as any).slug ? `${base}/e/${(event as any).slug}` : `${base}/events/${event.id}`;
 
@@ -252,7 +252,7 @@ export async function registerRoutes(
         html = html
           .replace(/<meta\s[^>]*property="(?:og|twitter):[^"]*"[^>]*>/gi, "")
           .replace(/<meta\s[^>]*name="(?:og|twitter):[^"]*"[^>]*>/gi, "")
-          .replace(/<title>[^<]*<\/title>/i, () => `<title>${escapeHtml(title)} · Black Heritage Events</title>`);
+          .replace(/<title>[^<]*<\/title>/i, () => `<title>${escapeHtml(title)} · Black Heritage Entertainment & Events</title>`);
 
         // Cheapest live tier in naira for the search-engine offer block;
         // malformed tiers fall back to the legacy price field.
@@ -273,7 +273,7 @@ export async function registerRoutes(
           eventStatus: "https://schema.org/EventScheduled",
           image: [image],
           description: `${desc}. ${String(event.description || "").slice(0, 160)}`.trim(),
-          location: { "@type": "Place", name: event.location || "Lagos", address: event.location || "Lagos" },
+          location: { "@type": "Place", name: event.location || "Nigeria", address: event.location || "Nigeria" },
           offers: {
             "@type": "Offer",
             url,
@@ -290,7 +290,7 @@ export async function registerRoutes(
           `<meta property="og:image" content="${escapeHtml(image)}" />\n` +
           `<meta property="og:url" content="${escapeHtml(url)}" />\n` +
           `<meta property="og:type" content="website" />\n` +
-          `<meta property="og:site_name" content="Black Heritage Events" />\n` +
+          `<meta property="og:site_name" content="Black Heritage Entertainment & Events" />\n` +
           `<meta name="twitter:card" content="summary_large_image" />\n` +
           `<meta name="twitter:title" content="${escapeHtml(title)}" />\n` +
           `<meta name="twitter:description" content="${escapeHtml(desc)}" />\n` +

@@ -167,7 +167,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col flex-1 rounded-2xl border border-hairline bg-surface shadow-[0_10px_40px_-12px_rgba(0,0,0,0.6)] overflow-hidden">
           <Link
             href="/"
-            aria-label="Black Heritage Events home"
+            aria-label="Black Heritage Entertainment & Events home"
             className="flex items-center gap-2.5 h-[64px] px-5 border-b border-hairline shrink-0"
           >
             <img src={logoImg} alt="" className="h-8 w-8 object-contain" />
@@ -238,7 +238,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Slim mobile top bar */}
         <header className="md:hidden sticky top-0 z-40 border-b border-hairline bg-background/90 backdrop-blur-xl">
           <div className="h-14 px-4 flex items-center justify-between">
-            <Link href="/" aria-label="Black Heritage Events home" className="flex items-center gap-2">
+            <Link href="/" aria-label="Black Heritage Entertainment & Events home" className="flex items-center gap-2">
               <img src={logoImg} alt="" className="h-7 w-7 object-contain" />
               <span className="font-display text-sm font-bold tracking-wide text-ink">
                 Black Heritage

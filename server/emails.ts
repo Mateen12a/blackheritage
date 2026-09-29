@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { PLAYBOOK_FILENAME } from "./playbook";
 
-const FROM = "Black Heritage Events <tickets@blackhevents.com>";
+const FROM = "Black Heritage Entertainment & Events <tickets@blackhevents.com>";
 
 interface Branding {
   displayName?: string;
@@ -28,7 +28,7 @@ function shell(title: string, bodyHtml: string, branding?: Branding | null): str
   const brandLogo = branding?.logoUrl
     ? `<img src="${escAttr(branding.logoUrl)}" alt="" width="40" height="40" style="display:block;border-radius:8px;object-fit:cover;" />`
     : "";
-  const subLabel = hasBrand ? "IN PARTNERSHIP WITH BLACKHERITAGE" : "EVENT TICKETING";
+  const subLabel = hasBrand ? "IN PARTNERSHIP WITH BLACKHERITAGE" : "ENTERTAINMENT & EVENTS";
   const footer = hasBrand
     ? `Issued via <strong>BlackHeritage</strong>${branding?.displayName ? ` for ${esc(branding.displayName)}` : ""}. Questions about this ticket? Reply to this email or contact the organizer.`
     : `Sent by BlackHeritage. Questions about this ticket? Reply to this email or message the event organizer from your dashboard.`;
@@ -227,7 +227,7 @@ export async function sendWelcomeEmail(
 
   const bodies: Record<"user" | "organizer" | "vendor", { subject: string; title: string; html: string }> = {
     user: {
-      subject: "Welcome to Black Heritage Events",
+      subject: "Welcome to Black Heritage Entertainment & Events",
       title: "You're in",
       html: `
       <p style="margin:0 0 20px;font-size:14px;">Hi ${esc(to.name)},</p>
@@ -237,7 +237,7 @@ export async function sendWelcomeEmail(
       <p style="margin:0;font-size:14px;color:#444;">See you in the crowd.</p>`,
     },
     organizer: {
-      subject: "Your Black Heritage Events dashboard is ready",
+      subject: "Your Black Heritage Entertainment & Events dashboard is ready",
       title: "Your dashboard is ready",
       html: `
       <p style="margin:0 0 20px;font-size:14px;">Hi ${esc(to.name)},</p>

@@ -494,7 +494,7 @@ async function api(method, path, body, useCookie = true) {
     const count = (re) => (html.match(re) || []).length;
     ok("event page injects og:title", page.status === 200 && count(/property="og:title"/g) === 1 && html.includes(`content="${event.title}"`), "og:title x" + count(/property="og:title"/g));
     ok("event page injects og:image (flyer, not favicon)", count(/property="og:image"/g) === 1 && /property="og:image" content="https?:/i.test(html), html.match(/property="og:image" content="[^"]{0,60}/)?.[0]);
-    ok("event page title tag is the event name", /<title>[^<]+ · Black Heritage Events<\/title>/.test(html) && !/<title>Error<\/title>/.test(html), html.match(/<title>[^<]{0,70}/)?.[0]);
+    ok("event page title tag is the event name", /<title>[^<]+ · Black Heritage (Entertainment & Events|Events)<\/title>/.test(html) && !/<title>Error<\/title>/.test(html), html.match(/<title>[^<]{0,70}/)?.[0]);
     ok("event page carries Event JSON-LD", html.includes('"@type":"Event"') && html.includes('"@type":"Offer"') && html.includes('"priceCurrency":"NGN"'), "jsonld ok");
   }
 

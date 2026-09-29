@@ -726,11 +726,11 @@ export default function Home() {
                   <p className="font-display text-lg font-bold text-ink">
                     Black Heritage
                   </p>
-                  <p className="eyebrow mt-1">Events &amp; Entertainment</p>
+                  <p className="eyebrow mt-1">Entertainment &amp; Events</p>
                 </div>
               </div>
               <p className="text-sm text-muted-ink leading-relaxed mt-4">
-                Lagos's home for real culture: the events worth showing up
+                Nigeria's home for real culture: the events worth showing up
                 for, and the people who make them happen.
               </p>
             </div>
@@ -767,8 +767,8 @@ export default function Home() {
         <div className="border-t border-hairline">
           <div className="container mx-auto px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-muted-ink/60">
-              © {new Date().getFullYear()} Black Heritage Events &amp;
-              Entertainment. All rights reserved.
+              © {new Date().getFullYear()} Black Heritage Entertainment &amp;
+              Events. All rights reserved.
             </p>
             <div className="flex items-center gap-5 text-xs text-muted-ink">
               <a href="https://instagram.com/blackhevents" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors" aria-label="Instagram">Instagram</a>

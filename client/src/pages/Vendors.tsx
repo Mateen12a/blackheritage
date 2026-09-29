@@ -32,14 +32,14 @@ export default function Vendors() {
       <div className="container mx-auto px-4 pt-6 pb-24">
         {/* Editorial header — same grammar as Events */}
         <Reveal className="max-w-3xl mb-12">
-          <p className="eyebrow">Lagos &amp; beyond</p>
+          <p className="eyebrow">Across Nigeria</p>
           <h1 className="mt-3 font-display text-4xl md:text-5xl font-bold text-ink tracking-tight">
             Vendor Directory
           </h1>
           <div className="mt-5 h-0.5 w-16 bg-gold" aria-hidden="true" />
           <p className="mt-5 text-lg text-muted-ink max-w-xl leading-relaxed">
             {vendors?.length ?? 0}
-            {vendors?.length === 1 ? " vendor" : " vendors"} across Lagos: DJs,
+            {vendors?.length === 1 ? " vendor" : " vendors"} across Nigeria: DJs,
             MCs, caterers, decorators, photographers, and live bands. Browse
             portfolios, then message them straight on WhatsApp.
           </p>
