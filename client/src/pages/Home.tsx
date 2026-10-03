@@ -388,12 +388,12 @@ export default function Home() {
                       See all events
                     </Button>
                   </Link>
-                  <Link href="/vendors">
+                  <Link href="/talent">
                     <Button
                       variant="outline"
                       className="press h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base border-white/20 bg-white/5 text-ink hover:bg-white/10 hover:text-gold font-medium rounded-full w-full sm:w-auto backdrop-blur-sm"
                     >
-                      Hire a vendor
+                      Book Talent
                     </Button>
                   </Link>
                 </div>

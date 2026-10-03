@@ -72,7 +72,7 @@ function tabsFor(role?: string, isAdmin?: boolean, isTeamStaff?: boolean, isVend
         label: "Explore",
         icon: Compass,
         match: (loc) =>
-          loc === "/" || loc.startsWith("/events") || loc.startsWith("/vendors"),
+          loc === "/" || loc.startsWith("/events") || loc.startsWith("/vendors") || loc.startsWith("/talent"),
       },
       {
         href: "/admin",
@@ -112,7 +112,7 @@ function tabsFor(role?: string, isAdmin?: boolean, isTeamStaff?: boolean, isVend
       label: "Explore",
       icon: Compass,
       match: (loc) =>
-        loc === "/" || loc.startsWith("/events") || loc.startsWith("/vendors"),
+        loc === "/" || loc.startsWith("/events") || loc.startsWith("/vendors") || loc.startsWith("/talent"),
     },
     {
       href: "/dashboard",

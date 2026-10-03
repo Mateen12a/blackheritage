@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { LogOut, Menu, X } from "lucide-react";
+import { ArrowRight, LogOut, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import logoImg from "../assets/logo.png";
 
@@ -14,7 +14,7 @@ export interface EventBrand {
 const publicLinks = [
   { href: "/", label: "Home" },
   { href: "/events", label: "Events" },
-  { href: "/vendors", label: "Talent" },
+  { href: "/talent", label: "Talent" },
   { href: "/calendar", label: "Calendar" },
   { href: "/organizers", label: "For Organizers" },
 ];
@@ -119,7 +119,11 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
       className={cn(
         "fixed z-40 left-2.5 right-2.5 min-[380px]:left-3 min-[380px]:right-3 top-[calc(env(safe-area-inset-top)+0.4rem)] lg:left-0 lg:right-0 lg:top-4 lg:px-5 transition-colors duration-300",
         "max-lg:rounded-2xl max-lg:border max-lg:border-hairline max-lg:backdrop-blur-xl max-lg:shadow-[0_8px_30px_rgba(0,0,0,0.35)]",
-        scrolled ? "max-lg:bg-surface/90" : "max-lg:bg-surface/60"
+        isMobileMenuOpen
+          ? "max-lg:bg-surface/98 max-lg:border-hairline/80 max-lg:shadow-[0_16px_50px_rgba(0,0,0,0.6)]"
+          : scrolled
+          ? "max-lg:bg-surface/90"
+          : "max-lg:bg-surface/60"
       )}
     >
       {/* Mobile: brand pinned left, actions pinned right. Desktop: capsule centered. */}
@@ -218,15 +222,17 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
         <div className="lg:hidden flex items-center gap-1.5 min-[360px]:gap-2 shrink-0">
           {!user && (
             <Link href="/auth">
-              <span className="press inline-flex items-center h-8 sm:h-9 px-2.5 min-[380px]:px-3.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground border border-gold-soft/30 shadow-[0_2px_10px_rgba(0,0,0,0.3)] hover:bg-gold-soft transition-colors cursor-pointer">
+              <span className="press inline-flex items-center h-8 sm:h-9 px-3 min-[380px]:px-3.5 rounded-full text-xs font-semibold text-ink/90 bg-surface-2/90 border border-hairline hover:border-gold/40 hover:text-gold transition-colors cursor-pointer">
                 Sign In
               </span>
             </Link>
           )}
           <button
             className={cn(
-              "press flex items-center gap-1.5 h-8 sm:h-9 px-2.5 min-[380px]:px-3 rounded-full text-xs font-semibold transition-colors duration-200 border border-hairline/60 bg-surface-2/60",
-              isMobileMenuOpen ? "text-ink" : "text-muted-ink hover:text-ink"
+              "press flex items-center gap-1.5 h-8 sm:h-9 px-2.5 min-[380px]:px-3 rounded-full text-xs font-semibold transition-colors duration-200 border",
+              isMobileMenuOpen
+                ? "bg-gold/15 text-gold border-gold/40 shadow-sm"
+                : "border-hairline/70 bg-surface-2/70 text-ink/90 hover:text-ink hover:border-hairline"
             )}
             aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
             aria-expanded={isMobileMenuOpen}
@@ -244,63 +250,80 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
 
       {/* Mobile menu panel */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden mt-2 bg-surface/95 backdrop-blur-xl border border-hairline rounded-2xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
-          <div className="px-4 py-2">
-            {links.map((link) => (
-              <Link key={link.href} href={link.href}>
-                <span
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={cn(
-                    "flex items-center justify-between py-3.5 text-[15px] font-medium border-b border-hairline/40 last:border-0",
-                    isActive(link.href, location) ? "text-gold" : "text-muted-ink"
-                  )}
-                >
-                  {link.label}
-                  {isActive(link.href, location) && (
-                    <span aria-hidden="true" className="h-0.5 w-5 bg-gold rounded-full" />
-                  )}
-                </span>
-              </Link>
-            ))}
-
-            <div className="pt-3 pb-2 flex flex-col gap-2">
-              {user ? (
-                <>
-                  <div className="flex items-center gap-2.5 px-1 py-2">
-                    <div className="w-8 h-8 rounded-full bg-surface-2 border border-hairline flex items-center justify-center">
-                      <span className="text-xs font-bold text-gold uppercase">
-                        {(user.username || "U").charAt(0)}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-ink">{user.username}</p>
-                      <p className="text-[11px] text-muted-ink capitalize">{user.role}</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-muted-ink justify-start h-9"
-                    onClick={() => {
-                      logout();
-                      setIsMobileMenuOpen(false);
-                    }}
+        <div className="lg:hidden border-t border-hairline/60 pt-3 pb-3 px-1 mt-1">
+          <div className="flex flex-col gap-1">
+            {links.map((link) => {
+              const active = isActive(link.href, location);
+              return (
+                <Link key={link.href} href={link.href}>
+                  <span
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={cn(
+                      "flex items-center justify-between px-3.5 py-3 rounded-xl text-[15px] font-medium transition-all duration-150 cursor-pointer group",
+                      active
+                        ? "bg-gold/10 text-gold font-semibold border border-gold/25"
+                        : "text-ink/85 hover:text-ink hover:bg-surface-2/60 border border-transparent"
+                    )}
                   >
-                    <LogOut className="w-4 h-4 mr-2" /> Sign Out
-                  </Button>
-                </>
-              ) : (
+                    <span>{link.label}</span>
+                    {active ? (
+                      <span className="w-2 h-2 rounded-full bg-gold shadow-[0_0_10px_#E3B23C]" />
+                    ) : (
+                      <ArrowRight className="w-3.5 h-3.5 text-muted-ink/35 group-hover:text-gold group-hover:translate-x-0.5 transition-all" />
+                    )}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-hairline/60 flex flex-col gap-2">
+            {user ? (
+              <>
+                <div className="flex items-center gap-3 px-3 py-2 bg-surface-2/40 rounded-xl border border-hairline/50">
+                  <div className="w-9 h-9 rounded-full bg-surface-2 border border-hairline flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-gold uppercase">
+                      {(user.username || "U").charAt(0)}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-ink truncate">{user.username}</p>
+                    <p className="text-xs text-muted-ink capitalize">{user.role}</p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-muted-ink hover:text-ink hover:bg-surface-2 justify-start h-10 rounded-xl"
+                  onClick={() => {
+                    logout();
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  <LogOut className="w-4 h-4 mr-2" /> Sign Out
+                </Button>
+              </>
+            ) : (
+              <div className="flex flex-col gap-2 px-1">
                 <Link href="/auth?tab=register">
                   <Button
                     size="sm"
-                    className="w-full bg-primary text-primary-foreground h-11 rounded-full"
+                    className="w-full bg-gold text-[#0F0F14] hover:bg-gold-soft font-bold text-sm h-11 rounded-xl shadow-[0_4px_20px_rgba(227,178,60,0.25)] flex items-center justify-center gap-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Get Started
                   </Button>
                 </Link>
-              )}
-            </div>
+                <Link href="/auth">
+                  <button
+                    className="w-full py-2 text-center text-xs font-medium text-muted-ink hover:text-ink transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Already have an account? <span className="text-gold font-semibold underline underline-offset-2">Sign in</span>
+                  </button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       )}
