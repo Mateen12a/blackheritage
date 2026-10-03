@@ -23,7 +23,7 @@ import logoImg from "../assets/logo.png";
  */
 function AnimatedHeading() {
   return (
-    <h1 className="mt-4 font-display text-5xl sm:text-6xl lg:text-7xl font-bold text-ink leading-[1.02] tracking-tight text-center lg:text-left flex flex-col items-center lg:items-start">
+    <h1 className="mt-3.5 sm:mt-4 font-display text-4xl min-[380px]:text-5xl sm:text-6xl lg:text-7xl font-bold text-ink leading-[1.02] tracking-tight text-center lg:text-left flex flex-col items-center lg:items-start">
       <motion.span
         className="block whitespace-nowrap"
         initial={{ opacity: 0, y: 18 }}
@@ -231,16 +231,16 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
             actually set, and the tag moves with it: On Sale, Filling Up,
             Selling Fast, Last Few Spots. */}
         <ScarcityBadge event={current} slideKey={current.id} />
-        <div className="absolute inset-x-4 bottom-4 flex items-center justify-between gap-3 pointer-events-none">
-          <div className="min-w-0">
-            <p className="eyebrow">{format(new Date(current.date), "EEE d MMM · h a")}</p>
-            <p className="mt-1 font-display text-lg font-bold text-ink truncate">
+        <div className="absolute inset-x-3 sm:inset-x-4 bottom-3 sm:bottom-4 flex items-center justify-between gap-2 sm:gap-3 pointer-events-none">
+          <div className="min-w-0 pr-1">
+            <p className="eyebrow text-[10px] sm:text-[11px] truncate">{format(new Date(current.date), "EEE d MMM · ha")}</p>
+            <p className="mt-0.5 sm:mt-1 font-display text-base sm:text-lg font-bold text-ink truncate">
               {current.title}
             </p>
-            <p className="mt-0.5 text-[13px] font-medium text-gold/90">{priceLabelFor(current)}</p>
+            <p className="mt-0.5 text-xs sm:text-[13px] font-medium text-gold/90">{priceLabelFor(current)}</p>
           </div>
-          <Link href={"/events/" + current.id} className="pointer-events-auto">
-            <span className="press inline-flex items-center gap-1 h-9 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium hover:bg-gold-soft transition-colors cursor-pointer whitespace-nowrap">
+          <Link href={"/events/" + current.id} className="pointer-events-auto shrink-0">
+            <span className="press inline-flex items-center gap-1 h-8 sm:h-9 px-3 sm:px-4 rounded-full bg-primary text-primary-foreground text-xs sm:text-[13px] font-medium hover:bg-gold-soft transition-colors cursor-pointer whitespace-nowrap">
               Get tickets
               <ArrowUpRight className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
             </span>
@@ -334,7 +334,7 @@ export default function Home() {
           }}
         />
 
-        <div className="container relative z-10 pt-24 md:pt-28 pb-12 md:pb-16">
+        <div className="container relative z-10 pt-4 md:pt-6 pb-12 md:pb-16">
           {/* Poster-first split. The copy and a real flyer share the first
               screen, so a visitor meets an actual event before reading a word
               of positioning. Stacked below lg: headline, then the flyer, then
@@ -350,7 +350,7 @@ export default function Home() {
                 claim → flyer → actions, which is what mobile should read. */}
             <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:self-end">
               <Reveal y={16} duration={0.55}>
-                <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-gold text-center lg:text-left">
+                <p className="text-[10px] min-[360px]:text-[11px] font-bold tracking-[0.10em] min-[360px]:tracking-[0.16em] sm:tracking-[0.18em] uppercase text-gold text-center lg:text-left">
                   Nigeria · Concerts · Festivals · Culture
                 </p>
               </Reveal>
@@ -358,7 +358,7 @@ export default function Home() {
               <AnimatedHeading />
 
               <Reveal y={16} delay={0.4} duration={0.6}>
-                <p className="mt-4 max-w-xl text-base sm:text-lg text-ink/80 leading-relaxed text-center lg:text-left mx-auto lg:mx-0">
+                <p className="mt-3.5 sm:mt-4 max-w-xl text-sm sm:text-base lg:text-lg text-ink/80 leading-relaxed text-center lg:text-left mx-auto lg:mx-0">
                   Tickets to concerts, parties, and festivals in Lagos, Abuja, and beyond. Then the DJs, caterers, and sound engineers who work them, each with a portfolio you can check before you book.
                 </p>
               </Reveal>
@@ -382,16 +382,16 @@ export default function Home() {
                 the people they hire. */}
             <div className="min-w-0 lg:col-start-1 lg:row-start-2 lg:self-start">
               <Reveal y={12} delay={0.5} duration={0.55}>
-                <div className="mt-7 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start">
+                <div className="mt-6 sm:mt-7 flex flex-col sm:flex-row gap-2.5 sm:gap-4 justify-center lg:justify-start">
                   <Link href="/events">
-                    <Button className="press h-12 px-8 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-full w-full sm:w-auto">
+                    <Button className="press h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-full w-full sm:w-auto">
                       See all events
                     </Button>
                   </Link>
                   <Link href="/vendors">
                     <Button
                       variant="outline"
-                      className="press h-12 px-8 border-white/20 bg-white/5 text-ink hover:bg-white/10 hover:text-gold font-medium rounded-full w-full sm:w-auto backdrop-blur-sm"
+                      className="press h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base border-white/20 bg-white/5 text-ink hover:bg-white/10 hover:text-gold font-medium rounded-full w-full sm:w-auto backdrop-blur-sm"
                     >
                       Hire a vendor
                     </Button>
@@ -403,7 +403,7 @@ export default function Home() {
                 {user && (
                   <div className="text-center lg:text-left">
                     <Link href={dashboardHref}>
-                      <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-gold hover:text-gold-soft transition-colors cursor-pointer">
+                      <span className="mt-3.5 inline-flex items-center gap-1 text-sm font-medium text-gold hover:text-gold-soft transition-colors cursor-pointer">
                         My Dashboard
                         <ArrowUpRight className="w-3.5 h-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
                       </span>
@@ -412,7 +412,7 @@ export default function Home() {
                 )}
 
                 {/* Quick discovery */}
-                <div className="mt-5 flex flex-wrap gap-2 justify-center lg:justify-start">
+                <div className="mt-4 sm:mt-5 flex flex-wrap gap-1.5 min-[360px]:gap-2 justify-center lg:justify-start">
                   {[
                     { label: "Lagos", href: "/events?city=Lagos" },
                     { label: "Abuja", href: "/events?city=Abuja" },
@@ -421,7 +421,7 @@ export default function Home() {
                     { label: "Free", href: "/events?price=free" },
                   ].map((pill) => (
                     <Link key={pill.label} href={pill.href}>
-                      <span className="press inline-flex items-center h-8 px-3.5 rounded-full border border-white/10 bg-white/5 text-xs font-medium text-ink/70 hover:border-gold/30 hover:text-gold transition-colors cursor-pointer backdrop-blur-sm">
+                      <span className="press inline-flex items-center h-7.5 min-[360px]:h-8 px-3 min-[360px]:px-3.5 rounded-full border border-white/10 bg-white/5 text-[11px] min-[360px]:text-xs font-medium text-ink/70 hover:border-gold/30 hover:text-gold transition-colors cursor-pointer backdrop-blur-sm">
                         {pill.label}
                       </span>
                     </Link>
@@ -622,7 +622,7 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Reveal className="h-full">
-              <div className="h-full border border-hairline rounded-md bg-surface p-8 flex flex-col justify-between hover:border-white/20 transition-colors duration-200">
+              <div className="h-full border border-hairline rounded-md bg-surface p-5 sm:p-6 md:p-8 flex flex-col justify-between hover:border-white/20 transition-colors duration-200">
                 <div>
                   <p className="eyebrow">For organizers &amp; promoters</p>
                   <h2 className="mt-3 font-display text-2xl md:text-3xl font-bold text-ink tracking-tight">
@@ -653,14 +653,14 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                <div className="mt-8 flex flex-wrap gap-3">
+                <div className="mt-8 flex flex-wrap gap-2.5 sm:gap-3">
                   <Link href="/organizers">
-                    <span className="press inline-flex items-center justify-center h-11 px-5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-gold-soft transition-colors cursor-pointer text-xs">
+                    <span className="press inline-flex items-center justify-center h-10 sm:h-11 px-4 sm:px-5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-gold-soft transition-colors cursor-pointer text-xs">
                       See Organizer Benefits
                     </span>
                   </Link>
                   <Link href={user ? "/admin" : "/auth?tab=register"}>
-                    <span className="press inline-flex items-center justify-center h-11 px-5 rounded-md border border-hairline text-ink font-medium hover:bg-surface-2 hover:text-gold transition-colors cursor-pointer text-xs">
+                    <span className="press inline-flex items-center justify-center h-10 sm:h-11 px-4 sm:px-5 rounded-md border border-hairline text-ink font-medium hover:bg-surface-2 hover:text-gold transition-colors cursor-pointer text-xs">
                       Host an Event
                     </span>
                   </Link>
@@ -669,7 +669,7 @@ export default function Home() {
             </Reveal>
 
             <Reveal delay={0.08} className="h-full">
-              <div className="h-full border border-hairline rounded-md bg-surface p-8 flex flex-col justify-between hover:border-white/20 transition-colors duration-200">
+              <div className="h-full border border-hairline rounded-md bg-surface p-5 sm:p-6 md:p-8 flex flex-col justify-between hover:border-white/20 transition-colors duration-200">
                 <div>
                   <p className="eyebrow">For DJs, MCs, caterers &amp; crew</p>
                   <h2 className="mt-3 font-display text-2xl md:text-3xl font-bold text-ink tracking-tight">
@@ -700,14 +700,14 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                <div className="mt-8 flex flex-wrap gap-3">
+                <div className="mt-8 flex flex-wrap gap-2.5 sm:gap-3">
                   <Link href={user ? "/vendor-dashboard" : "/auth?tab=register"}>
-                    <span className="press inline-flex items-center justify-center h-11 px-6 rounded-md border border-hairline text-ink font-medium hover:bg-surface-2 hover:text-gold transition-colors cursor-pointer text-xs">
+                    <span className="press inline-flex items-center justify-center h-10 sm:h-11 px-4 sm:px-6 rounded-md border border-hairline text-ink font-medium hover:bg-surface-2 hover:text-gold transition-colors cursor-pointer text-xs">
                       List Your Business
                     </span>
                   </Link>
                   <Link href="/vendors">
-                    <span className="press inline-flex items-center justify-center h-11 px-5 rounded-md text-muted-ink hover:text-gold transition-colors cursor-pointer text-xs">
+                    <span className="press inline-flex items-center justify-center h-10 sm:h-11 px-4 sm:px-5 rounded-md text-muted-ink hover:text-gold transition-colors cursor-pointer text-xs">
                       Explore Directory
                     </span>
                   </Link>

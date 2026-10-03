@@ -136,17 +136,17 @@ export default function VendorDashboard() {
       )}
 
       {/* Header */}
-      <div className="mb-10 pt-2">
+      <div className="mb-6 sm:mb-10 pt-2">
         <Reveal>
           <p className="eyebrow">Talent studio</p>
-          <h1 className="mt-3 font-display text-3xl md:text-4xl font-bold text-ink tracking-tight">
+          <h1 className="mt-2 sm:mt-3 font-display text-2xl min-[360px]:text-3xl md:text-4xl font-bold text-ink tracking-tight">
             {isCreate ? "Get listed" : existing?.businessName}
           </h1>
-          <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
-          <p className="mt-4 text-muted-ink max-w-xl hidden md:block">
+          <div className="mt-3 sm:mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
+          <p className="mt-3 sm:mt-4 text-xs sm:text-sm text-muted-ink max-w-xl">
             {isCreate
-              ? "Create your free directory profile so organizers and hosts can find and book you."
-              : "Your public profile, portfolio, and contact info. Edits go live immediately."}
+              ? "Create your free talent profile so event organizers and party hosts can find and book you."
+              : "Your public talent profile, portfolio, and contact info. Edits go live immediately."}
           </p>
         </Reveal>
       </div>
@@ -155,11 +155,11 @@ export default function VendorDashboard() {
         /* ── Onboarding: create profile ── */
         <div className="max-w-2xl">
           <Reveal>
-            <div className="border border-hairline rounded-md bg-surface p-6 md:p-8">
+            <div className="border border-hairline rounded-md bg-surface p-4 sm:p-6 md:p-8">
               <div className="flex items-center gap-3 mb-6">
                 <Store className="w-5 h-5 text-gold" aria-hidden="true" />
                 <h2 className="font-display text-xl font-bold text-ink">
-                  Business Details
+                  Talent Details
                 </h2>
               </div>
               <VendorForm
@@ -264,7 +264,7 @@ export default function VendorDashboard() {
                   </div>
 
                   <Link
-                    href={`/vendors/${existing.id}`}
+                    href={existing.slug ? `/t/${existing.slug}` : `/talent/${existing.id}`}
                     className="mt-4 block"
                   >
                     <Button
@@ -437,8 +437,8 @@ function CopyProfileLink({ vendorId, slug }: { vendorId: string; slug?: string |
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const url = slug
-    ? `${location.origin}/v/${slug}`
-    : `${location.origin}/vendors/${vendorId}`;
+    ? `${location.origin}/t/${slug}`
+    : `${location.origin}/talent/${vendorId}`;
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url);

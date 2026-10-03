@@ -220,6 +220,13 @@ function Router() {
           </PublicLayout>
         )}
       </Route>
+      <Route path="/talent">
+        {() => (
+          <PublicLayout>
+            <Vendors />
+          </PublicLayout>
+        )}
+      </Route>
       <Route path="/vendors/:id">
         {() => (
           <PublicLayout noNavbar>
@@ -227,7 +234,21 @@ function Router() {
           </PublicLayout>
         )}
       </Route>
+      <Route path="/talent/:id">
+        {() => (
+          <PublicLayout noNavbar>
+            <VendorDetails />
+          </PublicLayout>
+        )}
+      </Route>
       <Route path="/v/:slug">
+        {() => (
+          <PublicLayout noNavbar>
+            <VendorDetails />
+          </PublicLayout>
+        )}
+      </Route>
+      <Route path="/t/:slug">
         {() => (
           <PublicLayout noNavbar>
             <VendorDetails />
@@ -322,11 +343,17 @@ function Router() {
         {() => <Privacy />}
       </Route>
 
-      {/* Vendor Dashboard */}
+      {/* Vendor / Talent Dashboard */}
       <Route path="/vendor-dashboard">
         {() => <ProtectedRoute component={VendorDashboard} />}
       </Route>
+      <Route path="/talent-dashboard">
+        {() => <ProtectedRoute component={VendorDashboard} />}
+      </Route>
       <Route path="/vendor-signup">
+        {() => <ProtectedRoute component={VendorAccount} />}
+      </Route>
+      <Route path="/talent-signup">
         {() => <ProtectedRoute component={VendorAccount} />}
       </Route>
 
@@ -354,6 +381,9 @@ function Router() {
         {() => <AdminRoute component={AdminDashboard} />}
       </Route>
       <Route path="/admin/vendors">
+        {() => <AdminRoute component={AdminDashboard} />}
+      </Route>
+      <Route path="/admin/talent">
         {() => <AdminRoute component={AdminDashboard} />}
       </Route>
       <Route path="/admin/events/new">

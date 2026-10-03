@@ -123,12 +123,12 @@ export default function Events() {
     <div className="min-h-screen">
       <div className="container mx-auto px-4 pt-6 pb-24">
         {/* Editorial header — left-anchored, solid gold rule */}
-        <Reveal className="max-w-3xl mb-12">
+        <Reveal className="max-w-3xl mb-8 sm:mb-12">
           <p className="eyebrow">Across Nigeria</p>
-          <h1 className="mt-3 font-display text-4xl md:text-5xl font-bold text-ink tracking-tight">
+          <h1 className="mt-2.5 sm:mt-3 font-display text-3xl min-[360px]:text-4xl md:text-5xl font-bold text-ink tracking-tight">
             Upcoming Events
           </h1>
-          <div className="mt-5 h-0.5 w-16 bg-gold" aria-hidden="true" />
+          <div className="mt-4 sm:mt-5 h-0.5 w-16 bg-gold" aria-hidden="true" />
           <p className="mt-5 text-lg text-muted-ink max-w-xl leading-relaxed hidden md:block">
             Afrobeats nights, live jazz, beach hangouts, festivals, and cultural shows.
             Instant confirmation, verified entry.

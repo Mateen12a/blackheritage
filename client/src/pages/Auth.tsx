@@ -468,7 +468,7 @@ export default function AuthPage() {
                 },
                 {
                   title: "Standing Profiles",
-                  desc: "A portfolio for organizers and vendors to find real work.",
+                  desc: "A portfolio for organizers and creative talent to find real work.",
                 },
               ].map((item) => (
                 <div key={item.title} className="flex items-start gap-2.5">
@@ -510,7 +510,7 @@ export default function AuthPage() {
               </span>
               <span className="flex items-center gap-1">
                 <Store className="w-3.5 h-3.5 text-gold" aria-hidden="true" />
-                Vendor directory
+                Talent directory
               </span>
             </div>
           </div>
@@ -898,7 +898,7 @@ export default function AuthPage() {
 
             {isRegister && (
               <p className="text-xs text-center text-muted-ink leading-relaxed">
-                Free to join. Organizers and vendors get a dashboard;
+                Free to join. Organizers and talent get a dashboard;
                 attendees just get first dibs on tickets.
               </p>
             )}

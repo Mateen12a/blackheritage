@@ -115,7 +115,7 @@ export function RoleHowItWorks() {
       <div className="container mx-auto px-4">
         <Reveal className="max-w-3xl mb-10">
           <p className="eyebrow">How it works</p>
-          <h2 className="mt-3 font-display text-3xl md:text-4xl font-bold text-ink tracking-tight">
+          <h2 className="mt-3 font-display text-2xl min-[360px]:text-3xl md:text-4xl font-bold text-ink tracking-tight">
             Built for everyone in the room
           </h2>
           <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
@@ -125,7 +125,7 @@ export function RoleHowItWorks() {
         <div
           role="tablist"
           aria-label="Choose your role"
-          className="flex flex-wrap gap-2 mb-10"
+          className="flex flex-wrap gap-1.5 sm:gap-2 mb-8 sm:mb-10"
         >
           {JOURNEYS.map(({ id, label, icon: Icon }) => {
             const selected = id === active;
@@ -135,13 +135,13 @@ export function RoleHowItWorks() {
                 role="tab"
                 aria-selected={selected}
                 onClick={() => setActive(id)}
-                className={`press inline-flex items-center gap-2 h-11 px-5 rounded-full border text-sm font-medium transition-colors duration-200 cursor-pointer ${
+                className={`press inline-flex items-center gap-1.5 sm:gap-2 h-9 sm:h-11 px-3 sm:px-5 rounded-full border text-xs sm:text-sm font-medium transition-colors duration-200 cursor-pointer ${
                   selected
                     ? "bg-primary text-primary-foreground border-transparent"
                     : "border-hairline text-muted-ink hover:text-ink hover:border-white/25"
                 }`}
               >
-                <Icon className="w-4 h-4" aria-hidden="true" />
+                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" aria-hidden="true" />
                 {label}
               </button>
             );

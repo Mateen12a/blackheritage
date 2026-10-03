@@ -134,7 +134,7 @@ function tabsFor(role?: string, isAdmin?: boolean, isTeamStaff?: boolean, isVend
     },
     {
       href: "/vendor-dashboard",
-      label: "My Shop",
+      label: "Studio",
       icon: Store,
       match: (loc: string) => loc.startsWith("/vendor-dashboard"),
     },
@@ -258,7 +258,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 w-full max-w-6xl mx-auto px-4 md:px-10 py-8 md:py-10 pb-28 md:pb-16">
+        <main className="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-4 md:px-10 py-5 sm:py-8 md:py-10 pb-28 md:pb-16">
           {children}
         </main>
 
@@ -266,13 +266,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <nav
           aria-label="Primary"
           className="md:hidden fixed bottom-0 inset-x-0 z-40"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
         >
           <div
-            className="mx-3 rounded-full border border-hairline bg-surface/95 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+            className="mx-2.5 sm:mx-3 rounded-full border border-hairline bg-surface/95 shadow-[0_8px_30px_rgba(0,0,0,0.45)] backdrop-blur-xl"
           >
           <div
-            className="grid h-16 px-1"
+            className="grid h-15 sm:h-16 px-1"
             style={{ gridTemplateColumns: `repeat(${Math.min(tabs.length, 5)}, minmax(0, 1fr))` }}
           >
             {tabs.map((tab) => {
@@ -284,12 +284,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   href={tab.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "mx-0.5 my-1.5 flex flex-col items-center justify-center gap-1 rounded-2xl transition-colors active:bg-surface-2",
+                    "mx-0.5 my-1 flex flex-col items-center justify-center gap-1 rounded-2xl transition-colors active:bg-surface-2",
                     active ? "bg-gold/15 text-gold" : "text-muted-ink"
                   )}
                 >
                   <span className="relative flex items-center justify-center">
-                    <Icon size={20} strokeWidth={active ? 2 : 1.5} aria-hidden="true" />
+                    <Icon size={18} strokeWidth={active ? 2 : 1.5} aria-hidden="true" />
                     {tab.href === "/messages" && unread > 0 && (
                       <span
                         aria-label={unread + " unread messages"}
@@ -299,7 +299,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                       </span>
                     )}
                   </span>
-                  <span className="text-[10px] font-medium tracking-wide">{tab.label}</span>
+                  <span className="text-[9.5px] min-[360px]:text-[10px] font-medium tracking-tight truncate max-w-full px-0.5">{tab.label}</span>
                 </Link>
               );
             })}

@@ -104,7 +104,7 @@ export default function AdminDashboard() {
 
   const isDashboard = location === "/admin";
   const isEvents = location === "/admin/events";
-  const isVendors = location === "/admin/vendors";
+  const isVendors = location === "/admin/vendors" || location === "/admin/talent";
 
   const pageTitle = isDashboard
     ? isAdmin
@@ -113,7 +113,7 @@ export default function AdminDashboard() {
     : isEvents
       ? "Events"
       : isVendors
-        ? "Vendor Directory"
+        ? "Talent Directory"
         : "Dashboard";
 
   const { data: orgProfile } = useOrganizerProfile();
@@ -126,7 +126,7 @@ export default function AdminDashboard() {
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 pt-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8 pt-2">
         {eventsLoading ? (
           <HeaderSkeleton bare />
         ) : (
@@ -135,11 +135,11 @@ export default function AdminDashboard() {
               <p className="eyebrow">
                 {isAdmin ? "Admin" : "Organizer"} portal
               </p>
-              <h1 className="mt-2 font-display text-3xl md:text-4xl font-bold text-ink tracking-tight">
+              <h1 className="mt-2 font-display text-2xl min-[360px]:text-3xl md:text-4xl font-bold text-ink tracking-tight">
                 {pageTitle}
               </h1>
               <div className="mt-3 h-0.5 w-16 bg-gold" aria-hidden="true" />
-              <p className="mt-3 text-muted-ink text-sm">
+              <p className="mt-3 text-muted-ink text-xs sm:text-sm">
                 {isDashboard &&
                   (isAdmin
                     ? "Everything on the platform, counted"
@@ -147,13 +147,13 @@ export default function AdminDashboard() {
                 {isEvents &&
                   `${events?.length || 0} event${events?.length === 1 ? "" : "s"} total`}
                 {isVendors &&
-                  `${vendors?.length || 0} vendor${vendors?.length === 1 ? "" : "s"} across Lagos`}
+                  `${vendors?.length || 0} creative talent${vendors?.length === 1 ? "" : "s"} across Lagos`}
               </p>
             </div>
           </Reveal>
         )}
 
-        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
           {orgProfile?.slug && (
             <a
               href={`/o/${orgProfile.slug}`}
@@ -162,7 +162,7 @@ export default function AdminDashboard() {
             >
               <Button
                 variant="outline"
-                className="press border-hairline text-ink hover:text-gold text-xs h-10 px-3.5"
+                className="press border-hairline text-ink hover:text-gold text-xs h-9 sm:h-10 px-3 sm:px-3.5"
               >
                 <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
                 View Public Hub
@@ -170,8 +170,8 @@ export default function AdminDashboard() {
             </a>
           )}
           <Link href="/admin/events/new">
-            <Button className="press w-full sm:w-auto bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md">
-              <Plus className="w-4 h-4 mr-2" /> Create Event
+            <Button className="press w-full sm:w-auto bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md h-9 sm:h-10 text-xs sm:text-sm">
+              <Plus className="w-4 h-4 mr-1.5 sm:mr-2" /> Create Event
             </Button>
           </Link>
         </div>
@@ -181,7 +181,7 @@ export default function AdminDashboard() {
         <TabsList className="bg-surface-2 border border-hairline max-w-full overflow-x-auto no-scrollbar">
           <TabsTrigger value="events">Events & Overview</TabsTrigger>
           <TabsTrigger value="brand">Brand & Custom Link</TabsTrigger>
-          {(isAdmin || isVendors) && <TabsTrigger value="vendors">Vendor Directory</TabsTrigger>}
+          {(isAdmin || isVendors) && <TabsTrigger value="vendors">Talent Directory</TabsTrigger>}
           {isAdmin && (
             <TabsTrigger value="leads" className="flex items-center gap-1.5">
               <span>Organizer Leads</span>
@@ -200,13 +200,13 @@ export default function AdminDashboard() {
 
           {/* Stats Grid: admin sees platform stats, organizer sees their own */}
           <div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8 sm:mb-12">
             {statsLoading ? (
               <>
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div
                     key={i}
-                    className="border border-hairline rounded-md bg-surface p-4 md:p-5"
+                    className="border border-hairline rounded-md bg-surface p-3.5 sm:p-4 md:p-5"
                   >
                     <StatSkeletonsStat />
                   </div>
@@ -240,7 +240,7 @@ export default function AdminDashboard() {
                 />
                 <DashStat
                   icon={Store}
-                  label="Vendors"
+                  label="Talent"
                   value={vendors?.length || 0}
                 />
               </>
@@ -468,7 +468,7 @@ export default function AdminDashboard() {
           <TabsContent value="vendors">
             {vendorsError ? (
               <LoadError
-                title="Couldn't load the vendor directory"
+                title="Couldn't load the talent directory"
                 message="Check your connection and try again."
                 onRetry={() => refetchVendors()}
               />
@@ -477,13 +477,13 @@ export default function AdminDashboard() {
             ) : (
               <Reveal>
                 <div className="border border-hairline rounded-md bg-surface overflow-hidden">
-                  <div className="flex items-center justify-between p-5 md:p-6 border-b border-hairline">
+                  <div className="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-hairline">
                     <div>
-                      <h2 className="font-display text-xl font-bold text-ink">
-                        Vendor Directory
+                      <h2 className="font-display text-lg sm:text-xl font-bold text-ink">
+                        Talent Directory
                       </h2>
-                      <p className="mt-1 text-sm text-muted-ink">
-                        All vendors listed on the platform
+                      <p className="mt-1 text-xs sm:text-sm text-muted-ink">
+                        All creative talent and vendors listed on the platform
                       </p>
                     </div>
                   </div>
@@ -491,16 +491,16 @@ export default function AdminDashboard() {
                     <table className="w-full text-left min-w-[500px]">
                       <thead>
                         <tr className="border-b border-hairline">
-                          <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
-                            Business
+                          <th className="px-5 sm:px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
+                            Creative Talent
                           </th>
-                          <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
+                          <th className="px-5 sm:px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
                             Category
                           </th>
-                          <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em] hidden sm:table-cell">
+                          <th className="px-5 sm:px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em] hidden sm:table-cell">
                             City
                           </th>
-                          <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
+                          <th className="px-5 sm:px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
                             Status
                           </th>
                         </tr>
@@ -511,7 +511,7 @@ export default function AdminDashboard() {
                             <td colSpan={4} className="px-6 py-16 text-center">
                               <Store className="w-10 h-10 text-muted-ink/20 mx-auto mb-3" />
                               <p className="font-display text-lg font-bold text-ink">
-                                No vendors yet
+                                No talent listed yet
                               </p>
                             </td>
                           </tr>
@@ -521,17 +521,17 @@ export default function AdminDashboard() {
                             key={vendor.id}
                             className="hover:bg-surface-2/50 transition-colors"
                           >
-                            <td className="px-6 py-4">
-                              <Link href={`/vendors/${vendor.id}`}>
+                            <td className="px-5 sm:px-6 py-3.5 sm:py-4">
+                              <Link href={vendor.slug ? `/t/${vendor.slug}` : `/talent/${vendor.id}`}>
                                 <span className="font-display font-bold text-ink text-sm hover:text-gold transition-colors cursor-pointer">
                                   {vendor.businessName}
                                 </span>
                               </Link>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-5 sm:px-6 py-3.5 sm:py-4">
                               <span className="eyebrow">{vendor.category}</span>
                             </td>
-                            <td className="px-6 py-4 text-sm text-muted-ink hidden sm:table-cell">
+                            <td className="px-5 sm:px-6 py-3.5 sm:py-4 text-xs sm:text-sm text-muted-ink hidden sm:table-cell">
                               {vendor.city || vendor.serviceArea || "Not listed"}
                             </td>
                             <td className="px-6 py-4">
@@ -717,12 +717,12 @@ function DashStat({
   value: number | string;
 }) {
   return (
-    <div className="border border-hairline rounded-md bg-surface p-4 md:p-5">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className="w-4 h-4 text-gold" aria-hidden="true" />
-        <span className="text-xs text-muted-ink">{label}</span>
+    <div className="border border-hairline rounded-md bg-surface p-3 sm:p-4 md:p-5">
+      <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+        <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gold shrink-0" aria-hidden="true" />
+        <span className="text-[11px] sm:text-xs text-muted-ink truncate">{label}</span>
       </div>
-      <p className="font-display text-2xl font-bold text-ink">{value}</p>
+      <p className="font-display text-lg sm:text-xl md:text-2xl font-bold text-ink truncate">{value}</p>
     </div>
   );
 }

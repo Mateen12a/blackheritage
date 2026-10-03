@@ -47,7 +47,7 @@ export function MostBooked({ events, limit = 5 }: { events: Event[]; limit?: num
           <div className="flex items-end justify-between gap-6 mb-9">
             <div>
               <p className="eyebrow">By seats sold</p>
-              <h2 className="mt-3 font-display text-3xl md:text-4xl font-bold text-ink tracking-tight">
+              <h2 className="mt-3 font-display text-2xl min-[360px]:text-3xl md:text-4xl font-bold text-ink tracking-tight">
                 Filling up fastest
               </h2>
               <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
@@ -72,12 +72,12 @@ export function MostBooked({ events, limit = 5 }: { events: Event[]; limit?: num
               <li key={event.id} className="border-b border-hairline">
                 <Link href={"/events/" + event.id}>
                   <article className="group py-3.5 md:py-4 cursor-pointer">
-                    <div className="flex items-center gap-3 md:gap-5">
+                    <div className="flex items-center gap-2.5 sm:gap-3 md:gap-5">
                       {/* The rank is a real order, so it is a real numeral:
                           plain, dimmed, never gold. */}
                       <span
                         aria-hidden="true"
-                        className="w-4 md:w-6 shrink-0 font-display text-sm md:text-base font-bold leading-none text-ink/30 tabular-nums"
+                        className="w-3.5 sm:w-4 md:w-6 shrink-0 font-display text-xs sm:text-sm md:text-base font-bold leading-none text-ink/30 tabular-nums"
                       >
                         {i + 1}
                       </span>
@@ -87,17 +87,17 @@ export function MostBooked({ events, limit = 5 }: { events: Event[]; limit?: num
                           src={event.imageUrl}
                           alt=""
                           loading="lazy"
-                          className="h-11 w-11 md:h-16 md:w-16 shrink-0 rounded-md object-cover border border-hairline bg-surface-2"
+                          className="h-10 w-10 min-[360px]:h-11 min-[360px]:w-11 md:h-16 md:w-16 shrink-0 rounded-md object-cover border border-hairline bg-surface-2"
                         />
                       ) : (
-                        <div className="h-11 w-11 md:h-16 md:w-16 shrink-0 rounded-md border border-hairline bg-surface-2" />
+                        <div className="h-10 w-10 min-[360px]:h-11 min-[360px]:w-11 md:h-16 md:w-16 shrink-0 rounded-md border border-hairline bg-surface-2" />
                       )}
 
                       <div className="min-w-0 flex-1">
-                        <h3 className="font-display text-base md:text-lg font-bold text-ink line-clamp-2 md:line-clamp-1 transition-colors duration-200 group-hover:text-gold">
+                        <h3 className="font-display text-[14px] min-[360px]:text-base md:text-lg font-bold text-ink line-clamp-2 md:line-clamp-1 transition-colors duration-200 group-hover:text-gold leading-snug">
                           {event.title}
                         </h3>
-                        <p className="eyebrow mt-1.5 truncate">
+                        <p className="eyebrow mt-1 sm:mt-1.5 truncate">
                           {host ? host + " · " : ""}
                           {format(new Date(event.date), "EEE d MMM")}
                         </p>

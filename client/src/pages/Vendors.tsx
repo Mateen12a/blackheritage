@@ -31,13 +31,13 @@ export default function Vendors() {
     <div className="min-h-screen">
       <div className="container mx-auto px-4 pt-6 pb-24">
         {/* Editorial header — same grammar as Events */}
-        <Reveal className="max-w-3xl mb-12">
+        <Reveal className="max-w-3xl mb-8 sm:mb-12">
           <p className="eyebrow">Across Nigeria</p>
-          <h1 className="mt-3 font-display text-4xl md:text-5xl font-bold text-ink tracking-tight">
-            Vendor Directory
+          <h1 className="mt-2.5 sm:mt-3 font-display text-3xl min-[360px]:text-4xl md:text-5xl font-bold text-ink tracking-tight">
+            Talent Directory
           </h1>
-          <div className="mt-5 h-0.5 w-16 bg-gold" aria-hidden="true" />
-          <p className="mt-5 text-lg text-muted-ink max-w-xl leading-relaxed">
+          <div className="mt-4 sm:mt-5 h-0.5 w-16 bg-gold" aria-hidden="true" />
+          <p className="mt-3.5 sm:mt-5 text-sm sm:text-base md:text-lg text-muted-ink max-w-xl leading-relaxed">
             DJs, MCs, caterers, decorators, photographers, and live bands from
             across Nigeria. Browse portfolios, then message them straight on
             WhatsApp.
@@ -49,20 +49,21 @@ export default function Vendors() {
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-ink w-5 h-5 pointer-events-none" />
             <Input
-              placeholder="Try “DJ”, “caterer”, or “Lekki”..."
+              placeholder="Try “DJ”, “sound engineer”, or “Lekki”..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              aria-label="Search vendors"
+              aria-label="Search talent"
               className="w-full h-12 pl-12 bg-surface-2 border border-hairline rounded-full text-ink text-base placeholder:text-muted-ink focus-visible:border-gold focus-visible:ring-0"
             />
           </div>
         </div>
 
         {/* Category filters — quiet pills, gold only when active */}
+        {/* Category filters — quiet pills, gold only when active */}
         <div
           className="flex gap-2 mb-12 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap max-w-3xl"
           role="group"
-          aria-label="Filter vendors by category"
+          aria-label="Filter talent by category"
         >
           <CategoryFilter
             label="All"
@@ -82,7 +83,7 @@ export default function Vendors() {
 
         {/* Grid */}
         {isLoading ? (
-          <DirectorySkeleton count={6} label="Loading vendors" />
+          <DirectorySkeleton count={6} label="Loading talent" />
         ) : (
           <>
             {/* App-style rows on mobile, editorial grid from sm up */}
@@ -98,8 +99,8 @@ export default function Vendors() {
                 })();
                 return (
                   <Link key={vendor.id} href={"/vendors/" + vendor.id}>
-                    <div className="flex items-center gap-4 py-4 active:bg-surface-2 -mx-3 px-3 rounded-md transition-colors">
-                      <div className="w-14 h-14 rounded-md overflow-hidden bg-surface-2 border border-hairline shrink-0 flex items-center justify-center">
+                    <div className="flex items-center gap-3.5 py-3.5 active:bg-surface-2 -mx-2.5 px-2.5 rounded-md transition-colors">
+                      <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-md overflow-hidden bg-surface-2 border border-hairline shrink-0 flex items-center justify-center">
                         {gallery[0] ? (
                           <img src={gallery[0]} alt="" className="w-full h-full object-cover" loading="lazy" />
                         ) : (
@@ -107,7 +108,7 @@ export default function Vendors() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-display text-base font-bold text-ink truncate">{vendor.businessName}</h3>
+                        <h3 className="font-display text-[15px] sm:text-base font-bold text-ink truncate">{vendor.businessName}</h3>
                         <p className="text-xs text-muted-ink mt-0.5 truncate">
                           {categoryLabel(vendor.category)} · {vendor.city || vendor.serviceArea || "Nigeria"}
                         </p>
@@ -131,32 +132,32 @@ export default function Vendors() {
               Nothing matches that yet
             </h2>
             <p className="text-muted-ink mb-6">
-              Try “DJ” or “caterer”, or clear the filters to see the full
+              Try “DJ” or “sound engineer”, or clear the filters to see the full
               directory.
             </p>
             <Link href="/vendor-signup">
               <span className="text-gold underline-offset-4 hover:underline cursor-pointer">
-                Are you a DJ or vendor? List your business, it's free →
+                Are you an artist, DJ, or creative talent? List your profile, it's free →
               </span>
             </Link>
           </div>
         )}
 
-        {/* Vendor CTA — flat panel, hairline, single gold button */}
+        {/* Talent CTA — flat panel, hairline, single gold button */}
         <Reveal className="mt-24">
-          <section className="border border-hairline rounded-md bg-surface p-10 md:p-14">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-ink max-w-lg tracking-tight">
+          <section className="border border-hairline rounded-md bg-surface p-6 sm:p-10 md:p-14">
+            <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-ink max-w-lg tracking-tight">
               Your work deserves a front page
             </h2>
             <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
-            <p className="mt-5 text-muted-ink max-w-xl leading-relaxed">
+            <p className="mt-4 sm:mt-5 text-sm sm:text-base text-muted-ink max-w-xl leading-relaxed">
               A standing profile with your portfolio, service area, and a
-              direct WhatsApp line. Free to list. When Lagos plans a party,
+              direct WhatsApp line. Free to list. When Lagos plans an event,
               this is where they'll find you.
             </p>
             <Link href="/vendor-signup">
-              <span className="press mt-8 inline-flex items-center justify-center h-12 px-8 rounded-md bg-primary text-primary-foreground font-medium hover:bg-gold-soft transition-colors cursor-pointer">
-                List Your Business: It's Free
+              <span className="press mt-6 sm:mt-8 inline-flex items-center justify-center h-11 sm:h-12 px-6 sm:px-8 rounded-md bg-primary text-primary-foreground font-medium hover:bg-gold-soft transition-colors cursor-pointer text-sm">
+                List Your Talent: It's Free
               </span>
             </Link>
           </section>

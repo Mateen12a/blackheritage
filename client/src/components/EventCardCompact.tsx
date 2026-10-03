@@ -31,11 +31,9 @@ export function EventCardCompact({ event }: EventCardCompactProps) {
       href={"/events/" + event.id}
       aria-label={`${event.title}, ${format(d, "EEE d MMM")}, ${event.location}, ${priceLabel}`}
     >
-      <article className="flex gap-4 p-3 -mx-3 rounded-md active:bg-surface-2 transition-colors cursor-pointer">
-        {/* Flyer thumb. Portrait 4:5 rather than a square, so it tracks the
-            height of the stacked text beside it instead of leaving a ragged
-            band of empty space under the image. */}
-        <div className="relative w-24 aspect-[4/5] shrink-0 rounded-md overflow-hidden bg-surface-2 border border-hairline">
+      <article className="flex gap-3 sm:gap-4 p-2.5 sm:p-3 -mx-2.5 sm:-mx-3 rounded-md active:bg-surface-2 transition-colors cursor-pointer">
+        {/* Flyer thumb. Fluid 20/24 width to preserve text space on narrow screens */}
+        <div className="relative w-20 min-[360px]:w-24 aspect-[4/5] shrink-0 rounded-md overflow-hidden bg-surface-2 border border-hairline">
           <FadeImg
             src={event.imageUrl}
             alt=""
@@ -51,31 +49,27 @@ export function EventCardCompact({ event }: EventCardCompactProps) {
           )}
         </div>
 
-        {/* Details */}
-        <div className="flex-1 min-w-0 py-0.5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="eyebrow">{format(d, "EEE d MMM · h:mm a")}</p>
-              <h3 className="mt-1 font-display text-base font-bold leading-snug text-ink line-clamp-2">
-                {event.title}
-              </h3>
+        {/* Details: Date & Price lead row 1, Title gets full width on row 2 */}
+        <div className="flex-1 min-w-0 py-0.5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="eyebrow text-[10px] min-[360px]:text-[11px] truncate">
+                {format(d, "EEE d MMM · ha")}
+              </p>
+              <span
+                className={cn(
+                  "font-display text-xs min-[360px]:text-sm shrink-0 whitespace-nowrap",
+                  soldOut ? "text-muted-ink" : "text-gold font-semibold",
+                )}
+              >
+                {priceLabel}
+              </span>
             </div>
-            <span
-              className={cn(
-                "font-display text-base shrink-0 pt-4 whitespace-nowrap",
-                soldOut ? "text-muted-ink" : "text-gold",
-              )}
-            >
-              {priceLabel}
-            </span>
+            <h3 className="mt-1 font-display text-[14px] min-[360px]:text-base font-bold leading-snug text-ink line-clamp-2 group-hover:text-gold transition-colors">
+              {event.title}
+            </h3>
           </div>
 
-          {/* Metadata stacks instead of sharing one line. Side by side on a
-              390px row, a long venue and a long host name each got about half
-              the width and BOTH ended in an ellipsis — two unusable strings.
-              Stacked, the venue reads in full and the host reads in full.
-              min-w-0 everywhere so neither can widen the card and scroll the
-              page. */}
           <div className="mt-1.5 min-w-0 text-xs text-muted-ink">
             <div className="flex min-w-0 items-center gap-1.5">
               <MapPin className="w-3 h-3 text-gold shrink-0" aria-hidden="true" />
@@ -83,7 +77,7 @@ export function EventCardCompact({ event }: EventCardCompactProps) {
               {scarcity && (
                 <span
                   className={cn(
-                    "shrink-0 font-medium",
+                    "shrink-0 font-medium text-[10px] min-[360px]:text-[11px]",
                     scarcity.tone === "hot" ? "text-gold" : "text-ink/85",
                   )}
                 >
@@ -91,7 +85,7 @@ export function EventCardCompact({ event }: EventCardCompactProps) {
                 </span>
               )}
             </div>
-            {host && <p className="mt-0.5 truncate">{host}</p>}
+            {host && <p className="mt-0.5 truncate text-[11px] text-muted-ink/80">{host}</p>}
           </div>
         </div>
       </article>

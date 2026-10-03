@@ -27,7 +27,7 @@ export function VendorCard({ vendor }: VendorCardProps) {
   const photoCount = gallery.length;
 
   return (
-    <Link href={"/vendors/" + vendor.id}>
+    <Link href={vendor.slug ? `/t/${vendor.slug}` : `/talent/${vendor.id}`}>
       <article className="group relative overflow-hidden rounded-md bg-surface border border-hairline hover:border-white/20 transition-colors duration-200 h-full flex flex-col cursor-pointer">
         {/* Portfolio photo is the hero */}
         <div className="relative aspect-[3/4] overflow-hidden bg-surface-2">

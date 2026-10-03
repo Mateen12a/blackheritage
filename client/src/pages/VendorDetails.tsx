@@ -55,7 +55,9 @@ function useVendorThemeVars(vendor: any): CSSProperties {
 export default function VendorDetails() {
   const [, params] = useRoute("/vendors/:id");
   const [, slugParams] = useRoute("/v/:slug");
-  const id = slugParams?.slug || params?.id;
+  const [, talentParams] = useRoute("/talent/:id");
+  const [, tSlugParams] = useRoute("/t/:slug");
+  const id = slugParams?.slug || tSlugParams?.slug || params?.id || talentParams?.id;
   const { data: vendor, isLoading } = useVendor(id as any);
   const { data: allVendors } = useVendors();
   const { user } = useAuth();
@@ -80,13 +82,13 @@ export default function VendorDetails() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-center p-4">
         <h1 className="font-display text-2xl font-bold text-ink mb-2">
-          Vendor not found
+          Talent profile not found
         </h1>
         <p className="text-muted-ink mb-6">
           They may have removed their listing. The directory has plenty more.
         </p>
         <Link href="/vendors">
-          <Button variant="outline">Back to Directory</Button>
+          <Button variant="outline">Back to Talent Directory</Button>
         </Link>
       </div>
     );
@@ -134,7 +136,7 @@ export default function VendorDetails() {
           default renders otherwise. Same treatment as event pages. */}
       <Navbar eventBrand={brand} overMedia />
       {/* Hero image — the portfolio leads */}
-      <div className="relative h-[46vh] w-full overflow-hidden">
+      <div className="relative h-[38vh] sm:h-[42vh] md:h-[46vh] w-full overflow-hidden">
         {gallery[0] ? (
           <img
             src={gallery[0]}
@@ -145,52 +147,52 @@ export default function VendorDetails() {
           <div className="w-full h-full bg-surface flex items-center justify-center">
             <CategoryIcon
               category={vendor.category}
-              className="w-28 h-28 text-gold/20"
+              className="w-24 h-24 sm:w-28 sm:h-28 text-gold/20"
             />
           </div>
         )}
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-background/20"
+          className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent"
         />
-        <Link href="/vendors">
+        <Link href="/talent">
           <Button
             variant="outline"
             size="icon"
-            aria-label="Back to vendor directory"
-            className="absolute top-20 left-4 z-20 rounded-full bg-background/70 border-hairline text-ink hover:bg-surface hover:text-gold"
+            aria-label="Back to talent directory"
+            className="absolute top-[4.75rem] md:top-28 left-3 sm:left-4 z-20 rounded-full bg-background/80 backdrop-blur-md border-hairline text-ink hover:bg-surface hover:text-gold w-9 h-9 sm:w-10 sm:h-10"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
         </Link>
       </div>
 
-      <div className="container mx-auto px-4 -mt-24 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <div className="container mx-auto px-3.5 sm:px-4 -mt-12 sm:-mt-16 md:-mt-24 relative z-10 pb-28 lg:pb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
           {/* Main content */}
           <div className="lg:col-span-2">
             {/* Title block — editorial, no card box */}
-            <Reveal className="mb-10">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <span className="flex items-center gap-2 text-[11px] font-bold tracking-[0.18em] uppercase text-gold">
+            <Reveal className="mb-8 sm:mb-10">
+              <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1.5">
+                <span className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-bold tracking-[0.18em] uppercase text-gold">
                   <CategoryIcon category={vendor.category} className="w-3.5 h-3.5" />
                   {vendorDisplayCategory(vendor)}
                 </span>
                 {(vendor.city || vendor.serviceArea) && (
-                  <span className="flex items-center gap-1.5 text-sm text-muted-ink">
+                  <span className="flex items-center gap-1 text-xs sm:text-sm text-muted-ink">
                     <MapPin className="w-3.5 h-3.5 text-gold" />
                     {vendor.city || vendor.serviceArea}
                   </span>
                 )}
               </div>
-              <h1 className="mt-4 font-display text-4xl md:text-5xl font-bold text-ink leading-tight tracking-tight">
+              <h1 className="mt-2 sm:mt-4 font-display text-2xl min-[360px]:text-3xl md:text-5xl font-bold text-ink leading-tight tracking-tight">
                 {vendor.businessName}
               </h1>
-              <div className="mt-5 h-0.5 w-16 bg-gold" aria-hidden="true" />
+              <div className="mt-3 sm:mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
 
               {/* Trust strip: earned numbers, shown only when they exist */}
               {trust.data && (trust.data.memberSince || trust.data.completedBookings > 0 || trust.data.responseHours !== null) && (
-                <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+                <div className="mt-4 sm:mt-6 flex flex-wrap items-center gap-x-4 sm:gap-x-5 gap-y-2 text-xs sm:text-sm">
                   {trust.data.memberSince && (
                     <span className="text-muted-ink">
                       On BlackHeritage since{" "}
@@ -443,12 +445,12 @@ export default function VendorDetails() {
 
       {/* Mobile sticky action bar: booking is one thumb-tap anywhere on the page */}
       {hasMobileActions && (
-        <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden border-t border-hairline bg-surface/95 backdrop-blur-xl px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <div className="flex gap-2.5">
+        <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden border-t border-hairline bg-surface/95 backdrop-blur-xl px-3.5 sm:px-4 py-2.5 sm:py-3 pb-[max(0.65rem,env(safe-area-inset-bottom))]">
+          <div className="flex gap-2">
             {canMessageInApp && messagesHref ? (
               <Link href={messagesHref} className="flex-1">
-                <Button className="w-full h-11 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-full">
-                  <MessageCircle className="w-4.5 h-4.5 mr-2" />
+                <Button className="w-full h-10 sm:h-11 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-full text-xs sm:text-sm">
+                  <MessageCircle className="w-4 h-4 mr-1.5" />
                   Message
                 </Button>
               </Link>
@@ -462,17 +464,17 @@ export default function VendorDetails() {
               >
                 <Button
                   variant="outline"
-                  className="w-full h-11 border-hairline text-ink hover:bg-surface-2 hover:text-gold font-medium rounded-full"
+                  className="w-full h-10 sm:h-11 border-hairline text-ink hover:bg-surface-2 hover:text-gold font-medium rounded-full text-xs sm:text-sm"
                 >
-                  <MessageCircle className="w-4.5 h-4.5 mr-2" />
+                  <MessageCircle className="w-4 h-4 mr-1.5 text-green-500" />
                   WhatsApp
                 </Button>
               </a>
             )}
             {!canMessageInApp && !whatsappLink && vendor.phone && (
               <a href={"tel:" + vendor.phone.replace(/\s/g, "")} className="flex-1">
-                <Button className="w-full h-11 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-full">
-                  <Phone className="w-4.5 h-4.5 mr-2" />
+                <Button className="w-full h-10 sm:h-11 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-full text-xs sm:text-sm">
+                  <Phone className="w-4 h-4 mr-1.5" />
                   Call {vendor.phone}
                 </Button>
               </a>
@@ -481,18 +483,18 @@ export default function VendorDetails() {
         </div>
       )}
 
-      {/* Related vendors: keep browsing, same craft */}
+      {/* Related talent: keep browsing, same craft */}
       {related.length > 0 && (
-        <section aria-label="Similar vendors" className="border-t border-hairline mt-16 pt-12 pb-8">
-          <div className="container mx-auto px-4">
+        <section aria-label="Similar talent" className="border-t border-hairline mt-12 sm:mt-16 pt-10 sm:pt-12 pb-8">
+          <div className="container mx-auto px-3.5 sm:px-4">
             <Reveal>
               <p className="eyebrow">More {vendorDisplayCategory(vendor).toLowerCase()}s</p>
-              <h2 className="mt-3 font-display text-2xl md:text-3xl font-bold text-ink tracking-tight">
-                Keep browsing
+              <h2 className="mt-2 sm:mt-3 font-display text-xl sm:text-2xl md:text-3xl font-bold text-ink tracking-tight">
+                Keep browsing talent
               </h2>
-              <div className="mt-4 h-0.5 w-12 bg-gold" aria-hidden="true" />
+              <div className="mt-3 sm:mt-4 h-0.5 w-12 bg-gold" aria-hidden="true" />
             </Reveal>
-            <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
               {related.map((v) => {
                 const first = (() => {
                   try {

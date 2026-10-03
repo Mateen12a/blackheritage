@@ -14,7 +14,7 @@ export interface EventBrand {
 const publicLinks = [
   { href: "/", label: "Home" },
   { href: "/events", label: "Events" },
-  { href: "/vendors", label: "Vendors" },
+  { href: "/vendors", label: "Talent" },
   { href: "/calendar", label: "Calendar" },
   { href: "/organizers", label: "For Organizers" },
 ];
@@ -33,14 +33,12 @@ function BrandLockup({ logo, title, tag }: { logo: React.ReactNode; title: strin
   return (
     <>
       <span className="shrink-0 flex items-center">{logo}</span>
-      <span className="flex min-w-0 flex-col items-start gap-[3px]">
-        {/* Fixed caps above; tight viewports are handled by the brand link's
-            min-w-0 below — flex shrinks the whole lockup and the title
-            truncates instead of colliding with the Sign In / Menu pills. */}
-        <span className="font-display text-sm md:text-[15px] font-bold leading-none tracking-wide text-ink truncate max-w-[140px] sm:max-w-[180px] md:max-w-[230px]">
+      <span className="flex min-w-0 flex-col items-start gap-[2px] sm:gap-[3px]">
+        {/* Responsive caps for small viewports so title and tag stay legible without colliding with action pills */}
+        <span className="font-display text-xs min-[360px]:text-sm md:text-[15px] font-bold leading-none tracking-wide text-ink truncate max-w-[105px] min-[360px]:max-w-[130px] sm:max-w-[180px] md:max-w-[230px]">
           {title}
         </span>
-        <span className="text-[6.5px] md:text-[7px] font-bold uppercase tracking-[0.2em] leading-none text-muted-ink">
+        <span className="hidden min-[340px]:block text-[6px] min-[360px]:text-[6.5px] md:text-[7px] font-bold uppercase tracking-[0.15em] sm:tracking-[0.2em] leading-none text-muted-ink">
           {tag}
         </span>
       </span>
@@ -76,7 +74,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
     const isOrg = user.role === "organizer" || user.role === "admin" || user.isAdmin;
     links.push({
       href: isOrg ? "/admin" : user.role === "vendor" ? "/vendor-dashboard" : "/dashboard",
-      label: isOrg ? "Dashboard" : user.role === "vendor" ? "My Profile" : "My Dashboard",
+      label: isOrg ? "Dashboard" : user.role === "vendor" ? "Talent Studio" : "My Dashboard",
     });
   }
 
@@ -96,12 +94,12 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
           <img
             src={eventBrand.logoUrl}
             alt=""
-            className="h-8 w-8 rounded-lg object-cover ring-1 ring-hairline bg-surface-2"
+            className="h-7 w-7 min-[380px]:h-8 min-[380px]:w-8 rounded-lg object-cover ring-1 ring-hairline bg-surface-2"
           />
         ) : (
           <span
             aria-hidden="true"
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary font-display text-sm font-bold text-primary-foreground"
+            className="flex h-7 w-7 min-[380px]:h-8 min-[380px]:w-8 items-center justify-center rounded-lg bg-primary font-display text-xs sm:text-sm font-bold text-primary-foreground"
           >
             {(eventBrand?.displayName || "E").slice(0, 1).toUpperCase()}
           </span>
@@ -112,20 +110,20 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
     <BrandLockup
       title="Black Heritage"
       tag="Entertainment & Events"
-      logo={<img src={logoImg} alt="" className="h-8 w-8 object-contain" />}
+      logo={<img src={logoImg} alt="" className="h-7 w-7 min-[380px]:h-8 min-[380px]:w-8 object-contain" />}
     />
   );
 
   return (
     <nav
       className={cn(
-        "fixed z-40 left-3 right-3 top-[calc(env(safe-area-inset-top)+0.5rem)] lg:left-0 lg:right-0 lg:top-4 lg:px-5 transition-colors duration-300",
+        "fixed z-40 left-2.5 right-2.5 min-[380px]:left-3 min-[380px]:right-3 top-[calc(env(safe-area-inset-top)+0.4rem)] lg:left-0 lg:right-0 lg:top-4 lg:px-5 transition-colors duration-300",
         "max-lg:rounded-2xl max-lg:border max-lg:border-hairline max-lg:backdrop-blur-xl max-lg:shadow-[0_8px_30px_rgba(0,0,0,0.35)]",
         scrolled ? "max-lg:bg-surface/90" : "max-lg:bg-surface/60"
       )}
     >
       {/* Mobile: brand pinned left, actions pinned right. Desktop: capsule centered. */}
-      <div className="flex items-center justify-between lg:justify-center gap-1.5 px-3 lg:px-0 py-2 lg:py-0">
+      <div className="flex items-center justify-between lg:justify-center gap-1.5 px-2.5 min-[380px]:px-3 lg:px-0 py-1.5 min-[380px]:py-2 lg:py-0">
         {/* Brand segment (desktop): full-round left corners, tight right corners */}
         <Link
           href="/"
@@ -217,18 +215,17 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
         >
           {brand}
         </Link>
-        <div className="lg:hidden flex items-center gap-2 shrink-0">
+        <div className="lg:hidden flex items-center gap-1.5 min-[360px]:gap-2 shrink-0">
           {!user && (
             <Link href="/auth">
-              <span className="press inline-flex items-center h-11 px-4 rounded-xl text-sm font-semibold bg-primary text-primary-foreground border border-gold-soft/30 shadow-[0_4px_20px_rgba(0,0,0,0.4)] hover:bg-gold-soft transition-colors cursor-pointer">
+              <span className="press inline-flex items-center h-8 sm:h-9 px-2.5 min-[380px]:px-3.5 rounded-full text-xs font-semibold bg-primary text-primary-foreground border border-gold-soft/30 shadow-[0_2px_10px_rgba(0,0,0,0.3)] hover:bg-gold-soft transition-colors cursor-pointer">
                 Sign In
               </span>
             </Link>
           )}
           <button
             className={cn(
-              "press flex items-center gap-2 h-11 pl-3 pr-3.5 min-[380px]:pl-3.5 min-[380px]:pr-4 rounded-xl text-sm font-semibold transition-colors duration-200",
-              mobilePill,
+              "press flex items-center gap-1.5 h-8 sm:h-9 px-2.5 min-[380px]:px-3 rounded-full text-xs font-semibold transition-colors duration-200 border border-hairline/60 bg-surface-2/60",
               isMobileMenuOpen ? "text-ink" : "text-muted-ink hover:text-ink"
             )}
             aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
@@ -236,9 +233,9 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             {isMobileMenuOpen ? (
-              <X size={20} strokeWidth={2.5} />
+              <X size={15} strokeWidth={2.5} />
             ) : (
-              <Menu size={20} strokeWidth={2.5} />
+              <Menu size={15} strokeWidth={2.5} />
             )}
             <span className="hidden min-[380px]:inline">Menu</span>
           </button>

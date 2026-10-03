@@ -337,16 +337,16 @@ export default function Explore() {
             <NativeSponsorSpotlight placement="explore_feed" />
           </div>
 
-          {/* Vendor rail — full cards, peeking 24px past the scroll edge */}
-          <section className="mt-10" aria-label="Vendors to book">
+          {/* Talent rail — full cards, peeking 24px past the scroll edge */}
+          <section className="mt-10" aria-label="Talent to book">
             <div className="flex items-baseline justify-between mb-3">
-              <h2 className="font-display text-xl font-bold text-ink">Vendors</h2>
+              <h2 className="font-display text-xl font-bold text-ink">Creative Talent</h2>
               <div className="text-xs text-muted-ink">
                 {vendorsLoading ? (
                   <Skeleton className="h-3 w-16" />
                 ) : (
-                  <Link href="/vendors" className="hover:text-gold transition-colors">
-                    Browse all
+                  <Link href="/talent" className="hover:text-gold transition-colors">
+                    Browse all talent →
                   </Link>
                 )}
               </div>
@@ -358,7 +358,7 @@ export default function Explore() {
                 </div>
               ))}
               {vendorRail.length === 0 && !vendorsLoading && (
-                <p className="text-sm text-muted-ink py-4">No vendors listed yet.</p>
+                <p className="text-sm text-muted-ink py-4">No talent listed yet.</p>
               )}
             </div>
           </section>

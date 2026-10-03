@@ -75,14 +75,14 @@ export default function AttendeeDashboard() {
       {headerLoading ? (
         <HeaderSkeleton />
       ) : (
-        <div className="mb-10 pt-2">
+        <div className="mb-8 sm:mb-10 pt-2">
           <Reveal>
             <p className="eyebrow">Welcome back</p>
-            <h1 className="mt-3 font-display text-3xl md:text-4xl font-bold text-ink tracking-tight">
+            <h1 className="mt-2.5 sm:mt-3 font-display text-2xl min-[360px]:text-3xl md:text-4xl font-bold text-ink tracking-tight">
               {user?.username || "Guest"}
             </h1>
-            <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
-            <p className="mt-4 text-muted-ink max-w-xl">
+            <div className="mt-3.5 sm:mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
+            <p className="mt-3.5 sm:mt-4 text-sm sm:text-base text-muted-ink max-w-xl">
               Your tickets, upcoming events, and what Lagos is doing next.
             </p>
           </Reveal>
@@ -93,7 +93,7 @@ export default function AttendeeDashboard() {
       {headerLoading ? (
         <StatSkeletons />
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-10 sm:mb-12">
           <QuickStat
             icon={Ticket}
             label="Upcoming tickets"
@@ -122,18 +122,18 @@ export default function AttendeeDashboard() {
       )}
 
       {/* Upcoming tickets */}
-      <section className="mb-14">
+      <section className="mb-12 sm:mb-14">
         <Reveal>
-          <div className="flex items-end justify-between mb-6 gap-4">
+          <div className="flex flex-wrap items-baseline justify-between mb-4 sm:mb-6 gap-x-4 gap-y-1">
             <div>
               <p className="eyebrow">Your tickets</p>
-              <h2 className="mt-2 font-display text-2xl font-bold text-ink">
+              <h2 className="mt-1.5 sm:mt-2 font-display text-xl sm:text-2xl font-bold text-ink">
                 Upcoming Events
               </h2>
             </div>
             {upcomingBookings.length > 0 && (
               <Link href="/my-tickets">
-                <span className="text-sm font-medium text-gold hover:text-gold-soft transition-colors cursor-pointer">
+                <span className="text-xs sm:text-sm font-medium text-gold hover:text-gold-soft transition-colors cursor-pointer">
                   View all tickets →
                 </span>
               </Link>
@@ -177,15 +177,15 @@ export default function AttendeeDashboard() {
       {/* Recommended events */}
       <section className="mb-14">
         <Reveal>
-          <div className="flex items-end justify-between mb-6 gap-4">
+          <div className="flex flex-wrap items-baseline justify-between mb-4 sm:mb-6 gap-x-4 gap-y-1">
             <div>
               <p className="eyebrow">Don't miss out</p>
-              <h2 className="mt-2 font-display text-2xl font-bold text-ink">
+              <h2 className="mt-1 sm:mt-2 font-display text-xl sm:text-2xl font-bold text-ink">
                 Happening Soon
               </h2>
             </div>
             <Link href="/events">
-              <span className="text-sm font-medium text-gold hover:text-gold-soft transition-colors cursor-pointer">
+              <span className="text-xs sm:text-sm font-medium text-gold hover:text-gold-soft transition-colors cursor-pointer">
                 See every event →
               </span>
             </Link>
@@ -219,24 +219,24 @@ export default function AttendeeDashboard() {
         )}
       </section>
 
-      {/* Cross-sell vendors */}
+      {/* Cross-sell talent */}
       <section>
         <Reveal>
-          <div className="border border-hairline rounded-md bg-surface p-8 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="border border-hairline rounded-md bg-surface p-5 sm:p-8 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5 sm:gap-6">
             <div>
-              <p className="eyebrow">Planning a party?</p>
-              <h2 className="mt-2 font-display text-2xl font-bold text-ink">
-                Hire a vendor
+              <p className="eyebrow">Planning an event?</p>
+              <h2 className="mt-1 sm:mt-2 font-display text-xl sm:text-2xl font-bold text-ink">
+                Book top talent
               </h2>
-              <p className="mt-3 text-muted-ink max-w-lg leading-relaxed">
-                DJs, MCs, caterers, decorators. Lagos's best talent, all in
+              <p className="mt-2 sm:mt-3 text-muted-ink max-w-lg leading-relaxed text-xs sm:text-sm">
+                DJs, MCs, caterers, decorators, sound engineers. Lagos's best creative talent, all in
                 one directory. Browse portfolios, message straight on WhatsApp.
               </p>
             </div>
-            <Link href="/vendors">
-              <Button className="press shrink-0 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md">
+            <Link href="/talent">
+              <Button className="press shrink-0 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md text-xs sm:text-sm">
                 <Store className="w-4 h-4 mr-2" />
-                Browse Vendors
+                Browse Talent
               </Button>
             </Link>
           </div>
@@ -274,9 +274,9 @@ function BookingCard({ booking }: { booking: any }) {
     // linking straight to the pretty URL keeps history and shares clean.
     <Link href={booking.event.slug ? `/e/${booking.event.slug}` : `/events/${booking.eventId}`}>
       <article className="group border border-hairline rounded-md bg-surface overflow-hidden hover:border-white/20 transition-colors cursor-pointer">
-        <div className="flex gap-4 p-4">
+        <div className="flex gap-3 sm:gap-4 p-3 sm:p-4">
           {/* Thumbnail */}
-          <div className="w-20 h-20 shrink-0 rounded-md overflow-hidden bg-surface-2">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-md overflow-hidden bg-surface-2">
             <img
               src={booking.event.imageUrl}
               alt={booking.event.title}
@@ -286,27 +286,27 @@ function BookingCard({ booking }: { booking: any }) {
           </div>
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-display text-base font-bold text-ink line-clamp-1 group-hover:text-gold transition-colors">
+            <h3 className="font-display text-sm sm:text-base font-bold text-ink line-clamp-1 group-hover:text-gold transition-colors">
               {booking.event.title}
             </h3>
 
-            <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-ink">
-              <span className="flex items-center gap-1">
-                <CalendarDays className="w-3 h-3 text-gold" />
-                {format(new Date(booking.event.date), "EEE d MMM")}
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-ink">
+              <span className="flex items-center gap-1 shrink-0">
+                <CalendarDays className="w-3 h-3 text-gold shrink-0" />
+                <span className="whitespace-nowrap">{format(new Date(booking.event.date), "EEE d MMM")}</span>
               </span>
-              <span className="flex items-center gap-1">
-                <MapPin className="w-3 h-3 text-gold" />
-                <span className="truncate max-w-[120px]">
+              <span className="flex items-center gap-1 min-w-0">
+                <MapPin className="w-3 h-3 text-gold shrink-0" />
+                <span className="truncate max-w-[110px] sm:max-w-[160px]">
                   {booking.event.location}
                 </span>
               </span>
             </div>
 
-            <div className="mt-2.5 flex items-center justify-between">
+            <div className="mt-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                  className={`px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-bold uppercase tracking-wider ${
                     booking.isVerified
                       ? "bg-green-500/10 text-green-400 border border-green-500/20"
                       : "bg-gold/10 text-gold border border-gold/20"
@@ -318,7 +318,7 @@ function BookingCard({ booking }: { booking: any }) {
                   {booking.quantity}× {booking.ticketType}
                 </span>
               </div>
-              <ArrowRight className="w-4 h-4 text-muted-ink group-hover:text-gold transition-colors" />
+              <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-ink group-hover:text-gold transition-colors shrink-0" />
             </div>
           </div>
         </div>

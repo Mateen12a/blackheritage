@@ -59,7 +59,7 @@ export function NativeSponsorSpotlight({
                 `lg:aspect-auto` the grid row was sized by the sponsor's portrait
                 asset (1200×1807), so a 315px copy column sat beside a 741px
                 image and the banner ate 744px of the page. */}
-            <div className="lg:col-span-5 relative aspect-[16/9] lg:aspect-[16/10] min-h-[220px] overflow-hidden bg-surface-2">
+            <div className="lg:col-span-5 relative aspect-[16/9] lg:aspect-[16/10] sm:min-h-[200px] overflow-hidden bg-surface-2">
               <FadeImg
                 src={sponsor.imageUrl}
                 alt={sponsor.title}
@@ -73,7 +73,7 @@ export function NativeSponsorSpotlight({
             </div>
 
             {/* Editorial copy and action */}
-            <div className="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-center">
+            <div className="lg:col-span-7 p-4 sm:p-6 md:p-8 flex flex-col justify-center">
               <div className="flex items-center gap-2 mb-3">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] sm:text-[11px] font-semibold tracking-wider uppercase bg-gold/10 text-gold border border-gold/30">
                   <BadgeCheck className="w-3.5 h-3.5 text-gold shrink-0" aria-hidden="true" />

@@ -249,7 +249,7 @@ export default function EventDetails() {
       <div
         className={cn(
           "relative w-full overflow-hidden",
-          isBillboard ? "h-[86vh]" : isEditorial ? "h-[36vh]" : "h-[52vh]",
+          isBillboard ? "h-[75vh] md:h-[86vh]" : isEditorial ? "h-[32vh] md:h-[36vh]" : "h-[42vh] sm:h-[48vh] md:h-[52vh]",
         )}
       >
         <FadeImg
@@ -259,18 +259,18 @@ export default function EventDetails() {
         />
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-background/10"
+          className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent"
         />
-        <div className="absolute top-[5.25rem] md:top-28 left-4 right-4 z-20 flex items-center justify-between">
+        <div className="absolute top-[4.75rem] md:top-28 left-3 sm:left-4 right-3 sm:right-4 z-20 flex items-center justify-between pointer-events-none">
           {cameFromApp ? (
             <Button
               variant="outline"
               size="icon"
               aria-label="Go back"
               onClick={() => window.history.back()}
-              className="press rounded-full bg-background/70 border-hairline text-ink hover:bg-surface hover:text-gold transition-colors"
+              className="press pointer-events-auto rounded-full bg-background/80 backdrop-blur-md border-hairline text-ink hover:bg-surface hover:text-gold transition-colors w-9 h-9 sm:w-10 sm:h-10"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </Button>
           ) : (
             <Link href="/events">
@@ -278,9 +278,9 @@ export default function EventDetails() {
                 variant="outline"
                 size="icon"
                 aria-label="Browse all events"
-                className="press rounded-full bg-background/70 border-hairline text-ink hover:bg-surface hover:text-gold transition-colors"
+                className="press pointer-events-auto rounded-full bg-background/80 backdrop-blur-md border-hairline text-ink hover:bg-surface hover:text-gold transition-colors w-9 h-9 sm:w-10 sm:h-10"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
               </Button>
             </Link>
           )}
@@ -289,14 +289,14 @@ export default function EventDetails() {
             size="icon"
             aria-label="Share this event"
             onClick={handleShare}
-            className="press rounded-full bg-background/70 border-hairline text-ink hover:bg-surface hover:text-gold transition-colors"
+            className="press pointer-events-auto rounded-full bg-background/80 backdrop-blur-md border-hairline text-ink hover:bg-surface hover:text-gold transition-colors w-9 h-9 sm:w-10 sm:h-10"
           >
-            <Share2 className="w-5 h-5" />
+            <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 -mt-24 relative z-10">
+      <div className="container mx-auto px-3.5 sm:px-4 -mt-12 sm:-mt-16 md:-mt-24 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-10">
           {/* Main column: editorial, no card box */}
           <div className="lg:col-span-2">
@@ -304,11 +304,11 @@ export default function EventDetails() {
               <p className="eyebrow text-gold">
                 {(event as any).eventTypeLabel || EVENT_TYPE_LABELS[(event as any).eventType] || "Upcoming event"}
               </p>
-              <h1 className="mt-2 font-display text-3xl md:text-5xl font-bold text-ink leading-[1.12] tracking-tight">
+              <h1 className="mt-2 font-display text-2xl min-[360px]:text-3xl md:text-5xl font-bold text-ink leading-[1.15] tracking-tight">
                 {event.title}
               </h1>
-              <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
-              <p className="mt-4 text-base text-muted-ink">
+              <div className="mt-3 sm:mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
+              <p className="mt-3 sm:mt-4 text-sm sm:text-base text-muted-ink">
                 {format(new Date(event.date), "EEEE, d MMMM yyyy")} ·{" "}
                 {format(new Date(event.date), "h:mm a")} · {event.location}
               </p>
@@ -316,10 +316,10 @@ export default function EventDetails() {
                 <div className="mt-3">
                   <Link
                     href={`/o/${(event as any).organizerSlug || brand.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`}
-                    className="inline-flex items-center gap-2 text-sm text-muted-ink hover:text-gold transition-colors group"
+                    className="inline-flex items-center gap-2 text-xs sm:text-sm text-muted-ink hover:text-gold transition-colors group"
                   >
                     {brand.logoUrl && (
-                      <img src={brand.logoUrl} alt="" className="w-6 h-6 rounded-md object-cover ring-1 ring-white/10" />
+                      <img src={brand.logoUrl} alt="" className="w-5 h-5 sm:w-6 sm:h-6 rounded-md object-cover ring-1 ring-white/10" />
                     )}
                     <span>
                       Presented by <span className="text-ink font-medium group-hover:text-gold underline-offset-4 group-hover:underline">{brand.displayName}</span>
@@ -328,7 +328,7 @@ export default function EventDetails() {
                 </div>
               )}
               {showAttendeeCount && pulse.data && pulse.data.going > 0 && (
-                <p className="mt-4 flex items-center gap-2 text-sm text-muted-ink">
+                <p className="mt-3 sm:mt-4 flex items-center gap-2 text-xs sm:text-sm text-muted-ink">
                   <span className="relative flex h-2 w-2" aria-hidden="true">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-60"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-gold"></span>
@@ -343,15 +343,15 @@ export default function EventDetails() {
               )}
 
               {/* Share row: WhatsApp is how Nigerian events travel. */}
-              <div className="mt-6 flex flex-wrap items-center gap-2">
+              <div className="mt-5 sm:mt-6 flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => {
                     const text = `${event.title}\n${format(new Date(event.date), "EEE d MMM, h:mm a")}\n${event.location}\n\nGet tickets: ${window.location.href}`;
                     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
                   }}
-                  className="press inline-flex items-center gap-2 px-4 py-2 rounded-full border border-hairline bg-surface-2 text-sm text-ink hover:border-gold/40 hover:text-gold transition-colors cursor-pointer"
+                  className="press inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-hairline bg-surface-2 text-xs sm:text-sm text-ink hover:border-gold/40 hover:text-gold transition-colors cursor-pointer"
                 >
-                  <MessageCircle className="w-4 h-4 text-green-500" aria-hidden="true" />
+                  <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-500" aria-hidden="true" />
                   WhatsApp
                 </button>
                 <button
@@ -363,9 +363,9 @@ export default function EventDetails() {
                       toast({ variant: "destructive", title: "Copy failed", description: window.location.href });
                     }
                   }}
-                  className="press inline-flex items-center gap-2 px-4 py-2 rounded-full border border-hairline bg-surface-2 text-sm text-ink hover:border-gold/40 hover:text-gold transition-colors cursor-pointer"
+                  className="press inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-hairline bg-surface-2 text-xs sm:text-sm text-ink hover:border-gold/40 hover:text-gold transition-colors cursor-pointer"
                 >
-                  <Copy className="w-4 h-4" aria-hidden="true" />
+                  <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
                   Copy link
                 </button>
                 {typeof navigator !== "undefined" && "share" in navigator && (
@@ -381,15 +381,15 @@ export default function EventDetails() {
                         // User cancelled or share failed; the two buttons above still cover it.
                       }
                     }}
-                    className="press inline-flex items-center gap-2 px-4 py-2 rounded-full border border-hairline bg-surface-2 text-sm text-ink hover:border-gold/40 hover:text-gold transition-colors cursor-pointer"
+                    className="press inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-hairline bg-surface-2 text-xs sm:text-sm text-ink hover:border-gold/40 hover:text-gold transition-colors cursor-pointer"
                   >
-                    <Share2 className="w-4 h-4" aria-hidden="true" />
+                    <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
                     Share
                   </button>
                 )}
               </div>
               {showAttendeeCount && pulse.data?.recent?.[0] && (
-                <p className="mt-1.5 text-sm text-muted-ink">
+                <p className="mt-1.5 text-xs sm:text-sm text-muted-ink">
                   {pulse.data.recent[0].name} booked {pulse.data.recent[0].ago}
                 </p>
               )}
@@ -422,23 +422,27 @@ export default function EventDetails() {
                 {showCounts && (
                   <div className="flex items-start gap-4 py-5 border-b border-hairline">
                     <Users className="w-5 h-5 text-gold shrink-0 mt-0.5" aria-hidden="true" />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <dt className="eyebrow">Availability</dt>
-                      <dd className="mt-1.5">
+                      <dd className="mt-2">
                         {ticketTypes.length === 0 ? (
-                          <span className="text-ink">
+                          <span className="text-ink text-sm">
                             {event.capacity} regular tickets remaining
                           </span>
                         ) : (
-                          <div className="flex flex-col gap-1">
-                            {ticketTypes.map((type: any) => (
-                              <span key={type.name} className="text-ink">
-                                <span className="text-gold font-medium">
-                                  {type.capacity - (type.sold || 0)}
-                                </span>{" "}
-                                {type.name} left
-                              </span>
-                            ))}
+                          <div className="flex flex-wrap gap-2">
+                            {ticketTypes.map((type: any) => {
+                              const remaining = Math.max(0, type.capacity - (type.sold || 0));
+                              return (
+                                <span
+                                  key={type.name}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-2 border border-hairline text-xs"
+                                >
+                                  <span className="text-gold font-bold">{remaining}</span>
+                                  <span className="text-muted-ink">{type.name} left</span>
+                                </span>
+                              );
+                            })}
                           </div>
                         )}
                       </dd>
@@ -476,7 +480,7 @@ export default function EventDetails() {
             {/* About: plain editorial text */}
             <Reveal className="mt-8" variant={motionVariant}>
               <p className="eyebrow">About this event</p>
-              <p className="mt-3 text-[15px] text-muted-ink leading-relaxed whitespace-pre-line max-w-2xl">
+              <p className="mt-3 text-sm sm:text-[15px] text-muted-ink leading-relaxed whitespace-pre-line max-w-2xl">
                 {event.description}
               </p>
             </Reveal>
@@ -484,42 +488,40 @@ export default function EventDetails() {
             <PastEventProof event={event} />
           </div>
 
-          {/* Sidebar: the primary action surface on the page. Billboard
-              keeps it unstuck below the tall flyer so the docked mobile bar
-              and the poster art share the first viewport. */}
-          <aside className="lg:col-span-1">
+          {/* Sidebar: the primary action surface on the page. */}
+          <aside className="lg:col-span-1 mt-8 lg:mt-0">
             <div className={cn("space-y-4", !isBillboard && "sticky top-28")}>
-              <div className="bg-surface border border-hairline rounded-md p-7">
+              <div className="bg-surface border border-hairline rounded-md p-5 sm:p-7">
                 <p className="eyebrow">Tickets from</p>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="font-display text-4xl font-bold text-ink">
+                <div className="mt-2 sm:mt-3 flex items-baseline gap-2">
+                  <span className="font-display text-3xl sm:text-4xl font-bold text-ink">
                     {price}
                   </span>
                   {event.price > 0 && (
-                    <span className="text-sm text-muted-ink">/ person</span>
+                    <span className="text-xs sm:text-sm text-muted-ink">/ person</span>
                   )}
                 </div>
 
                 {!countdown.expired && countdown.short && (
-                  <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/[0.07] px-3 py-1.5 text-xs text-gold">
+                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/[0.07] px-3 py-1.5 text-xs text-gold">
                     <Clock className="w-3.5 h-3.5" aria-hidden="true" />
                     Sales close in {countdown.short}
                   </div>
                 )}
                 {showAttendeeCount && pulse.data && pulse.data.going > 0 && (
-                  <p className="mt-3 text-sm text-muted-ink">
+                  <p className="mt-3 text-xs sm:text-sm text-muted-ink">
                     <span className="text-ink font-medium">{pulse.data.going}</span> going
                   </p>
                 )}
 
                 {eventEnded ? (
-                  <div className="mt-6 rounded-md border border-hairline bg-surface-2/60 px-4 py-3 text-center text-sm text-muted-ink">
+                  <div className="mt-5 sm:mt-6 rounded-md border border-hairline bg-surface-2/60 px-4 py-3 text-center text-xs sm:text-sm text-muted-ink">
                     This event has ended. Thanks to everyone who came out.
                   </div>
                 ) : (
                   <Button
                     onClick={() => setIsBookingOpen(true)}
-                    className="press hidden lg:inline-flex mt-6 w-full h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md"
+                    className="press mt-5 sm:mt-6 w-full h-11 sm:h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md text-sm"
                   >
                     Get tickets
                   </Button>
@@ -528,7 +530,7 @@ export default function EventDetails() {
                 <Button
                   variant="outline"
                   onClick={() => setIsFlyerModalOpen(true)}
-                  className="press hidden lg:inline-flex mt-2.5 w-full h-11 border-hairline text-ink hover:text-gold hover:border-gold/40 font-medium rounded-md items-center justify-center gap-2"
+                  className="press mt-2.5 w-full h-10 sm:h-11 border-hairline text-ink hover:text-gold hover:border-gold/40 font-medium rounded-md flex items-center justify-center gap-2 text-xs sm:text-sm"
                 >
                   <Share2 className="w-4 h-4 text-gold" />
                   Share Event
@@ -538,26 +540,26 @@ export default function EventDetails() {
                   <WaitlistInline eventId={String(event.id)} />
                 )}
 
-                <p className="mt-4 text-xs text-center text-muted-ink">
+                <p className="mt-3 sm:mt-4 text-[11px] sm:text-xs text-center text-muted-ink">
                   E-ticket arrives instantly after payment.
                 </p>
               </div>
 
               {(event as any).businessApplicationsEnabled !== false && (
-              <div className="rounded-xl border border-gold/25 bg-gradient-to-b from-gold/[0.08] to-transparent p-6 shadow-[0_0_40px_-16px_rgba(227,178,60,0.35)]">
-                <p className="eyebrow">Sponsors &amp; vendors</p>
-                <h2 className="mt-2 font-display text-lg font-bold text-ink leading-snug">
+              <div className="rounded-xl border border-gold/25 bg-gradient-to-b from-gold/[0.08] to-transparent p-5 sm:p-6 shadow-[0_0_40px_-16px_rgba(227,178,60,0.35)]">
+                <p className="eyebrow">Sponsors &amp; talent</p>
+                <h2 className="mt-1 sm:mt-2 font-display text-base sm:text-lg font-bold text-ink leading-snug">
                   Be in front of everyone at this event
                 </h2>
                 <p className="mt-2 text-xs text-muted-ink leading-relaxed">
-                  A sponsor or vendor spot puts your brand next to the whole
+                  A sponsor or creative talent spot puts your brand next to the whole
                   crowd. The organizer reviews every application.
                 </p>
                 <Button
-                  className="press mt-4 w-full h-11 bg-gold text-[#1a1408] hover:bg-gold-soft font-semibold rounded-md"
+                  className="press mt-4 w-full h-10 sm:h-11 bg-gold text-[#1a1408] hover:bg-gold-soft font-semibold rounded-md text-xs sm:text-sm"
                   onClick={() => setIsBusinessModalOpen(true)}
                 >
-                  Apply as Sponsor or Vendor
+                  Apply as Sponsor or Talent
                 </Button>
               </div>
               )}
@@ -570,31 +572,31 @@ export default function EventDetails() {
 
       {/* Mobile app bar: price and the one action that matters, pinned where the thumb is */}
       <div
-        className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-hairline bg-background/95 backdrop-blur-xl px-4 pt-3"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-hairline bg-surface/95 backdrop-blur-xl px-3.5 sm:px-4 pt-2.5 sm:pt-3"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.65rem)" }}
       >
-        <div className="flex items-center gap-3">
-          <div className="min-w-0">
-            <p className="eyebrow">From</p>
-            <p className="font-display text-xl font-bold text-ink leading-none mt-0.5">{price}</p>
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="min-w-0 pr-1">
+            <p className="eyebrow text-[9.5px]">From</p>
+            <p className="font-display text-lg min-[360px]:text-xl font-bold text-ink leading-none mt-0.5 truncate">{price}</p>
           </div>
           <Button
             variant="outline"
             size="icon"
             onClick={() => setIsFlyerModalOpen(true)}
             aria-label="Share this event"
-            className="press h-12 w-12 shrink-0 border-hairline text-ink hover:text-gold"
+            className="press h-10 w-10 sm:h-12 sm:w-12 shrink-0 border-hairline text-ink hover:text-gold"
           >
-            <Share2 className="w-5 h-5" />
+            <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
           {eventEnded ? (
-            <div className="flex-1 h-12 flex items-center justify-center rounded-md border border-hairline bg-surface-2/60 text-sm text-muted-ink">
+            <div className="flex-1 h-10 sm:h-12 flex items-center justify-center rounded-md border border-hairline bg-surface-2/60 text-xs sm:text-sm text-muted-ink">
               Event ended
             </div>
           ) : (
             <Button
               onClick={() => setIsBookingOpen(true)}
-              className="press flex-1 h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md"
+              className="press flex-1 h-10 sm:h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md text-xs sm:text-sm"
             >
               Get tickets
             </Button>
