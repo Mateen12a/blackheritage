@@ -37,6 +37,7 @@ import OrganizersLanding from "@/pages/OrganizersLanding";
 import Settings from "@/pages/Settings";
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
+import MotionReel from "@/pages/MotionReel";
 import { PublicLayout } from "@/components/PublicLayout";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { MotionProvider } from "@/components/motion";
@@ -289,6 +290,14 @@ function Router() {
             <OrganizerDetails />
           </PublicLayout>
         )}
+      </Route>
+
+      {/* Instagram 9:16 Motion Reel Studio */}
+      <Route path="/reel">
+        {() => <MotionReel />}
+      </Route>
+      <Route path="/motion">
+        {() => <MotionReel />}
       </Route>
 
       {/* Auth Page */}

@@ -59,3 +59,4 @@ scratch/
 
 # Deployment script with sensitive credentials
 deploy.sh
+example.mp4

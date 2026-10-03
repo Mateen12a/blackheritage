@@ -334,7 +334,7 @@ export function OrganizerBrandPanel() {
                 setDisplayName(e.target.value);
                 setIsDirty(true);
               }}
-              placeholder="e.g. Mainland Block Party or Tunde Live Concepts"
+              placeholder="e.g. Lagos Street & Sound or Tunde Live Concepts"
               className="bg-surface-2 border-hairline text-ink text-xs h-10"
             />
           </div>

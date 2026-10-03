@@ -1,7 +1,16 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import fs from "fs";
 import tailwindcss from "@tailwindcss/vite";
+
+try {
+  const djSrc = "C:/Users/PC/.gemini/antigravity-ide/brain/9530cf44-7881-433e-8aaa-e59ac3ae28e6/dj_zoro_avatar_1791052639002.jpg";
+  const djDest = path.resolve(import.meta.dirname, "client/public/dj-zoro.jpg");
+  if (fs.existsSync(djSrc) && !fs.existsSync(djDest)) {
+    fs.copyFileSync(djSrc, djDest);
+  }
+} catch (e) {}
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],

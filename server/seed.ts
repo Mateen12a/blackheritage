@@ -96,66 +96,63 @@ export async function seedPlatform(): Promise<void> {
     await organizer.save();
   }
 
-  // Mainland Block Party
-  const mainlandOrg = await ensureUser("mainlandblockparty", "tickets@mainlandblockparty.com", "organizer", {
-    organizerSlug: "mainland-block-party",
-    displayName: "Mainland Block Party",
-    bio: "The undisputed heartbeat of African youth culture. Connecting music, energy, and community across Lagos, Abuja, Port Harcourt, and London.",
+  // Lagos Street & Sound Collective (Concept Organizer)
+  const mainlandOrg = await ensureUser("mainlandblockparty", "tickets@blackhevents.com", "organizer", {
+    organizerSlug: "lagos-street-sound",
+    displayName: "Lagos Street & Sound Collective",
+    bio: "Nigeria's premier street music, sound trucks, and urban youth culture collective. Connecting artists, fans, and street culture across Lagos and beyond.",
     logoUrl: "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=120&h=120&auto=format&fit=crop",
     coverUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1600&auto=format&fit=crop",
     videoLoopUrl: "https://assets.mixkit.co/videos/preview/mixkit-crowd-at-a-concert-jumping-and-recording-with-their-phones-41484-large.mp4",
     spotifyPlaylistUrl: "https://open.spotify.com/playlist/37i9dQZF1DXaNKqZRgC6dw",
-    tourCities: ["Lagos", "Abuja", "Port Harcourt", "London"],
+    tourCities: ["Lagos", "Abuja", "Port Harcourt"],
     socials: {
-      instagram: "https://instagram.com/mainlandblockparty",
-      twitter: "https://x.com/mainlandblockp",
+      instagram: "https://instagram.com/blackhevents",
       whatsapp: "2348000000001",
-      website: "https://mainlandblockparty.com",
+      website: "https://blackhevents.com",
     },
     theme: "midnight-gold",
     accentHex: "#E3B23C",
     announcement: {
-      message: "Early bird tickets live for the Island Takeover at Moist Beach. Grab passes before wave 1 closes.",
-      linkUrl: "/e/mainland-block-party-island-takeover",
+      message: "Early bird tickets live for the Lagos Street & Sound Festival. Grab passes before wave 1 closes.",
+      linkUrl: "/e/lagos-street-and-sound-festival",
       active: true,
     },
     followersCount: 28400,
   });
 
-  // Alte Culture Circle
-  const alteOrg = await ensureUser("alte_culture", "community@alte-culture.ng", "organizer", {
-    organizerSlug: "alte-culture-circle",
-    displayName: "Alte Culture Circle",
-    bio: "The premier cultural festival celebrating Nigeria's alternative music, progressive fashion, photography, and contemporary youth art at Muri Okunola Park.",
+  // Alté Sound Society (Concept Organizer)
+  const alteOrg = await ensureUser("alte_culture", "community@blackhevents.com", "organizer", {
+    organizerSlug: "lagos-alte-sound",
+    displayName: "Alté Sound Society",
+    bio: "The premier cultural collective celebrating Nigeria's alternative music, progressive fashion, photography, and contemporary youth art at Muri Okunola Park.",
     logoUrl: "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?q=80&w=120&h=120&auto=format&fit=crop",
     coverUrl: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1600&auto=format&fit=crop",
     tourCities: ["Lagos", "Abuja"],
     socials: {
-      instagram: "https://instagram.com/alteculturecircle",
-      twitter: "https://x.com/alteculture",
+      instagram: "https://instagram.com/blackhevents",
       whatsapp: "2348000000002",
     },
     theme: "ivory-editorial",
     accentHex: "#E3B23C",
     announcement: {
-      message: "Alte Culture Festival 2026 phase 1 artist lineup announced. Tier 1 passes selling fast.",
-      linkUrl: "/e/alte-culture-festival-2026",
+      message: "Lagos Alté & Indie Sound Gathering 2026 phase 1 artist lineup announced. Tier 1 passes selling fast.",
+      linkUrl: "/e/lagos-alte-sound-gathering-2026",
       active: true,
     },
     followersCount: 12900,
   });
 
-  // Native Sound System
-  const nativeOrg = await ensureUser("native_sound", "live@nativesoundsystem.com", "organizer", {
-    organizerSlug: "native-sound-system",
-    displayName: "Native Sound System",
-    bio: "Lagos and London sound collective curation by The NATIVE. Groundbreaking DJ sets, club nights, and festival sound stages celebrating modern African sonic identity.",
+  // Sub-Bass Collective Lagos (Concept Organizer)
+  const nativeOrg = await ensureUser("native_sound", "live@blackhevents.com", "organizer", {
+    organizerSlug: "sub-bass-collective",
+    displayName: "Sub-Bass Collective Lagos",
+    bio: "Lagos shoreline sound collective. Groundbreaking DJ sets, club nights, and beachfront sound stages celebrating modern African sonic identity.",
     logoUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=120&h=120&auto=format&fit=crop",
     coverUrl: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1600&auto=format&fit=crop",
-    tourCities: ["Lagos", "London", "Accra"],
+    tourCities: ["Lagos", "Accra"],
     socials: {
-      instagram: "https://instagram.com/nativesoundsystem",
-      twitter: "https://x.com/nativesoundsystem",
+      instagram: "https://instagram.com/blackhevents",
       whatsapp: "2348000000003",
     },
     theme: "midnight-gold",
@@ -163,16 +160,16 @@ export async function seedPlatform(): Promise<void> {
     followersCount: 18300,
   });
 
-  // Sip & Paint .NG
-  const sipOrg = await ensureUser("sip_and_paint", "hello@sipandpaint.ng", "organizer", {
-    organizerSlug: "sip-and-paint-ng",
-    displayName: "Sip & Paint .NG",
+  // Canvas & Cocktails Lagos (Concept Organizer)
+  const sipOrg = await ensureUser("sip_and_paint", "hello@blackhevents.com", "organizer", {
+    organizerSlug: "canvas-and-cocktails",
+    displayName: "Canvas & Cocktails Lagos",
     bio: "Nigeria's favorite social creative experience. Cocktails, canvases, Afrobeats, and curated rooftop vibes across Lekki, Victoria Island, and Abuja.",
     logoUrl: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=120&h=120&auto=format&fit=crop",
     coverUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=1600&auto=format&fit=crop",
     tourCities: ["Lagos", "Abuja"],
     socials: {
-      instagram: "https://instagram.com/sipandpaintng",
+      instagram: "https://instagram.com/blackhevents",
       whatsapp: "2348000000004",
     },
     theme: "sunset-poster",
@@ -243,9 +240,9 @@ export async function seedPlatform(): Promise<void> {
   // Authentic Nigerian Cultural Events across Lagos & Abuja with bespoke flyers and accurate ticket tiers
   const canonicalEvents = [
     {
-      title: "Mainland Block Party: GTA Lagos",
-      slug: "mainland-block-party-gta-lagos",
-      slugAliases: ["mainland-block-party-island-takeover"],
+      title: "The Lagos Street & Sound Festival",
+      slug: "lagos-street-and-sound-festival",
+      slugAliases: ["mainland-block-party-gta-lagos", "mainland-block-party-island-takeover"],
       daysAhead: 12,
       location: "Secret Outdoor Location, Lagos Mainland | Moist Beach, Oniru, Victoria Island, Lagos",
       price: 1000000,
@@ -253,7 +250,7 @@ export async function seedPlatform(): Promise<void> {
       imageUrl: "/events/mainland-block-party.jpg",
       description: "Nigeria's biggest youth movement and street music festival. 3 sound trucks, live percussionists, festival merch drops, surprise sets from Africa's biggest Afrobeats & Amapiano hitmakers, and non-stop street energy till sunrise.",
       ticketTypes: [
-        { name: "General Access (Mainland Gate)", price: 1000000, capacity: 2500, sold: 1850, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "General Access (Festival Gate)", price: 1000000, capacity: 2500, sold: 1850, saleOpen: null, saleClose: inDays(30).toISOString() },
         { name: "VIP Fast Track (Stage Deck)", price: 3000000, capacity: 600, sold: 420, saleOpen: null, saleClose: inDays(30).toISOString() },
         { name: "VIP Table of 6", price: 50000000, capacity: 40, sold: 28, saleOpen: null, saleClose: inDays(28).toISOString() },
         { name: "Grand Cabana (Table of 10)", price: 150000000, capacity: 15, sold: 9, saleOpen: null, saleClose: inDays(25).toISOString() },
@@ -264,24 +261,24 @@ export async function seedPlatform(): Promise<void> {
       isFeatured: true,
       theme: "midnight-gold" as const,
       organizerId: mainlandOrg._id.toString(),
-      organizerName: "Mainland Block Party",
+      organizerName: "Lagos Street & Sound Collective",
       branding: {
-        displayName: "Mainland Block Party",
+        displayName: "Lagos Street & Sound Collective",
         logoUrl: "/events/mainland-block-party.jpg",
         accentHex: "#E3B23C",
-        slug: "mainland-block-party",
+        slug: "lagos-street-sound",
       },
     },
     {
-      title: "Alté Culture Festival 2026",
-      slug: "alte-culture-festival-2026",
-      slugAliases: [],
+      title: "Lagos Alté & Indie Sound Gathering 2026",
+      slug: "lagos-alte-sound-gathering-2026",
+      slugAliases: ["alte-culture-festival-2026"],
       daysAhead: 26,
       location: "Muri Okunola Park, Victoria Island, Lagos",
       price: 1250000,
       capacity: 2500,
       imageUrl: "/events/alte-culture-festival.jpg",
-      description: "The 5th edition of Nigeria's premier youth cultural gathering celebrating progressive alternative music, indie fashion, photography, skate culture, and forward-thinking youth art. Featuring Lady Donli, Odunsi (The Engine), BOJ, and underground selectors.",
+      description: "The premier youth cultural gathering celebrating progressive alternative music, indie fashion, photography, skate culture, and forward-thinking youth art. Featuring live acoustic sets, experimental indie artists, and underground selectors.",
       ticketTypes: [
         { name: "Festival Lawn Pass", price: 1250000, capacity: 1800, sold: 980, saleOpen: null, saleClose: inDays(30).toISOString() },
         { name: "VIP Stage Deck", price: 3500000, capacity: 500, sold: 260, saleOpen: null, saleClose: inDays(30).toISOString() },
@@ -293,24 +290,24 @@ export async function seedPlatform(): Promise<void> {
       isFeatured: true,
       theme: "ivory-editorial" as const,
       organizerId: alteOrg._id.toString(),
-      organizerName: "Alte Culture Circle",
+      organizerName: "Alté Sound Society",
       branding: {
-        displayName: "Alte Culture Circle",
+        displayName: "Alté Sound Society",
         logoUrl: "/events/alte-culture-festival.jpg",
         accentHex: "#E3B23C",
-        slug: "alte-culture-circle",
+        slug: "lagos-alte-sound",
       },
     },
     {
-      title: "Native Sound System: Club NATIVE Lagos",
-      slug: "native-sound-system-club-native",
-      slugAliases: ["native-sound-system-born-in-lagos"],
+      title: "Shoreline Sub-Bass: Beachfront Sessions",
+      slug: "shoreline-sub-bass-beachfront-sessions",
+      slugAliases: ["native-sound-system-club-native", "native-sound-system-born-in-lagos"],
       daysAhead: 15,
       location: "Wave Beach, Elegushi, Lekki Phase 1, Lagos",
       price: 1000000,
       capacity: 1800,
       imageUrl: "/events/native-sound-system.jpg",
-      description: "Heavy sub-bass, experimental Afrobeats, and high-octane live sets on the shoreline. Curated by The NATIVE featuring international guest selectors, Shzzy, Lady Donli, TDRM, Solis, and the underground sounds of modern Africa.",
+      description: "Heavy sub-bass, experimental Afrobeats, and high-octane live sets on the shoreline. Curated beachfront sound stages featuring international guest selectors and the underground sonic pulse of modern Lagos.",
       ticketTypes: [
         { name: "Regular Shoreline Pass", price: 1000000, capacity: 1200, sold: 710, saleOpen: null, saleClose: inDays(30).toISOString() },
         { name: "VIP Shoreline Lounge", price: 3000000, capacity: 350, sold: 180, saleOpen: null, saleClose: inDays(30).toISOString() },
@@ -322,18 +319,18 @@ export async function seedPlatform(): Promise<void> {
       isFeatured: true,
       theme: "midnight-gold" as const,
       organizerId: nativeOrg._id.toString(),
-      organizerName: "Native Sound System",
+      organizerName: "Sub-Bass Collective Lagos",
       branding: {
-        displayName: "Native Sound System",
+        displayName: "Sub-Bass Collective Lagos",
         logoUrl: "/events/native-sound-system.jpg",
         accentHex: "#E3B23C",
-        slug: "native-sound-system",
+        slug: "sub-bass-collective",
       },
     },
     {
-      title: "Sip & Paint .NG: Golden Hour Rooftop",
-      slug: "sip-paint-ng-golden-hour",
-      slugAliases: ["sunset-sip-paint-chill"],
+      title: "Sip, Sound & Canvas: Golden Hour Rooftop",
+      slug: "sip-sound-canvas-golden-hour",
+      slugAliases: ["sip-paint-ng-golden-hour", "sunset-sip-paint-chill"],
       daysAhead: 7,
       location: "Atmosphere Rooftop, Lennox Mall, Lekki Phase 1, Lagos",
       price: 2000000,
@@ -351,24 +348,24 @@ export async function seedPlatform(): Promise<void> {
       isFeatured: true,
       theme: "sunset-poster" as const,
       organizerId: sipOrg._id.toString(),
-      organizerName: "Sip & Paint .NG",
+      organizerName: "Canvas & Cocktails Lagos",
       branding: {
-        displayName: "Sip & Paint .NG",
+        displayName: "Canvas & Cocktails Lagos",
         logoUrl: "/events/sip-and-paint-ng.jpg",
         accentHex: "#E3B23C",
-        slug: "sip-and-paint-ng",
+        slug: "canvas-and-cocktails",
       },
     },
     {
-      title: "Palmwine Music Festival: Live in Lagos",
-      slug: "palmwine-music-festival-lagos",
-      slugAliases: ["palmwine-suya-sunset-sessions"],
+      title: "Palmwine, Highlife & Suya Night: Live in Lagos",
+      slug: "palmwine-highlife-suya-night-lagos",
+      slugAliases: ["palmwine-music-festival-lagos", "palmwine-suya-sunset-sessions"],
       daysAhead: 9,
       location: "Muri Okunola Park, Victoria Island, Lagos",
       price: 1500000,
       capacity: 2000,
       imageUrl: "/events/palmwine-music-festival.jpg",
-      description: "Curated by Show Dem Camp & Friends. An iconic open-air December celebration of classic highlife, modern hip-hop, fresh palmwine kegs, artisan suya grills, and festival culture under the canopy of Muri Okunola Park.",
+      description: "An iconic open-air December celebration of classic highlife, modern hip-hop, fresh palmwine kegs, artisan suya grills, and festival culture under the canopy of Muri Okunola Park.",
       ticketTypes: [
         { name: "General Palmwine Pass", price: 1500000, capacity: 1400, sold: 780, saleOpen: null, saleClose: inDays(30).toISOString() },
         { name: "VIP Lawn Table", price: 4500000, capacity: 250, sold: 130, saleOpen: null, saleClose: inDays(30).toISOString() },
@@ -382,7 +379,7 @@ export async function seedPlatform(): Promise<void> {
       organizerId: organizerId,
       organizerName: "Tunde Live Concepts",
       branding: {
-        displayName: "Show Dem Camp & Friends",
+        displayName: "Highlife & Palmwine Evenings",
         logoUrl: "/events/palmwine-music-festival.jpg",
         accentHex: "#E3B23C",
         slug: "tunde-live",
@@ -528,6 +525,10 @@ export async function seedPlatform(): Promise<void> {
         existing.branding = item.branding;
         existing.organizerId = targetOrgId;
         existing.organizerName = targetOrgName;
+        touched = true;
+      }
+      if (item.slugAliases && JSON.stringify(existing.slugAliases) !== JSON.stringify(item.slugAliases)) {
+        existing.slugAliases = item.slugAliases;
         touched = true;
       }
       if (new Date(existing.date).getTime() < Date.now()) {
@@ -691,7 +692,7 @@ export async function seedPlatform(): Promise<void> {
   // Mongo's events[0] shifts between restarts, which silently moves the
   // demo codes.
   const flagship: any =
-    events.find((e: any) => e.title === "Palmwine Music Festival: Live in Lagos") || events[0];
+    events.find((e: any) => e.title === "Palmwine, Highlife & Suya Night: Live in Lagos" || e.title === "Palmwine Music Festival: Live in Lagos") || events[0];
   // Heal, don't just create: demo codes expire on a fuse, so a long-running
   // demo DB ends up with dead codes. Codes are unique per (code, eventId),
   // so an existing row is refreshed IN PLACE (never moved across events) and
