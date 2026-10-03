@@ -3,6 +3,7 @@ import { EventCardCompact } from "@/components/EventCardCompact";
 import { useEvents } from "@/hooks/use-events";
 import { Reveal } from "@/components/motion";
 import { Search } from "lucide-react";
+import { CategoryBrowse } from "@/components/CategoryBrowse";
 import { DirectorySkeleton } from "@/components/AsyncStates";
 import { stateForLocation, stateOptionsForEvents } from "@/lib/nigeria";
 import { useSearch } from "wouter";
@@ -129,9 +130,7 @@ export default function Events() {
           </h1>
           <div className="mt-5 h-0.5 w-16 bg-gold" aria-hidden="true" />
           <p className="mt-5 text-lg text-muted-ink max-w-xl leading-relaxed hidden md:block">
-            {events?.length ?? 0}
-            {events?.length === 1 ? " show" : " shows"} on sale across Nigeria:
-            afrobeats nights, live jazz, beach hangouts, festivals, and cultural shows.
+            Afrobeats nights, live jazz, beach hangouts, festivals, and cultural shows.
             Instant confirmation, verified entry.
           </p>
         </Reveal>
@@ -149,6 +148,18 @@ export default function Events() {
             />
           </div>
         </div>
+
+        {/* Category poster wall — the fastest way into the right kind of
+            night. Tiles carry real flyers and real counts, and selecting one
+            drives the same type filter as the chips below. */}
+        {!isLoading && events && events.length > 0 && (
+          <CategoryBrowse
+            events={events}
+            keys={EVENT_TYPE_FILTERS.map((f) => f.key)}
+            active={typeFilter}
+            onSelect={setTypeFilter}
+          />
+        )}
 
         {/* One filter row: when / type / where share a single scroller, led by
             one "All" that resets every group. The groups stay labelled for
@@ -199,8 +210,8 @@ export default function Events() {
 
           <span aria-hidden="true" className="shrink-0 h-6 w-px bg-hairline" />
 
-          {/* Where: only states with events on sale, with counts, so the row
-              never offers a filter that leads nowhere. */}
+          {/* Where: only states with events on sale, so the row never offers
+              a filter that leads nowhere. */}
           <div role="group" aria-label="Filter by state" className="contents">
             {stateOptions.map((option) => (
               <button
@@ -208,10 +219,9 @@ export default function Events() {
                 type="button"
                 aria-pressed={stateKey === option.key}
                 onClick={() => setStateKey((current) => (current === option.key ? "all" : option.key))}
-                className={cn(chipClass(stateKey === option.key), "inline-flex items-center gap-1.5")}
+                className={chipClass(stateKey === option.key)}
               >
                 {option.name}
-                <span className="opacity-60">{option.count}</span>
               </button>
             ))}
           </div>

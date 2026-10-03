@@ -261,7 +261,7 @@ export default function EventDetails() {
           aria-hidden="true"
           className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-background/10"
         />
-        <div className="absolute top-4 md:top-28 left-4 right-4 z-20 flex items-center justify-between">
+        <div className="absolute top-[5.25rem] md:top-28 left-4 right-4 z-20 flex items-center justify-between">
           {cameFromApp ? (
             <Button
               variant="outline"
@@ -521,7 +521,7 @@ export default function EventDetails() {
                     onClick={() => setIsBookingOpen(true)}
                     className="press hidden lg:inline-flex mt-6 w-full h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md"
                   >
-                    Get Tickets
+                    Get tickets
                   </Button>
                 )}
 
@@ -596,7 +596,7 @@ export default function EventDetails() {
               onClick={() => setIsBookingOpen(true)}
               className="press flex-1 h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md"
             >
-              Get Tickets
+              Get tickets
             </Button>
           )}
         </div>

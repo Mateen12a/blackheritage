@@ -38,10 +38,9 @@ export default function Vendors() {
           </h1>
           <div className="mt-5 h-0.5 w-16 bg-gold" aria-hidden="true" />
           <p className="mt-5 text-lg text-muted-ink max-w-xl leading-relaxed">
-            {vendors?.length ?? 0}
-            {vendors?.length === 1 ? " vendor" : " vendors"} across Nigeria: DJs,
-            MCs, caterers, decorators, photographers, and live bands. Browse
-            portfolios, then message them straight on WhatsApp.
+            DJs, MCs, caterers, decorators, photographers, and live bands from
+            across Nigeria. Browse portfolios, then message them straight on
+            WhatsApp.
           </p>
         </Reveal>
 

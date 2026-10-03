@@ -74,9 +74,9 @@ export function VendorCard({ vendor }: VendorCardProps) {
           </div>
 
           <div className="mt-auto pt-4 border-t border-hairline flex items-baseline justify-between gap-3">
-            <span className="text-sm text-muted-ink line-clamp-1">{vendor.bio}</span>
+            <span className="text-sm text-muted-ink line-clamp-2">{vendor.bio}</span>
             <span className="eyebrow shrink-0 transition-colors duration-200 group-hover:text-gold">
-              View
+              See profile
             </span>
           </div>
         </div>

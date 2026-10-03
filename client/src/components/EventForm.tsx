@@ -709,7 +709,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
         <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
           <h3 className="text-white font-bold uppercase tracking-wider text-sm">Page template</h3>
           <p className="text-xs text-muted-foreground mt-1 mb-4">
-            Choose how your event page is built — each template has its own layout and entrance animation. Your brand color sets the colors; if you skip it, the Black Heritage gold shows.
+            Choose how your event page is built. Each template has its own layout and entrance animation. Your brand color sets the colors; if you skip it, the Black Heritage gold shows.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {Object.values(themePresets).map((preset) => (

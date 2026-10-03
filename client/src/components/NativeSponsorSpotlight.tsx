@@ -55,8 +55,11 @@ export function NativeSponsorSpotlight({
       >
         <div className="relative rounded-[11px] bg-[#121217] border border-hairline overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-12 items-center">
-            {/* Visual art banner */}
-            <div className="lg:col-span-5 relative aspect-[16/9] lg:aspect-auto lg:h-full min-h-[220px] overflow-hidden bg-surface-2">
+            {/* Visual art banner. The ratio is fixed at every breakpoint: with
+                `lg:aspect-auto` the grid row was sized by the sponsor's portrait
+                asset (1200×1807), so a 315px copy column sat beside a 741px
+                image and the banner ate 744px of the page. */}
+            <div className="lg:col-span-5 relative aspect-[16/9] lg:aspect-[16/10] min-h-[220px] overflow-hidden bg-surface-2">
               <FadeImg
                 src={sponsor.imageUrl}
                 alt={sponsor.title}
@@ -101,7 +104,7 @@ export function NativeSponsorSpotlight({
                   <ArrowUpRight className="w-4 h-4" aria-hidden="true" />
                 </a>
                 <span className="text-xs text-muted-ink">
-                  Curated partner spotlight
+                  Sponsored placement
                 </span>
               </div>
             </div>

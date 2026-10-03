@@ -119,10 +119,9 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
   return (
     <nav
       className={cn(
-        "fixed inset-x-0 z-40 lg:top-4 lg:px-5 pt-[env(safe-area-inset-top)] lg:pt-0 transition-colors duration-300",
-        scrolled
-          ? "max-lg:bg-background/85 max-lg:backdrop-blur-xl max-lg:border-b max-lg:border-hairline"
-          : "max-lg:bg-transparent max-lg:border-b max-lg:border-transparent"
+        "fixed z-40 left-3 right-3 top-[calc(env(safe-area-inset-top)+0.5rem)] lg:left-0 lg:right-0 lg:top-4 lg:px-5 transition-colors duration-300",
+        "max-lg:rounded-2xl max-lg:border max-lg:border-hairline max-lg:backdrop-blur-xl max-lg:shadow-[0_8px_30px_rgba(0,0,0,0.35)]",
+        scrolled ? "max-lg:bg-surface/90" : "max-lg:bg-surface/60"
       )}
     >
       {/* Mobile: brand pinned left, actions pinned right. Desktop: capsule centered. */}
@@ -213,10 +212,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
           href="/"
           aria-label={eventBrand?.displayName ? `${eventBrand.displayName} on BlackHeritage` : "Black Heritage Entertainment & Events home"}
           className={cn(
-            "lg:hidden flex items-center gap-2.5 min-w-0",
-            // On event pages the brand sits over arbitrary flyers: a soft
-            // scrim keeps it legible on light or busy images, branded or not.
-            overMedia && "rounded-xl bg-background/60 backdrop-blur-md px-2.5 py-1.5 -ml-1"
+            "lg:hidden flex items-center gap-2.5 min-w-0 pl-1"
           )}
         >
           {brand}

@@ -194,7 +194,7 @@ export function BookingLinkPanel({ event }: BookingLinkPanelProps) {
                   className="inline-flex h-8 items-center rounded-full px-4 text-xs font-semibold"
                   style={{ background: previewAccent, color: previewVars["--color-primary-foreground"] }}
                 >
-                  Get Tickets
+                  Get tickets
                 </span>
                 <span className="text-[11px]" style={{ color: previewVars["--color-muted-ink"] }}>
                   {event.location}

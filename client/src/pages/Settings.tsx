@@ -312,7 +312,7 @@ function SettingsForm() {
             <CardTitle className="text-ink">Close this account</CardTitle>
             <CardDescription>
               This signs you out for good. Tickets you already bought stay valid, and the
-              organizer still has your name on their door list — but you will not be able to
+              organizer still has your name on their door list, but you will not be able to
               sign in and view them.
             </CardDescription>
           </CardHeader>
@@ -328,7 +328,7 @@ function SettingsForm() {
                   • Your events stay online as recaps for attendees, without your name on them.
                 </li>
               )}
-              <li>• Followers are removed from both sides — they stop hearing from you.</li>
+              <li>• Followers are removed from both sides. They stop hearing from you.</li>
               <li>• Past sales, tickets and payouts are kept. Money records do not get deleted.</li>
             </ul>
 
@@ -336,7 +336,7 @@ function SettingsForm() {
               <p className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
                 You have {liveEvents.length} upcoming published event
                 {liveEvents.length === 1 ? "" : "s"} ({liveEvents.map((e: any) => e.title).slice(0, 2).join(", ")}
-                {liveEvents.length > 2 ? "…" : ""}). Unpublish them first — closing the account
+                {liveEvents.length > 2 ? "…" : ""}). Unpublish them first. Closing the account
                 now would leave people holding tickets for shows that disappear.
               </p>
             )}

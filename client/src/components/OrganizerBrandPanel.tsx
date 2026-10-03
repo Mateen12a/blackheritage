@@ -662,7 +662,7 @@ export function OrganizerBrandPanel() {
             {/* Quick 1-Click Video Presets */}
             <div className="pt-2">
               <span className="text-[11px] text-muted-ink font-semibold uppercase tracking-wider block mb-2">
-                Or choose a curated atmosphere preset:
+                Or pick an atmosphere preset:
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {[

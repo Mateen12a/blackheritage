@@ -459,7 +459,7 @@ export default function AuthPage() {
             <div className="space-y-2.5 max-w-sm">
               {[
                 {
-                  title: isRegister ? "Curated Shows" : "Guaranteed Entry",
+                  title: isRegister ? "Real Shows" : "Guaranteed Entry",
                   desc: "Verified tickets with instant QR entry on your phone.",
                 },
                 {

@@ -508,7 +508,7 @@ export function ShareFlyerModal({
                         <div className="min-w-0">
                           <p className="text-xs font-medium text-ink">Animated story clip</p>
                           <p className="text-[11px] text-muted-ink">
-                            This exact card, moving, for 6 seconds — ready for stories and status.
+                            This exact card, moving, for 6 seconds. Ready for stories and status.
                           </p>
                         </div>
                       </div>

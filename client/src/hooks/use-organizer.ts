@@ -132,7 +132,7 @@ export function useCreateGateSale(eventId: string) {
       queryClient.invalidateQueries({ queryKey: ["/api/events", eventId, "live-stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/events"] });
       toast({
-        title: `Sold ${data.tickets.length} ticket${data.tickets.length > 1 ? "s" : ""} — ${nairaKobo(data.totalKobo)}`,
+        title: `Sold ${data.tickets.length} ticket${data.tickets.length > 1 ? "s" : ""} · ${nairaKobo(data.totalKobo)}`,
         description: `Ref ${data.bookingRef} · codes scan at the gate`,
       });
     },

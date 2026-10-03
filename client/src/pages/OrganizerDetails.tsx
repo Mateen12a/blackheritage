@@ -418,20 +418,11 @@ export default function OrganizerDetails() {
         <section className="mt-14">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-              <div className="flex items-center gap-2.5">
-                <p className="eyebrow">On Sale Now</p>
-                <span className="inline-flex items-center gap-1.5 text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Live Box Office
-                </span>
-              </div>
+              <p className="eyebrow">On sale now</p>
               <h2 className="font-display text-2xl font-bold text-ink mt-1">
-                Upcoming Shows & Experiences
+                Upcoming shows
               </h2>
             </div>
-            <span className="text-xs text-muted-ink font-mono self-start sm:self-auto">
-              {filteredUpcomingEvents.length} active
-            </span>
           </div>
 
           {/* Tour Cities Filter Chips */}
@@ -512,7 +503,7 @@ export default function OrganizerDetails() {
                       <div className="mt-5 pt-4 border-t border-hairline flex items-center justify-between">
                         <div>
                           <span className="text-[10px] uppercase font-mono text-muted-ink block">
-                            Tickets from
+                            From
                           </span>
                           <span className="text-sm font-bold text-ink">
                             {priceFormatted}
@@ -524,7 +515,7 @@ export default function OrganizerDetails() {
                             size="sm"
                             className="press bg-primary text-primary-foreground hover:bg-gold-soft font-semibold text-xs h-8 px-3"
                           >
-                            Get Tickets
+                            Get tickets
                             <ArrowRight className="w-3 h-3 ml-1" />
                           </Button>
                         </Link>

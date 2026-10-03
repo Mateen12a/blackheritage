@@ -1,18 +1,19 @@
-import { EventCard } from "@/components/EventCard";
 import { RoleHowItWorks } from "@/components/RoleHowItWorks";
 import { useEvents } from "@/hooks/use-events";
 import { useAuth } from "@/hooks/use-auth";
 import { useVendors } from "@/hooks/use-vendors";
 import { Button } from "@/components/ui/button";
-import { Reveal, FadeImg } from "@/components/motion";
+import { Reveal } from "@/components/motion";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
-import { Loader2, ShieldCheck, Flame, ArrowUpRight, MapPin } from "lucide-react";
+import { Flame, ArrowUpRight, MapPin } from "lucide-react";
+import { priceLabelFor } from "@/lib/event-price";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import type { Event } from "@shared/schema";
 import { NativeSponsorSpotlight } from "@/components/NativeSponsorSpotlight";
+import { MostBooked } from "@/components/MostBooked";
 import { WHATSAPP_DISPLAY, whatsappLink } from "@/lib/contact";
 import logoImg from "../assets/logo.png";
 
@@ -21,47 +22,33 @@ import logoImg from "../assets/logo.png";
  * headline can never break mid-word at any width.
  */
 function AnimatedHeading() {
-  const lines = ["Heritage", "& Vibes"];
-  let charIndex = 0;
-
   return (
-    <h1 className="mt-4 text-center font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-ink leading-[1.02] tracking-tight">
-      {lines.map((line, li) => (
-        <span key={li} className="block whitespace-nowrap">
-          {line.split("").map((char, ci) => {
-            const i = charIndex++;
-            return (
-              <motion.span
-                key={ci}
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.45,
-                  delay: 0.12 + i * 0.03,
-                  ease: [0.22, 1, 0.36, 1],
-                }}
-                className={li === 1 ? "italic text-gold" : ""}
-                style={{ display: "inline-block" }}
-              >
-                {char === " " ? "\u00A0" : char}
-              </motion.span>
-            );
-          })}
-        </span>
-      ))}
+    <h1 className="mt-4 font-display text-5xl sm:text-6xl lg:text-7xl font-bold text-ink leading-[1.02] tracking-tight text-center lg:text-left flex flex-col items-center lg:items-start">
+      <motion.span
+        className="block whitespace-nowrap"
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+      >
+        Heritage
+      </motion.span>
+      <motion.span
+        className="block whitespace-nowrap italic text-gold"
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
+      >
+        & Vibes
+      </motion.span>
     </h1>
   );
 }
 
 const EMBERS = [
-  { left: "10%", bottom: "22%", size: 5, delay: "0s", duration: "9s", drift: "22px" },
-  { left: "22%", bottom: "12%", size: 4, delay: "2.4s", duration: "10s", drift: "-18px" },
-  { left: "38%", bottom: "18%", size: 6, delay: "4.1s", duration: "8s", drift: "30px" },
-  { left: "55%", bottom: "9%", size: 4, delay: "1.2s", duration: "11s", drift: "-26px" },
-  { left: "68%", bottom: "20%", size: 5, delay: "5.6s", duration: "9.5s", drift: "18px" },
-  { left: "80%", bottom: "14%", size: 4, delay: "3.3s", duration: "10.5s", drift: "-14px" },
-  { left: "90%", bottom: "24%", size: 5, delay: "6.8s", duration: "8.5s", drift: "24px" },
-  { left: "47%", bottom: "26%", size: 3, delay: "7.9s", duration: "12s", drift: "-20px" },
+  { left: "18%", bottom: "16%", size: 4, delay: "0s", duration: "10s", drift: "20px" },
+  { left: "44%", bottom: "10%", size: 5, delay: "3.2s", duration: "11s", drift: "-22px" },
+  { left: "70%", bottom: "20%", size: 4, delay: "6.1s", duration: "9.5s", drift: "18px" },
+  { left: "86%", bottom: "12%", size: 3, delay: "1.6s", duration: "12s", drift: "-14px" },
 ];
 
 /** Slow rising sparks around the poster. Pure CSS, GPU-safe, collapsed for reduced motion. */
@@ -98,6 +85,12 @@ function HeroEmbers() {
  * means "On Sale" with no percentage rather than an invented one.
  */
 function scarcityFor(event: Event): { tag: string; pct: number | null; hot: 0 | 1 | 2 } {
+  // Organizers can switch remaining-counts off for the whole event. When they
+  // have, the badge stays honest: "On Sale", no invented percentage.
+  if ((event as any).showRemainingCounts === false) {
+    return { tag: "On Sale", pct: null, hot: 0 };
+  }
+
   let capacity = 0;
   let sold = 0;
   try {
@@ -177,11 +170,32 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
 
   return (
     <div
-      className="relative mx-auto w-full max-w-md"
+      className="relative mx-auto w-full max-w-[34rem]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
       <HeroEmbers />
+      {/* Desktop only: the next poster waits at the right edge, so the panel
+          reads as a queue to page through instead of one static card. It swaps
+          with the deck, so the page has life without any new animation.
+          Decorative: the thumbs below remain the real control. */}
+      {events.length > 1 && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-full top-6 hidden lg:block w-36 xl:w-40 -translate-x-10"
+        >
+          <div className="aspect-[4/5] overflow-hidden rounded-2xl border border-white/10 opacity-55 shadow-[0_20px_50px_rgba(0,0,0,0.45)]">
+            <img
+              src={events[(index + 1) % events.length].imageUrl}
+              alt=""
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+              }}
+            />
+          </div>
+        </div>
+      )}
       <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/15 shadow-[0_30px_80px_rgba(0,0,0,0.55)] outline outline-1 outline-white/10">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
@@ -212,12 +226,10 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
           className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/10 to-transparent pointer-events-none"
         />
         {/* Real ticket scarcity, keyed to this poster. Every poster used to
-            wear the same "Selling Fast · 89% Booked" sticker — computed from
-            the event id, i.e. invented. Now the fill rate comes from the
-            tiers the organizer actually set, the tag and heat change with it
-            (On Sale → Selling Fast → Almost Gone → Last Few), and the ticket
-            glyph flips a beat after the slide changes so the badge feels
-            alive rather than constantly blinking. */}
+            wear the same "Selling Fast · 89% Booked" sticker, invented from
+            the event id. The fill rate now comes from the tiers the organizer
+            actually set, and the tag moves with it: On Sale, Filling Up,
+            Selling Fast, Last Few Spots. */}
         <ScarcityBadge event={current} slideKey={current.id} />
         <div className="absolute inset-x-4 bottom-4 flex items-center justify-between gap-3 pointer-events-none">
           <div className="min-w-0">
@@ -225,18 +237,23 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
             <p className="mt-1 font-display text-lg font-bold text-ink truncate">
               {current.title}
             </p>
+            <p className="mt-0.5 text-[13px] font-medium text-gold/90">{priceLabelFor(current)}</p>
           </div>
           <Link href={"/events/" + current.id} className="pointer-events-auto">
             <span className="press inline-flex items-center gap-1 h-9 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium hover:bg-gold-soft transition-colors cursor-pointer whitespace-nowrap">
-              Get Tickets
+              Get tickets
               <ArrowUpRight className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
             </span>
           </Link>
         </div>
       </div>
-      {/* Poster thumbs: pick what's on the marquee */}
+      {/* Poster thumbs: pick what's on the marquee.
+          Each control is a 24×24 hit area with the visible 2px bar centred
+          inside it. The old version made the bar itself the button (8×8),
+          which is well under the 24px minimum target on a phone, and on
+          the hero these dots are the only way to choose a poster. */}
       {events.length > 1 && (
-        <div className="mt-4 flex justify-center gap-2">
+        <div className="mt-3 flex justify-center gap-1">
           {events.map((e, i) => (
             <button
               key={e.id}
@@ -244,37 +261,23 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
               onClick={() => setIndex(i)}
               aria-label={"Show " + e.title}
               aria-current={i === index % events.length}
-              className={cn(
-                "press h-2 rounded-full transition-all duration-300",
-                i === index % events.length
-                  ? "w-8 bg-gold"
-                  : "w-2 bg-white/25 hover:bg-white/50"
-              )}
-            />
+              className="group/dot press grid h-6 min-w-6 place-items-center"
+            >
+              <span
+                className={cn(
+                  "block h-2 rounded-full transition-all duration-300",
+                  i === index % events.length
+                    ? "w-6 bg-gold"
+                    : "w-2 bg-white/25 group-hover/dot:bg-white/50"
+                )}
+              />
+            </button>
           ))}
         </div>
       )}
     </div>
   );
 }
-
-/** One scrolling strip of real events. Rendered twice inside the ticker for a seamless loop. */
-function TickerRow({ events, keyPrefix }: { events: Event[]; keyPrefix: string }) {
-  return (
-    <div className="flex shrink-0 items-center">
-      {events.map((e) => (
-        <Link key={keyPrefix + e.id} href={"/events/" + e.id}>
-          <span className="flex items-center gap-3 px-5 py-3 text-[13px] text-ink/85 hover:text-gold transition-colors cursor-pointer whitespace-nowrap">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold/70" aria-hidden="true" />
-            <span className="font-medium">{e.title}</span>
-            <span className="text-muted-ink">{format(new Date(e.date), "EEE d MMM")}</span>
-          </span>
-        </Link>
-      ))}
-    </div>
-  );
-}
-
 
 export default function Home() {
   const { data: events, isLoading } = useEvents();
@@ -285,9 +288,7 @@ export default function Home() {
     events?.filter((e) => e.isFeatured).slice(0, 3) ||
     events?.slice(0, 3);
 
-  const heroEvent = featuredEvents?.[0] ?? events?.[0];
   const posterDeck = (events ?? []).slice(0, 4);
-  const tickerEvents = events?.slice(0, 6) ?? [];
   const vendorsWithWork = (vendors ?? []).filter((v) => {
     try {
       const g = JSON.parse(v.gallery || "[]");
@@ -304,35 +305,24 @@ export default function Home() {
         ? "/vendor-dashboard"
         : "/dashboard";
 
-  // Time-of-day contextual CTA: evening/night (5 PM - 4:59 AM) vs daytime
-  const isTonight = (() => {
-    const hour = new Date().getHours();
-    return hour >= 17 || hour < 5;
-  })();
-  const eventCtaText = isTonight ? "Find Events Tonight" : "Find Events Today";
-  const eventCtaHref = isTonight ? "/events?filter=tonight" : "/events";
-
   return (
     <div className="min-h-screen">
       {/* Hero: atmospheric concert motion, headline, Afrobeats player, live poster panel */}
       <section className="relative overflow-hidden">
-        {/* High-energy ambient concert video backdrop */}
+        {/* Concert still, not a looping video. The MP4 was several megabytes
+            pulled from a third-party CDN on every home visit, on the device
+            class most of our audience browses on, to render at 20% opacity
+            behind a heavy scrim. A still frame carries the same atmosphere for
+            a fraction of the cost, and leaves the motion budget to the flyers,
+            which are the thing worth looking at. */}
         <div aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            poster="https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1600&auto=format&fit=crop"
-            className="w-full h-full object-cover opacity-20 filter contrast-125 saturate-150 scale-105"
-          >
-            <source
-              src="https://assets.mixkit.co/videos/preview/mixkit-crowd-at-a-concert-jumping-and-recording-with-their-phones-41484-large.mp4"
-              type="video/mp4"
-            />
-          </video>
+          <img
+            src="https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=1600&auto=format&fit=crop"
+            alt=""
+            className="w-full h-full object-cover opacity-25 filter contrast-125 saturate-150 animate-kenburns"
+          />
           {/* Luxury scrim keeping Playfair headlines crisp and meeting DESIGN.md */}
-          <div className="absolute inset-0 bg-gradient-to-b from-background/95 via-background/75 to-background" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/80 to-background" />
         </div>
 
         <div
@@ -344,99 +334,155 @@ export default function Home() {
           }}
         />
 
-        <div className="container relative z-10 pt-12 md:pt-16 pb-14 md:pb-20">
-          <Reveal y={16} duration={0.55}>
-            <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-gold text-center">
-              Nigeria · Concerts · Festivals · Culture
-            </p>
-          </Reveal>
+        <div className="container relative z-10 pt-24 md:pt-28 pb-12 md:pb-16">
+          {/* Poster-first split. The copy and a real flyer share the first
+              screen, so a visitor meets an actual event before reading a word
+              of positioning. Stacked below lg: headline, then the flyer, then
+              the buttons. The flyer still lands above the fold on a phone.
+              Copy is left-anchored, per DESIGN.md's editorial header rule. */}
+          {/* The poster track is an explicit width, not `auto`: the deck's own
+              width is a percentage of its track, so an auto track resolves
+              against the only fixed thing inside it, the 4 × 24px thumb row,
+              and collapses to 108px. */}
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_30rem] xl:grid-cols-[minmax(0,1fr)_34rem] lg:gap-x-12 lg:gap-y-2 xl:gap-x-14 lg:items-center">
+            {/* Copy, part one: the claim. Explicit placement keeps it in the
+                left column on desktop while the DOM order stays
+                claim → flyer → actions, which is what mobile should read. */}
+            <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:self-end">
+              <Reveal y={16} duration={0.55}>
+                <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-gold text-center lg:text-left">
+                  Nigeria · Concerts · Festivals · Culture
+                </p>
+              </Reveal>
 
-          <AnimatedHeading />
+              <AnimatedHeading />
 
-          <Reveal y={16} delay={0.4} duration={0.6}>
-            <p className="mt-6 mx-auto max-w-2xl text-center text-lg text-ink/80 leading-relaxed">
-              Concert tickets across Lagos, Abuja, and nationwide, plus the verified
-              DJs, caterers, and stage sound tech who make the night. One home for
-              going out and throwing the party.
-            </p>
-          </Reveal>
-
-          <Reveal y={12} delay={0.5} duration={0.55}>
-            <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
-              <Link href={eventCtaHref}>
-                <Button className="press h-12 px-8 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-full w-full sm:w-auto">
-                  {eventCtaText}
-                </Button>
-              </Link>
-              <Link href="/vendors">
-                <Button
-                  variant="outline"
-                  className="press h-12 px-8 border-white/20 bg-white/5 text-ink hover:bg-white/10 hover:text-gold font-medium rounded-full w-full sm:w-auto backdrop-blur-sm"
-                >
-                  Hire a Vendor
-                </Button>
-              </Link>
-              {user && (
-                <Link href={dashboardHref}>
-                  <Button
-                    variant="outline"
-                    className="press h-12 px-8 border-gold/40 bg-gold/5 text-gold hover:bg-gold/10 font-medium rounded-full w-full sm:w-auto"
-                  >
-                    My Dashboard
-                  </Button>
-                </Link>
-              )}
+              <Reveal y={16} delay={0.4} duration={0.6}>
+                <p className="mt-4 max-w-xl text-base sm:text-lg text-ink/80 leading-relaxed text-center lg:text-left mx-auto lg:mx-0">
+                  Tickets to concerts, parties, and festivals in Lagos, Abuja, and beyond. Then the DJs, caterers, and sound engineers who work them, each with a portfolio you can check before you book.
+                </p>
+              </Reveal>
             </div>
-          </Reveal>
 
-          {/* Live counts: numerals first, real data, no decorative pills */}
-          <Reveal y={10} delay={0.58} duration={0.5}>
-            <dl className="mt-12 flex items-stretch justify-center">
-              <div className="px-5 sm:px-8 md:px-10 text-center">
-                <dt className="sr-only">Shows on sale</dt>
-                <dd className="font-display text-3xl sm:text-4xl font-bold text-gold leading-none tabular-nums">
-                  {events?.length ?? 0}
-                </dd>
-                <dd className="eyebrow mt-2.5">shows on sale</dd>
-              </div>
-              <div className="px-5 sm:px-8 md:px-10 text-center border-l border-hairline">
-                <dt className="sr-only">Vendors across Nigeria</dt>
-                <dd className="font-display text-3xl sm:text-4xl font-bold text-gold leading-none tabular-nums">
-                  {vendors?.length ?? 0}
-                </dd>
-                <dd className="eyebrow mt-2.5">vendors across Nigeria</dd>
-              </div>
-              <div className="px-5 sm:px-8 md:px-10 text-center border-l border-hairline">
-                <dt className="sr-only">Checkout security</dt>
-                <dd className="flex justify-center">
-                  <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-gold" strokeWidth={1.5} aria-hidden="true" />
-                </dd>
-                <dd className="eyebrow mt-2.5">Bank-grade security</dd>
-              </div>
-            </dl>
-          </Reveal>
+            {/* The live poster marquee: right-bleeding, with the next poster
+                waiting behind it. Sits in column two on desktop; on a phone it
+                lands directly under the headline, above the fold. */}
+            {posterDeck.length > 0 && (
+              <Reveal
+                y={18}
+                delay={0.2}
+                duration={0.7}
+                className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-center"
+              >
+                <HeroPosterDeck events={posterDeck} />
+              </Reveal>
+            )}
 
-          {/* The live poster marquee */}
-          {posterDeck.length > 0 && (
-            <Reveal y={18} delay={0.65} duration={0.7} className="mt-12 md:mt-14">
-              <HeroPosterDeck events={posterDeck} />
-            </Reveal>
-          )}
-        </div>
+            {/* Copy, part two: the action. One way in for ticket buyers, one for
+                the people they hire. */}
+            <div className="min-w-0 lg:col-start-1 lg:row-start-2 lg:self-start">
+              <Reveal y={12} delay={0.5} duration={0.55}>
+                <div className="mt-7 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start">
+                  <Link href="/events">
+                    <Button className="press h-12 px-8 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-full w-full sm:w-auto">
+                      See all events
+                    </Button>
+                  </Link>
+                  <Link href="/vendors">
+                    <Button
+                      variant="outline"
+                      className="press h-12 px-8 border-white/20 bg-white/5 text-ink hover:bg-white/10 hover:text-gold font-medium rounded-full w-full sm:w-auto backdrop-blur-sm"
+                    >
+                      Hire a vendor
+                    </Button>
+                  </Link>
+                </div>
+                {/* Third button demoted to a link: signed-in visitors already
+                    have Dashboard in the account nav, and three equal CTAs
+                    competed with the flyer for the first screen. */}
+                {user && (
+                  <div className="text-center lg:text-left">
+                    <Link href={dashboardHref}>
+                      <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-gold hover:text-gold-soft transition-colors cursor-pointer">
+                        My Dashboard
+                        <ArrowUpRight className="w-3.5 h-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
+                      </span>
+                    </Link>
+                  </div>
+                )}
 
-        {/* What's on sale: a scrolling strip of real events, pauses on hover */}
-        {tickerEvents.length > 0 && (
-          <div className="relative border-y border-hairline bg-surface/40 backdrop-blur-sm overflow-hidden">
-            <div className="flex w-max animate-ticker hover:[animation-play-state:paused]">
-              <TickerRow events={tickerEvents} keyPrefix="a" />
-              <TickerRow events={tickerEvents} keyPrefix="b" />
+                {/* Quick discovery */}
+                <div className="mt-5 flex flex-wrap gap-2 justify-center lg:justify-start">
+                  {[
+                    { label: "Lagos", href: "/events?city=Lagos" },
+                    { label: "Abuja", href: "/events?city=Abuja" },
+                    { label: "Concerts", href: "/events?category=Concerts" },
+                    { label: "Festivals", href: "/events?category=Festivals" },
+                    { label: "Free", href: "/events?price=free" },
+                  ].map((pill) => (
+                    <Link key={pill.label} href={pill.href}>
+                      <span className="press inline-flex items-center h-8 px-3.5 rounded-full border border-white/10 bg-white/5 text-xs font-medium text-ink/70 hover:border-gold/30 hover:text-gold transition-colors cursor-pointer backdrop-blur-sm">
+                        {pill.label}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </Reveal>
+
+              {/* Counts are off until there are enough shows and vendors for
+                  the numbers to mean anything. Kept here for the day they are:
+                  uncomment and compute `cheapestTicket` with `cheapestPriceKobo`
+                  in the component body.
+
+              <Reveal y={10} delay={0.58} duration={0.5}>
+                <dl className="mt-9 flex items-stretch">
+                  <div className="pr-5 sm:pr-7">
+                    <dt className="sr-only">Shows on sale</dt>
+                    <dd className="font-display text-3xl sm:text-4xl font-bold text-gold leading-none tabular-nums">
+                      {events?.length ?? 0}
+                    </dd>
+                    <dd className="eyebrow mt-2.5">shows on sale</dd>
+                  </div>
+                  <div className="pl-5 sm:pl-7 border-l border-hairline">
+                    <dt className="sr-only">Vendors across Nigeria</dt>
+                    <dd className="font-display text-3xl sm:text-4xl font-bold text-gold leading-none tabular-nums">
+                      {vendors?.length ?? 0}
+                    </dd>
+                    <dd className="eyebrow mt-2.5">vendors across Nigeria</dd>
+                  </div>
+                  {cheapestTicket !== null && (
+                    <div className="pl-5 sm:pl-7 border-l border-hairline">
+                      <dt className="sr-only">Cheapest ticket on sale</dt>
+                      <dd className="font-display text-3xl sm:text-4xl font-bold text-gold leading-none tabular-nums">
+                        {formatNaira(cheapestTicket)}
+                      </dd>
+                      <dd className="eyebrow mt-2.5">tickets from</dd>
+                    </div>
+                  )}
+                </dl>
+              </Reveal>
+              */}
             </div>
           </div>
-        )}
+        </div>
+
+        {/* The ticker that scrolled the same events under the deck is gone. The
+            home page should not announce the same events three times in a row:
+            the deck is the hero's event surface, the ranked rail below is the
+            list, and "See all events" is the way into the directory. */}
       </section>
 
-      {/* Featured events */}
-      <section className="py-20">
+      {/* What is actually filling up, ranked from real tier data */}
+      {events && events.length > 0 && <MostBooked events={events} />}
+
+      {/* The separate "Shows Across Nigeria" grid is off for now. The ranked
+          rail above already lists real events, and two event sections stacked on
+          one page made the landing feel like a directory. Switch it back on when
+          the catalogue is big enough that a grid shows more than the rail can:
+          uncomment below and re-add the `EventCard` import (plus `Loader2` for
+          the spinner). `featuredEvents` and `isLoading` above are kept for it.
+
+      <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="flex items-end justify-between mb-10 gap-6">
             <Reveal>
@@ -447,15 +493,13 @@ export default function Home() {
                 </h2>
                 <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
                 <p className="mt-4 text-sm text-muted-ink">
-                  {featuredEvents?.length ?? 0}
-                  {featuredEvents?.length === 1 ? " event" : " events"} on
-                  sale. The good ones sell out first.
+                  Everything on sale right now. The good ones fill up first.
                 </p>
               </div>
             </Reveal>
             <Link href="/events" className="hidden md:block">
               <span className="text-sm font-medium text-gold hover:text-gold-soft transition-colors cursor-pointer">
-                See every event →
+                See all events →
               </span>
             </Link>
           </div>
@@ -475,7 +519,7 @@ export default function Home() {
           {!isLoading && (!featuredEvents || featuredEvents.length === 0) && (
             <div className="text-center py-16 bg-surface border border-hairline rounded-md">
               <p className="text-muted-ink">
-                No upcoming featured events at the moment.
+                No events on sale at the moment.
               </p>
             </div>
           )}
@@ -483,12 +527,13 @@ export default function Home() {
           <div className="mt-8 text-center md:hidden">
             <Link href="/events">
               <span className="text-sm font-medium text-gold hover:text-gold-soft transition-colors cursor-pointer">
-                See every event →
+                See all events →
               </span>
             </Link>
           </div>
         </div>
       </section>
+      */}
 
       {/* Editorial Brand Spotlight / Native Placement */}
       <section className="py-6">
@@ -499,215 +544,176 @@ export default function Home() {
 
       {/* The talent wall: real vendor work, drag to browse */}
       {vendorsWithWork.length >= 3 && (
-        <section aria-label="Vendors at work" className="py-20 overflow-hidden">
+        <section aria-label="Vendors at work" className="py-16 overflow-hidden">
           <div className="container mx-auto px-4">
             <div className="flex items-end justify-between mb-10 gap-6">
               <Reveal>
                 <div>
                   <p className="eyebrow">The talent</p>
                   <h2 className="mt-3 font-display text-3xl md:text-4xl font-bold text-ink tracking-tight">
-                    Book the people behind the night
+                    Hire DJs, caterers, and decorators
                   </h2>
                   <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
                   <p className="mt-4 text-sm text-muted-ink">
-                    Real work from real Lagos vendors. Drag, tap a face, book
-                    direct.
+                    Portfolio photos from working vendors. Open a profile and
+                    message them on WhatsApp.
                   </p>
                 </div>
               </Reveal>
               <Link href="/vendors" className="hidden md:block shrink-0">
                 <span className="text-sm font-medium text-gold hover:text-gold-soft transition-colors cursor-pointer">
-                  Meet all {vendors?.length ?? 0} vendors →
+                  See all vendors →
                 </span>
               </Link>
             </div>
           </div>
           <Reveal>
             {/* Full-bleed drag rail: content bleeds, controls stay inside */}
-            <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory px-4 md:px-[max(2rem,calc((100vw-76rem)/2+2rem))] pb-2 scroll-smooth">
-              {vendorsWithWork.map((v) => (
-                <Link
-                  key={v.id}
-                  href={"/vendors/" + v.id}
-                  className="group relative shrink-0 w-64 md:w-72 snap-start overflow-hidden rounded-md border border-hairline aspect-[4/5] cursor-pointer"
-                >
-                  <img
-                    src={(() => {
-                      try {
-                        const g = JSON.parse(v.gallery || "[]");
-                        return Array.isArray(g) ? g[0] : "";
-                      } catch {
-                        return "";
-                      }
-                    })()}
-                    alt={v.businessName}
-                    loading="lazy"
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                  />
-                  <div
-                    aria-hidden="true"
-                    className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/15 to-transparent"
-                  />
-                  <div className="absolute inset-x-4 bottom-4">
-                    <p className="eyebrow">{v.category}</p>
-                    <p className="mt-1 font-display text-lg font-bold text-ink truncate transition-colors duration-200 group-hover:text-gold">
-                      {v.businessName}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-ink flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-gold" aria-hidden="true" />
-                      {v.city || v.serviceArea || "Lagos"}
-                    </p>
-                  </div>
-                </Link>
-              ))}
+            <div className="relative">
+              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory px-4 md:px-[max(2rem,calc((100vw-76rem)/2+2rem))] pb-2 scroll-smooth no-scrollbar">
+                {vendorsWithWork.map((v) => (
+                  <Link
+                    key={v.id}
+                    href={"/vendors/" + v.id}
+                    className="group relative shrink-0 w-64 md:w-72 snap-start overflow-hidden rounded-md border border-hairline aspect-[4/5] cursor-pointer"
+                  >
+                    <img
+                      src={(() => {
+                        try {
+                          const g = JSON.parse(v.gallery || "[]");
+                          return Array.isArray(g) ? g[0] : "";
+                        } catch {
+                          return "";
+                        }
+                      })()}
+                      alt={v.businessName}
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+                    />
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/15 to-transparent"
+                    />
+                    <div className="absolute inset-x-4 bottom-4">
+                      <p className="eyebrow">{v.category}</p>
+                      <p className="mt-1 font-display text-lg font-bold text-ink truncate transition-colors duration-200 group-hover:text-gold">
+                        {v.businessName}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-ink flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-gold" aria-hidden="true" />
+                        {v.city || v.serviceArea || "Lagos"}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              {/* Subtle edge fade indicator for mobile scrollability */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-background to-transparent md:hidden"
+              />
             </div>
           </Reveal>
         </section>
       )}
 
-      {/* Two-sided marketplace strip */}
+      {/* Two-sided marketplace: Organizers & Talent */}
       <section className="border-t border-hairline py-16">
-        <div className="container mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Reveal className="h-full">
-            <div className="h-full border border-hairline rounded-md bg-surface p-8 flex flex-col hover:border-white/20 transition-colors duration-200">
-              <p className="eyebrow">For organizers &amp; promoters</p>
-              <h2 className="mt-3 font-display text-2xl md:text-3xl font-bold text-ink tracking-tight">
-                List your event. Sell out.
-              </h2>
-              <div className="mt-4 h-0.5 w-12 bg-gold" aria-hidden="true" />
-              <p className="mt-4 text-muted-ink leading-relaxed flex-1">
-                Instant WhatsApp QR delivery, 0% gate fraud, and next-day direct bank settlement. 6% flat fee vs 10%+ legacy sites, plus 0% fee on your first 100 tickets.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/organizers">
-                  <span className="press inline-flex items-center justify-center h-11 px-5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-gold-soft transition-colors cursor-pointer text-xs">
-                    See Organizer Benefits
-                  </span>
-                </Link>
-                <Link href={user ? "/admin" : "/auth?tab=register"}>
-                  <span className="press inline-flex items-center justify-center h-11 px-5 rounded-md border border-hairline text-ink font-medium hover:bg-surface-2 hover:text-gold transition-colors cursor-pointer text-xs">
-                    Host an Event
-                  </span>
-                </Link>
-              </div>
-            </div>
-          </Reveal>
-          <Reveal delay={0.08} className="h-full">
-            <div className="h-full border border-hairline rounded-md bg-surface p-8 flex flex-col hover:border-white/20 transition-colors duration-200">
-              <p className="eyebrow">
-                For DJs, MCs, caterers &amp; more
-              </p>
-              <h2 className="mt-3 font-display text-2xl md:text-3xl font-bold text-ink tracking-tight">
-                Get discovered. Get booked.
-              </h2>
-              <div className="mt-4 h-0.5 w-12 bg-gold" aria-hidden="true" />
-              <p className="mt-4 text-muted-ink leading-relaxed flex-1">
-                A standing profile with your portfolio photos, service area,
-                and a direct WhatsApp line. Free to list. When someone in
-                Lagos plans a party, this is where they find you.
-              </p>
-              <Link
-                href={user ? "/vendor-dashboard" : "/auth?tab=register"}
-                className="mt-6"
-              >
-                <span className="press inline-flex items-center justify-center h-11 px-6 rounded-md border border-hairline text-ink font-medium hover:bg-surface-2 hover:text-gold transition-colors cursor-pointer">
-                  List Your Business
-                </span>
-              </Link>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* Trust + proof */}
-      <section className="border-t border-hairline bg-surface py-20">
-        <div className="container mx-auto px-4 grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
-          <div className="order-2 lg:order-1">
-            <Reveal>
-              <p className="eyebrow">Why Black Heritage</p>
-              <h2 className="mt-3 font-display text-3xl md:text-4xl font-bold text-ink tracking-tight">
-                The trust layer for{" "}
-                <span className="italic text-gold">Lagos nights</span>
-              </h2>
-              <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
-              <p className="mt-5 text-muted-ink leading-relaxed max-w-xl">
-                One home for Lagos culture: independent organizers list their
-                parties here, and the DJs, MCs, caterers, and decorators who
-                power them keep a real public profile. Every ticket is
-                verified, every vendor is reachable. No guessing, no
-                middlemen in your DMs.
-              </p>
-              <div className="mt-8 flex flex-col gap-0 max-w-xl border-t border-hairline">
-                {[
-                  {
-                    title: "Verified e-tickets, instantly",
-                    body: "Pay with card, transfer, or USSD. Your ticket lands in your inbox before you lock your phone.",
-                  },
-                  {
-                    title: "Vendors with real public profiles",
-                    body: "Portfolio, service area, reviews. Not a forwarded phone number from a friend of a friend.",
-                  },
-                  {
-                    title: "Organizers who own their event",
-                    body: "Live sales tracking, your ticket tiers, your pricing. No middleman takes a cut you didn't agree to.",
-                  },
-                ].map((item) => (
-                  <div
-                    key={item.title}
-                    className="flex items-start gap-3.5 py-4 border-b border-hairline"
-                  >
-                    <span
-                      className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0"
-                      aria-hidden="true"
-                    />
-                    <div>
-                      <p className="text-ink font-medium">{item.title}</p>
-                      <p className="mt-0.5 text-sm text-muted-ink leading-relaxed">
-                        {item.body}
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Reveal className="h-full">
+              <div className="h-full border border-hairline rounded-md bg-surface p-8 flex flex-col justify-between hover:border-white/20 transition-colors duration-200">
+                <div>
+                  <p className="eyebrow">For organizers &amp; promoters</p>
+                  <h2 className="mt-3 font-display text-2xl md:text-3xl font-bold text-ink tracking-tight">
+                    List your event. Sell out.
+                  </h2>
+                  <div className="mt-4 h-0.5 w-12 bg-gold" aria-hidden="true" />
+                  <p className="mt-4 text-muted-ink leading-relaxed">
+                    Set your tiers and ticket prices yourself. Buyers get instant verified QR tickets, and revenue settles straight to your Nigerian bank account the next business day.
+                  </p>
+                  <div className="mt-6 border-t border-hairline pt-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
+                      <p className="text-xs text-ink/80 leading-relaxed">
+                        <strong className="text-ink font-semibold">Zero platform fee</strong> on your first 100 tickets sold (flat 6% transparent fee after).
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
+                      <p className="text-xs text-ink/80 leading-relaxed">
+                        <strong className="text-ink font-semibold">Door scanner ready:</strong> staff scan QR codes from phones or badges with instant verification.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
+                      <p className="text-xs text-ink/80 leading-relaxed">
+                        <strong className="text-ink font-semibold">Branded checkout:</strong> Paystack checkout supporting cards, bank transfer, and USSD.
                       </p>
                     </div>
                   </div>
-                ))}
-              </div>
-              <div className="mt-8 flex flex-wrap gap-4">
-                <Link href="/events">
-                  <Button className="press h-12 px-8 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md">
-                    Find Your Next Event
-                  </Button>
-                </Link>
-                <Link href="/vendors">
-                  <Button
-                    variant="outline"
-                    className="press h-12 px-8 border-hairline text-ink hover:bg-surface hover:text-gold font-medium rounded-md"
-                  >
-                    Browse Vendors
-                  </Button>
-                </Link>
+                </div>
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <Link href="/organizers">
+                    <span className="press inline-flex items-center justify-center h-11 px-5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-gold-soft transition-colors cursor-pointer text-xs">
+                      See Organizer Benefits
+                    </span>
+                  </Link>
+                  <Link href={user ? "/admin" : "/auth?tab=register"}>
+                    <span className="press inline-flex items-center justify-center h-11 px-5 rounded-md border border-hairline text-ink font-medium hover:bg-surface-2 hover:text-gold transition-colors cursor-pointer text-xs">
+                      Host an Event
+                    </span>
+                  </Link>
+                </div>
               </div>
             </Reveal>
-          </div>
 
-          <div className="order-1 lg:order-2">
-            <figure className="relative overflow-hidden rounded-md border border-hairline aspect-[4/5]">
-              <FadeImg
-                src="https://images.unsplash.com/photo-1511192336575-5a79af67a629?q=80&w=2664&auto=format&fit=crop"
-                alt="Performer on a dark stage"
-                className="w-full h-full object-cover"
-              />
-              <div
-                aria-hidden="true"
-                className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent"
-              />
-              <figcaption className="absolute inset-x-4 bottom-4 bg-background/85 border border-hairline rounded-md p-5">
-                <blockquote className="font-display italic text-ink leading-snug">
-                  "Found our DJ and caterer on here in one evening. The
-                  owambe came together in two weeks."
-                </blockquote>
-                <cite className="eyebrow not-italic mt-3 block">
-                  Adaeze O. · Hosted in Lekki
-                </cite>
-              </figcaption>
-            </figure>
+            <Reveal delay={0.08} className="h-full">
+              <div className="h-full border border-hairline rounded-md bg-surface p-8 flex flex-col justify-between hover:border-white/20 transition-colors duration-200">
+                <div>
+                  <p className="eyebrow">For DJs, MCs, caterers &amp; crew</p>
+                  <h2 className="mt-3 font-display text-2xl md:text-3xl font-bold text-ink tracking-tight">
+                    No agency cut. No middleman.
+                  </h2>
+                  <div className="mt-4 h-0.5 w-12 bg-gold" aria-hidden="true" />
+                  <p className="mt-4 text-muted-ink leading-relaxed">
+                    A permanent profile displaying your portfolio photos, service areas, and direct WhatsApp contact. Event planners and promoters discover and book you directly.
+                  </p>
+                  <div className="mt-6 border-t border-hairline pt-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
+                      <p className="text-xs text-ink/80 leading-relaxed">
+                        <strong className="text-ink font-semibold">100% free listing:</strong> showcase your event photo gallery and services with zero monthly dues.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
+                      <p className="text-xs text-ink/80 leading-relaxed">
+                        <strong className="text-ink font-semibold">Direct client conversations:</strong> planners chat with you on WhatsApp without platform lock-in.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
+                      <p className="text-xs text-ink/80 leading-relaxed">
+                        <strong className="text-ink font-semibold">Verified badges:</strong> get vetted so hosts hire your talent with immediate confidence.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <Link href={user ? "/vendor-dashboard" : "/auth?tab=register"}>
+                    <span className="press inline-flex items-center justify-center h-11 px-6 rounded-md border border-hairline text-ink font-medium hover:bg-surface-2 hover:text-gold transition-colors cursor-pointer text-xs">
+                      List Your Business
+                    </span>
+                  </Link>
+                  <Link href="/vendors">
+                    <span className="press inline-flex items-center justify-center h-11 px-5 rounded-md text-muted-ink hover:text-gold transition-colors cursor-pointer text-xs">
+                      Explore Directory
+                    </span>
+                  </Link>
+                </div>
+              </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -730,8 +736,8 @@ export default function Home() {
                 </div>
               </div>
               <p className="text-sm text-muted-ink leading-relaxed mt-4">
-                Nigeria's home for real culture: the events worth showing up
-                for, and the people who make them happen.
+                Tickets to Nigerian shows and festivals, and the DJs,
+                caterers, and photographers who work them.
               </p>
             </div>
 
@@ -775,10 +781,7 @@ export default function Home() {
               <a href="https://x.com/blackhevents" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors" aria-label="Twitter / X">Twitter / X</a>
               <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors" aria-label={`WhatsApp ${WHATSAPP_DISPLAY}`}>WhatsApp</a>
             </div>
-            <div className="flex items-center gap-2 text-xs text-muted-ink/60">
-              <ShieldCheck className="w-3.5 h-3.5 text-gold/40" aria-hidden="true" />
-              Instant verified checkout
-            </div>
+
           </div>
         </div>
       </footer>

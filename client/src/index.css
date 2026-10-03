@@ -111,6 +111,20 @@
     }
   }
 
+  /* Hero backdrop drift: a slow ken-burns on the concert still. This is the
+     page's one piece of ambient background motion — it replaced a looping
+     MP4, so it costs a rounding error and keeps the hero breathing. */
+  --animate-kenburns: kenburns 26s ease-in-out infinite alternate;
+
+  @keyframes kenburns {
+    from {
+      transform: scale(1.08) translate(0.6%, 0.4%);
+    }
+    to {
+      transform: scale(1.14) translate(-0.6%, -0.4%);
+    }
+  }
+
   /* Ticker: the top edge of the hero rotates tonight's real events. */
   --animate-ticker: ticker 36s linear infinite;
 
@@ -220,6 +234,7 @@
     .animate-ember,
     .animate-ticker,
     .animate-slow-zoom,
+    .animate-kenburns,
     .animate-shimmer,
     .animate-soundwave-1,
     .animate-soundwave-2,

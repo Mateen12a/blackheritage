@@ -225,8 +225,8 @@ export default function Explore() {
 
         <span aria-hidden="true" className="shrink-0 h-6 w-px bg-hairline" />
 
-        {/* Where: only states with events on sale, with counts, so the row
-            never offers a filter that leads nowhere. */}
+        {/* Where: only states with events on sale, so the row never offers
+            a filter that leads nowhere. */}
         <div role="group" aria-label="Filter by state" className="contents">
           {stateOptions.map((option) => (
             <button
@@ -234,10 +234,9 @@ export default function Explore() {
               type="button"
               aria-pressed={stateKey === option.key}
               onClick={() => setStateKey((current) => (current === option.key ? "all" : option.key))}
-              className={cn(chipClass(stateKey === option.key), "inline-flex items-center gap-1.5")}
+              className={chipClass(stateKey === option.key)}
             >
               {option.name}
-              <span className="opacity-60">{option.count}</span>
             </button>
           ))}
         </div>
@@ -298,9 +297,6 @@ export default function Explore() {
               <h2 className="font-display text-xl font-bold text-ink">
                 {search ? "Results" : "Upcoming"}
               </h2>
-              <span className="text-xs text-muted-ink">
-                {filtered.length} {filtered.length === 1 ? "event" : "events"}
-              </span>
             </div>
 
             {filtered.length === 0 ? (
@@ -349,7 +345,9 @@ export default function Explore() {
                 {vendorsLoading ? (
                   <Skeleton className="h-3 w-16" />
                 ) : (
-                  vendorRail.length + " listed"
+                  <Link href="/vendors" className="hover:text-gold transition-colors">
+                    Browse all
+                  </Link>
                 )}
               </div>
             </div>

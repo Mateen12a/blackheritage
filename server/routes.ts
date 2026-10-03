@@ -116,7 +116,9 @@ async function resolveOrganizerBySlug(rawSlug: string): Promise<any | null> {
  * used to guess a slug from the display name. Attaching the real one keeps
  * share links, follows and notifications pointing at the same page.
  */
-async function withOrganizerSlug<T extends { organizerId?: string | null }>(events: T[]): Promise<(T & { organizerSlug: string | null })[]> {
+async function withOrganizerSlug<T extends { organizerId?: string | null }>(
+  events: T[],
+): Promise<(T & { organizerSlug: string | null; organizerName: string | null })[]> {
   const ids = Array.from(
     new Set(
       events
@@ -124,19 +126,32 @@ async function withOrganizerSlug<T extends { organizerId?: string | null }>(even
         .filter((id): id is string => !!id && mongoose.Types.ObjectId.isValid(id)),
     ),
   );
-  if (ids.length === 0) return events.map((e) => ({ ...e, organizerSlug: (e as any).organizerSlug ?? null }));
+  if (ids.length === 0) {
+    return events.map((e) => ({
+      ...e,
+      organizerSlug: (e as any).organizerSlug ?? null,
+      organizerName: (e as any).organizerName ?? null,
+    }));
+  }
 
+  // One lookup carries both the public hub slug and the name shown on cards:
+  // the host line is the entry point to following an organizer, so it belongs
+  // on the same payload as the slug rather than a second round trip.
   const orgs = await User.find({ _id: { $in: ids } })
-    .select("organizerSlug username")
+    .select("organizerSlug username displayName")
     .lean();
   const slugById = new Map<string, string | null>();
+  const nameById = new Map<string, string | null>();
   orgs.forEach((o: any) => {
-    slugById.set(String(o._id), o.organizerSlug || o.username || null);
+    const id = String(o._id);
+    slugById.set(id, o.organizerSlug || o.username || null);
+    nameById.set(id, o.displayName || o.username || null);
   });
 
   return events.map((e) => ({
     ...e,
     organizerSlug: (e as any).organizerSlug ?? slugById.get(String(e.organizerId)) ?? null,
+    organizerName: (e as any).organizerName ?? nameById.get(String(e.organizerId)) ?? null,
   }));
 }
 
@@ -3142,7 +3157,11 @@ export async function registerRoutes(
     }
   });
 
-  await seedPlatform();
+  // Boot the API without the demo top-up: SKIP_SEED=true. The seed is
+  // idempotent but it does rewrite demo themes, branding and platform
+  // settings, so anyone pointing a dev server at a live database needs a way
+  // to skip it. Default unchanged: seed on boot.
+  if (process.env.SKIP_SEED !== "true") await seedPlatform();
 
   // ── Account settings: every signed-in user can edit their own profile ──
   app.patch("/api/account/profile", async (req, res) => {

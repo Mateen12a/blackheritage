@@ -902,7 +902,7 @@ function OrganizerTools({ event, bookings }: { event: any; bookings: any[] }) {
               <Banknote className="w-4 h-4 text-gold" aria-hidden="true" /> Sell at the Gate
             </CardTitle>
             <CardDescription>
-              Cash, POS, or transfer sales at the door. Counts against capacity like any online sale — the ledger includes the door.
+              Cash, POS, or transfer sales at the door. Counts against capacity like any online sale, and the ledger includes the door.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -924,7 +924,7 @@ function OrganizerTools({ event, bookings }: { event: any; bookings: any[] }) {
                   <option value="" disabled>Pick a tier…</option>
                   {tiers.map((t) => (
                     <option key={t.name} value={t.name}>
-                      {t.name} — {naira(Math.round(Number(t.price || 0)))}
+                      {t.name} · {naira(Math.round(Number(t.price || 0)))}
                     </option>
                   ))}
                 </select>

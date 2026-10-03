@@ -58,6 +58,40 @@ else away first.
   `rounded-md` (6px). No `shadow-xl` ornament, no `rounded-3xl` bubbles.
 - **Editorial page headers:** eyebrow → Playfair title → 16px gold rule →
   one-sentence description, left-anchored (not centered), max-w-3xl.
+- **The home hero is poster-first.** Copy and a real, on-sale flyer share the
+  first screen: the flyer is a hero object (column two on desktop, directly
+  under the headline on a phone), never a background behind our headline and
+  never centred underneath two screens of text. Our flyers carry their own
+  display typography, so stacking our headline on top of one is text-on-text —
+  the poster gets its own space instead. The flyer column is an explicit track
+  width (`30rem` / `34rem`), not `auto`: the deck's width is a percentage of
+  its track, so an auto track collapses to the thumb row. Measured target —
+  event artwork ≥ 40% of the first screen on desktop, and fully visible above
+  the fold on a 390×844 phone.
+- **Card footers state one number and one truth:** what the cheapest buyable
+  ticket costs (`From ₦X` / `₦X` / `Free entry` / `Sold out`), plus one honest
+  secondary fact — real scarcity when the room is genuinely filling, otherwise
+  real attendance when the organizer opted in. Never raw remainders
+  ("620 General Palmwine Pass left"): volume is not urgency. `showRemainingCounts`
+  and `showAttendeeCount` are the organizer's switches and cards must honour
+  them. All of this lives in `client/src/lib/event-price.ts` so no two cards
+  drift apart.
+- **Numerals only where the sequence is real.** The ranked rail ("Filling up
+  fastest") may carry visible numerals because the order comes from real fill
+  rates. Keep them plain and dimmed in ink's tone, never gold: the rank is
+  information, not decoration. A list of fewer than three honest entries does
+  not render at all.
+- **One events section per scroll, not four.** The home page shows events in
+  two places: the hero poster deck, and the ranked rail under it. The next-up
+  list, the ticker strip and the separate "Shows Across Nigeria" grid are
+  switched off in `Home.tsx` and come back when the catalogue is large enough
+  that a grid shows more than the rail can. Every extra list made the landing
+  read like a directory instead of a front door.
+- **No copy borrowed from competitors.** Section names, badge labels and CTA
+  words are ours: "Filling up fastest", not another platform's "Most Booked
+  Events"; "See all events", never "See all 8 shows". Never print a count in a
+  call to action, and never show an inventory number (shows on sale, vendors
+  listed, cheapest ticket) until the numbers are large enough to impress.
 
 ## Motion — two signature moments, then quiet
 
@@ -68,10 +102,22 @@ The product has exactly **two** deliberate motion moments:
    `transition-[transform,width,opacity]` span).
 2. **The Home hero.** A one-time staggered rise of kicker → headline →
    subline → CTAs over an ambient gold bloom, then a persistent slow life:
-   rising embers around the next-event poster (`animate-ember`) and a
-   pausable ticker of real on-sale events (`animate-ticker`), both defined
-   in index.css. First paint for the entrance; the embers and ticker run
-   continuously but collapse under reduced motion.
+   four rising embers around the next-event poster (`animate-ember`) plus a
+   slow push-in on each poster (`animate-slow-zoom`), both defined in
+   index.css. First paint for the entrance; the embers run continuously but
+   collapse under reduced motion. The poster deck is the hero's only event
+   surface. The event ticker that used to scroll under it was removed: the
+   deck, the rail and the CTA already said "here are events" three times.
+
+   **The hero background is a still frame, not video.** It was a looping MP4
+   pulled from a third-party CDN on every home visit and rendered at 20%
+   opacity behind a heavy scrim — several megabytes on the device class most
+   of our audience browses on, in exchange for atmosphere the scrim erased.
+   Do not reintroduce it. Ambient motion is cheap to add and expensive to
+   carry: the handful of running animations (embers, bloom, poster push-in)
+   are the budget, and before adding another one, take one away.
+   Life on this page should come from composition — real flyers, real
+   scarcity, real counts, the ranked rail — not from things that twinkle.
 
 Everything else uses the **quiet helpers** in `client/src/components/motion.tsx`
 and stays within these tiers:
@@ -139,6 +185,7 @@ September 2026 design pass. Do not bring them back:
    signature moments and the quiet `Reveal`/`FadeImg` helpers, nothing else.
    Embers exist only in the Home hero; do not sprinkle them on other pages.
 8. **Numbered 01/02/03 markers with no real sequence**, and any other
-   decorative filler.
+   decorative filler. (A genuinely ranked rail is the exception — see Layout
+   grammar: the numerals must be computed, in ink's tone, and never gold.)
 9. **Loading extra font families** in index.html — Playfair Display and
    DM Sans are the entire set.
