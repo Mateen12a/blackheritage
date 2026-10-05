@@ -1224,6 +1224,8 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
               </ul>
             )}
           </div>
+        </div>
+
         {/* Publishing Readiness: Clear Checklist of What's Completed vs Remaining */}
         <div className="rounded-xl border border-hairline bg-surface-2/60 p-4 sm:p-5 space-y-3.5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-hairline pb-3">
