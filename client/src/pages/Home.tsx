@@ -22,9 +22,16 @@ import logoImg from "../assets/logo.png";
  * Animated heading: each character staggers in. Two locked lines so the
  * headline can never break mid-word at any width.
  */
-function AnimatedHeading() {
+function AnimatedHeading({ centered = false }: { centered?: boolean } = {}) {
   return (
-    <h1 className="mt-3.5 sm:mt-4 font-display text-4xl min-[380px]:text-5xl sm:text-6xl lg:text-7xl font-bold text-ink leading-[1.02] tracking-tight text-center lg:text-left flex flex-col items-center lg:items-start">
+    <h1
+      className={cn(
+        "mt-3.5 sm:mt-4 font-display text-4xl min-[380px]:text-5xl sm:text-6xl lg:text-7xl font-bold text-ink leading-[1.02] tracking-tight flex flex-col",
+        centered
+          ? "text-center items-center"
+          : "text-center lg:text-left items-center lg:items-start"
+      )}
+    >
       <motion.span
         className="block whitespace-nowrap"
         initial={{ opacity: 0, y: 18 }}
@@ -362,48 +369,28 @@ export default function Home() {
               width is a percentage of its track, so an auto track resolves
               against the only fixed thing inside it, the 4 × 24px thumb row,
               and collapses to 108px. */}
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_30rem] xl:grid-cols-[minmax(0,1fr)_34rem] lg:gap-x-12 lg:gap-y-2 xl:gap-x-14 lg:items-center">
-            {/* Copy, part one: the claim. Explicit placement keeps it in the
-                left column on desktop while the DOM order stays
-                claim → flyer → actions, which is what mobile should read. */}
-            <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:self-end">
+          {/* When no events exist, center-align hero text. When events exist, show split layout with text on left and image deck on right. */}
+          {posterDeck.length === 0 ? (
+            <div className="max-w-3xl mx-auto text-center flex flex-col items-center py-6 sm:py-10">
               <Reveal y={16} duration={0.55}>
-                <p className="text-[10px] min-[360px]:text-[11px] font-bold tracking-[0.10em] min-[360px]:tracking-[0.16em] sm:tracking-[0.18em] uppercase text-gold text-center lg:text-left">
+                <p className="text-[10px] min-[360px]:text-[11px] font-bold tracking-[0.10em] min-[360px]:tracking-[0.16em] sm:tracking-[0.18em] uppercase text-gold text-center">
                   Nigeria · Concerts · Festivals · Culture
                 </p>
               </Reveal>
 
-              <AnimatedHeading />
+              <AnimatedHeading centered />
 
               <Reveal y={16} delay={0.4} duration={0.6}>
-                <p className="mt-3.5 sm:mt-4 max-w-xl text-sm sm:text-base lg:text-lg text-ink/80 leading-relaxed text-center lg:text-left mx-auto lg:mx-0">
+                <p className="mt-3.5 sm:mt-5 max-w-xl text-sm sm:text-base lg:text-lg text-ink/80 leading-relaxed text-center mx-auto">
                   Tickets to concerts, parties, and festivals in Lagos, Abuja, and beyond. Then the DJs, caterers, and sound engineers who work them, each with a portfolio you can check before you book.
                 </p>
               </Reveal>
-            </div>
 
-            {/* The live poster marquee: right-bleeding, with the next poster
-                waiting behind it. Sits in column two on desktop; on a phone it
-                lands directly under the headline, above the fold. */}
-            {posterDeck.length > 0 && (
-              <Reveal
-                y={18}
-                delay={0.2}
-                duration={0.7}
-                className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-center"
-              >
-                <HeroPosterDeck events={posterDeck} />
-              </Reveal>
-            )}
-
-            {/* Copy, part two: the action. One way in for ticket buyers, one for
-                the people they hire. */}
-            <div className="min-w-0 lg:col-start-1 lg:row-start-2 lg:self-start">
               <Reveal y={12} delay={0.5} duration={0.55}>
-                <div className="mt-6 sm:mt-7 flex flex-col sm:flex-row gap-2.5 sm:gap-4 justify-center lg:justify-start">
+                <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-2.5 sm:gap-4 justify-center items-center">
                   <Link href="/events">
                     <Button className="press h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-full w-full sm:w-auto">
-                      See all events
+                      Explore events
                     </Button>
                   </Link>
                   <Link href="/talent">
@@ -414,14 +401,20 @@ export default function Home() {
                       Book Talent
                     </Button>
                   </Link>
+                  <Link href={user ? "/admin/events/new" : "/auth?returnTo=/admin/events/new"}>
+                    <Button
+                      variant="outline"
+                      className="press h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base border-gold/40 bg-gold/10 text-gold hover:bg-gold/20 font-medium rounded-full w-full sm:w-auto backdrop-blur-sm"
+                    >
+                      Host an Event
+                    </Button>
+                  </Link>
                 </div>
-                {/* Third button demoted to a link: signed-in visitors already
-                    have Dashboard in the account nav, and three equal CTAs
-                    competed with the flyer for the first screen. */}
+
                 {user && (
-                  <div className="text-center lg:text-left">
+                  <div className="text-center mt-4">
                     <Link href={dashboardHref}>
-                      <span className="mt-3.5 inline-flex items-center gap-1 text-sm font-medium text-gold hover:text-gold-soft transition-colors cursor-pointer">
+                      <span className="inline-flex items-center gap-1 text-sm font-medium text-gold hover:text-gold-soft transition-colors cursor-pointer">
                         My Dashboard
                         <ArrowUpRight className="w-3.5 h-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
                       </span>
@@ -430,7 +423,7 @@ export default function Home() {
                 )}
 
                 {/* Quick discovery */}
-                <div className="mt-4 sm:mt-5 flex flex-wrap gap-1.5 min-[360px]:gap-2 justify-center lg:justify-start">
+                <div className="mt-5 sm:mt-6 flex flex-wrap gap-1.5 min-[360px]:gap-2 justify-center">
                   {[
                     { label: "Lagos", href: "/events?city=Lagos" },
                     { label: "Abuja", href: "/events?city=Abuja" },
@@ -446,6 +439,86 @@ export default function Home() {
                   ))}
                 </div>
               </Reveal>
+            </div>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_30rem] xl:grid-cols-[minmax(0,1fr)_34rem] lg:gap-x-12 lg:gap-y-2 xl:gap-x-14 lg:items-center">
+              {/* Copy, part one: the claim */}
+              <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:self-end">
+                <Reveal y={16} duration={0.55}>
+                  <p className="text-[10px] min-[360px]:text-[11px] font-bold tracking-[0.10em] min-[360px]:tracking-[0.16em] sm:tracking-[0.18em] uppercase text-gold text-center lg:text-left">
+                    Nigeria · Concerts · Festivals · Culture
+                  </p>
+                </Reveal>
+
+                <AnimatedHeading centered={false} />
+
+                <Reveal y={16} delay={0.4} duration={0.6}>
+                  <p className="mt-3.5 sm:mt-4 max-w-xl text-sm sm:text-base lg:text-lg text-ink/80 leading-relaxed text-center lg:text-left mx-auto lg:mx-0">
+                    Tickets to concerts, parties, and festivals in Lagos, Abuja, and beyond. Then the DJs, caterers, and sound engineers who work them, each with a portfolio you can check before you book.
+                  </p>
+                </Reveal>
+              </div>
+
+              {/* The live poster marquee: right-bleeding */}
+              <Reveal
+                y={18}
+                delay={0.2}
+                duration={0.7}
+                className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-center"
+              >
+                <HeroPosterDeck events={posterDeck} />
+              </Reveal>
+
+              {/* Copy, part two: the action */}
+              <div className="min-w-0 lg:col-start-1 lg:row-start-2 lg:self-start">
+                <Reveal y={12} delay={0.5} duration={0.55}>
+                  <div className="mt-6 sm:mt-7 flex flex-col sm:flex-row gap-2.5 sm:gap-4 justify-center lg:justify-start">
+                    <Link href="/events">
+                      <Button className="press h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-full w-full sm:w-auto">
+                        See all events
+                      </Button>
+                    </Link>
+                    <Link href="/talent">
+                      <Button
+                        variant="outline"
+                        className="press h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base border-white/20 bg-white/5 text-ink hover:bg-white/10 hover:text-gold font-medium rounded-full w-full sm:w-auto backdrop-blur-sm"
+                      >
+                        Book Talent
+                      </Button>
+                    </Link>
+                  </div>
+
+                  {user && (
+                    <div className="text-center lg:text-left">
+                      <Link href={dashboardHref}>
+                        <span className="mt-3.5 inline-flex items-center gap-1 text-sm font-medium text-gold hover:text-gold-soft transition-colors cursor-pointer">
+                          My Dashboard
+                          <ArrowUpRight className="w-3.5 h-3.5 shrink-0" strokeWidth={2} aria-hidden="true" />
+                        </span>
+                      </Link>
+                    </div>
+                  )}
+
+                  {/* Quick discovery */}
+                  <div className="mt-4 sm:mt-5 flex flex-wrap gap-1.5 min-[360px]:gap-2 justify-center lg:justify-start">
+                    {[
+                      { label: "Lagos", href: "/events?city=Lagos" },
+                      { label: "Abuja", href: "/events?city=Abuja" },
+                      { label: "Concerts", href: "/events?category=Concerts" },
+                      { label: "Festivals", href: "/events?category=Festivals" },
+                      { label: "Free", href: "/events?price=free" },
+                    ].map((pill) => (
+                      <Link key={pill.label} href={pill.href}>
+                        <span className="press inline-flex items-center h-7.5 min-[360px]:h-8 px-3 min-[360px]:px-3.5 rounded-full border border-white/10 bg-white/5 text-[11px] min-[360px]:text-xs font-medium text-ink/70 hover:border-gold/30 hover:text-gold transition-colors cursor-pointer backdrop-blur-sm">
+                          {pill.label}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </Reveal>
+              </div>
+            </div>
+          )}
 
               {/* Counts are off until there are enough shows and vendors for
                   the numbers to mean anything. Kept here for the day they are:

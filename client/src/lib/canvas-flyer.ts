@@ -592,7 +592,6 @@ function renderStandardFlyer(
   // 5. Header / brand mark
   const headerY = frameInset + (isStory ? 70 : 56);
   ctx.save();
-  ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
   const presenterText = options.organizerName
@@ -600,22 +599,43 @@ function renderStandardFlyer(
     : "BLACK HERITAGE • LAGOS";
 
   ctx.font = "600 24px 'DM Sans', sans-serif";
-  const presWidth = ctx.measureText(presenterText).width + 48;
+  const textWidth = ctx.measureText(presenterText).width;
+  const logoImg = (options as any).__loadedLogo;
+  const logoSize = 28;
+  const presWidth = textWidth + (logoImg ? logoSize + 56 : 48);
   const pillHeight = 44;
   const pillY = headerY - pillHeight / 2;
+  const pillX = (width - presWidth) / 2;
 
   ctx.fillStyle = onLightBg ? "rgba(255, 255, 255, 0.72)" : "rgba(15, 15, 20, 0.75)";
   ctx.beginPath();
-  ctx.roundRect((width - presWidth) / 2, pillY, presWidth, pillHeight, 22);
+  ctx.roundRect(pillX, pillY, presWidth, pillHeight, 22);
   ctx.fill();
 
   ctx.strokeStyle = style.badgeBorder;
   ctx.lineWidth = 1;
   ctx.stroke();
 
-  ctx.fillStyle = accent;
-  ctx.letterSpacing = "2px";
-  ctx.fillText(presenterText, width / 2, headerY);
+  if (logoImg) {
+    const logoX = pillX + 12;
+    const logoY = pillY + (pillHeight - logoSize) / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+    ctx.restore();
+
+    ctx.fillStyle = accent;
+    ctx.letterSpacing = "2px";
+    ctx.textAlign = "left";
+    ctx.fillText(presenterText, logoX + logoSize + 12, headerY);
+  } else {
+    ctx.textAlign = "center";
+    ctx.fillStyle = accent;
+    ctx.letterSpacing = "2px";
+    ctx.fillText(presenterText, width / 2, headerY);
+  }
   ctx.restore();
 
   // 6. Attendee pass stamp
@@ -881,7 +901,45 @@ function renderTeaserFlyer(
     ? `${options.organizerName.toUpperCase()} PRESENTS`
     : "BLACK HERITAGE • LAGOS";
   const headerY = frameInset + (isStory ? 72 : 58);
-  drawPill(ctx, headerText, width / 2, headerY, style, accent);
+  const teaserLogo = (options as any).__loadedLogo;
+  if (teaserLogo) {
+    ctx.save();
+    ctx.font = "600 24px 'DM Sans', sans-serif";
+    const textWidth = ctx.measureText(headerText).width;
+    const logoSize = 28;
+    const presWidth = textWidth + logoSize + 56;
+    const pillHeight = 44;
+    const pillY = headerY - pillHeight / 2;
+    const pillX = (width - presWidth) / 2;
+
+    ctx.fillStyle = "rgba(15, 15, 20, 0.75)";
+    ctx.beginPath();
+    ctx.roundRect(pillX, pillY, presWidth, pillHeight, 22);
+    ctx.fill();
+
+    ctx.strokeStyle = style.badgeBorder;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const logoX = pillX + 12;
+    const logoY = pillY + (pillHeight - logoSize) / 2;
+    ctx.beginPath();
+    ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(teaserLogo, logoX, logoY, logoSize, logoSize);
+    ctx.restore();
+
+    ctx.save();
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = accent;
+    ctx.letterSpacing = "2px";
+    ctx.font = "600 24px 'DM Sans', sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(headerText, pillX + 12 + logoSize + 12, headerY);
+    ctx.restore();
+  } else {
+    drawPill(ctx, headerText, width / 2, headerY, style, accent);
+  }
 
   // Announcement eyebrow
   const eyebrowY = isStory ? height * 0.3 : height * 0.27;
@@ -1028,6 +1086,7 @@ function renderPrivatePassFlyer(
   // Monogram seal
   const monogramY = frameInset + (isStory ? 150 : 120);
   const r = isStory ? 62 : 52;
+  const logoImg = (options as any).__loadedLogo;
   ctx.save();
   ctx.beginPath();
   ctx.arc(width / 2, monogramY, r, 0, Math.PI * 2);
@@ -1036,11 +1095,17 @@ function renderPrivatePassFlyer(
   ctx.strokeStyle = accent;
   ctx.lineWidth = 2;
   ctx.stroke();
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font = "800 34px 'Playfair Display', serif";
-  ctx.fillStyle = accent;
-  ctx.fillText(initialsOf(options.hostLine || options.organizerName || options.title), width / 2, monogramY + 2);
+
+  if (logoImg) {
+    ctx.clip();
+    ctx.drawImage(logoImg, width / 2 - r, monogramY - r, r * 2, r * 2);
+  } else {
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "800 34px 'Playfair Display', serif";
+    ctx.fillStyle = accent;
+    ctx.fillText(initialsOf(options.hostLine || options.organizerName || options.title), width / 2, monogramY + 2);
+  }
   ctx.restore();
 
   // Host line
@@ -1421,6 +1486,13 @@ export async function renderFlyerToCanvas(
   if (preset === "vendor_card" || preset === "standard") {
     const source = options.customImageDataUrl || options.imageUrl;
     studioOpts.__loadedImage = source ? await loadImage(source) : null;
+  }
+
+  // Preload organizer logo if provided
+  const logoSrc = options.organizerLogo;
+  if (logoSrc) {
+    (options as any).__loadedLogo = await loadImage(logoSrc);
+    (studioOpts as any).__loadedLogo = (options as any).__loadedLogo;
   }
 
   switch (preset) {

@@ -17,6 +17,7 @@ import {
   LogOut,
   UserCog,
   Rocket,
+  Trophy,
 } from "lucide-react";
 import { useState } from "react";
 import logoImg from "../assets/logo.png";
@@ -206,6 +207,35 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+
+            <div className="pt-2 border-t border-hairline/60 space-y-1">
+              <Link href="/vendor-dashboard">
+                <div
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors cursor-pointer text-xs font-medium",
+                    location === "/vendor-dashboard"
+                      ? "text-gold bg-gold/10"
+                      : "text-muted-ink hover:text-ink hover:bg-surface-2"
+                  )}
+                >
+                  <Store size={16} strokeWidth={1.5} aria-hidden="true" />
+                  <span>{isVendor ? "Talent Studio" : "Work as Talent"}</span>
+                </div>
+              </Link>
+              <Link href="/challenges">
+                <div
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors cursor-pointer text-xs font-medium",
+                    location === "/challenges"
+                      ? "text-gold bg-gold/10"
+                      : "text-gold/90 hover:text-gold hover:bg-gold/10"
+                  )}
+                >
+                  <Trophy size={16} strokeWidth={1.5} aria-hidden="true" />
+                  <span>Challenges & Grants</span>
+                </div>
+              </Link>
+            </div>
           </nav>
 
           <div className="border-t border-hairline p-3 shrink-0">
@@ -388,9 +418,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <span className="text-sm font-medium">{upgrading ? "Switching your account…" : "Become an organizer"}</span>
               </button>
             )}
-            {/* Organizer-vendors keep their shop one tap away without a
-                sixth bottom-bar tab. */}
-            {isOrg && isVendor && (
+            {/* Direct access to Talent Studio for all organizers */}
+            {isOrg && (
               <button
                 type="button"
                 onClick={() => {
@@ -400,9 +429,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 className="w-full flex items-center gap-3 px-2 py-3 rounded-md text-muted-ink hover:text-ink hover:bg-surface-2 transition-colors text-left"
               >
                 <Store size={18} strokeWidth={1.5} aria-hidden="true" />
-                <span className="text-sm font-medium">My Shop</span>
+                <span className="text-sm font-medium">{isVendor ? "Talent Studio" : "Work as Talent"}</span>
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => {
+                setAccountOpen(false);
+                navigate("/challenges");
+              }}
+              className="w-full flex items-center gap-3 px-2 py-3 rounded-md text-gold hover:bg-surface-2 transition-colors text-left"
+            >
+              <Trophy size={18} strokeWidth={1.5} aria-hidden="true" />
+              <span className="text-sm font-medium">Challenges & Grants</span>
+            </button>
             <button
               type="button"
               onClick={() => {

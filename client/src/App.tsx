@@ -34,6 +34,7 @@ import ManageEvent from "@/pages/ManageEvent";
 import NewEvent from "@/pages/NewEvent";
 import OrganizerDetails from "@/pages/OrganizerDetails";
 import OrganizersLanding from "@/pages/OrganizersLanding";
+import Challenges from "@/pages/Challenges";
 import Settings from "@/pages/Settings";
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
@@ -263,19 +264,44 @@ function Router() {
           </PublicLayout>
         )}
       </Route>
-      <Route path="/organizers">
+      <Route path="/challenges">
         {() => (
           <PublicLayout>
-            <OrganizersLanding />
+            <Challenges />
           </PublicLayout>
         )}
       </Route>
+      <Route path="/organizers">
+        {() => {
+          if (user) {
+            const isOrg =
+              user.role === "admin" ||
+              user.role === "organizer" ||
+              user.isAdmin;
+            return <Redirect to={isOrg ? "/admin" : user.role === "vendor" ? "/vendor-dashboard" : "/dashboard"} />;
+          }
+          return (
+            <PublicLayout>
+              <OrganizersLanding />
+            </PublicLayout>
+          );
+        }}
+      </Route>
       <Route path="/host">
-        {() => (
-          <PublicLayout>
-            <OrganizersLanding />
-          </PublicLayout>
-        )}
+        {() => {
+          if (user) {
+            const isOrg =
+              user.role === "admin" ||
+              user.role === "organizer" ||
+              user.isAdmin;
+            return <Redirect to={isOrg ? "/admin" : user.role === "vendor" ? "/vendor-dashboard" : "/dashboard"} />;
+          }
+          return (
+            <PublicLayout>
+              <OrganizersLanding />
+            </PublicLayout>
+          );
+        }}
       </Route>
       <Route path="/organizers/:slug">
         {() => (

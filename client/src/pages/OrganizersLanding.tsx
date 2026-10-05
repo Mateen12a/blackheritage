@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, Redirect } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/motion";
 import {
@@ -57,6 +58,25 @@ const FAQS = [
 
 export default function OrganizersLanding() {
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  if (user) {
+    const isOrg =
+      user.role === "admin" ||
+      user.role === "organizer" ||
+      user.isAdmin;
+    return (
+      <Redirect
+        to={
+          isOrg
+            ? "/admin"
+            : user.role === "vendor"
+            ? "/vendor-dashboard"
+            : "/dashboard"
+        }
+      />
+    );
+  }
 
   // Interactive Calculator State
   const [attendees, setAttendees] = useState(800);

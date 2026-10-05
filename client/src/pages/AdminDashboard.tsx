@@ -31,13 +31,12 @@ import {
   ExternalLink,
   MessageCircle,
   Phone,
+  Trophy,
 } from "lucide-react";
-
-
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const [location] = useLocation();
+  const [, setLocation] = useLocation();
   const isAdmin = user?.role === "admin";
 
   const {
@@ -154,6 +153,24 @@ export default function AdminDashboard() {
         )}
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
+          <Link href="/vendor-dashboard">
+            <Button
+              variant="outline"
+              className="press border-hairline text-ink hover:text-gold text-xs h-9 sm:h-10 px-3 sm:px-3.5"
+            >
+              <Store className="w-3.5 h-3.5 mr-1.5" />
+              Work as Talent
+            </Button>
+          </Link>
+          <Link href="/challenges">
+            <Button
+              variant="outline"
+              className="press border-gold/30 bg-gold/5 text-gold hover:bg-gold/15 text-xs h-9 sm:h-10 px-3 sm:px-3.5"
+            >
+              <Trophy className="w-3.5 h-3.5 mr-1.5" />
+              Challenges
+            </Button>
+          </Link>
           {orgProfile?.slug && (
             <a
               href={`/o/${orgProfile.slug}`}
@@ -165,7 +182,7 @@ export default function AdminDashboard() {
                 className="press border-hairline text-ink hover:text-gold text-xs h-9 sm:h-10 px-3 sm:px-3.5"
               >
                 <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                View Public Hub
+                Public Hub
               </Button>
             </a>
           )}
@@ -182,6 +199,12 @@ export default function AdminDashboard() {
           <TabsTrigger value="events">Events & Overview</TabsTrigger>
           <TabsTrigger value="brand">Brand & Custom Link</TabsTrigger>
           {(isAdmin || isVendors) && <TabsTrigger value="vendors">Talent Directory</TabsTrigger>}
+          <TabsTrigger value="talent" onClick={() => setLocation("/vendor-dashboard")}>
+            Work as Talent
+          </TabsTrigger>
+          <TabsTrigger value="challenges" onClick={() => setLocation("/challenges")}>
+            Creative Challenges
+          </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="leads" className="flex items-center gap-1.5">
               <span>Organizer Leads</span>
@@ -354,7 +377,8 @@ export default function AdminDashboard() {
                       return (
                         <tr
                           key={event.id}
-                          className="hover:bg-surface-2/50 transition-colors"
+                          onClick={() => setLocation(`/admin/events/${event.id}`)}
+                          className="group/row hover:bg-surface-2 cursor-pointer transition-colors"
                         >
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
@@ -363,7 +387,7 @@ export default function AdminDashboard() {
                                   <img
                                     src={event.imageUrl}
                                     alt=""
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover group-hover/row:scale-105 transition-transform"
                                     loading="lazy"
                                   />
                                 ) : (
@@ -374,7 +398,7 @@ export default function AdminDashboard() {
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-display font-bold text-ink text-sm">
+                                  <span className="font-display font-bold text-ink text-sm group-hover/row:text-gold transition-colors">
                                     {event.title}
                                   </span>
                                   {event.status === "draft" && (
@@ -419,7 +443,10 @@ export default function AdminDashboard() {
                               ₦{(sales.revenue / 100).toLocaleString()}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                          <td
+                            className="px-6 py-4 text-right space-x-2 whitespace-nowrap"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <Link href={`/admin/events/${event.id}/bookings`}>
                               <Button
                                 variant="outline"

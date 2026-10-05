@@ -202,7 +202,8 @@ export function OrganizerBrandPanel() {
     title: displayName || "Organizer Hub",
     date: new Date(),
     location: "Lagos, Nigeria",
-    imageUrl: coverUrl || logoUrl || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1600&auto=format&fit=crop",
+    imageUrl: coverUrl || logoUrl || "",
+    organizerLogo: logoUrl || coverUrl || "",
     branding: {
       displayName: displayName || "Organizer Hub",
       logoUrl: logoUrl,

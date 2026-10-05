@@ -69,9 +69,17 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const links = [...publicLinks];
-  if (user) {
-    const isOrg = user.role === "organizer" || user.role === "admin" || user.isAdmin;
+  const isOrg = user && (user.role === "organizer" || user.role === "admin" || user.isAdmin);
+  const links = [
+    { href: "/", label: "Home" },
+    { href: "/events", label: "Events" },
+    { href: "/talent", label: "Talent" },
+    { href: "/challenges", label: "Challenges" },
+  ];
+
+  if (!user) {
+    links.push({ href: "/organizers", label: "For Organizers" });
+  } else {
     links.push({
       href: isOrg ? "/admin" : user.role === "vendor" ? "/vendor-dashboard" : "/dashboard",
       label: isOrg ? "Dashboard" : user.role === "vendor" ? "Talent Studio" : "My Dashboard",

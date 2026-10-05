@@ -14,8 +14,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { Card } from "@/components/ui/card";
-import { CalendarIcon, Loader2, Image as ImageIcon, X, Plus, Trash2, Video, Upload, Check } from "lucide-react";
+import { CalendarIcon, Loader2, Image as ImageIcon, X, Plus, Trash2, Video, Upload, Check, AlertCircle, CheckCircle2, Link as LinkIcon } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -134,6 +134,115 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
   // Creative Studio: design a cover without a designer, applied straight into
   // the imageUrl field through a real upload (never a data URL).
   const [studioOpen, setStudioOpen] = useState(false);
+  const { toast } = useToast();
+  const [isUploadingFlyer, setIsUploadingFlyer] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [flyerTab, setFlyerTab] = useState<"upload" | "url">("upload");
+  const [logoTab, setLogoTab] = useState<"upload" | "url">("upload");
+
+  const uploadFlyerFile = async (file: File, onChange: (url: string) => void) => {
+    if (!file || !file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please choose an image file (PNG, JPG, WEBP).", variant: "destructive" });
+      return;
+    }
+    setIsUploadingFlyer(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/uploads/portfolio", {
+        method: "POST",
+        credentials: "include",
+        body: fd,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          onChange(data.url);
+          toast({ title: "Flyer uploaded successfully" });
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: "Upload failed", description: err.message || "Could not upload image.", variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e.message || "Network error.", variant: "destructive" });
+    } finally {
+      setIsUploadingFlyer(false);
+    }
+  };
+
+  const uploadLogoFile = async (file: File) => {
+    if (!file || !file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please choose an image file (PNG, JPG, WEBP).", variant: "destructive" });
+      return;
+    }
+    setIsUploadingLogo(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/uploads/portfolio", {
+        method: "POST",
+        credentials: "include",
+        body: fd,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          setBranding({ logoUrl: data.url });
+          toast({ title: "Logo uploaded successfully" });
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({ title: "Upload failed", description: err.message || "Could not upload logo.", variant: "destructive" });
+      }
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e.message || "Network error.", variant: "destructive" });
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  const watchedTitle = form.watch("title");
+  const watchedDate = form.watch("date");
+  const watchedLocation = form.watch("location");
+  const watchedImageUrl = form.watch("imageUrl");
+
+  const checklistItems = [
+    {
+      id: "title",
+      label: "Event Title",
+      done: !!watchedTitle && String(watchedTitle).trim().length >= 3,
+      desc: "At least 3 characters",
+    },
+    {
+      id: "date",
+      label: "Date & Time",
+      done: !!watchedDate && !isNaN(new Date(watchedDate).getTime()),
+      desc: "Scheduled event date",
+    },
+    {
+      id: "location",
+      label: "Venue / Location",
+      done: !!watchedLocation && String(watchedLocation).trim().length >= 3,
+      desc: "City or physical address",
+    },
+    {
+      id: "imageUrl",
+      label: "Flyer / Cover Image",
+      done: !!watchedImageUrl && String(watchedImageUrl).trim().length > 0,
+      desc: "Uploaded flyer or poster image",
+    },
+    {
+      id: "tickets",
+      label: "Ticket Tier",
+      done: ticketTypes.some((t: any) => t.name?.trim() && Number(t.capacity) > 0),
+      desc: "At least 1 ticket tier with capacity",
+    },
+  ];
+
+  const completedCount = checklistItems.filter((item) => item.done).length;
+  const remainingItems = checklistItems.filter((item) => !item.done);
+  const isPublishReady = remainingItems.length === 0;
 
   const handleFormSubmit = (data: InsertEvent) => {
     onSubmit({
@@ -493,70 +602,122 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
           name="imageUrl"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">Event Image</FormLabel>
-              <div className="space-y-4">
-                <FormControl>
-                  <Input 
-                    {...field} 
-                    placeholder="Paste image URL here..."
-                    className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-base" 
-                  />
-                </FormControl>
-                <div className="flex items-center gap-4">
-                  <div className="h-px flex-1 bg-white/10" />
-                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-black">OR</span>
-                  <div className="h-px flex-1 bg-white/10" />
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setStudioOpen(true)}
-                  className="press w-full h-12 border-gold/50 text-gold hover:bg-gold/10 rounded-xl font-medium whitespace-normal leading-tight px-4"
-                >
-                  <ImageIcon className="w-4 h-4 mr-2 shrink-0" />
-                  <span className="text-left">Design with Studio, no flyer needed</span>
-                </Button>
-                <div className="relative">
-                  {/* Hidden native input + custom label: browser-styled "Choose
-                      File" buttons truncate on 320–390px rows, so the trigger
-                      is drawn by us and the filename is shown where it fits. */}
-                  <input
-                    id="event-form-flyer-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          field.onChange(reader.result as string);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="sr-only"
-                  />
-                  <label
-                    htmlFor="event-form-flyer-upload"
-                    className="h-12 w-full flex items-center gap-3 px-4 bg-surface-2 border border-hairline rounded-md cursor-pointer hover:border-gold/40 transition-colors"
+              <div className="flex items-center justify-between mb-2">
+                <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">
+                  Event Flyer / Cover Image
+                </FormLabel>
+                <div className="flex items-center gap-1 rounded-lg border border-hairline p-0.5 bg-surface-2">
+                  <button
+                    type="button"
+                    onClick={() => setFlyerTab("upload")}
+                    className={cn(
+                      "px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors",
+                      flyerTab === "upload"
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-muted-ink hover:text-white"
+                    )}
                   >
-                    <span className="shrink-0 inline-flex items-center h-8 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium">Choose file</span>
-                    <span className="min-w-0 flex-1 truncate text-sm text-muted-ink">{field.value ? "Flyer attached" : "PNG or JPG, up to 15MB"}</span>
-                    <ImageIcon className="shrink-0 w-5 h-5 text-muted-foreground" />
-                  </label>
+                    Upload File
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFlyerTab("url")}
+                    className={cn(
+                      "px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors",
+                      flyerTab === "url"
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-muted-ink hover:text-white"
+                    )}
+                  >
+                    Image URL
+                  </button>
                 </div>
-                {field.value && (
-                  <div className="relative aspect-video rounded-md overflow-hidden border border-hairline group">
-                    <img src={field.value} alt="Preview" className="w-full h-full object-cover" />
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-2 right-2 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => field.onChange("")}
+              </div>
+
+              <div className="space-y-3">
+                {flyerTab === "upload" ? (
+                  <div className="relative">
+                    <input
+                      id="event-form-flyer-file-upload"
+                      type="file"
+                      accept="image/*"
+                      disabled={isUploadingFlyer}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadFlyerFile(file, field.onChange);
+                        e.target.value = "";
+                      }}
+                      className="sr-only"
+                    />
+                    <label
+                      htmlFor="event-form-flyer-file-upload"
+                      className={cn(
+                        "flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors text-center",
+                        isUploadingFlyer
+                          ? "border-gold/50 bg-gold/5 opacity-70"
+                          : "border-hairline hover:border-gold/50 bg-surface-2/60 hover:bg-surface-2"
+                      )}
                     >
-                      <X className="w-4 h-4" />
-                    </Button>
+                      {isUploadingFlyer ? (
+                        <>
+                          <Loader2 className="w-7 h-7 text-gold animate-spin mb-2" />
+                          <p className="text-sm font-medium text-white">Uploading flyer to secure storage...</p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-10 h-10 rounded-full bg-gold/10 text-gold flex items-center justify-center mb-2">
+                            <Upload className="w-5 h-5" />
+                          </div>
+                          <p className="text-sm font-medium text-white">
+                            Click to upload event flyer
+                          </p>
+                          <p className="text-xs text-muted-ink mt-1">
+                            PNG, JPG, or WEBP up to 50MB (portrait 9:16 or square 1:1 works best)
+                          </p>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                ) : (
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="https://... direct image URL"
+                      className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-base"
+                    />
+                  </FormControl>
+                )}
+
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setStudioOpen(true)}
+                    className="press flex-1 h-10 border-gold/40 text-gold hover:bg-gold/10 rounded-lg text-xs font-medium"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                    Design in Studio, no flyer needed
+                  </Button>
+                </div>
+
+                {field.value && (
+                  <div className="relative aspect-video max-h-56 rounded-xl overflow-hidden border border-hairline group bg-surface-2">
+                    <img src={field.value} alt="Event flyer preview" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-3">
+                      <span className="text-xs text-white/90 font-medium truncate max-w-[80%]">
+                        {field.value.startsWith("http") || field.value.startsWith("/uploads") ? field.value : "Attached Flyer"}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="h-7 w-7 rounded-full"
+                        onClick={() => field.onChange("")}
+                        aria-label="Remove flyer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -767,45 +928,111 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
               )}
             </div>
           </div>
-          <div className="space-y-2 mt-4">
-            <Label className="text-xs text-muted-foreground uppercase font-bold">Logo URL (optional)</Label>
-            <div className="flex items-center gap-3">
-              {branding.logoUrl ? (
-                <img
-                  src={branding.logoUrl}
-                  alt="Logo preview"
-                  aria-hidden="true"
-                  className="h-11 w-11 shrink-0 rounded-lg object-cover ring-1 ring-white/10 bg-white/5"
-                  onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")}
-                  onLoad={(e) => ((e.target as HTMLImageElement).style.visibility = "visible")}
-                />
-              ) : (
-                <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-dashed border-white/15 text-white/30">
-                  <ImageIcon className="h-4 w-4" />
-                </span>
-              )}
-              <Input
-                value={branding.logoUrl || ""}
-                onChange={(e) => setBranding({ logoUrl: e.target.value })}
-                className="h-11 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary"
-                placeholder="https://... your logo image"
-              />
-              {branding.logoUrl && (
+          <div className="space-y-3 mt-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground uppercase font-bold">Organizer Logo (optional)</Label>
+              <div className="flex items-center gap-1 rounded-lg border border-hairline p-0.5 bg-surface-2">
                 <button
                   type="button"
-                  onClick={() => setBranding({ logoUrl: "" })}
-                  aria-label="Remove logo"
-                  className="press shrink-0 text-xs text-muted-foreground hover:text-white transition-colors"
+                  onClick={() => setLogoTab("upload")}
+                  className={cn(
+                    "px-2 py-0.5 text-[10px] font-medium rounded transition-colors",
+                    logoTab === "upload"
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : "text-muted-ink hover:text-white"
+                  )}
                 >
-                  Remove
+                  Upload
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setLogoTab("url")}
+                  className={cn(
+                    "px-2 py-0.5 text-[10px] font-medium rounded transition-colors",
+                    logoTab === "url"
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : "text-muted-ink hover:text-white"
+                  )}
+                >
+                  URL
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {branding.logoUrl ? (
+                <div className="relative group shrink-0">
+                  <img
+                    src={branding.logoUrl}
+                    alt="Logo preview"
+                    aria-hidden="true"
+                    className="h-12 w-12 rounded-xl object-cover ring-1 ring-gold/40 bg-white/5"
+                    onError={(e) => ((e.target as HTMLImageElement).style.visibility = "hidden")}
+                    onLoad={(e) => ((e.target as HTMLImageElement).style.visibility = "visible")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setBranding({ logoUrl: "" })}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Remove logo"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <span aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-dashed border-white/20 text-white/40 bg-surface-2">
+                  <ImageIcon className="h-5 w-5" />
+                </span>
+              )}
+
+              {logoTab === "upload" ? (
+                <div className="flex-1 flex items-center gap-2">
+                  <input
+                    id="event-form-logo-file-upload"
+                    type="file"
+                    accept="image/*"
+                    disabled={isUploadingLogo}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadLogoFile(file);
+                      e.target.value = "";
+                    }}
+                    className="sr-only"
+                  />
+                  <label
+                    htmlFor="event-form-logo-file-upload"
+                    className={cn(
+                      "flex-1 h-11 flex items-center justify-center gap-2 px-4 rounded-xl border border-hairline cursor-pointer text-xs font-medium transition-colors",
+                      isUploadingLogo
+                        ? "bg-gold/10 border-gold/40 text-gold"
+                        : "bg-white/5 text-ink hover:border-gold/40 hover:text-gold"
+                    )}
+                  >
+                    {isUploadingLogo ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Uploading logo...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-3.5 h-3.5" />
+                        {branding.logoUrl ? "Replace logo file" : "Upload logo image (PNG/JPG)"}
+                      </>
+                    )}
+                  </label>
+                </div>
+              ) : (
+                <Input
+                  value={branding.logoUrl || ""}
+                  onChange={(e) => setBranding({ logoUrl: e.target.value })}
+                  className="h-11 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-xs flex-1"
+                  placeholder="https://... direct logo URL"
+                />
               )}
             </div>
-            {branding.logoUrl && (
-              <p className="text-xs text-muted-foreground">
-                Square images look best. It appears in the event page header, the ticket PDF, and emails.
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground">
+              Square images look best. Used on the event header, ticket PDF, and confirmation emails.
+            </p>
           </div>
         </div>
 
@@ -997,6 +1224,65 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
               </ul>
             )}
           </div>
+        {/* Publishing Readiness: Clear Checklist of What's Completed vs Remaining */}
+        <div className="rounded-xl border border-hairline bg-surface-2/60 p-4 sm:p-5 space-y-3.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-hairline pb-3">
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                "w-2.5 h-2.5 rounded-full",
+                isPublishReady ? "bg-green-500 animate-pulse" : "bg-gold"
+              )} />
+              <span className="text-xs font-bold uppercase tracking-wider text-ink">
+                Publishing Readiness: {completedCount} of 5 required details completed
+              </span>
+            </div>
+            <span className={cn(
+              "text-xs font-semibold px-2.5 py-0.5 rounded-full inline-flex items-center self-start sm:self-auto",
+              isPublishReady
+                ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                : "bg-gold/10 text-gold border border-gold/30"
+            )}>
+              {isPublishReady ? "Ready to Publish" : `${remainingItems.length} Remaining`}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-0.5">
+            {checklistItems.map((item) => (
+              <div
+                key={item.id}
+                className={cn(
+                  "flex items-start gap-2.5 p-2.5 rounded-lg border text-xs transition-colors",
+                  item.done
+                    ? "bg-green-500/5 border-green-500/20 text-white/90"
+                    : "bg-surface border-hairline text-muted-ink"
+                )}
+              >
+                <div className={cn(
+                  "w-4 h-4 rounded-full flex items-center justify-center shrink-0 mt-0.5",
+                  item.done ? "bg-green-500 text-black" : "border border-white/20 text-transparent"
+                )}>
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </div>
+                <div>
+                  <div className={cn("font-medium", item.done ? "text-white" : "text-ink")}>
+                    {item.label}
+                  </div>
+                  <div className="text-[11px] text-muted-ink mt-0.5">
+                    {item.done ? "Completed" : item.desc}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {!isPublishReady && (
+            <div className="flex items-start gap-2 pt-1 text-xs text-gold/90">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>
+                Remaining before publishing: <strong>{remainingItems.map(r => r.label).join(", ")}</strong>. You can also save as draft at any time.
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">

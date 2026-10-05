@@ -91,7 +91,8 @@ export default function OrganizerDetails() {
       date: new Date(),
       location: "Lagos, Nigeria",
       price: upcomingEvents[0]?.price || 0,
-      imageUrl: organizer?.coverUrl || organizer?.logoUrl || "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1600&auto=format&fit=crop",
+      imageUrl: organizer?.coverUrl || organizer?.logoUrl || "",
+      organizerLogo: organizer?.logoUrl || organizer?.coverUrl || "",
       branding: {
         displayName: organizer?.displayName,
         logoUrl: organizer?.logoUrl,
