@@ -519,42 +519,6 @@ export default function Home() {
               </div>
             </div>
           )}
-
-              {/* Counts are off until there are enough shows and vendors for
-                  the numbers to mean anything. Kept here for the day they are:
-                  uncomment and compute `cheapestTicket` with `cheapestPriceKobo`
-                  in the component body.
-
-              <Reveal y={10} delay={0.58} duration={0.5}>
-                <dl className="mt-9 flex items-stretch">
-                  <div className="pr-5 sm:pr-7">
-                    <dt className="sr-only">Shows on sale</dt>
-                    <dd className="font-display text-3xl sm:text-4xl font-bold text-gold leading-none tabular-nums">
-                      {events?.length ?? 0}
-                    </dd>
-                    <dd className="eyebrow mt-2.5">shows on sale</dd>
-                  </div>
-                  <div className="pl-5 sm:pl-7 border-l border-hairline">
-                    <dt className="sr-only">Vendors across Nigeria</dt>
-                    <dd className="font-display text-3xl sm:text-4xl font-bold text-gold leading-none tabular-nums">
-                      {vendors?.length ?? 0}
-                    </dd>
-                    <dd className="eyebrow mt-2.5">vendors across Nigeria</dd>
-                  </div>
-                  {cheapestTicket !== null && (
-                    <div className="pl-5 sm:pl-7 border-l border-hairline">
-                      <dt className="sr-only">Cheapest ticket on sale</dt>
-                      <dd className="font-display text-3xl sm:text-4xl font-bold text-gold leading-none tabular-nums">
-                        {formatNaira(cheapestTicket)}
-                      </dd>
-                      <dd className="eyebrow mt-2.5">tickets from</dd>
-                    </div>
-                  )}
-                </dl>
-              </Reveal>
-              */}
-            </div>
-          </div>
         </div>
 
         {/* The ticker that scrolled the same events under the deck is gone. The
