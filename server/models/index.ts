@@ -85,6 +85,7 @@ const UserSchema: Schema = new Schema({
   videoLoopUrl: { type: String, default: null },
   spotifyPlaylistUrl: { type: String, default: null },
   tourCities: { type: [String], default: [] },
+  isDemo: { type: Boolean, default: false, index: true },
   createdAt: { type: Date, default: Date.now }
 }, {
   id: false // Disable the id virtual to avoid unique index conflict with null
@@ -173,6 +174,7 @@ const EventSchema: Schema = new Schema({
     default: 'party',
   },
   eventTypeLabel: { type: String, maxlength: 40 }, // free text when 'other'
+  isDemo: { type: Boolean, default: false, index: true },
 });
 
 export const EventModel = mongoose.models.Event || model<IEvent>("Event", EventSchema);
@@ -205,11 +207,12 @@ const BookingSchema: Schema = new Schema({
   ticketType: { type: String, default: 'Regular' }, // Added ticketType
   quantity: { type: Number, required: true },
   totalAmount: { type: Number, required: true },
-  status: { type: String, enum: ['pending', 'paid', 'cancelled'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'paid', 'cancelled', 'abandoned'], default: 'pending' },
   paymentIntentId: { type: String },
   paymentReference: { type: String },
-  paymentGateway: { type: String, enum: ['flutterwave', 'paystack', 'simulated', 'manual', null], default: null },
-  gatewayTxnId: { type: String, default: null }, // Flutterwave refunds need the numeric transaction id
+  paymentProvider: { type: String, enum: ['paystack', 'simulated', 'manual', null], default: null },
+  paymentGateway: { type: String, default: null },
+  gatewayTxnId: { type: String, default: null },
   promoCode: { type: String, default: null },
   tableNote: { type: String, default: null }, // group size / seating preference for tables
   phone: { type: String, default: null }, // optional checkout fields, organizer-toggled
@@ -218,6 +221,7 @@ const BookingSchema: Schema = new Schema({
   isVerified: { type: Boolean, default: false }, // Added isVerified
   verifiedAt: { type: Date }, // Added verifiedAt
   remindersDisabled: { type: Boolean, default: false }, // guest opt-out for event reminder emails
+  isDemo: { type: Boolean, default: false, index: true },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -226,6 +230,7 @@ export const BookingModel = mongoose.models.Booking || model<IBooking>("Booking"
 // Paid bookings feed scarcity, pulse stats, and the attendee export.
 BookingSchema.index({ eventId: 1, status: 1 });
 BookingSchema.index({ email: 1, createdAt: -1 });
+BookingSchema.index({ paymentReference: 1 }, { unique: true, sparse: true });
 
 // ── Automated event reminders ──
 // One row per (booking, kind) sent, so a backend restart can never double-
@@ -285,6 +290,7 @@ const VendorSchema: Schema = new Schema({
   slug: { type: String, index: { unique: true, sparse: true } },
   slugAliases: { type: [String], default: [], index: true },
   theme: { type: String, enum: ['midnight-gold', 'ivory-editorial', 'sunset-poster', null], default: null },
+  isDemo: { type: Boolean, default: false, index: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
@@ -378,6 +384,7 @@ const TicketSchema: Schema = new Schema({
   issuedBy: { type: String },
   usedAt: { type: Date },
   usedBy: { type: String },
+  isDemo: { type: Boolean, default: false, index: true },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -387,6 +394,7 @@ export const TicketModel = mongoose.models.Ticket || model<ITicket>("Ticket", Ti
 // and by event+status.
 TicketSchema.index({ attendeeEmail: 1, createdAt: -1 });
 TicketSchema.index({ eventId: 1, status: 1 });
+TicketSchema.index({ bookingId: 1, seat: 1 }, { unique: true, partialFilterExpression: { bookingId: { $type: "objectId" } } });
 // Audit trail for gate activity. One row per verification attempt, including
 // offline scans (synced later) and supervisor overrides.
 export interface IScanEvent extends Document {
@@ -487,6 +495,7 @@ const PayoutSchema: Schema = new Schema({
 });
 
 export const PayoutModel = mongoose.models.Payout || model<IPayout>("Payout", PayoutSchema);
+PayoutSchema.index({ sourceBookingId: 1, kind: 1 }, { unique: true, partialFilterExpression: { sourceBookingId: { $type: "objectId" } } });
 
 // Waitlist
 // Sold-out tiers collect emails instead of dead-ending when the organizer

@@ -504,7 +504,7 @@ export async function sendOrganizerSaleEmail(
   await resend.emails.send({
     from: FROM,
     to: [to.email],
-    subject: `Sold: ${data.quantity}× ${data.tierName} — ${data.eventTitle}`,
+    subject: `Sold: ${data.quantity}× ${data.tierName} · ${data.eventTitle}`,
     html: shell(
       "New ticket sale",
       `
@@ -551,7 +551,7 @@ export async function sendBusinessApplicationEmail(
   await resend.emails.send({
     from: FROM,
     to: [to.email],
-    subject: `${label} application: ${data.businessName} — ${data.eventTitle}`,
+    subject: `${label} application: ${data.businessName} · ${data.eventTitle}`,
     html: shell(
       `New ${data.businessType} application`,
       `
@@ -566,7 +566,7 @@ export async function sendBusinessApplicationEmail(
         </table>
         <p style="margin:12px 0 0;color:#444;">${esc(data.description)}</p>
       </div>
-      <p style="margin:0;font-size:13px;color:#444;">Reply to them directly to confirm the spot — their details are above, and the application is saved under your event's Sponsors &amp; Vendors tab.</p>`,
+      <p style="margin:0;font-size:13px;color:#444;">Reply to them directly to confirm the spot. Their details are above, and the application is saved under your event's Sponsors &amp; Vendors tab.</p>`,
       data.branding,
     ),
   });

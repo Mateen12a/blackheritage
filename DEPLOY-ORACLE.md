@@ -119,9 +119,9 @@ SESSION_SECRET=<64+ random chars, e.g. openssl rand -hex 48>
 MONGODB_URI=<your connection string>
 ```
 
-- `PUBLIC_APP_URL` — every email link and share URL is built from it. If it is missing, links silently point at localhost:5000.
-- `SESSION_SECRET` — the server refuses to start in production without it (session cookies would be predictable).
-- Payment keys: `PAYSTACK_SECRET_KEY` (or `FLUTTERWAVE_SECRET_KEY` + `FLUTTERWAVE_WEBHOOK_HASH`). The gateway with keys present wins. Switch to `sk_live_*`/live Flutterwave keys when real money starts; webhooks must be re-pointed at `https://blackhevents.com/api/payments/webhook` in the dashboard when you do.
+- `PUBLIC_APP_URL`: every email link and share URL is built from it. If it is missing, links point at localhost:5000.
+- `SESSION_SECRET`: the server refuses to start in production without it (session cookies would be predictable).
+- Payment keys: `PAYSTACK_SECRET_KEY` and `PAYSTACK_PUBLIC_KEY`. Webhooks must be pointed at `https://blackhevents.com/api/payments/webhook` (or `/api/paystack/webhook`) in the Paystack dashboard.
 - Optional: `RESEND_API_KEY` (transactional email), `GEMINI_API_KEY` (flyer extraction), `GOOGLE_CLIENT_ID/SECRET` (social login).
 
 ## 5. Cloudflare SSL and Nginx

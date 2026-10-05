@@ -5,7 +5,7 @@ import { useFinalizeBooking } from "@/hooks/use-bookings";
 import { TicketReveal, type RevealTicket } from "@/components/TicketReveal";
 
 /**
- * The landing spot for a hosted-checkout redirect (Flutterwave sends the buyer
+ * The landing spot for a hosted-checkout redirect (gateway sends the buyer
  * back to the event page with ?ref=<booking reference>&status=...).
  *
  * The gateway's redirect is never trusted as proof of payment: the handler

@@ -1,8 +1,27 @@
 // End-to-end test against the live backend on 3001. Exercises the full
 // ticketing lifecycle and prints PASS/FAIL per assertion.
 const BASE = "http://localhost:3001";
+const fs = require("fs");
+const path = require("path");
 const crypto = require("crypto");
 const zlib = require("zlib");
+
+// Database isolation guard: refuse to run e2e against production database
+try {
+  const envPath = path.join(__dirname, "..", ".env");
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, "utf8");
+    const match = envContent.match(/MONGODB_URI=["']?([^"'\r\n]+)/);
+    if (match) {
+      const dbMatch = match[1].match(/\/([^/?]+)(\?|$)/);
+      const dbName = dbMatch ? dbMatch[1] : "";
+      if (dbName && !dbName.endsWith("_dev") && !dbName.endsWith("_verify")) {
+        console.error(`[e2e guard] Refusing to run e2e: database "${dbName}" does not end in _dev or _verify. Live database protected.`);
+        process.exit(1);
+      }
+    }
+  }
+} catch {}
 let cookie = "";
 let pass = 0, fail = 0;
 
@@ -92,26 +111,27 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-// Fulfill a booking the way Flutterwave does in production: a signed
-// charge.completed webhook on /api/payments/webhook. finalize then takes
-// its idempotent already-paid path. Returns null when no hash is configured.
-async function flwWebhook(ref, amountKobo) {
-  const hash = process.env.FLW_WEBHOOK_HASH;
-  if (!ref || !hash) return null;
+// Fulfill a booking the way Paystack does in production: a signed
+// charge.success webhook on /api/payments/webhook. finalize then takes
+// its idempotent already-paid path.
+async function paystackWebhook(ref, amountKobo) {
+  const secret = process.env.PAYSTACK_SECRET_KEY;
+  if (!ref || !secret) return null;
   const payload = JSON.stringify({
-    event: "charge.completed",
+    event: "charge.success",
     data: {
       id: 424242,
-      tx_ref: ref,
-      amount: amountKobo / 100, // naira, as Flutterwave sends it
+      reference: ref,
+      amount: amountKobo, // kobo, as Paystack sends it
       currency: "NGN",
-      status: "successful",
-      created_at: new Date().toISOString(),
+      status: "success",
+      paid_at: new Date().toISOString(),
     },
   });
+  const sig = crypto.createHmac("sha512", secret).update(payload).digest("hex");
   return fetch(BASE + "/api/payments/webhook", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "verif-hash": hash },
+    headers: { "Content-Type": "application/json", "x-paystack-signature": sig },
     body: payload,
   });
 }
@@ -179,13 +199,9 @@ async function api(method, path, body, useCookie = true) {
   ok("promo initiate", r.status === 201 && r.json?.totalKobo === Math.round(tier.price * 0.85), JSON.stringify(r.json).slice(0, 120));
   const promoRef = r.json?.reference;
   const promoTotal = r.json?.totalKobo;
-  if (promoRef && process.env.PAYSTACK_SECRET_KEY) {
-    const payload = JSON.stringify({ event: "charge.success", data: { reference: promoRef, amount: promoTotal, status: "success" } });
-    const sig = crypto.createHmac("sha512", process.env.PAYSTACK_SECRET_KEY).update(payload).digest("hex");
-    await fetch(BASE + "/api/paystack/webhook", { method: "POST", headers: { "Content-Type": "application/json", "x-paystack-signature": sig }, body: payload });
-  } else if (promoRef) {
-    const flwRes = await flwWebhook(promoRef, promoTotal);
-    if (flwRes) ok("promo webhook accepted", flwRes.status === 200, "status=" + flwRes.status);
+  if (promoRef) {
+    const whRes = await paystackWebhook(promoRef, promoTotal);
+    if (whRes) ok("promo webhook accepted", whRes.status === 200, "status=" + whRes.status);
   }
   const promoFinal = await api("POST", "/api/bookings/finalize", { reference: promoRef });
   ok("promo booking fulfills", promoFinal.status === 200, JSON.stringify(promoFinal).slice(0, 100));
@@ -205,26 +221,10 @@ async function api(method, path, body, useCookie = true) {
 
   // ── 7. Complete payment the way production does: a signed webhook ──
   // With live gateway keys, finalize correctly refuses an unverified
-  // payment. The webhook is the source of truth (Paystack HMAC here;
-  // Flutterwave's verif-hash via flwWebhook otherwise).
+  // payment. The webhook is the source of truth (Paystack HMAC-SHA512).
   let firstCode = null;
-  const secret = process.env.PAYSTACK_SECRET_KEY;
-  if (secret) {
-    const payload = JSON.stringify({
-      event: "charge.success",
-      data: { reference, amount: baseTotal, status: "success" },
-    });
-    const sig = crypto.createHmac("sha512", secret).update(payload).digest("hex");
-    const whRes = await fetch(BASE + "/api/paystack/webhook", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-paystack-signature": sig },
-      body: payload,
-    });
-    ok("webhook accepted", whRes.status === 200, "status=" + whRes.status);
-  } else {
-    const flwRes = await flwWebhook(reference, baseTotal);
-    if (flwRes) ok("webhook accepted", flwRes.status === 200, "status=" + flwRes.status);
-  }
+  const whRes = await paystackWebhook(reference, baseTotal);
+  if (whRes) ok("webhook accepted", whRes.status === 200, "status=" + whRes.status);
   r = await api("POST", "/api/bookings/finalize", { reference });
   ok("finalize fulfills", r.status === 200 && r.json?.status === "paid" && r.json?.tickets?.length === 2, JSON.stringify(r.json).slice(0, 160));
   firstCode = r.json?.tickets?.[0]?.code;

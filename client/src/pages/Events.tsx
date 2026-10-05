@@ -4,7 +4,7 @@ import { useEvents } from "@/hooks/use-events";
 import { Reveal } from "@/components/motion";
 import { Search } from "lucide-react";
 import { CategoryBrowse } from "@/components/CategoryBrowse";
-import { DirectorySkeleton } from "@/components/AsyncStates";
+import { DirectorySkeleton, ProductionEmptyState } from "@/components/AsyncStates";
 import { stateForLocation, stateOptionsForEvents } from "@/lib/nigeria";
 import { useSearch } from "wouter";
 import { useState, useEffect, useMemo } from "react";
@@ -131,7 +131,7 @@ export default function Events() {
           <div className="mt-4 sm:mt-5 h-0.5 w-16 bg-gold" aria-hidden="true" />
           <p className="mt-5 text-lg text-muted-ink max-w-xl leading-relaxed hidden md:block">
             Afrobeats nights, live jazz, beach hangouts, festivals, and cultural shows.
-            Instant confirmation, verified entry.
+            Direct confirmation, gate-ready entry.
           </p>
         </Reveal>
 
@@ -248,7 +248,14 @@ export default function Events() {
           </>
         )}
 
-        {!isLoading && filteredEvents?.length === 0 && (
+        {!isLoading && (!events || events.length === 0) ? (
+          <ProductionEmptyState
+            title="No upcoming events yet"
+            message="New events and cultural experiences will appear here once organizers publish tickets."
+            actionLabel="List an event"
+            actionHref="/organizers"
+          />
+        ) : !isLoading && filteredEvents?.length === 0 ? (
           <div className="text-center py-24 border border-hairline rounded-md bg-surface">
             <h2 className="font-display text-xl font-bold text-ink mb-2">
               {quickFilter === "tonight"
@@ -281,7 +288,7 @@ export default function Events() {
               )}
             </p>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

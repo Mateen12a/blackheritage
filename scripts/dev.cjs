@@ -74,7 +74,7 @@ const viteCli = path.join(nodeModulesDir, 'vite', 'bin', 'vite.js');
 
 const backend = spawn(process.execPath, ['--import', 'tsx', 'server/index.ts'], {
   cwd: rootDir,
-  env: { ...process.env, NODE_ENV: 'development', FORCE_COLOR: '1' },
+  env: { ...process.env, NODE_ENV: 'development', DEMO_MODE: process.env.DEMO_MODE || 'true', FORCE_COLOR: '1' },
 });
 
 backend.stdout.on('data', (d) => process.stdout.write(`[backend] ${d}`));

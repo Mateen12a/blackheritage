@@ -39,7 +39,7 @@ interface LeadFormState {
 const FAQS = [
   {
     q: "How fast do payouts reach my bank account?",
-    a: "Ticket sales settle to your bank account within 24 hours. Add any Nigerian bank or fintech account (GTBank, Zenith, Access, Kuda, Providus) in your organizer settings.",
+    a: "Ticket sales settle to your Nigerian bank account on the next banking day (T+1). Add any Nigerian bank or fintech account (GTBank, Zenith, Access, Kuda, Providus) in your organizer settings.",
   },
   {
     q: "Can the gate scan tickets when the network drops?",
@@ -158,7 +158,7 @@ export default function OrganizersLanding() {
 
           <Reveal y={16} delay={0.25} duration={0.6}>
             <p className="mt-6 mx-auto max-w-2xl text-base sm:text-lg text-ink/80 leading-relaxed">
-              Your buyers get their QR code on WhatsApp. Your gate keeps scanning when the network drops. Payouts go to your own bank account, and the attendee list stays yours.
+              Your buyers get their QR code by email. Your gate keeps scanning when the network drops. Payouts go to your own bank account, and the attendee list stays yours.
             </p>
           </Reveal>
 
@@ -194,8 +194,8 @@ export default function OrganizersLanding() {
                 <p className="text-xs text-muted-ink mt-1 font-medium">One entry per ticket, flagged at the door</p>
               </div>
               <div>
-                <p className="font-display text-lg sm:text-xl font-bold text-gold tabular-nums">24h settlement</p>
-                <p className="text-xs text-muted-ink mt-1 font-medium">Ticket money straight to your bank</p>
+                <p className="font-display text-lg sm:text-xl font-bold text-gold tabular-nums">Next-day payouts</p>
+                <p className="text-xs text-muted-ink mt-1 font-medium">Ticket money straight to your Nigerian bank</p>
               </div>
               <div>
                 <p className="font-display text-lg sm:text-xl font-bold text-gold tabular-nums">6% flat fee</p>
@@ -223,7 +223,7 @@ export default function OrganizersLanding() {
               { title: "Weddings & Celebrations", hint: "Your branding on every ticket and invite link." },
               { title: "Corporate Events & Conferences", hint: "Invite-only access codes, a staffed gate, and clean attendee exports." },
               { title: "Comedy Shows & Art Exhibitions", hint: "Seated or standing, promo codes, waitlists." },
-              { title: "Brunches & Day Parties", hint: "Set up in minutes, guest checkout, QR codes on WhatsApp." },
+              { title: "Brunches & Day Parties", hint: "Set up in minutes, guest checkout, QR codes delivered by email." },
             ].map((t, i) => (
               <Reveal key={t.title} delay={0.05 * i}>
                 <div className="h-full border border-hairline rounded-md bg-surface p-6 hover:border-white/20 transition-colors duration-200">
@@ -254,9 +254,9 @@ export default function OrganizersLanding() {
               <div className="w-10 h-10 rounded-lg bg-gold/15 flex items-center justify-center text-gold mb-4">
                 <Smartphone className="w-5 h-5" />
               </div>
-              <h3 className="font-display text-lg font-bold text-ink">Tickets land on WhatsApp</h3>
+              <h3 className="font-display text-lg font-bold text-ink">Tickets land by email</h3>
               <p className="mt-2 text-xs sm:text-sm text-muted-ink leading-relaxed">
-                Most Nigerian attendees do not read email for tickets. The QR code goes to their WhatsApp right after checkout, so you hear fewer "I never got my ticket" at the door.
+                Every buyer receives their branded e-ticket and QR code directly in their inbox right after checkout, complete with calendar pass and PDF download.
               </p>
             </div>
 
@@ -274,9 +274,9 @@ export default function OrganizersLanding() {
               <div className="w-10 h-10 rounded-lg bg-gold/15 flex items-center justify-center text-gold mb-4">
                 <CreditCard className="w-5 h-5" />
               </div>
-              <h3 className="font-display text-lg font-bold text-ink">Payouts in 24 hours, not 14 days</h3>
+              <h3 className="font-display text-lg font-bold text-ink">Next banking day payouts, not 14 days</h3>
               <p className="mt-2 text-xs sm:text-sm text-muted-ink leading-relaxed">
-                Ticket money goes to the bank account you add in settings within 24 hours. You can pay the sound engineer and the vendors when you said you would.
+                Ticket money goes to your Nigerian bank account on the next banking day (T+1). You can pay the sound engineer and the vendors when you said you would.
               </p>
             </div>
 

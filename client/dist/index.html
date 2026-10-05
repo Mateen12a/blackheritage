@@ -4,12 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Brand type only: Playfair Display (display) + DM Sans (body). See DESIGN.md. -->
+    <!-- Brand type: Self-hosted Playfair Display (display) + DM Sans (body). See DESIGN.md. -->
+    <link rel="stylesheet" href="/fonts/fonts.css" />
+    <link rel="preload" href="/fonts/playfair-display-normal-800.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/playfair-display-normal-700.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/playfair-display-italic-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/dm-sans-normal-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/dm-sans-normal-500.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/dm-sans-normal-700.woff2" as="font" type="font/woff2" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
     <title>Black Heritage Entertainment & Events | Tickets, Hangouts & Experiences in Nigeria</title>
     <meta name="description" content="Concerts, beach hangouts, festivals, and parties across Nigeria (Lagos, Abuja, PH & beyond). Instant QR e-tickets, VIP tables, and verified event talent." />
+    <link rel="canonical" href="https://blackhevents.com/" />
     <meta name="keywords" content="events in Nigeria, concert tickets Nigeria, Lagos events, Abuja parties, Port Harcourt events, beach hangouts Nigeria, VIP tables, event vendors Nigeria, DJ booking Nigeria" />
     
     <!-- Open Graph / Facebook -->
@@ -17,14 +23,44 @@
     <meta property="og:url" content="https://blackhevents.com/" />
     <meta property="og:title" content="Black Heritage Entertainment & Events | Tickets, Hangouts & Experiences in Nigeria" />
     <meta property="og:description" content="Concerts, beach hangouts, festivals, and parties across Nigeria (Lagos, Abuja, PH & beyond). Instant QR e-tickets, VIP tables, and verified event talent." />
-    <meta property="og:image" content="/favicon.png" />
+    <meta property="og:image" content="https://blackhevents.com/og-home.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#111114" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://blackhevents.com/" />
     <meta property="twitter:title" content="Black Heritage Entertainment & Events | Tickets, Hangouts & Experiences in Nigeria" />
     <meta property="twitter:description" content="Concerts, beach hangouts, festivals, and parties across Nigeria (Lagos, Abuja, PH & beyond). Instant QR e-tickets, VIP tables, and verified event talent." />
-    <meta property="twitter:image" content="/favicon.png" />
+    <meta property="twitter:image" content="https://blackhevents.com/og-home.png" />
+
+    <!-- Structured data: who we are, what the site does -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://blackhevents.com/#org",
+          "name": "Black Heritage Entertainment & Events",
+          "url": "https://blackhevents.com/",
+          "logo": "https://blackhevents.com/favicon.png",
+          "description": "Discover and book concerts, festivals, beach hangouts and parties across Nigeria — or list your own event and sell tickets with verified e-tickets. Hire trusted DJs, caterers, photographers and more."
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://blackhevents.com/#site",
+          "name": "Black Heritage Entertainment & Events",
+          "publisher": { "@id": "https://blackhevents.com/#org" },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://blackhevents.com/explore?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+    </script>
 
     <!-- WhatsApp / iMessage -->
     <meta property="og:site_name" content="Black Heritage Entertainment & Events" />
@@ -46,11 +82,11 @@
         z-index: 10 !important;
       }
     </style>
-    <script type="module" crossorigin src="/assets/index-HPYfz37Q.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CMVWPW9Z.css">
+    <script type="module" crossorigin src="/assets/index-DzoPtew-.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-iUh9iT4s.css">
   </head>
   <body>
     <div id="root"></div>
-    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <script src="https://js.paystack.co/v1/inline.js"></script>
   </body>
 </html>

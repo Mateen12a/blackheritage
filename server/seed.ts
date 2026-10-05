@@ -17,6 +17,14 @@ import { generateTicketCode } from "./tickets";
 export async function seedPlatform(): Promise<void> {
   if (mongoose.connection.readyState !== 1) return;
 
+  // Startup guard: refuse to run seed script when database name does not end in _dev or _verify
+  const dbName = mongoose.connection.name || "";
+  const isDevOrVerifyDb = dbName.endsWith("_dev") || dbName.endsWith("_verify");
+  if (!isDevOrVerifyDb) {
+    console.warn(`[seed guard] Refusing to run seed: database "${dbName}" does not end in _dev or _verify. Live production database is protected from fake/sample data.`);
+    return;
+  }
+
   // Platform settings: 6% tickets, 12.5% vendor bookings
   const settings = await PlatformSettingModel.findOne({ key: "platform" });
   if (!settings) {
@@ -24,23 +32,44 @@ export async function seedPlatform(): Promise<void> {
     console.log("Seed: platform settings created (6% tickets, 12.5% vendor)");
   }
 
+  // Ensure authentic Abuja Sunset Gala hero photo without skyline/landmark is copied to public/events
+  try {
+    const galaSrc = "C:/Users/PC/.gemini/antigravity-ide/brain/70055d67-e9c8-45ab-bb6e-8c71b58a7179/sunset_gala_hero_1791131950997.jpg";
+    const galaDest = path.resolve(process.cwd(), "client/public/events/abuja-sunset-gala.jpg");
+    if (fs.existsSync(galaSrc) && !fs.existsSync(galaDest)) {
+      fs.copyFileSync(galaSrc, galaDest);
+      console.log("Seed: synced abuja-sunset-gala.jpg without skyline/landmark to public/events");
+    }
+  } catch (galaErr: any) {
+    console.warn("Notice syncing gala hero photo:", galaErr.message);
+  }
+
   // Accounts: admin, organizer, attendee, vendor owner, team staff
   const password = await bcrypt.hash("demo1234", 10);
 
   const ensureUser = async (username: string, email: string, role: string, extra: any = {}, pwd = password) => {
+    const isDemo = username !== "admin";
     const existing = await User.findOne({ $or: [{ username }, { email }] });
     if (existing) {
       let touched = false;
       if (extra.teamOwnerId && existing.teamOwnerId !== extra.teamOwnerId) { existing.teamOwnerId = extra.teamOwnerId; touched = true; }
       if (extra.staffRole && existing.staffRole !== extra.staffRole) { existing.staffRole = extra.staffRole; touched = true; }
       if (existing.role !== role && role !== "user") { existing.role = role; touched = true; }
+      if (isDemo && existing.isDemo !== true) { (existing as any).isDemo = true; touched = true; }
       if (touched) await existing.save();
       return existing;
     }
-    return User.create({ username, email, password: pwd, role, ...extra });
+    return User.create({ username, email, password: pwd, role, isDemo, ...extra });
   };
 
   const admin = await ensureUser("admin", "admin@blackhevents.com", "admin", {}, await bcrypt.hash("admin123", 10));
+
+  // In production mode (DEMO_MODE !== 'true'), do not populate demo accounts, events, or vendors
+  if (process.env.DEMO_MODE !== "true") {
+    console.log("Seed: production mode active (DEMO_MODE !== 'true'). Skipping demo data seeding.");
+    return;
+  }
+
   const organizer = await ensureUser("tunde_organizer", "tunde@blackhevents.com", "organizer", {
     organizerSlug: "tunde-live",
     displayName: "Tunde Live Concepts",
@@ -181,6 +210,23 @@ export async function seedPlatform(): Promise<void> {
   await User.deleteOne({ username: "blackheritage" });
   await EventModel.deleteOne({ slug: "black-heritage-grand-gala-awards" });
 
+  // Aura Events (Sample Organizer for demo & preview)
+  const auraOrg = await ensureUser("aura_events", "aura@blackhevents.com", "organizer", {
+    organizerSlug: "aura-events",
+    displayName: "Aura Events (Sample)",
+    bio: "Nigeria live events and entertainment curator. Sample organizer profile.",
+    logoUrl: "/events/sip-and-paint-ng.jpg",
+    coverUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=1600&auto=format&fit=crop",
+    tourCities: ["Abuja", "Lagos"],
+    socials: {
+      instagram: "https://instagram.com/blackhevents",
+      website: "https://blackhevents.com",
+    },
+    theme: "midnight-gold",
+    accentHex: "#E3B23C",
+    followersCount: 1500,
+  });
+
   const attendee = await ensureUser("ayo_attendee", "ayo@example.com", "user");
   const vendorOwner = await ensureUser("naija_vendor", "naija@example.com", "user");
 
@@ -239,6 +285,35 @@ export async function seedPlatform(): Promise<void> {
 
   // Authentic Nigerian Cultural Events across Lagos & Abuja with bespoke flyers and accurate ticket tiers
   const canonicalEvents = [
+    {
+      title: "Abuja Sunset Gala (Sample)",
+      slug: "abuja-sunset-gala",
+      slugAliases: ["abuja-sunset-gala-sample"],
+      daysAhead: 18,
+      location: "Transcorp Hilton, Maitama, Abuja",
+      price: 1500000,
+      capacity: 1200,
+      imageUrl: "/events/sip-and-paint-ng.jpg",
+      description: "An evening of live jazz, contemporary Afrobeats, curated dining, and cultural elegance at the Federal Capital Territory. Sample event profile for platform verification.",
+      ticketTypes: [
+        { name: "General Access", price: 1500000, capacity: 800, sold: 420, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "VIP Lounge Pass", price: 4000000, capacity: 350, sold: 160, saleOpen: null, saleClose: inDays(30).toISOString() },
+        { name: "Gala Table (Seats 8)", price: 30000000, capacity: 50, sold: 22, saleOpen: null, saleClose: inDays(25).toISOString() },
+      ],
+      gallery: [
+        "/events/sip-and-paint-ng.jpg",
+      ],
+      isFeatured: true,
+      theme: "midnight-gold" as const,
+      organizerId: auraOrg._id.toString(),
+      organizerName: "Aura Events (Sample)",
+      branding: {
+        displayName: "Aura Events (Sample)",
+        logoUrl: "/events/sip-and-paint-ng.jpg",
+        accentHex: "#E3B23C",
+        slug: "aura-events",
+      },
+    },
     {
       title: "The Lagos Street & Sound Festival",
       slug: "lagos-street-and-sound-festival",
@@ -471,6 +546,7 @@ export async function seedPlatform(): Promise<void> {
         imageUrl: item.imageUrl,
         isFeatured: item.isFeatured,
         status: "published",
+        isDemo: true,
         ticketTypes: JSON.stringify(item.ticketTypes),
         gallery: JSON.stringify(item.gallery),
         pastEventVideos: "[]",
@@ -485,6 +561,10 @@ export async function seedPlatform(): Promise<void> {
       console.log(`Seed: canonical event created: "${item.title}"`);
     } else {
       let touched = false;
+      if (existing.isDemo !== true) {
+        existing.isDemo = true;
+        touched = true;
+      }
       if (existing.title !== item.title) {
         existing.title = item.title;
         touched = true;
@@ -901,24 +981,24 @@ export async function seedPlatform(): Promise<void> {
   // 5 Authentic Verified Lagos Event Vendors
   const canonicalVendors = [
     {
-      businessName: "DJ Consequence",
+      businessName: "DJ Soundcraft",
       category: "DJ",
       categoryLabel: "Headline Tour DJ",
-      bio: "The Vibes Machine. Resident DJ at Club Quilox and headline festival tour DJ across Africa. Curating high-energy afrobeats, amapiano, and house sets with live percussion.",
+      bio: "Resident festival selector and headline tour DJ across West Africa. Curating high-energy afrobeats, amapiano, and house sets with live percussion.",
       gallery: [
         "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1200&auto=format&fit=crop",
         "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?q=80&w=1200&auto=format&fit=crop",
         "https://images.unsplash.com/photo-1571266028243-1e588a5d1e33?q=80&w=1200&auto=format&fit=crop",
       ],
-      videos: ["https://www.youtube.com/watch?v=dQw4w9WgXcQ"],
-      socials: { instagram: "djconsequence", x: "djconsequence" },
+      videos: [],
+      socials: { instagram: "djsoundcraft", x: "djsoundcraft" },
       city: "Lagos",
       serviceArea: "Victoria Island, Ikoyi, Lekki Phase 1, Destination Events",
       phone: "+234 802 345 6789",
       whatsapp: "2348023456789",
-      slug: "dj-consequence",
+      slug: "dj-soundcraft",
       theme: "midnight-gold" as const,
-      branding: { displayName: "DJ Consequence", accentHex: "#E3B23C" },
+      branding: { displayName: "DJ Soundcraft", accentHex: "#E3B23C" },
     },
     {
       businessName: "Lagos Cocktail Artisans",
@@ -1000,6 +1080,25 @@ export async function seedPlatform(): Promise<void> {
       theme: "midnight-gold" as const,
       branding: { displayName: "Naija Gourmet Grills", accentHex: "#E3B23C" },
     },
+    {
+      businessName: "DJ Spinflow (Sample)",
+      category: "DJ",
+      categoryLabel: "Afrobeats & Live Sets",
+      bio: "Sample DJ profile for sound tests and live venue demonstration. Afrobeats, amapiano, and live performance sets across Nigeria.",
+      gallery: [
+        "/dj-placeholder.jpg",
+        "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1200&auto=format&fit=crop"
+      ],
+      videos: [],
+      socials: { instagram: "djspinflow" },
+      city: "Abuja",
+      serviceArea: "Abuja, Lagos, Port Harcourt",
+      phone: "+234 800 000 0003",
+      whatsapp: "2348000000003",
+      slug: "dj-spinflow",
+      theme: "midnight-gold" as const,
+      branding: { displayName: "DJ Spinflow (Sample)", accentHex: "#E3B23C" },
+    },
   ];
 
   for (let i = 0; i < canonicalVendors.length; i++) {
@@ -1022,12 +1121,17 @@ export async function seedPlatform(): Promise<void> {
         whatsapp: v.whatsapp,
         slug: v.slug,
         status: "published",
+        isDemo: true,
         ownerId: i === 0 ? vendorOwner?._id?.toString() : undefined,
         theme: v.theme,
         branding: v.branding,
       });
       console.log(`Seed: verified vendor created: "${v.businessName}"`);
     } else {
+      if (existing.isDemo !== true) {
+        existing.isDemo = true;
+        await existing.save();
+      }
       if (!existing.gallery || existing.gallery === "[]") {
         existing.gallery = JSON.stringify(v.gallery);
         await existing.save();
@@ -1043,6 +1147,7 @@ export async function seedPlatform(): Promise<void> {
   // because the create loop above stamps ownership on index 0. Selecting by
   // natural order instead handed the account a different business every boot.
   const showcase =
+    (await VendorModel.findOne({ slug: "dj-soundcraft" })) ||
     (await VendorModel.findOne({ slug: "dj-consequence" })) ||
     (vendorOwner?._id
       ? await VendorModel.findOne({ ownerId: vendorOwner._id.toString() })
@@ -1099,7 +1204,7 @@ export async function seedPlatform(): Promise<void> {
           senderId: attendee._id.toString(),
           recipientId: vendorOwner._id.toString(),
           vendorId: showcase._id.toString(),
-          body: "Hi, are you available for a wedding in Lekki next month? Roughly 300 guests.",
+          body: "Hi, are you available for Abuja Sunset Gala on 17 October 2026? Roughly 500 guests.",
           createdAt: clientAsk,
         },
         {
@@ -1197,8 +1302,8 @@ export async function seedPlatform(): Promise<void> {
     },
     {
       title: "Ultra Low-Latency Wi-Fi for Island Beach Festivals",
-      sponsorName: "Starlink Event Operations",
-      tagline: "Powering POS terminals, live 4K stream broadcasts, and attendee Wi-Fi at Landmark and Moist Beach with satellite internet.",
+      sponsorName: "Apex Event Connectivity",
+      tagline: "Powering POS terminals, live 4K stream broadcasts, and attendee Wi-Fi at beachfront venues with high-throughput satellite internet.",
       badgeText: "Official Infrastructure Partner",
       imageUrl: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1200&auto=format&fit=crop",
       targetUrl: "/vendors",

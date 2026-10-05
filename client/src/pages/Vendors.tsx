@@ -5,7 +5,7 @@ import { useVendors } from "@/hooks/use-vendors";
 import { Reveal } from "@/components/motion";
 import { vendorCategories } from "@shared/schema";
 import { Search } from "lucide-react";
-import { DirectorySkeleton } from "@/components/AsyncStates";
+import { DirectorySkeleton, ProductionEmptyState } from "@/components/AsyncStates";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -126,7 +126,14 @@ export default function Vendors() {
           </>
         )}
 
-        {!isLoading && filteredVendors?.length === 0 && (
+        {!isLoading && (!vendors || vendors.length === 0) ? (
+          <ProductionEmptyState
+            title="No vendor profiles yet"
+            message="Event professionals, DJs, caterers, and production specialists across Nigeria will appear here."
+            actionLabel="List your profile"
+            actionHref="/vendor-signup"
+          />
+        ) : !isLoading && filteredVendors?.length === 0 ? (
           <div className="text-center py-16 border border-hairline rounded-md bg-surface">
             <h2 className="font-display text-xl font-bold text-ink mb-2">
               Nothing matches that yet
@@ -136,12 +143,12 @@ export default function Vendors() {
               directory.
             </p>
             <Link href="/vendor-signup">
-              <span className="text-gold underline-offset-4 hover:underline cursor-pointer">
-                Are you an artist, DJ, or creative talent? List your profile, it's free →
+              <span className="text-gold underline underline-offset-4 hover:text-gold-soft transition-colors cursor-pointer text-sm font-medium">
+                Are you an artist, DJ, or creative talent? List your profile, it's free
               </span>
             </Link>
           </div>
-        )}
+        ) : null}
 
         {/* Talent CTA — flat panel, hairline, single gold button */}
         <Reveal className="mt-24">
@@ -152,12 +159,12 @@ export default function Vendors() {
             <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
             <p className="mt-4 sm:mt-5 text-sm sm:text-base text-muted-ink max-w-xl leading-relaxed">
               A standing profile with your portfolio, service area, and a
-              direct WhatsApp line. Free to list. When Lagos plans an event,
+              direct WhatsApp line. Free to list. When Nigeria plans an event,
               this is where they'll find you.
             </p>
             <Link href="/vendor-signup">
               <span className="press mt-6 sm:mt-8 inline-flex items-center justify-center h-11 sm:h-12 px-6 sm:px-8 rounded-md bg-primary text-primary-foreground font-medium hover:bg-gold-soft transition-colors cursor-pointer text-sm">
-                List Your Talent: It's Free
+                List your profile
               </span>
             </Link>
           </section>

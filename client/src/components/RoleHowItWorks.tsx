@@ -60,7 +60,7 @@ const JOURNEYS: RoleJourney[] = [
         body: "Live sales, gate verification with your own staff codes, and payouts to your bank. Flat platform fee, no surprises.",
       },
     ],
-    cta: { label: "Host an Event", href: "/organizers" },
+    cta: { label: "List an event", href: "/organizers" },
   },
   {
     id: "vendors",
@@ -78,10 +78,10 @@ const JOURNEYS: RoleJourney[] = [
       },
       {
         title: "Grow your name",
-        body: "Ratings from real events, a verified badge, and a page you can put on your Instagram bio.",
+        body: "Ratings from real events, a portfolio showcase, and a page you can put on your Instagram bio.",
       },
     ],
-    cta: { label: "List Your Business", href: "/vendors" },
+    cta: { label: "List your profile", href: "/vendor-signup" },
   },
   {
     id: "brands",

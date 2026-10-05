@@ -56,7 +56,51 @@ scratch/
 *.local
 .agents/
 .claude/
-
+out/
+film/
+client/public/screens/
 # Deployment script with sensitive credentials
 deploy.sh
-example.mp4
+
+# Temporary video & inspection artifacts
+/reel_inspection.png
+/ref-*.png
+*.mp4
+*.webm
+*.mov
+*.avi
+temp_frames/
+
+# Test & Coverage Outputs
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+coverage/
+.nyc_output/
+
+# Database dumps, exports & local backups
+*.sql
+*.dump
+*.sqlite
+*.sqlite3
+*.db
+dump/
+backups/
+
+# Cache & Temporary Files
+.cache/
+.vite/
+*.tmp
+*.temp
+*.pid
+*.pid.lock
+*.seed
+verify-cleanup.ps1
+
+# Certificates & Private Keys
+*.pem
+*.key
+*.cert
+*.crt
+

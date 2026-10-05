@@ -15,6 +15,7 @@ import type { Event } from "@shared/schema";
 import { NativeSponsorSpotlight } from "@/components/NativeSponsorSpotlight";
 import { MostBooked } from "@/components/MostBooked";
 import { WHATSAPP_DISPLAY, whatsappLink } from "@/lib/contact";
+import { Footer } from "@/components/Footer";
 import logoImg from "../assets/logo.png";
 
 /**
@@ -160,10 +161,27 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    if (paused || events.length < 2) return;
+    if (paused || !events || events.length < 2) return;
     const t = setInterval(() => setIndex((i) => (i + 1) % events.length), 4500);
     return () => clearInterval(t);
-  }, [paused, events.length]);
+  }, [paused, events?.length]);
+
+  if (!events || events.length === 0) {
+    return (
+      <div className="relative mx-auto w-full max-w-[34rem] aspect-[4/5] rounded-2xl border border-white/15 bg-surface flex flex-col items-center justify-center p-8 text-center shadow-[0_30px_80px_rgba(0,0,0,0.55)]">
+        <Flame className="w-12 h-12 text-gold/40 mb-3" aria-hidden="true" />
+        <h3 className="font-display text-xl font-bold text-ink mb-1.5">New Events Dropping Soon</h3>
+        <p className="text-xs text-muted-ink max-w-xs mb-5 leading-relaxed">
+          Tickets for upcoming parties, live concerts, and festivals across Nigeria will appear here once published.
+        </p>
+        <Link href="/organizers">
+          <span className="press inline-flex items-center justify-center h-11 px-6 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-gold-soft transition-colors cursor-pointer">
+            List an event
+          </span>
+        </Link>
+      </div>
+    );
+  }
 
   const current = events[index % events.length];
   const [failed, setFailed] = useState(false);
@@ -630,7 +648,7 @@ export default function Home() {
                   </h2>
                   <div className="mt-4 h-0.5 w-12 bg-gold" aria-hidden="true" />
                   <p className="mt-4 text-muted-ink leading-relaxed">
-                    Set your tiers and ticket prices yourself. Buyers get instant verified QR tickets, and revenue settles straight to your Nigerian bank account the next business day.
+                    Set your tiers and ticket prices yourself. Buyers get instant QR tickets, and revenue settles straight to your Nigerian bank account the next business day.
                   </p>
                   <div className="mt-6 border-t border-hairline pt-4 space-y-3">
                     <div className="flex items-start gap-3">
@@ -648,7 +666,7 @@ export default function Home() {
                     <div className="flex items-start gap-3">
                       <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
                       <p className="text-xs text-ink/80 leading-relaxed">
-                        <strong className="text-ink font-semibold">Branded checkout:</strong> Paystack checkout supporting cards, bank transfer, and USSD.
+                        <strong className="text-ink font-semibold">Direct checkout:</strong> Fast checkout supporting cards, bank transfer, and USSD.
                       </p>
                     </div>
                   </div>
@@ -673,7 +691,7 @@ export default function Home() {
                 <div>
                   <p className="eyebrow">For DJs, MCs, caterers &amp; crew</p>
                   <h2 className="mt-3 font-display text-2xl md:text-3xl font-bold text-ink tracking-tight">
-                    No agency cut. No middleman.
+                    Direct client discovery. Zero monthly dues.
                   </h2>
                   <div className="mt-4 h-0.5 w-12 bg-gold" aria-hidden="true" />
                   <p className="mt-4 text-muted-ink leading-relaxed">
@@ -692,18 +710,12 @@ export default function Home() {
                         <strong className="text-ink font-semibold">Direct client conversations:</strong> planners chat with you on WhatsApp without platform lock-in.
                       </p>
                     </div>
-                    <div className="flex items-start gap-3">
-                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
-                      <p className="text-xs text-ink/80 leading-relaxed">
-                        <strong className="text-ink font-semibold">Verified badges:</strong> get vetted so hosts hire your talent with immediate confidence.
-                      </p>
-                    </div>
                   </div>
                 </div>
                 <div className="mt-8 flex flex-wrap gap-2.5 sm:gap-3">
                   <Link href={user ? "/vendor-dashboard" : "/auth?tab=register"}>
-                    <span className="press inline-flex items-center justify-center h-10 sm:h-11 px-4 sm:px-6 rounded-md border border-hairline text-ink font-medium hover:bg-surface-2 hover:text-gold transition-colors cursor-pointer text-xs">
-                      List Your Business
+                    <span className="press inline-flex items-center justify-center h-10 sm:h-11 px-4 sm:px-6 rounded-md bg-primary text-primary-foreground font-medium hover:bg-gold-soft transition-colors cursor-pointer text-xs sm:text-sm">
+                      List your profile
                     </span>
                   </Link>
                   <Link href="/vendors">
@@ -722,69 +734,7 @@ export default function Home() {
       <RoleHowItWorks />
 
       {/* Footer */}
-      <footer className="border-t border-hairline bg-surface">
-        <div className="container mx-auto px-4 py-14">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-10 md:gap-8">
-            <div className="md:col-span-1">
-              <div className="flex items-center gap-3 mb-4">
-                <img src={logoImg} alt="" className="h-8 w-8 object-contain" />
-                <div className="leading-none">
-                  <p className="font-display text-lg font-bold text-ink">
-                    Black Heritage
-                  </p>
-                  <p className="eyebrow mt-1">Entertainment &amp; Events</p>
-                </div>
-              </div>
-              <p className="text-sm text-muted-ink leading-relaxed mt-4">
-                Tickets to Nigerian shows and festivals, and the DJs,
-                caterers, and photographers who work them.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="eyebrow mb-4">Events</h4>
-              <ul className="space-y-2.5 text-sm">
-                <li><Link href="/events"><span className="text-muted-ink hover:text-gold transition-colors cursor-pointer">Browse Events</span></Link></li>
-                <li><Link href="/calendar"><span className="text-muted-ink hover:text-gold transition-colors cursor-pointer">Calendar</span></Link></li>
-                <li><Link href="/my-tickets"><span className="text-muted-ink hover:text-gold transition-colors cursor-pointer">My Tickets</span></Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="eyebrow mb-4">Vendors</h4>
-              <ul className="space-y-2.5 text-sm">
-                <li><Link href="/vendors"><span className="text-muted-ink hover:text-gold transition-colors cursor-pointer">Vendor Directory</span></Link></li>
-                <li><Link href="/vendor-dashboard"><span className="text-muted-ink hover:text-gold transition-colors cursor-pointer">List Your Business</span></Link></li>
-                <li><Link href="/auth?tab=register"><span className="text-muted-ink hover:text-gold transition-colors cursor-pointer">Create Account</span></Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="eyebrow mb-4">For Organizers</h4>
-              <ul className="space-y-2.5 text-sm">
-                <li><Link href="/admin"><span className="text-muted-ink hover:text-gold transition-colors cursor-pointer">Organizer Dashboard</span></Link></li>
-                <li><Link href="/admin/events/new"><span className="text-muted-ink hover:text-gold transition-colors cursor-pointer">Create an Event</span></Link></li>
-                <li><Link href="/auth?tab=register"><span className="text-muted-ink hover:text-gold transition-colors cursor-pointer">Sign Up Free</span></Link></li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-hairline">
-          <div className="container mx-auto px-4 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-xs text-muted-ink/60">
-              © {new Date().getFullYear()} Black Heritage Entertainment &amp;
-              Events. All rights reserved.
-            </p>
-            <div className="flex items-center gap-5 text-xs text-muted-ink">
-              <a href="https://instagram.com/blackhevents" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors" aria-label="Instagram">Instagram</a>
-              <a href="https://x.com/blackhevents" target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors" aria-label="Twitter / X">Twitter / X</a>
-              <a href={whatsappLink()} target="_blank" rel="noopener noreferrer" className="hover:text-gold transition-colors" aria-label={`WhatsApp ${WHATSAPP_DISPLAY}`}>WhatsApp</a>
-            </div>
-
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

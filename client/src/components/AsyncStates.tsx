@@ -253,3 +253,56 @@ export function LoadError({
     </div>
   );
 }
+
+/**
+ * Neutral production empty state for live pages with zero published records.
+ * Clean, calm, zero emojis, honest tone.
+ */
+export function ProductionEmptyState({
+  title,
+  message,
+  actionLabel,
+  actionHref,
+  onAction,
+  icon: Icon,
+}: {
+  title: string;
+  message: string;
+  actionLabel?: string;
+  actionHref?: string;
+  onAction?: () => void;
+  icon?: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <div
+      className="border border-hairline rounded-md bg-surface text-center p-10 md:p-14 max-w-lg mx-auto my-8"
+      role="region"
+      aria-label={title}
+    >
+      {Icon && (
+        <div className="w-12 h-12 rounded-full bg-surface-2 border border-hairline flex items-center justify-center mx-auto mb-4 text-muted-ink">
+          <Icon className="w-6 h-6" />
+        </div>
+      )}
+      <h3 className="font-display text-xl font-bold text-ink mb-2">{title}</h3>
+      <p className="text-sm text-muted-ink mb-6 leading-relaxed max-w-sm mx-auto">{message}</p>
+      {actionLabel && (
+        actionHref ? (
+          <a
+            href={actionHref}
+            className="press inline-flex items-center justify-center h-11 px-6 rounded-md bg-primary text-primary-foreground font-medium text-sm hover:bg-gold-soft transition-colors cursor-pointer"
+          >
+            {actionLabel}
+          </a>
+        ) : onAction ? (
+          <Button
+            onClick={onAction}
+            className="press h-11 px-6 rounded-md bg-primary text-primary-foreground font-medium text-sm hover:bg-gold-soft transition-colors"
+          >
+            {actionLabel}
+          </Button>
+        ) : null
+      )}
+    </div>
+  );
+}

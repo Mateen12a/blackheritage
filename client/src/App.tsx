@@ -292,13 +292,17 @@ function Router() {
         )}
       </Route>
 
-      {/* Instagram 9:16 Motion Reel Studio */}
-      <Route path="/reel">
-        {() => <MotionReel />}
-      </Route>
-      <Route path="/motion">
-        {() => <MotionReel />}
-      </Route>
+      {/* Instagram 9:16 Motion Reel Studio - Dev only (never ships to production) */}
+      {import.meta.env.DEV && (
+        <>
+          <Route path="/reel">
+            {() => <MotionReel />}
+          </Route>
+          <Route path="/motion">
+            {() => <MotionReel />}
+          </Route>
+        </>
+      )}
 
       {/* Auth Page */}
       <Route path="/auth">

@@ -17,16 +17,22 @@ export interface FulfillmentResult {
 }
 
 export async function fulfillBooking(bookingId: string): Promise<FulfillmentResult> {
-  const booking = (await BookingModel.findById(bookingId).lean()) as any;
-  if (!booking) throw new Error("Booking not found");
+  // Move status from pending to paid with a single atomic findOneAndUpdate.
+  // Only the winning call proceeds to mint tickets and create payouts.
+  const booking = (await BookingModel.findOneAndUpdate(
+    { _id: bookingId, status: "pending" },
+    { $set: { status: "paid", paidAt: new Date() } },
+    { new: true }
+  ).lean()) as any;
 
-  // Idempotency: the webhook and the finalize route can both fire.
-  if (booking.status === "paid") {
-    const existing = await TicketModel.find({ bookingId: booking._id }).lean();
-    if (existing.length > 0) {
+  if (!booking) {
+    const existing = (await BookingModel.findById(bookingId).lean()) as any;
+    if (!existing) throw new Error("Booking not found");
+    if (existing.status === "paid") {
+      const existingTickets = await TicketModel.find({ bookingId: existing._id }).sort({ seat: 1 }).lean();
       return {
         bookingId,
-        tickets: existing.map((t: any) => ({
+        tickets: existingTickets.map((t: any) => ({
           code: t.code,
           tierName: t.tierName,
           attendeeName: t.attendeeName,
@@ -34,6 +40,7 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
         })),
       };
     }
+    throw new Error(`Booking cannot be fulfilled in status: ${existing.status}`);
   }
 
   const event = await EventModel.findById(booking.eventId).lean();
@@ -103,10 +110,7 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
     }
   }
 
-  await BookingModel.findByIdAndUpdate(booking._id, {
-    status: "paid",
-    paidAt: new Date(),
-  });
+  // (Status and paidAt atomically set on winner above)
 
   // Branded confirmation email with the PDF attached. Never blocks the
   // response; failures are logged, not thrown.
@@ -402,13 +406,12 @@ export async function createGateSale(input: GateSaleInput): Promise<{ ok: boolea
       ticketType: input.tierName,
       quantity: input.quantity,
       totalAmount: totalKobo,
-      status: "paid",
+      status: "pending",
       paymentIntentId: null,
       paymentReference: reference,
       paymentGateway: "manual",
       gatewayTxnId: `gate:${input.method}`,
       phone: input.buyerPhone || null,
-      paidAt: new Date(),
       isVerified: false,
       remindersDisabled: true, // they bought at the door; no pre-event drips
     });

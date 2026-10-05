@@ -460,7 +460,7 @@ export default function AuthPage() {
               {[
                 {
                   title: isRegister ? "Real Shows" : "Guaranteed Entry",
-                  desc: "Verified tickets with instant QR entry on your phone.",
+                  desc: "Direct tickets with instant QR entry on your phone.",
                 },
                 {
                   title: "Direct Access",
@@ -923,7 +923,7 @@ export default function AuthPage() {
               className="w-3.5 h-3.5 text-gold"
               aria-hidden="true"
             />
-            Verified secure checkout on every ticket
+            Secure checkout on every ticket
           </p>
         </motion.div>
       </main>

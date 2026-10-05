@@ -370,10 +370,16 @@ const mockEvents: Event[] = [
 export class MongoStorage implements IStorage {
   async getEvents(): Promise<Event[]> {
     try {
-      if (mongoose.connection.readyState !== 1) return mockEvents;
+      if (mongoose.connection.readyState !== 1) {
+        return process.env.DEMO_MODE === 'true' ? mockEvents : [];
+      }
       // Public listing: only public events. Unlisted and invite-only events
       // are reachable by direct link but never appear in the directory.
-      const docs = await EventModel.find({ status: 'published', visibility: { $ne: 'invite_only' } });
+      const query: any = { status: 'published', visibility: { $ne: 'invite_only' } };
+      if (process.env.DEMO_MODE !== 'true') {
+        query.isDemo = { $ne: true };
+      }
+      const docs = await EventModel.find(query);
       const mapped = docs.map(mapEvent);
       // Finished events leave the directory. The page itself survives as a
       // recap for anyone holding the link, but a last-month show must never
@@ -385,17 +391,23 @@ export class MongoStorage implements IStorage {
         e => e.visibility !== 'unlisted' && new Date(e.date).getTime() >= gate,
       );
     } catch (e) {
-      return mockEvents;
+      return process.env.DEMO_MODE === 'true' ? mockEvents : [];
     }
   }
 
   async getAllEvents(): Promise<Event[]> {
     try {
-      if (mongoose.connection.readyState !== 1) return mockEvents;
-      const docs = await EventModel.find();
+      if (mongoose.connection.readyState !== 1) {
+        return process.env.DEMO_MODE === 'true' ? mockEvents : [];
+      }
+      const query: any = {};
+      if (process.env.DEMO_MODE !== 'true') {
+        query.isDemo = { $ne: true };
+      }
+      const docs = await EventModel.find(query);
       return docs.map(mapEvent);
     } catch (e) {
-      return mockEvents;
+      return process.env.DEMO_MODE === 'true' ? mockEvents : [];
     }
   }
 
@@ -558,9 +570,13 @@ export class MongoStorage implements IStorage {
   async getVendors(category?: string): Promise<Vendor[]> {
     try {
       if (mongoose.connection.readyState !== 1) {
-        return category ? mockVendors.filter(v => v.category === category) : mockVendors;
+        const list = process.env.DEMO_MODE === 'true' ? mockVendors : [];
+        return category ? list.filter(v => v.category === category) : list;
       }
       const query: any = { status: 'published' };
+      if (process.env.DEMO_MODE !== 'true') {
+        query.isDemo = { $ne: true };
+      }
       if (category) query.category = category;
       const docs = await VendorModel.find(query);
       return docs.map(mapVendor);
@@ -571,8 +587,14 @@ export class MongoStorage implements IStorage {
 
   async getAllVendors(): Promise<Vendor[]> {
     try {
-      if (mongoose.connection.readyState !== 1) return mockVendors;
-      const docs = await VendorModel.find();
+      if (mongoose.connection.readyState !== 1) {
+        return process.env.DEMO_MODE === 'true' ? mockVendors : [];
+      }
+      const query: any = {};
+      if (process.env.DEMO_MODE !== 'true') {
+        query.isDemo = { $ne: true };
+      }
+      const docs = await VendorModel.find(query);
       return docs.map(mapVendor);
     } catch (e) {
       return [];

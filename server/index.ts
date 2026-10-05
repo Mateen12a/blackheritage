@@ -112,16 +112,22 @@ declare module "http" {
   }
 }
 
-// Payment webhooks must arrive as raw bytes for signature verification,
-// so the global JSON parser skips every webhook path.
+// Payment webhooks must arrive as raw bytes for signature verification.
+// Mount express.raw explicitly before any express.json middleware.
+app.use(
+  ["/api/paystack/webhook", "/api/payments/webhook"],
+  express.raw({ type: "*/*", limit: "5mb" })
+);
+
 app.use((req, res, next) => {
   if (
     req.path === "/api/paystack/webhook" ||
     req.path === "/api/payments/webhook" ||
-    req.path === "/api/flutterwave/webhook"
+    req.path.startsWith("/api/export-launch-")
   )
     return next();
   express.json({
+    limit: "50mb",
     verify: (req, _res, buf) => {
       req.rawBody = buf;
     },

@@ -160,23 +160,18 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
         return;
       }
 
-      // Flutterwave: hosted checkout redirects the whole tab through the
-      // gateway and back to this page with ?ref=... The return handler shows
-      // the reveal there, so here we just send the buyer off. More reliable
-      // than popups on Nigerian mobile browsers.
-      if (init.gateway === "flutterwave") {
-        window.location.href = init.paymentUrl;
-        return;
-      }
-
-      // Real gateway: open Paystack's hosted page in a popup, then verify
-      // the reference server-side. The popup response is never trusted.
+      // Real gateway: open hosted page or inline popup, then verify
+      // the reference server-side. The client callback is never trusted.
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
       const paystackKey = init.publicKey || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
       const PaystackPop = window.PaystackPop;
       if (!paystackKey || !PaystackPop) {
+        if (init.paymentUrl) {
+          window.location.href = init.paymentUrl;
+          return;
+        }
         toast({
           variant: "destructive",
           title: "Payment window could not open",

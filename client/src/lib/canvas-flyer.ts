@@ -834,7 +834,7 @@ function renderStandardFlyer(
     ctx.font = "600 22px 'DM Sans', sans-serif";
     ctx.fillStyle = accent;
     ctx.letterSpacing = "1.5px";
-    ctx.fillText("BLACK HERITAGE • LAGOS, NIGERIA", width / 2, footerY + 50);
+    ctx.fillText("BLACK HERITAGE • NIGERIA", width / 2, footerY + 50);
 
     ctx.font = "400 18px 'DM Sans', sans-serif";
     ctx.fillStyle = style.textMuted;
@@ -987,7 +987,7 @@ function renderTeaserFlyer(
     ctx.font = "600 22px 'DM Sans', sans-serif";
     ctx.fillStyle = accent;
     ctx.letterSpacing = "1.5px";
-    ctx.fillText("BLACK HERITAGE • LAGOS, NIGERIA", width / 2, footerY + 40);
+    ctx.fillText("BLACK HERITAGE • NIGERIA", width / 2, footerY + 40);
     ctx.font = "400 18px 'DM Sans', sans-serif";
     ctx.fillStyle = style.textMuted;
     ctx.fillText("blackhevents.com", width / 2, footerY + 70);

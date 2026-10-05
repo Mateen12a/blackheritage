@@ -21,7 +21,7 @@ import bcrypt from "bcryptjs";
 import { User, TicketModel, ScanEventModel, PlatformSettingModel, BookingModel, WaitlistModel, NativeSponsorModel, OrganizerLeadModel } from "./models";
 import mongoose from "mongoose";
 import { fulfillBooking, quoteBooking, validatePromo, getPlatformSettings, createGateSale } from "./booking";
-import { initializePayment, verifyPayment, refundPayment, activeGateway, isPaystackConfigured, isFlutterwaveConfigured, isPaystackSignatureValid, isFlutterwaveSignatureValid } from "./payments";
+import { initializePayment, verifyPayment, refundPayment, activeGateway, isPaystackConfigured, isPaystackSignatureValid } from "./payments";
 import { buildTicketPdf, generateTicketCode } from "./tickets";
 import { seedPlatform } from "./seed";
 import { sendManualTicketEmail, sendRefundEmail, sendFollowerDropEmail } from "./emails";
@@ -179,6 +179,44 @@ export async function registerRoutes(
   // Health check for Render wake up
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
+  });
+
+  // ── Launch Video & Stills Export Endpoints ──
+  app.post("/api/export-launch-video", express.raw({ type: "*/*", limit: "150mb" }), async (req, res) => {
+    try {
+      const outDir = path.resolve(process.cwd(), "out");
+      fs.mkdirSync(outDir, { recursive: true });
+      const targetPath = path.join(outDir, "blackheritage_launch_silent.mp4");
+      const buffer = req.body;
+      if (!buffer || !buffer.length) {
+        return res.status(400).json({ error: "Empty video body" });
+      }
+      fs.writeFileSync(targetPath, buffer);
+      console.log(`[Launch Video] Successfully wrote ${buffer.length} bytes to ${targetPath}`);
+      return res.json({ success: true, path: targetPath, size: buffer.length });
+    } catch (err: any) {
+      console.error("[Launch Video] Export error:", err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/export-launch-still", express.json({ limit: "50mb" }), async (req, res) => {
+    try {
+      const { filename, imageBase64 } = req.body;
+      if (!filename || !imageBase64) {
+        return res.status(400).json({ error: "Missing filename or imageBase64" });
+      }
+      const stillsDir = path.resolve(process.cwd(), "out", "stills");
+      fs.mkdirSync(stillsDir, { recursive: true });
+      const targetPath = path.join(stillsDir, filename);
+      const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+      fs.writeFileSync(targetPath, Buffer.from(cleanBase64, "base64"));
+      console.log(`[Launch Still] Successfully wrote ${filename} to ${targetPath}`);
+      return res.json({ success: true, path: targetPath });
+    } catch (err: any) {
+      console.error("[Launch Still] Export error:", err);
+      return res.status(500).json({ error: err.message });
+    }
   });
 
   // Serve uploaded portfolio files and event flyers
@@ -1542,7 +1580,7 @@ export async function registerRoutes(
         found: points.slice(0, 5),
         message: points.length === 0
           ? `No DNS records found for ${domain} yet. Add the CNAME record below and try again in a few minutes.`
-          : `${domain} currently points at ${points[0]} — it needs to point at ${target}. DNS changes can take up to an hour to spread.`,
+          : `${domain} currently points at ${points[0]}. It needs to point at ${target}. DNS changes can take up to an hour to spread.`,
       });
     } catch (err: any) {
       console.error("Domain verify error:", err);
@@ -1707,6 +1745,7 @@ export async function registerRoutes(
         phone: input.phone || null,
         dietaryNote: input.dietaryNote || null,
         paymentGateway: activeGateway(),
+        paymentProvider: activeGateway(),
       });
 
       // Increment promo usage only when it actually applied
@@ -1715,7 +1754,7 @@ export async function registerRoutes(
         await PromoCodeModel.updateOne({ _id: quote.promoId }, { $inc: { usedCount: 1 } });
       }
 
-      if (isPaystackConfigured() || isFlutterwaveConfigured()) {
+      if (isPaystackConfigured()) {
         const gateway = activeGateway();
         try {
           const init = await initializePayment({
@@ -1724,10 +1763,7 @@ export async function registerRoutes(
             reference,
             name: input.name,
             phone: input.phone || undefined,
-            // Flutterwave rejects the payment init without a redirect_url, so
-            // fall back to the request's own host when PUBLIC_APP_URL is not
-            // configured (local dev, previews).
-            redirectUrl: `${process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get("host")}`}/events/${event.slug || event.id}?ref=${reference}&gateway=${gateway}`,
+            redirectUrl: `${process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get("host")}`}/events/${event.slug || event.id}?ref=${reference}`,
             metadata: {
               bookingId: String(booking._id ?? booking.id),
               eventId: String(event.id),
@@ -1787,19 +1823,55 @@ export async function registerRoutes(
     }
   }
 
+  async function sweepAbandonedPendingBookings(): Promise<{ released: number }> {
+    try {
+      const cutoff = new Date(Date.now() - 30 * 60 * 1000);
+      const staleBookings = await BookingModel.find({
+        status: "pending",
+        createdAt: { $lt: cutoff },
+      }).lean();
+
+      let released = 0;
+      for (const b of staleBookings) {
+        const updated = await BookingModel.findOneAndUpdate(
+          { _id: b._id, status: "pending" },
+          { $set: { status: "abandoned" } },
+          { new: true }
+        );
+        if (updated) {
+          await releaseHeldSeats(String(b.eventId), (b as any).ticketType, b.quantity);
+          released++;
+        }
+      }
+      if (released > 0) {
+        console.log(`[abandoned-sweeper] Released ${released} abandoned bookings (>30m).`);
+      }
+      return { released };
+    } catch (err: any) {
+      console.error("[abandoned-sweeper] Sweep error:", err?.message);
+      return { released: 0 };
+    }
+  }
+
+  // Scheduled job: check every 5 minutes and release pending bookings and held seats after 30 minutes
+  setTimeout(() => {
+    sweepAbandonedPendingBookings().catch(() => {});
+  }, 15 * 1000);
+  setInterval(() => {
+    sweepAbandonedPendingBookings().catch(() => {});
+  }, 5 * 60 * 1000);
+  console.log("[abandoned-sweeper] scheduler on (checks pending bookings > 30m every 5 min)");
+
   // ── Finalize: verify with Paystack and fulfill ──
   app.post("/api/bookings/finalize", async (req, res) => {
     try {
       const { reference } = bookingFinalizeSchema.parse(req.body);
-      const bookings = await storage.getAllBookings?.();
-      const booking: any = bookings
-        ? bookings.find((b: any) => b.paymentReference === reference)
-        : await (storage as any).getBookingByReference(reference);
+      const booking: any = await BookingModel.findOne({ paymentReference: reference }).lean();
       if (!booking) return res.status(404).json({ message: "Booking not found for that reference" });
       if (booking.status === "paid") {
         // Already fulfilled; return existing tickets (idempotent)
         const { TicketModel } = await import("./models");
-        const existing = await TicketModel.find({ bookingId: booking._id ?? booking.id }).lean();
+        const existing = await TicketModel.find({ bookingId: booking._id ?? booking.id }).sort({ seat: 1 }).lean();
         return res.json({
           bookingId: String(booking._id ?? booking.id),
           status: "paid",
@@ -1812,6 +1884,10 @@ export async function registerRoutes(
         const expected = Number(booking.totalAmount);
         if (verification.status !== "success") {
           return res.status(402).json({ message: "Payment did not go through. You have not been charged for a completed order." });
+        }
+        if (verification.currency && verification.currency.toUpperCase() !== "NGN") {
+          console.error(`Finalize currency mismatch for ${reference}: expected NGN, got ${verification.currency}`);
+          return res.status(400).json({ message: "Payment currency is not NGN" });
         }
         if (verification.amount !== expected) {
           console.error(`Amount mismatch for ${reference}: expected ${expected}, got ${verification.amount}`);
@@ -1842,75 +1918,64 @@ export async function registerRoutes(
   });
 
   // ── Payment webhook: source of truth for async payment confirmations ──
-  // One endpoint for both gateways: the signature decides whose payload this
-  // is (Paystack x-paystack-signature HMAC-SHA512; Flutterwave verif-hash
-  // HMAC-SHA256). Keep /api/paystack/webhook alive for already-registered
-  // dashboard URLs; new setups point at /api/payments/webhook.
+  // Verified via Paystack HMAC-SHA512 (x-paystack-signature header).
+  // Endpoints: /api/payments/webhook and /api/paystack/webhook.
   const paymentWebhookHandler: express.RequestHandler = async (req, res) => {
-    const rawBody = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : JSON.stringify(req.body);
-
-    let gateway: "paystack" | "flutterwave" | null = null;
-    if (isPaystackSignatureValid(rawBody, req.headers["x-paystack-signature"] as string | undefined)) {
-      gateway = "paystack";
-    } else if (isFlutterwaveSignatureValid(rawBody, req.headers["verif-hash"] as string | undefined)) {
-      gateway = "flutterwave";
+    if (!Buffer.isBuffer(req.body)) {
+      return res.status(400).json({ message: "Raw buffer body required" });
     }
-    if (!gateway) {
+    const rawBody = req.body.toString("utf8");
+
+    if (!isPaystackSignatureValid(rawBody, req.headers["x-paystack-signature"] as string | undefined)) {
       return res.status(401).json({ message: "Invalid signature" });
     }
 
     try {
       const event = JSON.parse(rawBody);
-      if (gateway === "paystack" && event.event === "charge.success") {
-        const reference = event.data?.reference;
-        const txnId: string | null = event.data?.id != null ? String(event.data.id) : null;
-        if (reference) {
-          const bookings = await storage.getAllBookings?.();
-          const booking: any = bookings
-            ? bookings.find((b: any) => b.paymentReference === reference)
-            : await (storage as any).getBookingByReference(reference);
-          if (booking && booking.status !== "paid") {
-            // Trust the gateway's webhook amount; also cross-check against our order.
-            const expected = Number(booking.totalAmount);
-            if (Number(event.data.amount) === expected) {
-              await fulfillBooking(String(booking._id ?? booking.id));
-              if (txnId) await BookingModel.findByIdAndUpdate(booking._id ?? booking.id, { gatewayTxnId: txnId }).catch(() => {});
-            } else {
-              console.error(`Webhook amount mismatch for ${reference}: expected ${expected}, got ${event.data.amount}`);
-            }
+      const reference = event.data?.reference;
+
+      if (event.event === "charge.success" && reference) {
+        const booking: any = await BookingModel.findOne({ paymentReference: reference }).lean();
+
+        if (booking) {
+          if (booking.status === "paid") {
+            // Already fulfilled; idempotent return
+            return res.json({ received: true, status: "already_paid" });
+          }
+
+          if (event.data?.currency && event.data.currency.toUpperCase() !== "NGN") {
+            console.error(`Webhook currency mismatch for ${reference}: expected NGN, got ${event.data.currency}`);
+            return res.status(400).json({ message: "Currency mismatch" });
+          }
+
+          // Check server-computed amount against gateway amount (both in kobo)
+          const expected = Number(booking.totalAmount);
+          if (Number(event.data.amount) === expected) {
+            await fulfillBooking(String(booking._id ?? booking.id));
+          } else {
+            console.error(`Webhook amount mismatch for ${reference}: expected ${expected} kobo, got ${event.data.amount}`);
+            return res.status(400).json({ message: "Amount mismatch" });
           }
         }
-      }
-      if (gateway === "flutterwave" && event.event === "charge.completed" && event.data?.status === "successful") {
-        const reference = event.data?.tx_ref;
-        const txnId: string | null = event.data?.id != null ? String(event.data.id) : null;
-        if (reference) {
-          const bookings = await storage.getAllBookings?.();
-          const booking: any = bookings
-            ? bookings.find((b: any) => b.paymentReference === reference)
-            : await (storage as any).getBookingByReference(reference);
-          if (booking && booking.status !== "paid") {
-            const expected = Number(booking.totalAmount);
-            // Flutterwave amounts arrive in major units (naira); compare in kobo.
-            if (Math.round(Number(event.data.amount) * 100) === expected) {
-              await fulfillBooking(String(booking._id ?? booking.id));
-              if (txnId) await BookingModel.findByIdAndUpdate(booking._id ?? booking.id, { gatewayTxnId: txnId, paidAt: event.data.created_at ? new Date(event.data.created_at) : undefined }).catch(() => {});
-            } else {
-              console.error(`Webhook amount mismatch for ${reference}: expected ${expected} kobo, got ${event.data.amount} naira`);
-            }
-          }
+      } else if ((event.event === "charge.failed" || event.data?.status === "failed" || event.data?.status === "abandoned") && reference) {
+        // Handle failed or abandoned payment: release held inventory
+        const booking: any = await BookingModel.findOne({ paymentReference: reference }).lean();
+
+        if (booking && booking.status === "pending") {
+          await BookingModel.findByIdAndUpdate(booking._id ?? booking.id, { status: "abandoned" });
+          await releaseHeldSeats(String(booking.eventId), booking.ticketType, booking.quantity);
         }
       }
+
       res.json({ received: true });
     } catch (err) {
       console.error("Webhook processing error:", err);
-      res.status(200).json({ received: true }); // Gateways retry on failure; acknowledge anyway
+      res.status(200).json({ received: true }); // Acknowledge to prevent unnecessary gateway retries
     }
   };
 
-  app.post("/api/payments/webhook", express.raw({ type: "*/*" }), paymentWebhookHandler);
-  app.post("/api/paystack/webhook", express.raw({ type: "*/*" }), paymentWebhookHandler);
-  app.post("/api/flutterwave/webhook", express.raw({ type: "*/*" }), paymentWebhookHandler);
+  app.post("/api/payments/webhook", paymentWebhookHandler);
+  app.post("/api/paystack/webhook", paymentWebhookHandler);
 
   // ── Ticket codes for a booking (buyer reaches this only via their booking) ──
   app.get("/api/bookings/:id/tickets", async (req, res) => {
@@ -2361,34 +2426,7 @@ export async function registerRoutes(
       if (ctx.user.role !== "admin" && !owns) return res.status(403).json({ message: "This booking belongs to another organizer" });
       if (booking.status !== "paid") return res.status(400).json({ message: "Only paid bookings can be refunded" });
 
-      if ((booking as any).paymentGateway === "flutterwave" && isFlutterwaveConfigured()) {
-        // Verify first, refund second: a booking fulfilled locally (test
-        // webhook) has no real Flutterwave-side transaction, and refunding
-        // blind would abort on the gateway's generic error. Only refund when
-        // the gateway confirms it actually captured this payment.
-        const reference = String((booking as any).paymentReference || "");
-        let captured = false;
-        let txnId = Number((booking as any).gatewayTxnId) || null;
-        if (reference) {
-          try {
-            const verification = await verifyPayment(reference);
-            captured = verification.status === "success";
-            if (verification.transactionId && !txnId) txnId = Number(verification.transactionId);
-          } catch (verifyErr: any) {
-            // "Not found" (either gateway wording) means no real charge to
-            // reverse. Any other verify failure is a gateway problem: abort.
-            if (!/not found|no transaction was found/i.test(String(verifyErr?.message || ""))) throw verifyErr;
-          }
-        }
-        if (captured && txnId) {
-          try {
-            await refundPayment({ reference, gateway: "flutterwave", transactionId: txnId });
-          } catch (refundErr: any) {
-            // Real refund failures must still abort before tickets are voided.
-            if (!/not found|no transaction was found/i.test(String(refundErr?.message || ""))) throw refundErr;
-          }
-        }
-      } else if (isPaystackConfigured() && (booking as any).paymentGateway === "paystack") {
+      if (isPaystackConfigured() && ((booking as any).paymentGateway === "paystack" || (booking as any).paymentProvider === "paystack")) {
         const reference = String((booking as any).paymentReference || "");
         let captured = false;
         try {

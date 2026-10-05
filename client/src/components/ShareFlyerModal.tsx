@@ -21,7 +21,6 @@ import {
   MapPin,
   CheckCircle2,
   Loader2,
-  Sparkles,
   EyeOff,
   Video,
 } from "lucide-react";
@@ -319,12 +318,12 @@ export function ShareFlyerModal({
   const handleWhatsApp = () => {
     handleDownload();
     const text = isAttendeePass
-      ? `I'm going to ${event.title}! 🎟️ Get your tickets here: ${canonicalUrl}`
+      ? `I'm going to ${event.title}! Get your tickets here: ${canonicalUrl}`
       : preset === "teaser"
         ? `Something is coming: ${event.title}. Follow for the drop: ${canonicalUrl}`
         : preset === "private_pass"
           ? `You're on the list for ${event.title}. Enter your code at ${canonicalUrl} to claim your pass.`
-          : `Check out ${event.title} in Lagos! 🎟️ Get tickets: ${canonicalUrl}`;
+          : `Check out ${event.title}! Get tickets: ${canonicalUrl}`;
     const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(waUrl, "_blank");
   };
@@ -731,7 +730,6 @@ export function ShareFlyerModal({
               {showPresetTabs && preset === "teaser" && (
                 <div className="space-y-3 rounded-xl border border-hairline bg-surface-2/40 p-4">
                   <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-gold" />
                     Teaser details
                   </Label>
                   <div className="space-y-1.5">

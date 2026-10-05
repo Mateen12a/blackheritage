@@ -252,10 +252,12 @@ export default function OrganizerDetails() {
                   <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink">
                     {organizer.displayName}
                   </h1>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gold bg-gold/10 border border-gold/20 px-2 py-0.5 rounded-full">
-                    <BadgeCheck className="w-3.5 h-3.5" />
-                    Verified Organizer
-                  </span>
+                  {Boolean((organizer as any)?.isVerified || (organizer?.customDomain && organizer?.customDomainStatus === "active")) && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gold bg-gold/10 border border-gold/20 px-2 py-0.5 rounded-full">
+                      <BadgeCheck className="w-3.5 h-3.5" />
+                      Verified Organizer
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3 text-xs text-muted-ink mt-1.5 font-mono flex-wrap">
