@@ -95,6 +95,18 @@ export async function seedPlatform(): Promise<void> {
       active: true,
     },
     followersCount: 1420,
+    isVerified: true,
+    verificationStatus: "verified",
+    verifiedAt: new Date(),
+    bankDetails: {
+      accountNumber: "0123456789",
+      bankCode: "058",
+      bankName: "Guaranty Trust Bank (GTBank)",
+      accountName: "Tunde Live Concepts",
+      subaccountCode: "ACCT_DEMO_TUNDE_SUB",
+      recipientCode: "RCP_DEMO_TUNDE",
+      updatedAt: new Date(),
+    },
   });
 
   if (!organizer.organizerSlug || organizer.organizerSlug !== "tunde-live") {
@@ -122,6 +134,18 @@ export async function seedPlatform(): Promise<void> {
       active: true,
     };
     organizer.followersCount = 1420;
+    (organizer as any).isVerified = true;
+    (organizer as any).verificationStatus = "verified";
+    (organizer as any).verifiedAt = new Date();
+    (organizer as any).bankDetails = {
+      accountNumber: "0123456789",
+      bankCode: "058",
+      bankName: "Guaranty Trust Bank (GTBank)",
+      accountName: "Tunde Live Concepts",
+      subaccountCode: "ACCT_DEMO_TUNDE_SUB",
+      recipientCode: "RCP_DEMO_TUNDE",
+      updatedAt: new Date(),
+    };
     await organizer.save();
   }
 

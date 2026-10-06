@@ -6,6 +6,7 @@ import { useManagedEvents } from "@/hooks/use-managed-events";
 import { useOrganizerProfile } from "@/hooks/use-organizer";
 import { OrganizerBrandPanel } from "@/components/OrganizerBrandPanel";
 import { SetupChecklist } from "@/components/SetupChecklist";
+import { AdminVerificationsPanel } from "@/components/AdminVerificationsPanel";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Reveal } from "@/components/motion";
 import { Button } from "@/components/ui/button";
@@ -213,6 +214,11 @@ export default function AdminDashboard() {
                   {leads.length}
                 </span>
               )}
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="verifications" className="flex items-center gap-1.5">
+              <span>Verifications & Payouts</span>
             </TabsTrigger>
           )}
         </TabsList>
@@ -689,6 +695,13 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
+            </Reveal>
+          </TabsContent>
+        )}
+        {isAdmin && (
+          <TabsContent value="verifications" className="space-y-6">
+            <Reveal>
+              <AdminVerificationsPanel />
             </Reveal>
           </TabsContent>
         )}

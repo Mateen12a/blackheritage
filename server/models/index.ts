@@ -32,6 +32,28 @@ export interface IUser extends Document {
   videoLoopUrl?: string | null;
   spotifyPlaylistUrl?: string | null;
   tourCities?: string[] | null;
+  bankDetails?: {
+    accountNumber: string;
+    bankCode: string;
+    bankName: string;
+    accountName: string;
+    subaccountCode?: string | null;
+    recipientCode?: string | null;
+    updatedAt?: Date;
+  } | null;
+  isVerified?: boolean;
+  verificationStatus?: 'unverified' | 'pending' | 'verified' | 'rejected';
+  verificationDetails?: {
+    businessName?: string;
+    bvnLast4?: string;
+    cacNumber?: string;
+    idType?: string;
+    idNumber?: string;
+    phone?: string;
+    notes?: string;
+    submittedAt?: Date;
+  } | null;
+  verifiedAt?: Date | null;
   createdAt: Date;
 }
 
@@ -85,6 +107,38 @@ const UserSchema: Schema = new Schema({
   videoLoopUrl: { type: String, default: null },
   spotifyPlaylistUrl: { type: String, default: null },
   tourCities: { type: [String], default: [] },
+  bankDetails: {
+    type: {
+      accountNumber: String,
+      bankCode: String,
+      bankName: String,
+      accountName: String,
+      subaccountCode: { type: String, default: null },
+      recipientCode: { type: String, default: null },
+      updatedAt: { type: Date, default: Date.now },
+    },
+    default: null,
+  },
+  isVerified: { type: Boolean, default: false },
+  verificationStatus: {
+    type: String,
+    enum: ['unverified', 'pending', 'verified', 'rejected'],
+    default: 'unverified',
+  },
+  verificationDetails: {
+    type: {
+      businessName: String,
+      bvnLast4: String,
+      cacNumber: String,
+      idType: String,
+      idNumber: String,
+      phone: String,
+      notes: String,
+      submittedAt: { type: Date, default: Date.now },
+    },
+    default: null,
+  },
+  verifiedAt: { type: Date, default: null },
   isDemo: { type: Boolean, default: false, index: true },
   createdAt: { type: Date, default: Date.now }
 }, {
@@ -194,6 +248,8 @@ export interface IBooking extends Document {
   paymentIntentId?: string;
   paymentReference?: string;
   gatewayTxnId?: string | null;
+  subaccountSplit?: boolean;
+  subaccountCode?: string | null;
   isVerified: boolean; // Added isVerified
   verifiedAt?: Date; // Added verifiedAt
   remindersDisabled?: boolean; // guest opt-out for event reminder emails
@@ -218,6 +274,8 @@ const BookingSchema: Schema = new Schema({
   phone: { type: String, default: null }, // optional checkout fields, organizer-toggled
   dietaryNote: { type: String, default: null },
   paidAt: { type: Date },
+  subaccountSplit: { type: Boolean, default: false },
+  subaccountCode: { type: String, default: null },
   isVerified: { type: Boolean, default: false }, // Added isVerified
   verifiedAt: { type: Date }, // Added verifiedAt
   remindersDisabled: { type: Boolean, default: false }, // guest opt-out for event reminder emails
@@ -468,28 +526,29 @@ export const PlatformSettingModel = mongoose.models.PlatformSetting || model<IPl
 // Money owed, one row per source booking. kind:
 //  - 'platform_fee': BlackHeritage's commission on a ticket sale
 //  - 'promoter_commission': a cut the organizer chose to share with a promoter
+//  - 'organizer_payout': net ticket proceeds destined for the organizer's bank account
 export interface IPayout extends Document {
-  kind: 'platform_fee' | 'promoter_commission';
+  kind: 'platform_fee' | 'promoter_commission' | 'organizer_payout';
   eventId: mongoose.Types.ObjectId;
   organizerId?: string;
   recipientName: string;
   recipientId?: string | null;
   amount: number;
   sourceBookingId?: mongoose.Types.ObjectId | null;
-  status: 'due' | 'settled';
+  status: 'due' | 'settled' | 'pending_verification';
   note?: string;
   createdAt: Date;
 }
 
 const PayoutSchema: Schema = new Schema({
-  kind: { type: String, enum: ['platform_fee', 'promoter_commission'], required: true },
+  kind: { type: String, enum: ['platform_fee', 'promoter_commission', 'organizer_payout'], required: true },
   eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true, index: true },
   organizerId: { type: String },
   recipientName: { type: String, required: true },
   recipientId: { type: String, default: null },
   amount: { type: Number, required: true },
   sourceBookingId: { type: Schema.Types.ObjectId, ref: 'Booking', default: null },
-  status: { type: String, enum: ['due', 'settled'], default: 'due' },
+  status: { type: String, enum: ['due', 'settled', 'pending_verification'], default: 'due' },
   note: { type: String },
   createdAt: { type: Date, default: Date.now },
 });

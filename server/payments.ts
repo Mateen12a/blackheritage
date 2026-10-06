@@ -6,8 +6,11 @@ import {
   verifyWebhookSignature,
   isPaystackConfigured,
   createSubaccount,
+  updateSubaccount,
   initiateTransfer,
   createTransferRecipient,
+  resolveAccountNumber,
+  publicKey,
   PaystackInitResult,
   PaystackVerification,
 } from "./paystack";
@@ -75,7 +78,7 @@ export async function paystackInitialize(params: InitPaymentInput): Promise<Init
     gateway: "paystack",
     authorizationUrl: result.authorizationUrl,
     accessCode: result.accessCode,
-    publicKey: process.env.PAYSTACK_PUBLIC_KEY || null,
+    publicKey: publicKey(),
     reference: result.reference,
   };
 }
@@ -115,4 +118,4 @@ export async function refundPayment(input: {
 }
 
 // ── Payout Utilities ─────────────────────────────────────────────────────────
-export { createSubaccount, initiateTransfer, createTransferRecipient };
+export { createSubaccount, updateSubaccount, initiateTransfer, createTransferRecipient, resolveAccountNumber };

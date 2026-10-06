@@ -36,6 +36,11 @@ export const users = pgTable("users", {
   customDomainStatus: text("custom_domain_status"),
   announcement: jsonb("announcement"), // { message, linkUrl, active }
   followersCount: varchar("followers_count").default("0"),
+  bankDetails: jsonb("bank_details"),
+  isVerified: boolean("is_verified").default(false),
+  verificationStatus: text("verification_status").default("unverified"),
+  verificationDetails: jsonb("verification_details"),
+  verifiedAt: timestamp("verified_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

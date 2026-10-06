@@ -2,7 +2,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { api, buildUrl } from "@shared/routes";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Search, Trash2, Edit, ChevronLeft, Tag, UserPlus, MailPlus, Undo2, Activity, TrendingUp, Image as ImageIcon, Banknote } from "lucide-react";
+import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Search, Trash2, Edit, ChevronLeft, Tag, UserPlus, MailPlus, Undo2, Activity, TrendingUp, Image as ImageIcon, Banknote, AlertCircle } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useLocation } from "wouter";
@@ -206,6 +207,7 @@ function WaitlistPanel({ eventId }: { eventId: string }) {
 }
 
 export default function ManageEvent() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
   // Mounted by both /admin/events/:id and /admin/events/:id/bookings. A route
@@ -448,6 +450,41 @@ export default function ManageEvent() {
           </Button>
         </div>
       </div>
+
+      {/* Payout & verification compliance notices */}
+      {!user?.isVerified && (
+        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold text-amber-300">Identity verification required before payout disbursement. </span>
+              Ticket sales for this event are active and held safely in escrow. Complete organizer verification in Settings so revenues can automatically disburse to your bank account.
+            </div>
+          </div>
+          <Link href="/settings#verification">
+            <Button size="sm" variant="outline" className="border-amber-500/40 text-amber-200 hover:bg-amber-500/20 shrink-0 text-xs h-7 px-2.5">
+              Verify Account &rarr;
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {user?.isVerified && !user?.bankDetails?.accountNumber && (
+        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold text-amber-300">Settlement bank account needed. </span>
+              Your identity is verified, but you have not linked a settlement bank account to receive automatic Paystack payouts.
+            </div>
+          </div>
+          <Link href="/settings#bank">
+            <Button size="sm" variant="outline" className="border-amber-500/40 text-amber-200 hover:bg-amber-500/20 shrink-0 text-xs h-7 px-2.5">
+              Link Bank &rarr;
+            </Button>
+          </Link>
+        </div>
+      )}
 
       <Tabs defaultValue="attendees" className="space-y-6">
         {/* Tabs wrap on phones instead of scrolling sideways: Organizer Tools

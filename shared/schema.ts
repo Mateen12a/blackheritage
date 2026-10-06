@@ -69,6 +69,8 @@ export const bookings = pgTable("bookings", {
   promoCode: text("promo_code"),
   tableNote: text("table_note"), // group size or seating preference for table bookings
   paidAt: timestamp("paid_at"),
+  subaccountSplit: boolean("subaccount_split").default(false),
+  subaccountCode: text("subaccount_code"),
   isVerified: boolean("is_verified").default(false),
   verifiedAt: timestamp("verified_at"),
   createdAt: timestamp("created_at").defaultNow(),

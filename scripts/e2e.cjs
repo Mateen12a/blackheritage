@@ -936,6 +936,52 @@ async function api(method, path, body, useCookie = true) {
     req.on("error", () => { ok("unsubscribe redirects on bad token", false, "request failed"); resolve(); });
   });
 
+  // ── 31. Bank Account Settings, Paystack subaccount, and Verification flow ──
+  {
+    // A. List banks
+    const bRes = await api("GET", "/api/banks", null);
+    ok("banks list responds", bRes.status === 200 && Array.isArray(bRes.json) && bRes.json.length >= 10, "count=" + (bRes.json || []).length);
+
+    // B. Account resolve
+    const resolveRes = await api("GET", "/api/account/bank/resolve?accountNumber=0123456789&bankCode=058", null);
+    ok("account resolve responds", resolveRes.status === 200 && resolveRes.json?.accountNumber === "0123456789", "name=" + resolveRes.json?.accountName);
+
+    // C. Organizer links bank account
+    cookie = "";
+    await api("POST", "/api/auth/login", { username: "tunde_organizer", password: "demo1234" });
+    const bankPatch = await api("PATCH", "/api/account/bank", {
+      accountNumber: "0123456789",
+      bankCode: "058",
+      bankName: "Guaranty Trust Bank (GTBank)",
+      accountName: "Tunde Live Concepts",
+    });
+    ok("bank details linked", bankPatch.status === 200 && bankPatch.json?.bankDetails?.accountNumber === "0123456789", "status=" + bankPatch.status);
+
+    // D. Organizer submits verification
+    const verRes = await api("POST", "/api/account/verification", {
+      businessName: "Tunde Live Concepts Ltd",
+      cacNumber: "RC-849204",
+      idType: "NIN",
+      idNumber: "12345678901",
+      phone: "08012345678",
+    });
+    ok("verification submitted", verRes.status === 200 && verRes.json?.verificationDetails?.businessName === "Tunde Live Concepts Ltd", "status=" + verRes.status);
+
+    // E. Public organizer profile exposes verification badge
+    const orgProfile = await api("GET", "/api/organizers/tunde-live", null);
+    ok("organizer profile carries verification badge", orgProfile.status === 200 && orgProfile.json?.organizer?.isVerified === true, "isVerified=" + orgProfile.json?.organizer?.isVerified);
+
+    // F. Setup checklist includes bank and verification
+    const checklistRes = await api("GET", "/api/setup-checklist", null);
+    ok("setup checklist tracks bank and verification", checklistRes.status === 200 && (checklistRes.json?.steps || []).some((s) => s.key === "bank") && (checklistRes.json?.steps || []).some((s) => s.key === "verify"), "steps=" + checklistRes.json?.steps?.length);
+
+    // G. Admin can manage verifications
+    cookie = "";
+    await api("POST", "/api/auth/login", { username: "admin", password: "admin123" });
+    const adminOrgs = await api("GET", "/api/admin/organizers", null);
+    ok("admin can list organizers with verification status", adminOrgs.status === 200 && Array.isArray(adminOrgs.json), "count=" + adminOrgs.json?.length);
+  }
+
   console.log("\n==== " + pass + " passed, " + fail + " failed ====");
   process.exit(fail > 0 ? 1 : 0);
 })().catch((err) => {

@@ -1,13 +1,54 @@
 import crypto from "crypto";
+import mongoose from "mongoose";
 
 const PAYSTACK_BASE = "https://api.paystack.co";
 
-function secretKey(): string {
-  const key = process.env.PAYSTACK_SECRET_KEY;
-  if (!key) {
-    throw new Error("PAYSTACK_SECRET_KEY is not configured");
+export function isTestMode(): boolean {
+  // Production safeguard: If NODE_ENV is production, live keys are strictly mandatory.
+  if (process.env.NODE_ENV === "production") return false;
+  // If explicitly requested live mode via PAYSTACK_MODE or PAYSTACK_FORCE_LIVE:
+  if (process.env.PAYSTACK_MODE === "live" || process.env.PAYSTACK_FORCE_LIVE === "true") return false;
+  // If MongoDB URI is set and points to production (no _dev or _verify), strictly force live keys:
+  const mongo = process.env.MONGODB_URI || "";
+  if (mongo && !mongo.includes("_dev") && !mongo.includes("_verify")) return false;
+  // If Mongoose is connected to a live database name (no _dev or _verify):
+  try {
+    const dbName = mongoose?.connection?.name || "";
+    if (dbName && !dbName.endsWith("_dev") && !dbName.endsWith("_verify")) {
+      return false;
+    }
+  } catch {
+    // ignore
   }
-  return key;
+
+  if (process.env.PAYSTACK_MODE === "test") return true;
+  return Boolean(process.env.PAYSTACK_TEST_SECRET_KEY);
+}
+
+export function secretKey(): string {
+  const useTest = isTestMode();
+  if (!useTest) {
+    const liveKey = process.env.PAYSTACK_SECRET_KEY;
+    if (liveKey) return liveKey;
+    if (process.env.PAYSTACK_TEST_SECRET_KEY) {
+      console.warn("[paystack] WARNING: Operating in live mode but PAYSTACK_SECRET_KEY is missing; falling back to PAYSTACK_TEST_SECRET_KEY.");
+      return process.env.PAYSTACK_TEST_SECRET_KEY;
+    }
+    throw new Error("PAYSTACK_SECRET_KEY is not configured for live production mode");
+  }
+  const testKey = process.env.PAYSTACK_TEST_SECRET_KEY || process.env.PAYSTACK_SECRET_KEY;
+  if (!testKey) {
+    throw new Error("Paystack secret key is not configured");
+  }
+  return testKey;
+}
+
+export function publicKey(): string | null {
+  const useTest = isTestMode();
+  if (!useTest) {
+    return process.env.PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_TEST_PUBLIC_KEY || null;
+  }
+  return process.env.PAYSTACK_TEST_PUBLIC_KEY || process.env.PAYSTACK_PUBLIC_KEY || null;
 }
 
 export interface PaystackInitResult {
@@ -151,16 +192,24 @@ export async function refundTransaction(reference: string, amountKobo?: number):
  */
 export function verifyWebhookSignature(rawBody: string, signature: string | undefined): boolean {
   if (!signature) return false;
-  const key = process.env.PAYSTACK_SECRET_KEY;
-  if (!key) return false;
-  const hash = crypto.createHmac("sha512", key).update(rawBody).digest("hex");
-  try {
-    const a = Buffer.from(hash, "utf8");
-    const b = Buffer.from(signature, "utf8");
-    return a.length === b.length && crypto.timingSafeEqual(a, b);
-  } catch {
-    return false;
+  const activeKey = secretKey();
+  const testKey = process.env.PAYSTACK_TEST_SECRET_KEY;
+  const liveKey = process.env.PAYSTACK_SECRET_KEY;
+
+  const keysToTry = Array.from(new Set([activeKey, testKey, liveKey].filter(Boolean))) as string[];
+  for (const key of keysToTry) {
+    try {
+      const hash = crypto.createHmac("sha512", key).update(rawBody).digest("hex");
+      const a = Buffer.from(hash, "utf8");
+      const b = Buffer.from(signature, "utf8");
+      if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
+        return true;
+      }
+    } catch {
+      continue;
+    }
   }
+  return false;
 }
 
 /**
@@ -168,7 +217,7 @@ export function verifyWebhookSignature(rawBody: string, signature: string | unde
  * simulated gateway. Production (keys present) always goes through Paystack.
  */
 export function isPaystackConfigured(): boolean {
-  return Boolean(process.env.PAYSTACK_SECRET_KEY);
+  return Boolean(process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_TEST_SECRET_KEY);
 }
 
 // ── Payout Mechanisms (Subaccounts with Split or Collect & Transfer) ─────────
@@ -208,6 +257,51 @@ export async function createSubaccount(params: {
 
   if (!res.ok || !body.status || !body.data) {
     throw new Error(body.message || `Paystack subaccount creation failed (${res.status})`);
+  }
+
+  return {
+    subaccountCode: body.data.subaccount_code,
+    id: body.data.id,
+  };
+}
+
+/**
+ * Update an existing subaccount on Paystack.
+ */
+export async function updateSubaccount(
+  subaccountCode: string,
+  params: {
+    businessName?: string;
+    settlementBank?: string;
+    accountNumber?: string;
+    percentageCharge?: number;
+    description?: string;
+  },
+): Promise<{ subaccountCode: string; id: number }> {
+  const payload: Record<string, any> = {};
+  if (params.businessName) payload.business_name = params.businessName;
+  if (params.settlementBank) payload.settlement_bank = params.settlementBank;
+  if (params.accountNumber) payload.account_number = params.accountNumber;
+  if (params.percentageCharge !== undefined) payload.percentage_charge = params.percentageCharge;
+  if (params.description) payload.description = params.description;
+
+  const res = await fetch(`${PAYSTACK_BASE}/subaccount/${encodeURIComponent(subaccountCode)}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${secretKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const body = (await res.json()) as {
+    status: boolean;
+    message?: string;
+    data?: { subaccount_code: string; id: number };
+  };
+
+  if (!res.ok || !body.status || !body.data) {
+    throw new Error(body.message || `Paystack subaccount update failed (${res.status})`);
   }
 
   return {
@@ -289,5 +383,39 @@ export async function initiateTransfer(params: {
   return {
     transferCode: body.data.transfer_code,
     status: body.data.status,
+  };
+}
+
+/**
+ * Resolve a Nigerian NUBAN account number against a bank code via Paystack.
+ * Used for live verification before linking settlement bank accounts.
+ */
+export async function resolveAccountNumber(params: {
+  accountNumber: string;
+  bankCode: string;
+}): Promise<{ accountNumber: string; accountName: string }> {
+  const res = await fetch(
+    `${PAYSTACK_BASE}/bank/resolve?account_number=${encodeURIComponent(params.accountNumber)}&bank_code=${encodeURIComponent(params.bankCode)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${secretKey()}`,
+      },
+    },
+  );
+
+  const body = (await res.json()) as {
+    status: boolean;
+    message?: string;
+    data?: { account_number: string; account_name: string };
+  };
+
+  if (!res.ok || !body.status || !body.data) {
+    throw new Error(body.message || `Could not resolve bank account (${res.status})`);
+  }
+
+  return {
+    accountNumber: body.data.account_number,
+    accountName: body.data.account_name,
   };
 }

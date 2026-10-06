@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 interface AccountProfileInput {
@@ -106,6 +106,144 @@ export function useChangePassword() {
     },
     onError: (err: Error) => {
       toast({ title: "Could not change password", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
+export interface BankItem {
+  code: string;
+  name: string;
+}
+
+export function useBanks() {
+  return useQuery<BankItem[]>({
+    queryKey: ["/api/banks"],
+    queryFn: async () => {
+      const res = await fetch("/api/banks", { credentials: "include" });
+      if (!res.ok) throw new Error("Could not load banks");
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+}
+
+export interface BankAccountInput {
+  accountNumber: string;
+  bankCode: string;
+  bankName: string;
+  accountName: string;
+}
+
+export function useUpdateBankAccount() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (input: BankAccountInput) => {
+      const res = await fetch("/api/account/bank", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(input),
+      });
+      const contentType = res.headers.get("content-type") || "";
+      const data = contentType.includes("application/json") ? await res.json() : null;
+      if (!res.ok) throw new Error(data?.message || "Could not link your settlement bank account");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizers/me/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/setup-checklist"] });
+      toast({
+        title: "Settlement account linked",
+        description: "Your bank details have been saved for automated payouts.",
+      });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Bank linking failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export interface VerificationInput {
+  businessName: string;
+  bvnLast4?: string;
+  cacNumber?: string;
+  idType?: string;
+  idNumber?: string;
+  phone: string;
+}
+
+export function useSubmitVerification() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (input: VerificationInput) => {
+      const res = await fetch("/api/account/verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(input),
+      });
+      const contentType = res.headers.get("content-type") || "";
+      const data = contentType.includes("application/json") ? await res.json() : null;
+      if (!res.ok) throw new Error(data?.message || "Could not submit verification");
+      return data;
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/organizers/me/profile"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/setup-checklist"] });
+      toast({
+        title: data?.isVerified ? "Account verified" : "Verification submitted",
+        description: data?.isVerified
+          ? "Your organizer account is now verified for automated payouts!"
+          : "Your details are under review. We'll verify your credentials shortly.",
+      });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: "Verification submission failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useAdminVerifyOrganizer() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, verified, notes }: { id: string; verified: boolean; notes?: string }) => {
+      const res = await fetch(`/api/admin/organizers/${id}/verify`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ verified, notes }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || "Failed to update verification status");
+      return data;
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/organizers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/leads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payouts"] });
+      toast({
+        title: vars.verified ? "Organizer verified" : "Verification rejected",
+        description: vars.verified ? "Organizer payouts and subaccount split unlocked." : "Status updated.",
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Action failed", description: err.message, variant: "destructive" });
     },
   });
 }

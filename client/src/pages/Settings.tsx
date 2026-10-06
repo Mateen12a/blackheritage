@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Reveal } from "@/components/motion";
 import { Loader2, Upload } from "lucide-react";
 import { ReferralCard } from "@/components/ReferralCard";
+import { BankAccountSettings } from "@/components/BankAccountSettings";
+import { OrganizerVerificationCard } from "@/components/OrganizerVerificationCard";
 
 function SettingsForm() {
   const { user } = useAuth();
@@ -238,6 +240,16 @@ function SettingsForm() {
           </CardContent>
         </Card>
       </Reveal>
+
+      <Reveal>
+        <BankAccountSettings />
+      </Reveal>
+
+      {isOrganizer && (
+        <Reveal>
+          <OrganizerVerificationCard />
+        </Reveal>
+      )}
 
       <Reveal>
         <Card className="border-hairline bg-surface">

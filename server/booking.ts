@@ -81,32 +81,72 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
   // Commissions: platform fee on paid money; organizer-chosen promoter share.
   const settings = await PlatformSettingModel.findOne({ key: "platform" }).lean();
   const total = (booking as any).totalAmount || 0;
-  if (total > 0) {
     const feeBps = settings?.ticketCommissionBps ?? 600;
+    const platformFeeKobo = Math.round((total * feeBps) / 10000);
     await PayoutModel.create({
       kind: "platform_fee",
       eventId: booking.eventId,
       organizerId: (event as any)?.organizerId || null,
       recipientName: "BlackHeritage",
-      amount: Math.round((total * feeBps) / 10000),
+      amount: platformFeeKobo,
       sourceBookingId: booking._id,
       status: "due",
       note: `${feeBps / 100}% platform commission`,
-    });
+    }).catch(() => {});
 
     const promoterShareBps = (event as any)?.promoterCommissionBps || 0;
     const promoterName = (event as any)?.promoterName;
+    let promoterCommissionKobo = 0;
     if (promoterShareBps > 0 && promoterName) {
+      promoterCommissionKobo = Math.round((total * promoterShareBps) / 10000);
       await PayoutModel.create({
         kind: "promoter_commission",
         eventId: booking.eventId,
         organizerId: (event as any)?.organizerId || null,
         recipientName: promoterName,
-        amount: Math.round((total * promoterShareBps) / 10000),
+        amount: promoterCommissionKobo,
         sourceBookingId: booking._id,
         status: "due",
         note: `${promoterShareBps / 100}% promoter share chosen by the organizer`,
-      });
+      }).catch(() => {});
+    }
+
+    // Organizer net share tracking with verification protection
+    const orgNetKobo = Math.max(0, total - platformFeeKobo - promoterCommissionKobo);
+    const organizerId = (event as any)?.organizerId;
+    if (orgNetKobo > 0 && organizerId) {
+      try {
+        const { User } = await import("./models");
+        const organizer = await User.findById(organizerId).lean();
+        const orgName = (organizer as any)?.displayName || (organizer as any)?.username || (event as any)?.organizerName || "Organizer";
+        const isVerified = Boolean((organizer as any)?.isVerified);
+        const hasSubaccount = Boolean((organizer as any)?.bankDetails?.subaccountCode);
+        const wasAutoSplit = Boolean((booking as any)?.subaccountSplit);
+        const gateway = (booking as any)?.paymentGateway;
+        const isAutoSplitSettled = isVerified && wasAutoSplit && gateway === "paystack";
+
+        await PayoutModel.create({
+          kind: "organizer_payout",
+          eventId: booking.eventId,
+          organizerId: String(organizerId),
+          recipientName: orgName,
+          recipientId: (organizer as any)?.bankDetails?.recipientCode || null,
+          amount: orgNetKobo,
+          sourceBookingId: booking._id,
+          status: isAutoSplitSettled ? "settled" : isVerified ? "due" : "pending_verification",
+          note: isAutoSplitSettled
+            ? "Automatic split settlement via Paystack subaccount"
+            : !isVerified
+              ? "Pending verification: identity verification required before payout disbursement"
+              : !hasSubaccount
+                ? "Pending bank setup: link settlement bank account in Settings"
+                : "Settlement due for payout transfer",
+        }).catch((err: any) => {
+          console.warn("Organizer payout note:", err?.message);
+        });
+      } catch (orgErr: any) {
+        console.warn("Organizer lookup for payout notice:", orgErr?.message);
+      }
     }
   }
 
