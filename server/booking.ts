@@ -148,7 +148,6 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
         console.warn("Organizer lookup for payout notice:", orgErr?.message);
       }
     }
-  }
 
   // (Status and paidAt atomically set on winner above)
 
