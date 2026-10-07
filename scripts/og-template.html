@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Black Heritage - OpenGraph Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400;1,600;1,700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      width: 1200px;
+      height: 630px;
+      overflow: hidden;
+      background-color: #0F0F14;
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #F7F5EF;
+      position: relative;
+    }
+
+    /* Subtle warm ambient stage illumination on the right */
+    .ambient-glow {
+      position: absolute;
+      top: -10%;
+      right: 0;
+      width: 720px;
+      height: 120%;
+      background: radial-gradient(circle at 70% 50%, rgba(227, 178, 60, 0.08) 0%, rgba(15, 15, 20, 0) 70%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Perimeter architectural hairline per DESIGN.md */
+    .hairline-frame {
+      position: absolute;
+      inset: 22px;
+      border: 1px solid #23232C;
+      border-radius: 6px;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    /* Main editorial spread */
+    .spread {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      padding: 58px 66px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Left: Editorial Column */
+    .editorial-col {
+      width: 530px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .brand-mark {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 26px;
+    }
+
+    .logo-img {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+    }
+
+    .brand-label {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #9EA0AD;
+    }
+
+    .kicker {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.20em;
+      text-transform: uppercase;
+      color: #E3B23C;
+      margin-bottom: 12px;
+    }
+
+    h1.headline {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 64px;
+      font-weight: 800;
+      line-height: 1.04;
+      color: #F7F5EF;
+      letter-spacing: -0.025em;
+    }
+
+    .headline .gold-italic {
+      color: #E3B23C;
+      font-style: italic;
+      font-weight: 700;
+    }
+
+    /* 2px solid gold rule per DESIGN.md */
+    .rule-gold {
+      width: 42px;
+      height: 2px;
+      background-color: #E3B23C;
+      margin: 22px 0 20px 0;
+    }
+
+    .dek {
+      font-size: 16.5px;
+      line-height: 1.6;
+      color: #9EA0AD;
+      max-width: 460px;
+      margin-bottom: 34px;
+    }
+
+    .footer-bar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding-top: 18px;
+      border-top: 1px solid #23232C;
+    }
+
+    .domain-text {
+      font-size: 15px;
+      font-weight: 700;
+      color: #E3B23C;
+      letter-spacing: 0.02em;
+    }
+
+    .footer-sep {
+      color: #31313A;
+      font-size: 14px;
+    }
+
+    .footer-desc {
+      font-size: 12px;
+      font-weight: 500;
+      color: #7A7C88;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* Right: Dual Editorial Posters Showcase */
+    .posters-row {
+      width: 510px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .flyer-card {
+      width: 246px;
+      background-color: #19191F;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .flyer-card-secondary {
+      border: 1px solid #31313A;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75);
+    }
+
+    .flyer-card-primary {
+      border: 1px solid rgba(227, 178, 60, 0.45);
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.9), 0 0 20px rgba(227, 178, 60, 0.08);
+      transform: translateY(-6px);
+    }
+
+    .flyer-card img {
+      width: 100%;
+      height: 330px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .flyer-card .card-caption {
+      padding: 12px 14px;
+      background: #141419;
+      border-top: 1px solid #26262E;
+    }
+
+    .flyer-card-primary .card-caption {
+      background: #19191F;
+      border-top: 1px solid #31313A;
+    }
+
+    .card-caption .caption-kicker {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #9EA0AD;
+      margin-bottom: 3px;
+    }
+
+    .flyer-card-primary .card-caption .caption-kicker {
+      color: #E3B23C;
+    }
+
+    .card-caption .caption-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 14.5px;
+      font-weight: 700;
+      color: #F7F5EF;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.25;
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-glow"></div>
+  <div class="hairline-frame"></div>
+
+  <div class="spread">
+    <!-- Left Column: Editorial Brand -->
+    <div class="editorial-col">
+      <div class="brand-mark">
+        <img class="logo-img" src="../client/src/assets/logo_transparent.png" alt="Black Heritage" />
+        <span class="brand-label">Black Heritage</span>
+      </div>
+
+      <div class="kicker">Lagos &middot; Abuja &middot; Port Harcourt</div>
+
+      <h1 class="headline">
+        Heritage<br>
+        <span class="gold-italic">&amp; Vibes</span>
+      </h1>
+
+      <div class="rule-gold"></div>
+
+      <p class="dek">
+        Tickets to premier concerts, festivals, beach hangouts, and nightlife across Nigeria. Direct checkout, verified passes, and the talent behind the culture.
+      </p>
+
+      <div class="footer-bar">
+        <span class="domain-text">blackhevents.com</span>
+        <span class="footer-sep">&middot;</span>
+        <span class="footer-desc">Live Entertainment Marketplace</span>
+      </div>
+    </div>
+
+    <!-- Right Column: Dual Real Posters -->
+    <div class="posters-row">
+      <!-- Left Poster -->
+      <div class="flyer-card flyer-card-secondary">
+        <img src="../client/public/events/alte-culture-festival.jpg" alt="Alté Culture Festival" />
+        <div class="card-caption">
+          <p class="caption-kicker">Victoria Island</p>
+          <p class="caption-title">Alt&eacute; Culture Festival</p>
+        </div>
+      </div>
+
+      <!-- Right Poster -->
+      <div class="flyer-card flyer-card-primary">
+        <img src="../client/public/events/mainland-block-party.jpg" alt="Mainland Block Party" />
+        <div class="card-caption">
+          <p class="caption-kicker">Mainland &middot; Live in Lagos</p>
+          <p class="caption-title">Mainland BlockParty</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
