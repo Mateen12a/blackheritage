@@ -153,7 +153,6 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
 
     // Organizer net share tracking with verification protection
     const orgNetKobo = Math.max(0, total - platformFeeKobo - promoterCommissionKobo);
-    const organizerId = (event as any)?.organizerId;
     if (orgNetKobo > 0 && organizerId) {
       try {
         const { User } = await import("./models");
@@ -249,7 +248,6 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
 
   // Tell the organizer money moved on their event. Never blocks fulfillment.
   try {
-    const organizerId = (event as any)?.organizerId;
     if (organizerId) {
       const { User } = await import("./models");
       const organizer = await User.findById(organizerId).lean();
