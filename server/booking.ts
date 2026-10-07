@@ -523,4 +523,3 @@ export async function createGateSale(input: GateSaleInput): Promise<{ ok: boolea
     return { ok: false, message: "Could not record that sale. The seats were released; try again." };
   }
 }
-
