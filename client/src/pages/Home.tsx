@@ -164,6 +164,7 @@ function ScarcityBadge({ event, slideKey }: { event: Event; slideKey: string }) 
  * can be called up by its thumb. One event is always on screen.
  */
 function HeroPosterDeck({ events }: { events: Event[] }) {
+  const { user } = useAuth();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -181,9 +182,9 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
         <p className="text-xs text-muted-ink max-w-xs mb-5 leading-relaxed">
           Tickets for upcoming parties, live concerts, and festivals across Nigeria will appear here once published.
         </p>
-        <Link href="/organizers">
+        <Link href={user ? "/admin/events/new" : "/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100"}>
           <span className="press inline-flex items-center justify-center h-11 px-6 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-gold-soft transition-colors cursor-pointer">
-            List an event
+            List an event · 0% on First 100
           </span>
         </Link>
       </div>
@@ -401,12 +402,12 @@ export default function Home() {
                       Book Talent
                     </Button>
                   </Link>
-                  <Link href={user ? "/admin/events/new" : "/auth?returnTo=/admin/events/new"}>
+                  <Link href={user ? "/admin/events/new" : "/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100"}>
                     <Button
                       variant="outline"
                       className="press h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base border-gold/40 bg-gold/10 text-gold hover:bg-gold/20 font-medium rounded-full w-full sm:w-auto backdrop-blur-sm"
                     >
-                      Host an Event
+                      Host an Event · 0% on First 100
                     </Button>
                   </Link>
                 </div>

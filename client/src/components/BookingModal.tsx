@@ -15,7 +15,7 @@ import {
   useInitiateBooking,
   useFinalizeBooking,
 } from "@/hooks/use-bookings";
-import { Loader2, CreditCard, Users, Tag, Check, AlertTriangle } from "lucide-react";
+import { Loader2, CreditCard, Users, Tag, Check, AlertTriangle, Ticket } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -152,9 +152,12 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
         guest: !user,
       });
 
-      // Dev mode: no gateway keys on the server, so the booking confirms
-      // immediately against the simulated gateway.
-      if (init.simulated || !init.paymentUrl) {
+      // Free tickets (₦0) or dev simulated gateway: confirmed immediately without opening payment gateway
+      if (init.isFree || init.status === "paid" || init.simulated || !init.paymentUrl) {
+        if (init.tickets && init.tickets.length > 0) {
+          showSuccess(init);
+          return;
+        }
         const result = await finalize(init.reference);
         showSuccess(result);
         return;
@@ -463,17 +466,36 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
                     <Loader2 className="w-6 h-6 animate-spin" />
                   ) : (
                     <>
-                      <CreditCard className="w-5 h-5 mr-2.5" />
-                      {pricing && pricing.totalKobo === 0 ? "Confirm Free Ticket" : `Pay ${totalLabel}`}
+                      {pricing && pricing.totalKobo === 0 ? (
+                        <>
+                          <Ticket className="w-5 h-5 mr-2.5" />
+                          Confirm Free RSVP
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-5 h-5 mr-2.5" />
+                          Pay {totalLabel}
+                        </>
+                      )}
                     </>
                   )}
                 </Button>
               </div>
 
               <p className="text-xs text-center text-muted-ink leading-relaxed pb-2">
-                Pay safely with card, bank transfer, or USSD.
-                <br />
-                Your coded ticket is issued the moment payment clears, and a PDF copy goes to your email.
+                {pricing && pricing.totalKobo === 0 ? (
+                  <>
+                    No payment required.
+                    <br />
+                    Your free ticket is issued instantly with a scannable QR code and email confirmation.
+                  </>
+                ) : (
+                  <>
+                    Pay safely with card, bank transfer, or USSD.
+                    <br />
+                    Your coded ticket is issued the moment payment clears, and a PDF copy goes to your email.
+                  </>
+                )}
               </p>
             </div>
           </div>

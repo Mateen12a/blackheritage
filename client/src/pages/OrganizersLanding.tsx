@@ -184,7 +184,7 @@ export default function OrganizersLanding() {
 
           <Reveal y={14} delay={0.35} duration={0.55}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/auth?mode=register&role=organizer">
+              <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100">
                 <Button className="press h-13 px-8 bg-primary text-primary-foreground hover:bg-gold-soft font-semibold text-sm rounded-full w-full sm:w-auto shadow-lg shadow-gold/10">
                   Start selling tickets · 0% on first 100
                   <ArrowUpRight className="w-4 h-4 ml-1.5" />
@@ -660,7 +660,7 @@ export default function OrganizersLanding() {
             Add your tiers and your page link, then put the event on sale. It takes a few minutes.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/auth?mode=register&role=organizer">
+            <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100">
               <Button className="press h-13 px-8 bg-primary text-primary-foreground hover:bg-gold-soft font-semibold text-sm rounded-full w-full sm:w-auto">
                 Create an organizer account
                 <ArrowUpRight className="w-4 h-4 ml-1.5" />

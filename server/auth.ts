@@ -230,6 +230,12 @@ export function setupAuth(app: Express) {
           // A bad referral code never blocks a signup.
         }
       }
+      const founderVoucher =
+        typeof req.body.founderVoucher === "string" &&
+        req.body.founderVoucher.trim().toUpperCase() === "FOUNDER100"
+          ? "FOUNDER100"
+          : undefined;
+
       const user = new User({
         username,
         email,
@@ -238,6 +244,7 @@ export function setupAuth(app: Express) {
         ...(displayName ? { displayName } : {}),
         ...(phone ? { phone } : {}),
         ...(referrerId ? { referredBy: referrerId } : {}),
+        ...(founderVoucher ? { founderVoucher, waivedTicketCount: 0 } : {}),
         referralCode: generateReferralCode(),
         termsAcceptedAt: new Date(), // consent record, NDPA audit trail
       });
@@ -326,5 +333,24 @@ export function setupAuth(app: Express) {
       invites: invites || 0,
       referredBy: (fresh as any).referredBy || null,
     });
+  });
+
+  // ── Become organizer: seamless 1-click upgrade for attendee accounts ──
+  app.post("/api/user/become-organizer", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in first" });
+    const me = req.user as any;
+    const user = await User.findById(me._id);
+    if (!user) return res.status(404).json({ message: "Account not found" });
+
+    if (user.role === "user") {
+      user.role = "organizer";
+      // Auto-apply Founder Hundred perk on activation if not already present
+      if (!user.founderVoucher) {
+        user.founderVoucher = "FOUNDER100";
+        user.waivedTicketCount = 0;
+      }
+      await user.save();
+    }
+    return res.json(safeUser(user));
   });
 }

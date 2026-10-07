@@ -81,18 +81,58 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
   // Commissions: platform fee on paid money; organizer-chosen promoter share.
   const settings = await PlatformSettingModel.findOne({ key: "platform" }).lean();
   const total = (booking as any).totalAmount || 0;
-    const feeBps = settings?.ticketCommissionBps ?? 600;
-    const platformFeeKobo = Math.round((total * feeBps) / 10000);
-    await PayoutModel.create({
-      kind: "platform_fee",
-      eventId: booking.eventId,
-      organizerId: (event as any)?.organizerId || null,
-      recipientName: "BlackHeritage",
-      amount: platformFeeKobo,
-      sourceBookingId: booking._id,
-      status: "due",
-      note: `${feeBps / 100}% platform commission`,
-    }).catch(() => {});
+  const organizerId = (event as any)?.organizerId;
+  const feeBps = settings?.ticketCommissionBps ?? 600;
+  let isFounderPerkApplied = false;
+  let waivedForThisBooking = 0;
+  let totalWaivedCount = 0;
+
+  if (organizerId && total > 0) {
+    try {
+      const { User } = await import("./models");
+      const organizer = await User.findById(organizerId);
+      if (organizer && organizer.founderVoucher === "FOUNDER100") {
+        const used = Number(organizer.waivedTicketCount || 0);
+        if (used < 100) {
+          const remainingWaiver = 100 - used;
+          waivedForThisBooking = Math.min(qty, remainingWaiver);
+          totalWaivedCount = used + waivedForThisBooking;
+          await User.updateOne(
+            { _id: organizer._id },
+            { $inc: { waivedTicketCount: waivedForThisBooking } }
+          );
+          isFounderPerkApplied = true;
+        }
+      }
+    } catch (voucherErr) {
+      console.warn("[booking] Founder voucher check failed:", voucherErr);
+    }
+  }
+
+  // Calculate platform fee with prorated waiver if partially covered
+  let platformFeeKobo = 0;
+  if (!isFounderPerkApplied || waivedForThisBooking < qty) {
+    const chargeableQty = isFounderPerkApplied ? Math.max(0, qty - waivedForThisBooking) : qty;
+    const chargeableRatio = qty > 0 ? chargeableQty / qty : 1;
+    platformFeeKobo = Math.round(((total * chargeableRatio) * feeBps) / 10000);
+  }
+
+  const feeNote = isFounderPerkApplied
+    ? waivedForThisBooking >= qty
+      ? `0% platform fee · Founder Hundred perk (${totalWaivedCount}/100 tickets used)`
+      : `${feeBps / 100}% platform fee on remaining ${qty - waivedForThisBooking} tickets · Founder Hundred (${totalWaivedCount}/100 tickets used)`
+    : `${feeBps / 100}% platform commission`;
+
+  await PayoutModel.create({
+    kind: "platform_fee",
+    eventId: booking.eventId,
+    organizerId: (event as any)?.organizerId || null,
+    recipientName: "BlackHeritage",
+    amount: platformFeeKobo,
+    sourceBookingId: booking._id,
+    status: "due",
+    note: feeNote,
+  }).catch(() => {});
 
     const promoterShareBps = (event as any)?.promoterCommissionBps || 0;
     const promoterName = (event as any)?.promoterName;

@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ArrowRight, LogOut, Menu, X } from "lucide-react";
+import { ArrowRight, LogOut, Menu, X, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import logoImg from "../assets/logo.png";
 
@@ -179,6 +179,17 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
         >
           {user ? (
             <>
+              <Link href="/admin/events/new">
+                <span className={cn(
+                  "press inline-flex items-center gap-1.5 h-9 rounded-full text-[13px] font-semibold transition-colors cursor-pointer",
+                  isOrg
+                    ? "px-4 bg-primary text-primary-foreground hover:bg-gold-soft shadow-sm"
+                    : "px-3 text-muted-ink hover:text-gold hover:bg-surface-2"
+                )}>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>List Event</span>
+                </span>
+              </Link>
               <Link href={links[links.length - 1].href}>
                 <span className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-surface-2/60 transition-colors cursor-pointer">
                   <span className="w-7 h-7 rounded-full bg-surface-2 border border-hairline flex items-center justify-center text-xs font-bold text-gold uppercase">
@@ -206,9 +217,10 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
                   Sign In
                 </span>
               </Link>
-              <Link href="/auth?tab=register">
-                <span className="press inline-flex items-center h-9 px-5 rounded-full bg-primary text-primary-foreground text-[13px] font-medium hover:bg-gold-soft transition-colors cursor-pointer">
-                  Get Started
+              <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100">
+                <span className="press inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-gold-soft transition-colors cursor-pointer shadow-sm">
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>List Event</span>
                 </span>
               </Link>
             </>
@@ -288,6 +300,16 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
           <div className="mt-3 pt-3 border-t border-hairline/60 flex flex-col gap-2">
             {user ? (
               <>
+                <Link href="/admin/events/new">
+                  <Button
+                    size="sm"
+                    className="w-full bg-gold text-[#0F0F14] hover:bg-gold-soft font-bold text-sm h-11 rounded-xl shadow-[0_4px_20px_rgba(227,178,60,0.25)] flex items-center justify-center gap-2"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>List an Event</span>
+                  </Button>
+                </Link>
                 <div className="flex items-center gap-3 px-3 py-2 bg-surface-2/40 rounded-xl border border-hairline/50">
                   <div className="w-9 h-9 rounded-full bg-surface-2 border border-hairline flex items-center justify-center shrink-0">
                     <span className="text-xs font-bold text-gold uppercase">
@@ -313,13 +335,14 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
               </>
             ) : (
               <div className="flex flex-col gap-2 px-1">
-                <Link href="/auth?tab=register">
+                <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100">
                   <Button
                     size="sm"
                     className="w-full bg-gold text-[#0F0F14] hover:bg-gold-soft font-bold text-sm h-11 rounded-xl shadow-[0_4px_20px_rgba(227,178,60,0.25)] flex items-center justify-center gap-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    Get Started
+                    <Plus className="w-4 h-4" />
+                    <span>List an Event · 0% on First 100</span>
                   </Button>
                 </Link>
                 <Link href="/auth">

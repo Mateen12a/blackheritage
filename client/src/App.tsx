@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles, ArrowRight } from "lucide-react";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import Explore from "@/pages/Explore";
@@ -72,6 +72,80 @@ function ProtectedRoute({
   );
 }
 
+function ActivateOrganizerScreen() {
+  const { becomeOrganizer, isBecomingOrganizer } = useAuth();
+  const [, setLocation] = useLocation();
+
+  const handleActivate = async () => {
+    try {
+      await becomeOrganizer();
+    } catch {
+      // If error, stays on screen
+    }
+  };
+
+  return (
+    <div className="min-h-[80vh] flex items-center justify-center px-4 py-16">
+      <div className="w-full max-w-lg border border-hairline rounded-2xl bg-surface p-8 sm:p-10 text-center shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+        <div className="w-12 h-12 rounded-xl bg-gold/15 border border-gold/30 flex items-center justify-center mx-auto mb-6 text-gold">
+          <Sparkles className="w-6 h-6 text-gold" />
+        </div>
+        <p className="eyebrow">Organizer Access</p>
+        <h2 className="mt-2 font-display text-2xl sm:text-3xl font-bold text-ink tracking-tight">
+          List Events on Black Heritage
+        </h2>
+        <p className="mt-3 text-sm text-muted-ink leading-relaxed">
+          You are currently signed in as an attendee. Turn on organizer capabilities to publish events, scan tickets at the door, and receive direct payouts to your Nigerian bank account.
+        </p>
+
+        {/* Founder Hundred Perk Box */}
+        <div className="mt-6 p-4 rounded-xl border border-gold/30 bg-gold/5 text-left flex items-start gap-3">
+          <div className="w-7 h-7 rounded-lg bg-gold/20 flex items-center justify-center shrink-0 mt-0.5 text-gold">
+            <Sparkles className="w-3.5 h-3.5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-gold tracking-wider uppercase">Founder Hundred Perk</span>
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-gold/20 text-gold">Ready</span>
+            </div>
+            <p className="text-xs text-ink/80 mt-1 leading-relaxed">
+              0% platform fee on your first 100 paid tickets. Code <span className="font-mono text-gold font-bold">FOUNDER100</span> applied automatically.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button
+            type="button"
+            disabled={isBecomingOrganizer}
+            onClick={handleActivate}
+            className="press w-full sm:w-auto h-12 px-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm hover:bg-gold-soft transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {isBecomingOrganizer ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Activating…</span>
+              </>
+            ) : (
+              <>
+                <span>Activate &amp; Create Event</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setLocation("/events")}
+            className="press w-full sm:w-auto h-12 px-6 rounded-full border border-hairline bg-surface-2/60 text-muted-ink hover:text-ink text-sm font-medium transition-colors"
+          >
+            Back to Events
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminRoute({
   component: Component,
 }: {
@@ -95,6 +169,13 @@ function AdminRoute({
   }
 
   if (user.role !== "admin" && user.role !== "organizer" && !user.isAdmin) {
+    if (path.startsWith("/admin/events/new")) {
+      return (
+        <PublicLayout>
+          <ActivateOrganizerScreen />
+        </PublicLayout>
+      );
+    }
     return <Redirect to="/dashboard" />;
   }
 

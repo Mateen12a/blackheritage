@@ -1761,6 +1761,20 @@ export async function registerRoutes(
         await PromoCodeModel.updateOne({ _id: quote.promoId }, { $inc: { usedCount: 1 } });
       }
 
+      // Free tickets / 100% off promo: zero-amount bookings bypass payment gateways completely.
+      // Fulfill atomically: issue scannable tickets, QR codes, PDF receipt, and confirm immediately.
+      if (quote.totalKobo === 0) {
+        const fulfillment = await fulfillBooking(String(booking._id ?? booking.id));
+        return res.status(201).json({
+          bookingId: String(booking._id ?? booking.id),
+          reference,
+          totalKobo: 0,
+          isFree: true,
+          status: "paid",
+          tickets: fulfillment.tickets,
+        });
+      }
+
       if (isPaystackConfigured()) {
         const gateway = activeGateway();
         try {
@@ -1956,9 +1970,9 @@ export async function registerRoutes(
         });
       }
 
-      if (activeGateway() !== "simulated") {
+      const expected = Number(booking.totalAmount);
+      if (expected > 0 && activeGateway() !== "simulated") {
         const verification = await verifyPayment(reference);
-        const expected = Number(booking.totalAmount);
         if (verification.status !== "success") {
           return res.status(402).json({ message: "Payment did not go through. You have not been charged for a completed order." });
         }
@@ -4065,6 +4079,234 @@ export async function registerRoutes(
     } catch (err) {
       console.error("Error fetching organizers:", err);
       return res.status(500).json({ error: "Failed to load organizers." });
+    }
+  });
+
+  // ── Admin: Financial Operations Overview & Telemetry ──
+  app.get("/api/admin/financial-overview", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    try {
+      const { PayoutModel, PlatformSettingModel, EventModel } = await import("./models");
+      const { isTestMode } = await import("./paystack");
+
+      const gmvResult = await BookingModel.aggregate([
+        { $match: { status: "paid" } },
+        { $group: { _id: null, totalKobo: { $sum: "$totalAmount" }, count: { $sum: 1 }, ticketsCount: { $sum: "$quantity" } } },
+      ]);
+      const gmv = gmvResult[0] || { totalKobo: 0, count: 0, ticketsCount: 0 };
+
+      const payoutAgg = await PayoutModel.aggregate([
+        {
+          $group: {
+            _id: { kind: "$kind", status: "$status" },
+            totalAmount: { $sum: "$amount" },
+            count: { $sum: 1 },
+          },
+        },
+      ]);
+
+      let platformFeesKobo = 0;
+      let pendingEscrowKobo = 0;
+      let settledPayoutsKobo = 0;
+      let duePayoutsKobo = 0;
+
+      for (const item of payoutAgg) {
+        if (item._id.kind === "platform_fee") {
+          platformFeesKobo += item.totalAmount;
+        } else if (item._id.kind === "organizer_payout") {
+          if (item._id.status === "pending_verification") {
+            pendingEscrowKobo += item.totalAmount;
+          } else if (item._id.status === "settled") {
+            settledPayoutsKobo += item.totalAmount;
+          } else if (item._id.status === "due") {
+            duePayoutsKobo += item.totalAmount;
+          }
+        }
+      }
+
+      const settings = (await PlatformSettingModel.findOne({ key: "platform" }).lean()) || {
+        ticketCommissionBps: 600,
+        vendorCommissionBps: 1250,
+      };
+
+      const totalEvents = await EventModel.countDocuments();
+      const liveEvents = await EventModel.countDocuments({ status: "published" });
+      const totalOrganizers = await User.countDocuments({ role: "organizer" });
+      const verifiedOrganizers = await User.countDocuments({ role: "organizer", isVerified: true });
+
+      const gateway = activeGateway();
+      const gatewayMode = gateway === "paystack" ? (isTestMode() ? "test" : "live") : "simulated";
+
+      return res.json({
+        gmvKobo: gmv.totalKobo,
+        paidOrdersCount: gmv.count,
+        ticketsMintedCount: gmv.ticketsCount,
+        platformFeesKobo,
+        pendingEscrowKobo,
+        settledPayoutsKobo,
+        duePayoutsKobo,
+        settings: {
+          ticketCommissionBps: settings.ticketCommissionBps ?? 600,
+          vendorCommissionBps: settings.vendorCommissionBps ?? 1250,
+          updatedAt: (settings as any).updatedAt || new Date(),
+        },
+        counts: {
+          totalEvents,
+          liveEvents,
+          totalOrganizers,
+          verifiedOrganizers,
+        },
+        gateway: {
+          provider: gateway,
+          mode: gatewayMode,
+          configured: isPaystackConfigured(),
+        },
+      });
+    } catch (err: any) {
+      console.error("Financial overview error:", err);
+      return res.status(500).json({ error: "Failed to load financial overview." });
+    }
+  });
+
+  // ── Admin: Cross-Platform Transactions & Bookings Ledger ──
+  app.get("/api/admin/bookings", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    try {
+      const { EventModel } = await import("./models");
+      const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+      const status = typeof req.query.status === "string" ? req.query.status.trim() : "";
+      const limit = Math.min(Number(req.query.limit) || 100, 300);
+
+      const filter: any = {};
+      if (status && status !== "all") {
+        filter.status = status;
+      }
+      if (q) {
+        filter.$or = [
+          { paymentReference: { $regex: q, $options: "i" } },
+          { email: { $regex: q, $options: "i" } },
+          { name: { $regex: q, $options: "i" } },
+          { ticketType: { $regex: q, $options: "i" } },
+        ];
+      }
+
+      const bookings = await BookingModel.find(filter)
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .lean();
+
+      const eventIds = Array.from(new Set(bookings.map((b) => String(b.eventId)).filter(Boolean)));
+      const events = await EventModel.find({ _id: { $in: eventIds } })
+        .select("title slug date organizerName organizerId location")
+        .lean();
+      const eventMap = new Map(events.map((e) => [String(e._id), e]));
+
+      const enriched = bookings.map((b: any) => ({
+        ...b,
+        id: String(b._id),
+        event: eventMap.get(String(b.eventId)) || null,
+      }));
+
+      return res.json(enriched);
+    } catch (err: any) {
+      console.error("Admin bookings query error:", err);
+      return res.status(500).json({ error: "Failed to load bookings." });
+    }
+  });
+
+  // ── Admin: User Governance ──
+  app.get("/api/admin/users", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    try {
+      const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+      const role = typeof req.query.role === "string" ? req.query.role.trim() : "";
+
+      const filter: any = {};
+      if (role && role !== "all") filter.role = role;
+      if (q) {
+        filter.$or = [
+          { email: { $regex: q, $options: "i" } },
+          { username: { $regex: q, $options: "i" } },
+          { displayName: { $regex: q, $options: "i" } },
+        ];
+      }
+
+      const users = await User.find(filter)
+        .select("-password")
+        .sort({ createdAt: -1 })
+        .limit(200)
+        .lean();
+
+      return res.json(users.map((u: any) => ({ ...u, id: String(u._id) })));
+    } catch (err: any) {
+      console.error("Admin users error:", err);
+      return res.status(500).json({ error: "Failed to load users." });
+    }
+  });
+
+  app.patch("/api/admin/users/:id/role", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    const { role } = req.body || {};
+    if (!["admin", "organizer", "attendee", "vendor"].includes(role)) {
+      return res.status(400).json({ message: "Invalid role specified." });
+    }
+    try {
+      const updated = await User.findByIdAndUpdate(
+        req.params.id,
+        { $set: { role, isAdmin: role === "admin" } },
+        { new: true }
+      ).select("-password").lean();
+      if (!updated) return res.status(404).json({ message: "User not found." });
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(500).json({ message: "Failed to update user role." });
+    }
+  });
+
+  // ── Admin: Event Moderation ──
+  app.patch("/api/admin/events/:id/featured", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    try {
+      const { EventModel } = await import("./models");
+      const event = await EventModel.findById(req.params.id);
+      if (!event) return res.status(404).json({ message: "Event not found." });
+      event.isFeatured = typeof req.body.isFeatured === "boolean" ? req.body.isFeatured : !event.isFeatured;
+      await event.save();
+      return res.json({ id: String(event._id), isFeatured: event.isFeatured });
+    } catch (err: any) {
+      return res.status(500).json({ message: "Failed to update featured status." });
+    }
+  });
+
+  app.patch("/api/admin/events/:id/status", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    const { status } = req.body || {};
+    if (!["published", "draft", "unpublished", "cancelled"].includes(status)) {
+      return res.status(400).json({ message: "Invalid event status." });
+    }
+    try {
+      const { EventModel } = await import("./models");
+      const event = await EventModel.findByIdAndUpdate(
+        req.params.id,
+        { $set: { status } },
+        { new: true }
+      ).lean();
+      if (!event) return res.status(404).json({ message: "Event not found." });
+      return res.json({ id: String(event._id), status: (event as any).status });
+    } catch (err: any) {
+      return res.status(500).json({ message: "Failed to update event status." });
     }
   });
 

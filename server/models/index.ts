@@ -54,6 +54,8 @@ export interface IUser extends Document {
     submittedAt?: Date;
   } | null;
   verifiedAt?: Date | null;
+  founderVoucher?: string | null;
+  waivedTicketCount?: number;
   createdAt: Date;
 }
 
@@ -139,6 +141,8 @@ const UserSchema: Schema = new Schema({
     default: null,
   },
   verifiedAt: { type: Date, default: null },
+  founderVoucher: { type: String, default: null },
+  waivedTicketCount: { type: Number, default: 0 },
   isDemo: { type: Boolean, default: false, index: true },
   createdAt: { type: Date, default: Date.now }
 }, {

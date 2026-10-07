@@ -53,6 +53,7 @@ interface OAuthState {
   returnTo: string;
   redirectUri: string;
   audience: string;
+  founderVoucher?: string;
   timestamp: number;
 }
 const pendingStates = new Map<string, OAuthState>();
@@ -81,14 +82,15 @@ export function setupGoogleAuth(app: Express) {
     const state = generateState();
     const redirectUri = getRedirectUri(req);
     const returnTo = typeof req.query.returnTo === "string" ? req.query.returnTo : "";
-    // Which signup card started this flow. Only the organizer card gets an
-    // elevated role — vendors onboard with an attendee account and build their
-    // profile from the vendor dashboard, exactly like the password path.
-    const audience = typeof req.query.audience === "string" ? req.query.audience : "";
+    // Which signup card started this flow. Fall back to role param if audience is absent.
+    const rawAudience = typeof req.query.audience === "string" ? req.query.audience : typeof req.query.role === "string" ? req.query.role : "";
+    const audience = rawAudience === "organizer" || (returnTo && returnTo.startsWith("/admin")) ? "organizer" : rawAudience;
+    const rawVoucher = typeof req.query.founderVoucher === "string" ? req.query.founderVoucher : typeof req.query.promo === "string" ? req.query.promo : "";
+    const founderVoucher = rawVoucher.trim().toUpperCase() === "FOUNDER100" || (audience === "organizer" && rawVoucher !== "NONE") ? "FOUNDER100" : undefined;
     const role = audience === "organizer" ? "organizer" : "user";
 
     // Store state and redirectUri with a 10-minute expiry
-    pendingStates.set(state, { returnTo, redirectUri, audience, timestamp: Date.now() });
+    pendingStates.set(state, { returnTo, redirectUri, audience, founderVoucher, timestamp: Date.now() });
 
     // Clean old states
     Array.from(pendingStates.entries()).forEach(([key, val]) => {
@@ -180,6 +182,17 @@ export function setupGoogleAuth(app: Express) {
       if (user && (user as any).deletedAt) user = null;
       const isNewUser = !user;
 
+      // Existing attendee upgrade: if a registered attendee signs in through
+      // the organizer flow, elevate them to organizer immediately.
+      if (user && pending?.audience === "organizer" && (user as any).role === "user") {
+        (user as any).role = "organizer";
+        if (pending?.founderVoucher && !(user as any).founderVoucher) {
+          (user as any).founderVoucher = pending.founderVoucher;
+          (user as any).waivedTicketCount = 0;
+        }
+        await user.save();
+      }
+
       if (!user) {
         // Create collision-safe username
         const baseUsername = (profile.name || profile.email.split("@")[0])
@@ -207,6 +220,9 @@ export function setupGoogleAuth(app: Express) {
           avatarUrl: profile.picture || undefined,
           referralCode: generateReferralCode(),
           termsAcceptedAt: new Date(),
+          ...(role === "organizer" && pending?.founderVoucher
+            ? { founderVoucher: pending.founderVoucher, waivedTicketCount: 0 }
+            : {}),
         });
         await user.save();
         // Match the password signup path: the audience decides the variant —
@@ -233,19 +249,16 @@ export function setupGoogleAuth(app: Express) {
           return res.redirect("/auth?error=session_failed");
         }
         // Redirect to the appropriate destination on the correct frontend.
-        // A brand-new signup lands where its audience card says — a stale
-        // returnTo (e.g. /admin left in the URL from someone else's sign-out)
-        // must never send a fresh vendor or organizer to the wrong portal.
-        // Returning users: an explicit returnTo wins, else the account's real
-        // role decides (an organizer or admin lands on /admin).
+        // If an explicit returnTo matches the account's capability (e.g. /admin/events/new
+        // for an organizer), prioritize it over landing on the root dashboard.
         const userRole = (user as any).role;
         const dest = safeDestination(
           isNewUser
             ? userRole === "organizer"
-              ? "/admin"
+              ? (returnTo && returnTo.startsWith("/admin") ? returnTo : "/admin")
               : pending?.audience === "vendor"
                 ? "/vendor-dashboard"
-                : "/dashboard"
+                : (returnTo && !returnTo.startsWith("/admin") ? returnTo : "/dashboard")
             : returnTo ||
               (userRole === "admin" || userRole === "organizer"
                 ? "/admin"

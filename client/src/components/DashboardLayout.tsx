@@ -77,7 +77,7 @@ function tabsFor(role?: string, isAdmin?: boolean, isTeamStaff?: boolean, isVend
       },
       {
         href: "/admin",
-        label: "Dashboard",
+        label: role === "admin" ? "Admin Console" : "Dashboard",
         icon: LayoutDashboard,
         match: (loc) => loc.startsWith("/admin"),
       },
@@ -228,11 +228,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors cursor-pointer text-xs font-medium",
                     location === "/challenges"
                       ? "text-gold bg-gold/10"
-                      : "text-gold/90 hover:text-gold hover:bg-gold/10"
+                      : "text-muted-ink hover:text-ink hover:bg-surface-2"
                   )}
                 >
                   <Trophy size={16} strokeWidth={1.5} aria-hidden="true" />
-                  <span>Challenges & Grants</span>
+                  <span>Creator Challenges</span>
                 </div>
               </Link>
             </div>
@@ -441,7 +441,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               className="w-full flex items-center gap-3 px-2 py-3 rounded-md text-gold hover:bg-surface-2 transition-colors text-left"
             >
               <Trophy size={18} strokeWidth={1.5} aria-hidden="true" />
-              <span className="text-sm font-medium">Challenges & Grants</span>
+              <span className="text-sm font-medium">Creator Challenges</span>
             </button>
             <button
               type="button"

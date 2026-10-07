@@ -1,6 +1,7 @@
 import { EventCard } from "@/components/EventCard";
 import { EventCardCompact } from "@/components/EventCardCompact";
 import { useEvents } from "@/hooks/use-events";
+import { useAuth } from "@/hooks/use-auth";
 import { Reveal } from "@/components/motion";
 import { Search } from "lucide-react";
 import { CategoryBrowse } from "@/components/CategoryBrowse";
@@ -43,6 +44,7 @@ const chipClass = (selected: boolean) =>
   );
 
 export default function Events() {
+  const { user } = useAuth();
   const { data: events, isLoading } = useEvents();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -252,8 +254,8 @@ export default function Events() {
           <ProductionEmptyState
             title="No upcoming events yet"
             message="New events and cultural experiences will appear here once organizers publish tickets."
-            actionLabel="List an event"
-            actionHref="/organizers"
+            actionLabel="List an event · 0% on First 100"
+            actionHref={user ? "/admin/events/new" : "/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100"}
           />
         ) : !isLoading && filteredEvents?.length === 0 ? (
           <div className="text-center py-24 border border-hairline rounded-md bg-surface">

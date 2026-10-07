@@ -7,6 +7,10 @@ import { useOrganizerProfile } from "@/hooks/use-organizer";
 import { OrganizerBrandPanel } from "@/components/OrganizerBrandPanel";
 import { SetupChecklist } from "@/components/SetupChecklist";
 import { AdminVerificationsPanel } from "@/components/AdminVerificationsPanel";
+import { AdminFinancialOverview } from "@/components/AdminFinancialOverview";
+import { AdminTransactionsLedger } from "@/components/AdminTransactionsLedger";
+import { AdminEventsCatalog } from "@/components/AdminEventsCatalog";
+import { AdminUsersManager } from "@/components/AdminUsersManager";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Reveal } from "@/components/motion";
 import { Button } from "@/components/ui/button";
@@ -33,6 +37,10 @@ import {
   MessageCircle,
   Phone,
   Trophy,
+  ShieldAlert,
+  Landmark,
+  Sliders,
+  Shield,
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -52,9 +60,7 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error("Could not load stats");
       return res.json();
     },
-    // Admins get platform totals; organizers get the same shape scoped to
-    // their own events, so the panel is never a dead end for either role.
-    enabled: !!user,
+    enabled: !!user && !isAdmin, // Admins use financial-overview telemetry
     retry: 1,
   });
 
@@ -75,7 +81,6 @@ export default function AdminDashboard() {
   const {
     data: leads,
     isLoading: leadsLoading,
-    refetch: refetchLeads,
   } = useQuery<any[]>({
     queryKey: ["/api/admin/leads"],
     queryFn: async () => {
@@ -102,76 +107,75 @@ export default function AdminDashboard() {
     document.body.removeChild(link);
   };
 
-  const isDashboard = location === "/admin";
-  const isEvents = location === "/admin/events";
-  const isVendors = location === "/admin/vendors" || location === "/admin/talent";
-
-  const pageTitle = isDashboard
-    ? isAdmin
-      ? "Platform Overview"
-      : "Organizer Dashboard"
-    : isEvents
-      ? "Events"
-      : isVendors
-        ? "Talent Directory"
-        : "Dashboard";
-
   const { data: orgProfile } = useOrganizerProfile();
+
   const [activeTab, setActiveTab] = useState(() => {
-    if (isVendors) return "vendors";
     const params = new URLSearchParams(window.location.search);
-    return params.get("tab") || "events";
+    const tabParam = params.get("tab");
+    if (tabParam) return tabParam;
+    if (location === "/admin/bookings") return isAdmin ? "transactions" : "events";
+    if (location === "/admin/events") return isAdmin ? "events_catalog" : "events";
+    if (location === "/admin/talent" || location === "/admin/vendors") return "talent";
+    return isAdmin ? "financials" : "events";
   });
+
+  const pageTitle = isAdmin
+    ? "Platform Administration"
+    : "Organizer Dashboard";
 
   return (
     <div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8 pt-2">
-        {eventsLoading ? (
-          <HeaderSkeleton bare />
-        ) : (
-          <Reveal>
-            <div>
+        <Reveal>
+          <div>
+            <div className="flex items-center gap-2">
               <p className="eyebrow">
-                {isAdmin ? "Admin" : "Organizer"} portal
+                {isAdmin ? "Platform Operations & Governance" : "Organizer portal"}
               </p>
-              <h1 className="mt-2 font-display text-2xl min-[360px]:text-3xl md:text-4xl font-bold text-ink tracking-tight">
-                {pageTitle}
-              </h1>
-              <div className="mt-3 h-0.5 w-16 bg-gold" aria-hidden="true" />
-              <p className="mt-3 text-muted-ink text-xs sm:text-sm">
-                {isDashboard &&
-                  (isAdmin
-                    ? "Everything on the platform, counted"
-                    : "Your events, sales, and ticketing in one place")}
-                {isEvents &&
-                  `${events?.length || 0} event${events?.length === 1 ? "" : "s"} total`}
-                {isVendors &&
-                  `${vendors?.length || 0} creative talent${vendors?.length === 1 ? "" : "s"} across Lagos`}
-              </p>
+              {isAdmin && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  <Shield className="w-2.5 h-2.5" />
+                  Superadmin
+                </span>
+              )}
             </div>
-          </Reveal>
-        )}
+            <h1 className="mt-2 font-display text-2xl min-[360px]:text-3xl md:text-4xl font-bold text-ink tracking-tight">
+              {pageTitle}
+            </h1>
+            <div className="mt-3 h-0.5 w-16 bg-gold" aria-hidden="true" />
+            <p className="mt-3 text-muted-ink text-xs sm:text-sm">
+              {isAdmin
+                ? "Live financial operations, transaction audits, compliance review, and catalog governance."
+                : "Your events, sales, and ticketing in one place."}
+            </p>
+          </div>
+        </Reveal>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
-          <Link href="/vendor-dashboard">
-            <Button
-              variant="outline"
-              className="press border-hairline text-ink hover:text-gold text-xs h-9 sm:h-10 px-3 sm:px-3.5"
-            >
-              <Store className="w-3.5 h-3.5 mr-1.5" />
-              Work as Talent
-            </Button>
-          </Link>
-          <Link href="/challenges">
-            <Button
-              variant="outline"
-              className="press border-gold/30 bg-gold/5 text-gold hover:bg-gold/15 text-xs h-9 sm:h-10 px-3 sm:px-3.5"
-            >
-              <Trophy className="w-3.5 h-3.5 mr-1.5" />
-              Challenges
-            </Button>
-          </Link>
+          {!isAdmin && (
+            <>
+              <Link href="/vendor-dashboard">
+                <Button
+                  variant="outline"
+                  className="press border-hairline text-ink hover:text-gold text-xs h-9 sm:h-10 px-3 sm:px-3.5"
+                >
+                  <Store className="w-3.5 h-3.5 mr-1.5" />
+                  Work as Talent
+                </Button>
+              </Link>
+              <Link href="/challenges">
+                <Button
+                  variant="outline"
+                  className="press border-gold/30 bg-gold/5 text-gold hover:bg-gold/15 text-xs h-9 sm:h-10 px-3 sm:px-3.5"
+                >
+                  <Trophy className="w-3.5 h-3.5 mr-1.5" />
+                  Challenges
+                </Button>
+              </Link>
+            </>
+          )}
+
           {orgProfile?.slug && (
             <a
               href={`/o/${orgProfile.slug}`}
@@ -187,9 +191,11 @@ export default function AdminDashboard() {
               </Button>
             </a>
           )}
+
           <Link href="/admin/events/new">
             <Button className="press w-full sm:w-auto bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md h-9 sm:h-10 text-xs sm:text-sm">
-              <Plus className="w-4 h-4 mr-1.5 sm:mr-2" /> Create Event
+              <Plus className="w-4 h-4 mr-1.5 sm:mr-2" />
+              {isAdmin ? "Create Platform Event" : "Create Event"}
             </Button>
           </Link>
         </div>
@@ -197,323 +203,94 @@ export default function AdminDashboard() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="bg-surface-2 border border-hairline max-w-full overflow-x-auto no-scrollbar">
-          <TabsTrigger value="events">Events & Overview</TabsTrigger>
-          <TabsTrigger value="brand">Brand & Custom Link</TabsTrigger>
-          {(isAdmin || isVendors) && <TabsTrigger value="vendors">Talent Directory</TabsTrigger>}
-          <TabsTrigger value="talent" onClick={() => setLocation("/vendor-dashboard")}>
-            Work as Talent
-          </TabsTrigger>
-          <TabsTrigger value="challenges" onClick={() => setLocation("/challenges")}>
-            Creative Challenges
-          </TabsTrigger>
-          {isAdmin && (
-            <TabsTrigger value="leads" className="flex items-center gap-1.5">
-              <span>Organizer Leads</span>
-              {leads && leads.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-gold/20 text-gold text-[10px] font-bold">
-                  {leads.length}
-                </span>
-              )}
-            </TabsTrigger>
-          )}
-          {isAdmin && (
-            <TabsTrigger value="verifications" className="flex items-center gap-1.5">
-              <span>Verifications & Payouts</span>
-            </TabsTrigger>
+          {isAdmin ? (
+            <>
+              <TabsTrigger value="financials" className="flex items-center gap-1.5">
+                <DollarSign className="w-3.5 h-3.5" />
+                <span>Financials &amp; Commission</span>
+              </TabsTrigger>
+              <TabsTrigger value="transactions" className="flex items-center gap-1.5">
+                <Ticket className="w-3.5 h-3.5" />
+                <span>Transactions Ledger</span>
+              </TabsTrigger>
+              <TabsTrigger value="verifications" className="flex items-center gap-1.5">
+                <Landmark className="w-3.5 h-3.5" />
+                <span>Compliance &amp; Payouts</span>
+              </TabsTrigger>
+              <TabsTrigger value="events_catalog" className="flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Events Catalog</span>
+              </TabsTrigger>
+              <TabsTrigger value="users" className="flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5" />
+                <span>User Governance</span>
+              </TabsTrigger>
+              <TabsTrigger value="leads" className="flex items-center gap-1.5">
+                <span>Inbound Leads</span>
+                {leads && leads.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-gold/20 text-gold text-[10px] font-bold">
+                    {leads.length}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="talent">
+                <span>Talent Directory</span>
+              </TabsTrigger>
+            </>
+          ) : (
+            <>
+              <TabsTrigger value="events">My Events &amp; Overview</TabsTrigger>
+              <TabsTrigger value="brand">Brand &amp; Custom Link</TabsTrigger>
+              <TabsTrigger value="talent" onClick={() => setLocation("/vendor-dashboard")}>
+                Work as Talent
+              </TabsTrigger>
+              <TabsTrigger value="challenges" onClick={() => setLocation("/challenges")}>
+                Creative Challenges
+              </TabsTrigger>
+            </>
           )}
         </TabsList>
 
-        <TabsContent value="events" className="space-y-6">
-          {/* Onboarding progress until everything is done */}
-          {!isAdmin && <SetupChecklist />}
+        {/* ── Admin Tabs ── */}
+        {isAdmin && (
+          <>
+            <TabsContent value="financials" className="space-y-6">
+              <Reveal>
+                <AdminFinancialOverview onNavigateToLedger={() => setActiveTab("verifications")} />
+              </Reveal>
+            </TabsContent>
 
-          {/* Stats Grid: admin sees platform stats, organizer sees their own */}
-          <div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8 sm:mb-12">
-            {statsLoading ? (
-              <>
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="border border-hairline rounded-md bg-surface p-3.5 sm:p-4 md:p-5"
-                  >
-                    <StatSkeletonsStat />
-                  </div>
-                ))}
-              </>
-            ) : statsError ? (
-              <div className="col-span-2 md:col-span-4">
-                <LoadError
-                  compact
-                  title={isAdmin ? "Couldn't load platform stats" : "Couldn't load your stats"}
-                  message="The rest of the dashboard still works."
-                  onRetry={() => refetchStats()}
-                />
-              </div>
-            ) : isAdmin ? (
-              <>
-                <DashStat
-                  icon={Calendar}
-                  label="Total Events"
-                  value={stats?.totalEvents || 0}
-                />
-                <DashStat
-                  icon={Ticket}
-                  label="Tickets Sold"
-                  value={stats?.totalTicketsSold || 0}
-                />
-                <DashStat
-                  icon={DollarSign}
-                  label="Total Revenue"
-                  value={`₦${((stats?.totalRevenue || 0) / 100).toLocaleString()}`}
-                />
-                <DashStat
-                  icon={Store}
-                  label="Talent"
-                  value={vendors?.length || 0}
-                />
-              </>
-            ) : (
-              <>
-                <DashStat
-                  icon={Calendar}
-                  label="My Events"
-                  value={stats?.totalEvents || 0}
-                />
-                <DashStat
-                  icon={Ticket}
-                  label="Tickets Sold"
-                  value={stats?.totalTicketsSold || 0}
-                />
-                <DashStat
-                  icon={DollarSign}
-                  label="Revenue"
-                  value={`₦${((stats?.totalRevenue || 0) / 100).toLocaleString()}`}
-                />
-                <DashStat
-                  icon={Eye}
-                  label="Published"
-                  value={
-                    events?.filter((e: any) => e.status === "published")
-                      .length || 0
-                  }
-                />
-              </>
-            )}
-          </div>
+            <TabsContent value="transactions" className="space-y-6">
+              <Reveal>
+                <AdminTransactionsLedger />
+              </Reveal>
+            </TabsContent>
 
-          {/* Events Table */}
-          {eventsError ? (
-            <LoadError
-              title="Couldn't load your events"
-              message="Check your connection and try again."
-              onRetry={() => refetchEvents()}
-            />
-          ) : eventsLoading ? (
-            <TableSkeleton rows={4} />
-          ) : (
-          <Reveal>
-            <div className="border border-hairline rounded-md bg-surface overflow-hidden mb-12">
-              <div className="flex items-center justify-between p-5 md:p-6 border-b border-hairline">
-                <div>
-                  <h2 className="font-display text-xl font-bold text-ink">
-                    {isAdmin ? "All Events" : "My Events"}
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-ink">
-                    Manage tickets, bookings, and visibility
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-hairline text-ink hover:bg-surface-2 hover:text-gold"
-                  onClick={() => exportToCSV(events || [], "events.csv")}
-                >
-                  <Download className="w-4 h-4 mr-2" /> Export
-                </Button>
-              </div>
+            <TabsContent value="verifications" className="space-y-6">
+              <Reveal>
+                <AdminVerificationsPanel />
+              </Reveal>
+            </TabsContent>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left min-w-[500px]">
-                  <thead>
-                    <tr className="border-b border-hairline">
-                      <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
-                        Event
-                      </th>
-                      <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em] hidden sm:table-cell">
-                        Date
-                      </th>
-                      <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
-                        Status
-                      </th>
-                      <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em] hidden sm:table-cell">
-                        Sold
-                      </th>
-                      <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em] text-right">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-hairline">
-                    {events?.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-16 text-center">
-                          <Ticket className="w-10 h-10 text-muted-ink/20 mx-auto mb-3" />
-                          <p className="font-display text-lg font-bold text-ink mb-1">
-                            No events yet
-                          </p>
-                          <p className="text-muted-ink text-sm mb-5">
-                            Create your first event to start selling tickets.
-                          </p>
-                          <Link href="/admin/events/new">
-                            <Button
-                              size="sm"
-                              className="press bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md"
-                            >
-                              <Plus className="w-4 h-4 mr-2" /> Create Event
-                            </Button>
-                          </Link>
-                        </td>
-                      </tr>
-                    )}
-                    {events?.map((event: any) => {
-                      const rowDate = event.date ? new Date(event.date) : null;
-                      const expired = !!rowDate && !isNaN(rowDate.getTime()) && isPast(rowDate);
-                      const sales = eventSales(event);
-                      return (
-                        <tr
-                          key={event.id}
-                          onClick={() => setLocation(`/admin/events/${event.id}`)}
-                          className="group/row hover:bg-surface-2 cursor-pointer transition-colors"
-                        >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-md overflow-hidden bg-surface-2 shrink-0 hidden sm:block">
-                                {event.imageUrl ? (
-                                  <img
-                                    src={event.imageUrl}
-                                    alt=""
-                                    className="w-full h-full object-cover group-hover/row:scale-105 transition-transform"
-                                    loading="lazy"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <Calendar className="w-4 h-4 text-muted-ink/40" />
-                                  </div>
-                                )}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-display font-bold text-ink text-sm group-hover/row:text-gold transition-colors">
-                                    {event.title}
-                                  </span>
-                                  {event.status === "draft" && (
-                                    <span className="px-1.5 py-0.5 rounded bg-gold/10 text-gold border border-gold/30 text-[9px] font-bold uppercase tracking-wider">
-                                      Draft
-                                    </span>
-                                  )}
-                                  {expired && (
-                                    <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 text-[9px] font-bold uppercase tracking-wider">
-                                      Expired
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="flex items-center gap-1 text-xs text-muted-ink mt-0.5">
-                                  <MapPin className="w-3 h-3" />
-                                  {event.location || "Venue TBA"}
-                                </span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-muted-ink hidden sm:table-cell">
-                            {event.date && !isNaN(new Date(event.date).getTime())
-                              ? format(new Date(event.date), "MMM dd, yyyy")
-                              : "Date TBA"}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span
-                              className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                event.status === "published"
-                                  ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                                  : "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
-                              }`}
-                            >
-                              {event.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 hidden sm:table-cell">
-                            <span className="text-sm font-medium text-ink">
-                              {sales.tickets.toLocaleString()}
-                            </span>
-                            <span className="block text-xs text-muted-ink">
-                              ₦{(sales.revenue / 100).toLocaleString()}
-                            </span>
-                          </td>
-                          <td
-                            className="px-6 py-4 text-right space-x-2 whitespace-nowrap"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Link href={`/admin/events/${event.id}/bookings`}>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 border-hairline text-muted-ink text-xs hover:text-gold hover:border-gold/40 hover:bg-gold/5"
-                              >
-                                <Users className="w-3 h-3 mr-1" /> Bookings
-                              </Button>
-                            </Link>
-                            <Link href={`/admin/events/${event.id}/edit`}>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 border-hairline text-muted-ink text-xs hover:text-gold hover:border-gold/40 hover:bg-gold/5"
-                              >
-                                Edit
-                              </Button>
-                            </Link>
-                            <Link href={`/admin/events/${event.id}`}>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 border-hairline text-muted-ink text-xs hover:text-gold hover:border-gold/40 hover:bg-gold/5"
-                              >
-                                Manage
-                              </Button>
-                            </Link>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </Reveal>
-          )}
-          </div>
-        </TabsContent>
+            <TabsContent value="events_catalog" className="space-y-6">
+              <Reveal>
+                <AdminEventsCatalog />
+              </Reveal>
+            </TabsContent>
 
-        <TabsContent value="brand">
-          <OrganizerBrandPanel />
-        </TabsContent>
+            <TabsContent value="users" className="space-y-6">
+              <Reveal>
+                <AdminUsersManager />
+              </Reveal>
+            </TabsContent>
 
-        {(isAdmin || isVendors) && (
-          <TabsContent value="vendors">
-            {vendorsError ? (
-              <LoadError
-                title="Couldn't load the talent directory"
-                message="Check your connection and try again."
-                onRetry={() => refetchVendors()}
-              />
-            ) : vendorsLoading ? (
-              <TableSkeleton rows={4} />
-            ) : (
+            <TabsContent value="talent" className="space-y-6">
               <Reveal>
                 <div className="border border-hairline rounded-md bg-surface overflow-hidden">
                   <div className="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-hairline">
                     <div>
                       <h2 className="font-display text-lg sm:text-xl font-bold text-ink">
-                        Talent Directory
+                        Talent &amp; Vendors Directory
                       </h2>
                       <p className="mt-1 text-xs sm:text-sm text-muted-ink">
                         All creative talent and vendors listed on the platform
@@ -585,10 +362,230 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </Reveal>
-            )}
-          </TabsContent>
+            </TabsContent>
+          </>
         )}
 
+        {/* ── Organizer Tabs ── */}
+        {!isAdmin && (
+          <>
+            <TabsContent value="events" className="space-y-6">
+              <SetupChecklist />
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8 sm:mb-12">
+                {statsLoading ? (
+                  <>
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="border border-hairline rounded-md bg-surface p-3.5 sm:p-4 md:p-5"
+                      >
+                        <StatSkeletonsStat />
+                      </div>
+                    ))}
+                  </>
+                ) : statsError ? (
+                  <div className="col-span-2 md:col-span-4">
+                    <LoadError
+                      compact
+                      title="Couldn't load your stats"
+                      message="The rest of the dashboard still works."
+                      onRetry={() => refetchStats()}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <DashStat
+                      icon={Calendar}
+                      label="My Events"
+                      value={stats?.totalEvents || 0}
+                    />
+                    <DashStat
+                      icon={Ticket}
+                      label="Tickets Sold"
+                      value={stats?.totalTicketsSold || 0}
+                    />
+                    <DashStat
+                      icon={DollarSign}
+                      label="Revenue"
+                      value={`₦${((stats?.totalRevenue || 0) / 100).toLocaleString()}`}
+                    />
+                    <DashStat
+                      icon={Eye}
+                      label="Published"
+                      value={
+                        events?.filter((e: any) => e.status === "published")
+                          .length || 0
+                      }
+                    />
+                  </>
+                )}
+              </div>
+
+              {/* Events Table */}
+              {eventsError ? (
+                <LoadError
+                  title="Couldn't load your events"
+                  message="Check your connection and try again."
+                  onRetry={() => refetchEvents()}
+                />
+              ) : eventsLoading ? (
+                <TableSkeleton rows={4} />
+              ) : (
+                <Reveal>
+                  <div className="border border-hairline rounded-md bg-surface overflow-hidden mb-12">
+                    <div className="flex items-center justify-between p-5 md:p-6 border-b border-hairline">
+                      <div>
+                        <h2 className="font-display text-xl font-bold text-ink">
+                          My Events
+                        </h2>
+                        <p className="mt-1 text-sm text-muted-ink">
+                          Manage tickets, bookings, and visibility
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-hairline text-ink hover:bg-surface-2 hover:text-gold"
+                        onClick={() => exportToCSV(events || [], "events.csv")}
+                      >
+                        <Download className="w-4 h-4 mr-2" /> Export
+                      </Button>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left min-w-[500px]">
+                        <thead>
+                          <tr className="border-b border-hairline">
+                            <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
+                              Event
+                            </th>
+                            <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em] hidden sm:table-cell">
+                              Date
+                            </th>
+                            <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em]">
+                              Status
+                            </th>
+                            <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em] hidden sm:table-cell">
+                              Sold
+                            </th>
+                            <th className="px-6 py-3.5 text-[11px] font-bold text-muted-ink uppercase tracking-[0.18em] text-right">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-hairline">
+                          {events?.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="px-6 py-16 text-center">
+                                <Calendar className="w-10 h-10 text-muted-ink/20 mx-auto mb-3" />
+                                <p className="font-display text-lg font-bold text-ink">
+                                  No events created yet
+                                </p>
+                                <p className="text-sm text-muted-ink mt-1 max-w-sm mx-auto">
+                                  Publish an event to start selling tickets and receiving payouts.
+                                </p>
+                                <Link href="/admin/events/new">
+                                  <Button className="mt-6 bg-primary text-primary-foreground hover:bg-gold-soft font-semibold text-xs">
+                                    <Plus className="w-3.5 h-3.5 mr-1.5" /> Create Event
+                                  </Button>
+                                </Link>
+                              </td>
+                            </tr>
+                          )}
+                          {events?.map((event: any) => {
+                            const sales = eventSales(event);
+                            return (
+                              <tr
+                                key={event.id}
+                                className="hover:bg-surface-2/50 transition-colors"
+                              >
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-4">
+                                    {event.imageUrl ? (
+                                      <img
+                                        src={event.imageUrl}
+                                        alt=""
+                                        className="w-12 h-12 rounded object-cover border border-hairline bg-surface-2"
+                                      />
+                                    ) : (
+                                      <div className="w-12 h-12 rounded bg-surface-2 border border-hairline flex items-center justify-center text-muted-ink">
+                                        <Calendar className="w-5 h-5" />
+                                      </div>
+                                    )}
+                                    <div>
+                                      <Link href={`/admin/events/${event.id}`}>
+                                        <span className="font-display font-bold text-ink hover:text-gold transition-colors text-base cursor-pointer">
+                                          {event.title}
+                                        </span>
+                                      </Link>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-xs text-muted-ink flex items-center">
+                                          <MapPin className="w-3 h-3 mr-1" />
+                                          {event.location}
+                                        </span>
+                                        {event.isFeatured && (
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-gold/10 text-gold border border-gold/20">
+                                            Featured
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-xs sm:text-sm text-muted-ink hidden sm:table-cell">
+                                  {event.date ? format(new Date(event.date), "MMM d, yyyy") : "—"}
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span
+                                    className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                      event.status === "published"
+                                        ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                                        : "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                                    }`}
+                                  >
+                                    {event.status}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 hidden sm:table-cell">
+                                  <div className="text-xs sm:text-sm font-bold text-ink">
+                                    {sales.tickets} tickets
+                                  </div>
+                                  <div className="text-xs text-muted-ink">
+                                    ₦{(sales.revenue / 100).toLocaleString()}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                  <Link href={`/admin/events/${event.id}`}>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="press border-hairline text-ink hover:text-gold text-xs h-8 px-3"
+                                    >
+                                      Manage
+                                    </Button>
+                                  </Link>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </Reveal>
+              )}
+            </TabsContent>
+
+            <TabsContent value="brand">
+              <Reveal>
+                <OrganizerBrandPanel />
+              </Reveal>
+            </TabsContent>
+          </>
+        )}
+
+        {/* ── Inbound Leads (Both Admins & Lead Listeners) ── */}
         {isAdmin && (
           <TabsContent value="leads" className="space-y-6">
             <Reveal>
@@ -632,7 +629,7 @@ export default function AdminDashboard() {
                   <div className="p-12 text-center">
                     <p className="font-display text-lg font-bold text-ink">No Leads Captured Yet</p>
                     <p className="text-xs text-muted-ink mt-1.5 max-w-md mx-auto leading-relaxed">
-                      When Nigerian event promoters visit <Link href="/organizers" className="text-gold underline">blackhevents.com/organizers</Link> and download the Free Zero-Gate-Fraud Playbook, their contact details and event size will appear here instantly.
+                      When Nigerian event promoters visit <Link href="/organizers" className="text-gold underline">blackhevents.com/organizers</Link> and download the Free Zero-Gate-Fraud Playbook, their contact details will appear here.
                     </p>
                   </div>
                 ) : (
@@ -698,23 +695,11 @@ export default function AdminDashboard() {
             </Reveal>
           </TabsContent>
         )}
-        {isAdmin && (
-          <TabsContent value="verifications" className="space-y-6">
-            <Reveal>
-              <AdminVerificationsPanel />
-            </Reveal>
-          </TabsContent>
-        )}
       </Tabs>
     </div>
   );
 }
 
-/**
- * Tickets sold and gross revenue for one event, read from its ticket tiers.
- * `ticketTypes` arrives as a JSON string from the API, so parse defensively
- * and treat anything unparseable as no sales rather than crashing the table.
- */
 function eventSales(event: any): { tickets: number; revenue: number } {
   let tiers: any[] = [];
   try {

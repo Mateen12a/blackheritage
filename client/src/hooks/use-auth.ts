@@ -74,13 +74,31 @@ export function useAuth() {
     }
   });
 
+  const becomeOrganizerMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${BASE_URL}/api/user/become-organizer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ founderVoucher: "FOUNDER100" }),
+        credentials: "include"
+      });
+      if (!res.ok) throw await errorFromResponse(res);
+      return res.json();
+    },
+    onSuccess: (updatedUser) => {
+      queryClient.setQueryData([`${BASE_URL}/api/auth/user`], updatedUser);
+    }
+  });
+
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
     isSigningIn: loginMutation.isPending || registerMutation.isPending,
+    isBecomingOrganizer: becomeOrganizerMutation.isPending,
     login: loginMutation.mutateAsync,
     register: registerMutation.mutateAsync,
+    becomeOrganizer: becomeOrganizerMutation.mutateAsync,
     refetch: () => queryClient.invalidateQueries({ queryKey: [`${BASE_URL}/api/auth/user`] }),
     logout: logoutMutation.mutateAsync
   };

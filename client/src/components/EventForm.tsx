@@ -101,6 +101,10 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
     setTicketTypes([...ticketTypes, { name: "", price: 0, capacity: 0, sold: 0 }]);
   };
 
+  const addFreeTicketType = () => {
+    setTicketTypes([...ticketTypes, { name: "Free RSVP", price: 0, capacity: 50, sold: 0 }]);
+  };
+
   const removeTicketType = (index: number) => {
     setTicketTypes(ticketTypes.filter((_, i) => i !== index));
   };
@@ -507,52 +511,103 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
             )}
           />
         )}
-
         <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-white font-bold uppercase tracking-wider text-sm">Ticket Types</h3>
-            <Button type="button" onClick={addTicketType} variant="outline" size="sm" className="border-primary text-primary hover:bg-primary hover:text-background">
-              <Plus className="w-4 h-4 mr-2" /> Add Ticket Type
-            </Button>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div>
+              <h3 className="text-white font-bold uppercase tracking-wider text-sm">Ticket Types</h3>
+              <p className="text-xs text-muted-ink">Create free RSVP passes (Price: ₦0) or paid tiers.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                onClick={addFreeTicketType}
+                variant="outline"
+                size="sm"
+                className="press border-gold/40 text-gold hover:bg-gold/10 text-xs"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" /> + Free RSVP Tier
+              </Button>
+              <Button
+                type="button"
+                onClick={addTicketType}
+                variant="outline"
+                size="sm"
+                className="press border-primary text-primary hover:bg-primary hover:text-background text-xs"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add Ticket Tier
+              </Button>
+            </div>
           </div>
           <div className="space-y-4">
-            {ticketTypes.map((type, index) => (
-              <Card key={index} className="bg-white/5 border-white/10 p-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs text-muted-foreground uppercase font-bold">Name (e.g. VIP)</label>
-                    <Input 
-                      value={type.name} 
-                      onChange={(e) => updateTicketType(index, 'name', e.target.value)}
-                      className="bg-background border-white/10"
-                    />
+            {ticketTypes.map((type, index) => {
+              const isFreeTier = Number(type.price || 0) === 0;
+              return (
+                <Card key={index} className="bg-white/5 border-white/10 p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs text-muted-foreground uppercase font-bold">Tier Name</label>
+                        {isFreeTier && (
+                          <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20">
+                            Free Entry
+                          </span>
+                        )}
+                      </div>
+                      <Input 
+                        value={type.name} 
+                        placeholder="e.g. Free RSVP or VIP"
+                        onChange={(e) => updateTicketType(index, 'name', e.target.value)}
+                        className="bg-background border-white/10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs text-muted-foreground uppercase font-bold">Price (₦ · 0 for Free)</label>
+                        {!isFreeTier && (
+                          <button
+                            type="button"
+                            onClick={() => updateTicketType(index, 'price', 0)}
+                            className="text-[10px] text-gold hover:underline"
+                          >
+                            Set Free
+                          </button>
+                        )}
+                      </div>
+                      <Input 
+                        type="number"
+                        min="0"
+                        value={type.price === 0 ? "0" : type.price || ""} 
+                        placeholder="0 for free"
+                        onChange={(e) => {
+                          const val = e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                          updateTicketType(index, 'price', val);
+                        }}
+                        className="bg-background border-white/10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs text-muted-foreground uppercase font-bold">Capacity</label>
+                      <Input 
+                        type="number"
+                        min="0"
+                        value={type.capacity === 0 ? "0" : type.capacity || ""} 
+                        placeholder="Seats / passes"
+                        onChange={(e) => {
+                          const val = e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                          updateTicketType(index, 'capacity', val);
+                        }}
+                        className="bg-background border-white/10"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button type="button" variant="destructive" size="icon" onClick={() => removeTicketType(index)} className="w-full">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs text-muted-foreground uppercase font-bold">Price (Kobo/0 for Free)</label>
-                    <Input 
-                      type="number"
-                      value={type.price} 
-                      onChange={(e) => updateTicketType(index, 'price', parseInt(e.target.value))}
-                      className="bg-background border-white/10"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs text-muted-foreground uppercase font-bold">Capacity</label>
-                    <Input 
-                      type="number"
-                      value={type.capacity} 
-                      onChange={(e) => updateTicketType(index, 'capacity', parseInt(e.target.value))}
-                      className="bg-background border-white/10"
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <Button type="button" variant="destructive" size="icon" onClick={() => removeTicketType(index)} className="w-full">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         </div>
 
@@ -562,16 +617,17 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
             name="price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">Default/Base Price</FormLabel>
+                <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">Default/Base Price (₦)</FormLabel>
                 <FormControl>
                   <Input 
                     type="number" 
+                    min="0"
                     {...field} 
-                    onChange={e => field.onChange(parseInt(e.target.value))}
+                    onChange={e => field.onChange(Math.max(0, parseInt(e.target.value, 10) || 0))}
                     className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-base" 
                   />
                 </FormControl>
-                <FormDescription className="text-[10px]">Legacy price if no ticket types added</FormDescription>
+                <FormDescription className="text-[10px]">Legacy price if no ticket types added (₦0 for free event)</FormDescription>
                 <FormMessage />
               </FormItem>
             )}

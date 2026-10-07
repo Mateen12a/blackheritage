@@ -17,6 +17,7 @@ import {
   ArrowUpRight,
   ShieldCheck,
   Gift,
+  Sparkles,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -66,7 +67,7 @@ const AUDIENCES: {
     key: "organizer",
     icon: CalendarDays,
     label: "I run events",
-    benefit: "Sell tickets like a professional operation, without building one.",
+    benefit: "Sell tickets with 0% platform fee on your first 100 paid tickets. Real-time payouts to your Nigerian bank.",
     cta: "Start Selling Tickets",
     success: "Welcome! Your dashboard is ready.",
   },
@@ -108,19 +109,54 @@ export default function AuthPage() {
     : rawSearch;
   const returnTo = safeReturnTo(queryString);
 
+  const searchParams = new URLSearchParams(queryString);
+  const rawMode = searchParams.get("tab") || searchParams.get("mode");
+  const isRegisterParam =
+    rawMode === "register" ||
+    rawMode === "signup" ||
+    queryString.includes("tab=register") ||
+    queryString.includes("mode=register");
+
+  const rawRole = searchParams.get("role") || searchParams.get("audience");
+  const initialAudience: Audience =
+    rawRole === "organizer" || (returnTo && returnTo.startsWith("/admin"))
+      ? "organizer"
+      : rawRole === "vendor" || (returnTo && returnTo.startsWith("/vendor"))
+      ? "vendor"
+      : "attendee";
+
+  const rawPromo = (
+    searchParams.get("promo") || searchParams.get("voucher") || ""
+  )
+    .toUpperCase()
+    .trim();
+  const initialVoucher =
+    rawPromo === "FOUNDER100" || (initialAudience === "organizer" && rawPromo !== "NONE")
+      ? "FOUNDER100"
+      : rawPromo;
+
   const [modeOverride, setModeOverride] = useState<Mode | null>(null);
-  const mode: Mode =
-    modeOverride ?? (queryString.includes("tab=register") ? "register" : "login");
+  const mode: Mode = modeOverride ?? (isRegisterParam ? "register" : "login");
   const setMode = (m: Mode) => setModeOverride(m);
+
   // Referral: /r/CODE lands here with ?ref=CODE. The code rides along to the
   // server with the registration, which attributes the invite.
   const referralCode = (
-    new URLSearchParams(queryString).get("ref") || ""
+    searchParams.get("ref") || ""
   )
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "")
     .slice(0, 16);
-  const [audience, setAudience] = useState<Audience>("attendee");
+
+  const [audience, setAudience] = useState<Audience>(initialAudience);
+  const [founderVoucher, setFounderVoucher] = useState<string>(initialVoucher);
+
+  const handleAudienceChange = (nextAudience: Audience) => {
+    setAudience(nextAudience);
+    if (nextAudience === "organizer" && !founderVoucher) {
+      setFounderVoucher("FOUNDER100");
+    }
+  };
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
@@ -178,10 +214,14 @@ export default function AuthPage() {
     audience === "attendee" ? "user" : "organizer";
   const destinationFor = (userRole: string | undefined) => {
     if (isRegister && audience === "vendor") return "/vendor-dashboard";
-    if (userRole === "admin") return "/admin";
-    if (userRole === "organizer") return "/admin";
+    if (returnTo) {
+      if (returnTo.startsWith("/admin") && (userRole === "organizer" || userRole === "admin")) return returnTo;
+      if (returnTo.startsWith("/vendor-dashboard") && audience === "vendor") return returnTo;
+      if (!returnTo.startsWith("/admin") && !returnTo.startsWith("/vendor-dashboard")) return returnTo;
+    }
+    if (userRole === "admin" || userRole === "organizer") return "/admin";
     if (userRole === "user") return "/dashboard";
-    return returnTo || "/dashboard";
+    return "/dashboard";
   };
 
   /** Clear a field's error as soon as the person edits it. */
@@ -242,6 +282,7 @@ export default function AuthPage() {
             role: roleForAudience,
             acceptedTerms: true,
             audience: audience,
+            ...(founderVoucher && roleForAudience === "organizer" ? { founderVoucher } : {}),
             ...(referralCode ? { referredBy: referralCode } : {}),
           })
         : await login({ username: cleanUsername, password });
@@ -249,9 +290,7 @@ export default function AuthPage() {
         title: isRegister ? activeAudience.success : "Welcome back.",
         description: isRegister ? undefined : "Good to have you.",
       });
-      const dest = isRegister
-        ? destinationFor((user as any)?.role)
-        : returnTo || destinationFor((user as any)?.role);
+      const dest = destinationFor((user as any)?.role);
       setLocation(dest);
     } catch (err) {
       toast({
@@ -268,10 +307,13 @@ export default function AuthPage() {
     setIsGoogleLoading(true);
     try {
       // Google OAuth flow: redirect to the backend OAuth endpoint. The
-      // audience rides along so an organizer-card signup lands with the
-      // organizer role, and a pending destination survives the round trip.
+      // audience and voucher ride along so an organizer-card signup lands with the
+      // organizer role and Founder Hundred voucher, and a pending destination survives.
       const params = new URLSearchParams({ audience });
       if (returnTo) params.set("returnTo", returnTo);
+      if (audience === "organizer" && founderVoucher) {
+        params.set("founderVoucher", founderVoucher);
+      }
       window.location.href = `${BASE_URL}/api/auth/google?${params.toString()}`;
     } catch {
       setIsGoogleLoading(false);
@@ -581,54 +623,8 @@ export default function AuthPage() {
               : "Sign in with the username and password you chose. Your tickets and dashboard are where you left them."}
           </p>
 
-          {/* Google sign-in button */}
-          <div className="mt-6">
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              disabled={isGoogleLoading}
-              className="press w-full h-12 flex items-center justify-center gap-3 bg-surface-2 border border-hairline rounded-full text-ink font-medium hover:bg-surface hover:border-white/30 transition-colors disabled:opacity-50"
-            >
-              <svg
-                className="w-5 h-5"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-                  fill="#4285F4"
-                />
-                <path
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  fill="#34A853"
-                />
-                <path
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                  fill="#FBBC05"
-                />
-                <path
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                  fill="#EA4335"
-                />
-              </svg>
-              {isGoogleLoading ? "Redirecting…" : "Continue with Google"}
-            </button>
-          </div>
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-hairline" />
-            </div>
-            <div className="relative flex justify-center">
-              <span className="bg-background px-3 text-xs text-muted-ink">
-                or continue with email
-              </span>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {isRegister && (
+          {isRegister && (
+            <div className="mt-6 space-y-3">
               <div
                 className="space-y-2"
                 role="radiogroup"
@@ -644,7 +640,7 @@ export default function AuthPage() {
                       type="button"
                       role="radio"
                       aria-checked={selected}
-                      onClick={() => setAudience(a.key)}
+                      onClick={() => handleAudienceChange(a.key)}
                       className={
                         "w-full flex items-center gap-3 p-3.5 rounded-xl border text-left transition-colors " +
                         (selected
@@ -677,7 +673,80 @@ export default function AuthPage() {
                   );
                 })}
               </div>
-            )}
+
+              {/* Founder Hundred Perk Badge for Organizers */}
+              {audience === "organizer" && (
+                <div className="p-3.5 rounded-xl border border-gold/40 bg-gold/5 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gold/15 border border-gold/30 flex items-center justify-center shrink-0 mt-0.5">
+                    <Sparkles className="w-4 h-4 text-gold" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-gold tracking-wide">FOUNDER HUNDRED PERK</span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-gold/20 text-gold">ACTIVE</span>
+                    </div>
+                    <p className="text-xs text-ink/80 mt-1 leading-relaxed">
+                      0% platform fee on your first 100 paid tickets. Code <span className="font-mono text-gold font-bold">FOUNDER100</span> applied automatically.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Google sign-in button */}
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={isGoogleLoading}
+              className="press w-full h-12 flex items-center justify-center gap-3 bg-surface-2 border border-hairline rounded-full text-ink font-medium hover:bg-surface hover:border-white/30 transition-colors disabled:opacity-50"
+            >
+              <svg
+                className="w-5 h-5"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+                  fill="#4285F4"
+                />
+                <path
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  fill="#34A853"
+                />
+                <path
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  fill="#FBBC05"
+                />
+                <path
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  fill="#EA4335"
+                />
+              </svg>
+              {isGoogleLoading
+                ? "Redirecting…"
+                : isRegister && audience === "organizer"
+                ? "Continue with Google as Organizer"
+                : isRegister && audience === "vendor"
+                ? "Continue with Google as Talent"
+                : "Continue with Google"}
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-hairline" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-background px-3 text-xs text-muted-ink">
+                or continue with email
+              </span>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
 
             <div className="space-y-2">
               <Label htmlFor="username">
