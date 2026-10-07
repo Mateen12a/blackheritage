@@ -291,6 +291,7 @@ const mockEvents: Event[] = [
       { name: "VIP", price: 2000000, capacity: 900, sold: 240 },
       { name: "VVIP Table", price: 8000000, capacity: 100, sold: 31 },
     ]),
+    whatsappGroupUrl: "https://chat.whatsapp.com/invite/afrobeatslagos",
   },
   {
     id: "event-owambe-royale",
@@ -329,6 +330,7 @@ const mockEvents: Event[] = [
       { name: "Regular", price: 500000, capacity: 1000, sold: 410 },
       { name: "VIP", price: 1500000, capacity: 200, sold: 88 },
     ]),
+    whatsappGroupUrl: null,
   },
   {
     id: "event-detty-jazz-sessions",
@@ -364,6 +366,7 @@ const mockEvents: Event[] = [
     eventType: "party",
     eventTypeLabel: null,
     ticketTypes: "[]",
+    whatsappGroupUrl: null,
   },
 ];
 

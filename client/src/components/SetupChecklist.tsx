@@ -66,7 +66,19 @@ export function SetupChecklist() {
                 <span className="text-sm text-muted-ink line-through decoration-muted-ink/30">{s.label}</span>
               ) : (
                 <button
-                  onClick={() => setLocation(s.href)}
+                  onClick={() => {
+                    if (s.href.startsWith("/admin?tab=")) {
+                      const tab = s.href.split("tab=")[1];
+                      if (tab) {
+                        const params = new URLSearchParams(window.location.search);
+                        params.set("tab", tab);
+                        const targetUrl = `/admin?${params.toString()}`;
+                        window.history.pushState(null, "", targetUrl);
+                        window.dispatchEvent(new PopStateEvent("popstate"));
+                      }
+                    }
+                    setLocation(s.href);
+                  }}
                   className="text-sm text-ink hover:text-gold transition-colors text-left cursor-pointer"
                 >
                   {s.label}

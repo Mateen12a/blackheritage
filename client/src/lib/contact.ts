@@ -17,3 +17,17 @@ const DEFAULT_GREETING =
 export function whatsappLink(message: string = DEFAULT_GREETING): string {
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
 }
+
+/**
+ * Official Black Heritage WhatsApp Community link.
+ * Used on post-purchase screens and ticket views so attendees can connect.
+ */
+export const BLACK_HERITAGE_WHATSAPP_COMMUNITY_URL =
+  "https://chat.whatsapp.com/invite/blackheritage";
+
+export function blackHeritageCommunityWhatsAppLink(eventTitle?: string): string {
+  const msg = eventTitle
+    ? `Hi Black Heritage, I just booked my ticket for ${eventTitle} and would like to join the community!`
+    : "Hi Black Heritage, I would like to join the Black Heritage community!";
+  return whatsappLink(msg);
+}

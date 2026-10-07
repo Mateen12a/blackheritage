@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useVendors } from "@/hooks/use-vendors";
@@ -21,7 +21,7 @@ import {
   HeaderSkeleton,
   LoadError,
 } from "@/components/AsyncStates";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { format, isPast } from "date-fns";
 import {
   Calendar,
@@ -41,11 +41,13 @@ import {
   Landmark,
   Sliders,
   Shield,
+  Palette,
 } from "lucide-react";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
+  const search = useSearch();
   const isAdmin = user?.role === "admin";
 
   const {
@@ -109,15 +111,34 @@ export default function AdminDashboard() {
 
   const { data: orgProfile } = useOrganizerProfile();
 
-  const [activeTab, setActiveTab] = useState(() => {
+  const getTabFromUrl = useCallback(() => {
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get("tab");
     if (tabParam) return tabParam;
+    if (location === "/admin/brand") return "brand";
     if (location === "/admin/bookings") return isAdmin ? "transactions" : "events";
     if (location === "/admin/events") return isAdmin ? "events_catalog" : "events";
     if (location === "/admin/talent" || location === "/admin/vendors") return "talent";
     return isAdmin ? "financials" : "events";
-  });
+  }, [location, isAdmin]);
+
+  const [activeTab, setActiveTab] = useState(getTabFromUrl);
+
+  // Sync activeTab whenever route location or search params (?tab=brand) update
+  useEffect(() => {
+    const nextTab = getTabFromUrl();
+    if (nextTab && nextTab !== activeTab) {
+      setActiveTab(nextTab);
+    }
+  }, [location, search, getTabFromUrl, activeTab]);
+
+  const handleTabChange = (val: string) => {
+    setActiveTab(val);
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", val);
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState(null, "", newUrl);
+  };
 
   const pageTitle = isAdmin
     ? "Platform Administration"
@@ -201,7 +222,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="bg-surface-2 border border-hairline max-w-full overflow-x-auto no-scrollbar">
           {isAdmin ? (
             <>
@@ -224,6 +245,10 @@ export default function AdminDashboard() {
               <TabsTrigger value="users" className="flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5" />
                 <span>User Governance</span>
+              </TabsTrigger>
+              <TabsTrigger value="brand" className="flex items-center gap-1.5">
+                <Palette className="w-3.5 h-3.5" />
+                <span>Brand &amp; Link</span>
               </TabsTrigger>
               <TabsTrigger value="leads" className="flex items-center gap-1.5">
                 <span>Inbound Leads</span>
@@ -576,12 +601,6 @@ export default function AdminDashboard() {
                 </Reveal>
               )}
             </TabsContent>
-
-            <TabsContent value="brand">
-              <Reveal>
-                <OrganizerBrandPanel />
-              </Reveal>
-            </TabsContent>
           </>
         )}
 
@@ -695,6 +714,13 @@ export default function AdminDashboard() {
             </Reveal>
           </TabsContent>
         )}
+
+        {/* ── Brand & Custom Link (Accessible to both Organizers & Admins) ── */}
+        <TabsContent value="brand" className="space-y-6">
+          <Reveal>
+            <OrganizerBrandPanel />
+          </Reveal>
+        </TabsContent>
       </Tabs>
     </div>
   );

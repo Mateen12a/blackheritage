@@ -10,7 +10,9 @@ import {
   ShieldCheck,
   Download,
   ArrowRight,
+  MessageCircle,
 } from "lucide-react";
+import { blackHeritageCommunityWhatsAppLink } from "@/lib/contact";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -301,6 +303,18 @@ export default function MyTickets() {
                   <Download className="w-4.5 h-4.5" aria-hidden="true" />
                   Download PDF Tickets
                 </a>
+
+                {activeTicket.event?.whatsappGroupUrl && (
+                  <a
+                    href={activeTicket.event.whatsappGroupUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="press mt-2.5 flex items-center justify-center gap-2 h-11 rounded-md border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-semibold"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Join Attendee WhatsApp Group
+                  </a>
+                )}
 
                 {activeTicket.event?.branding?.displayName && (
                   <div className="mt-3 text-center">

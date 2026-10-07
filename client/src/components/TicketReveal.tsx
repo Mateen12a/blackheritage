@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { CalendarPlus, Check, Copy, MessageCircle, PartyPopper, Image as ImageIcon } from "lucide-react";
 import { buildOutlookCalendarUrl } from "@/lib/calendar-links";
+import { blackHeritageCommunityWhatsAppLink } from "@/lib/contact";
 import {
   Dialog,
   DialogContent,
@@ -212,6 +213,79 @@ export function TicketReveal({
                 <ImageIcon className="w-4 h-4" />
                 Share Story Card
               </Button>
+
+              {/* WhatsApp Community / Attendee Group Join */}
+              {resolvedEvent?.whatsappGroupUrl ? (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <MessageCircle className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+                        Attendee WhatsApp Group
+                      </p>
+                      <p className="text-xs font-medium text-ink mt-0.5 leading-snug">
+                        Join fellow guests &amp; get live venue updates for {eventTitle}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    asChild
+                    className="press w-full h-11 bg-emerald-500 hover:bg-emerald-600 text-black font-semibold rounded-md flex items-center justify-center gap-2 text-xs shadow-md shadow-emerald-500/10"
+                  >
+                    <a
+                      href={resolvedEvent.whatsappGroupUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <MessageCircle className="w-4 h-4 shrink-0" />
+                      <span>Join Event WhatsApp Group</span>
+                    </a>
+                  </Button>
+                  <div className="text-center pt-0.5">
+                    <a
+                      href={blackHeritageCommunityWhatsAppLink(eventTitle)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-muted-ink hover:text-gold transition-colors inline-flex items-center gap-1"
+                    >
+                      <span>Also join Black Heritage Community WhatsApp</span>
+                      <span aria-hidden="true">&rarr;</span>
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-hairline bg-surface-2/70 p-3.5 space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-gold/15 text-gold flex items-center justify-center shrink-0 mt-0.5">
+                      <MessageCircle className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-gold">
+                        Black Heritage Community
+                      </p>
+                      <p className="text-xs font-medium text-ink mt-0.5 leading-snug">
+                        Connect with fellow guests &amp; get insider access to upcoming events
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="press w-full h-11 border-gold/40 text-gold hover:bg-gold/10 font-semibold rounded-md flex items-center justify-center gap-2 text-xs"
+                  >
+                    <a
+                      href={blackHeritageCommunityWhatsAppLink(eventTitle)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <MessageCircle className="w-4 h-4 shrink-0" />
+                      <span>Join Black Heritage WhatsApp Community</span>
+                    </a>
+                  </Button>
+                </div>
+              )}
 
               {/* Calendar: every major app. Google and Outlook open prefilled
                   events; the .ics download covers Apple, Samsung, and the

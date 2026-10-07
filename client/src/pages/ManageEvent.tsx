@@ -1,8 +1,8 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { api, buildUrl } from "@shared/routes";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Search, Trash2, Edit, ChevronLeft, Tag, UserPlus, MailPlus, Undo2, Activity, TrendingUp, Image as ImageIcon, Banknote, AlertCircle } from "lucide-react";
+import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Search, Trash2, Edit, ChevronLeft, Tag, UserPlus, MailPlus, Undo2, Activity, TrendingUp, Image as ImageIcon, Banknote, AlertCircle, MessageCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -740,10 +740,16 @@ export default function ManageEvent() {
         <TabsContent value="settings">
           <Card className="bg-surface border-hairline">
             <CardHeader>
-              <CardTitle className="text-ink">Quick Settings</CardTitle>
-              <CardDescription>Who can apply to be part of this event.</CardDescription>
+              <CardTitle className="text-ink">Event Settings &amp; Community</CardTitle>
+              <CardDescription>Attendee community links, partner applications, and event preferences.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <EventWhatsAppGroupSetting
+                event={event}
+                saving={settingsSaving}
+                onSave={(whatsappGroupUrl) => saveSettings.mutate({ whatsappGroupUrl })}
+              />
+
               <div className="flex items-center justify-between p-4 bg-surface-2 rounded-md border border-hairline">
                 <div className="min-w-0 pr-3">
                   <div className="font-medium text-ink">Sponsor &amp; vendor applications</div>
@@ -776,6 +782,76 @@ export default function ManageEvent() {
         event={event}
         enableStudio
       />
+    </div>
+  );
+}
+
+function EventWhatsAppGroupSetting({
+  event,
+  onSave,
+  saving,
+}: {
+  event: any;
+  onSave: (url: string) => void;
+  saving: boolean;
+}) {
+  const [val, setVal] = useState(event.whatsappGroupUrl || "");
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    setVal(event.whatsappGroupUrl || "");
+    setDirty(false);
+  }, [event.whatsappGroupUrl]);
+
+  return (
+    <div className="p-4 bg-surface-2 rounded-md border border-hairline space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 pr-3">
+          <div className="font-medium text-ink flex items-center gap-2">
+            <MessageCircle className="w-4 h-4 text-emerald-400" />
+            <span>Attendee WhatsApp Group</span>
+          </div>
+          <div className="text-xs text-muted-ink mt-0.5">
+            Ticket holders see a direct one-tap button to join this WhatsApp group right after ticket purchase.
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-2 pt-1">
+        <Input
+          value={val}
+          onChange={(e) => {
+            setVal(e.target.value);
+            setDirty(true);
+          }}
+          placeholder="https://chat.whatsapp.com/..."
+          className="h-10 text-xs bg-surface border-hairline text-ink font-mono"
+        />
+        <Button
+          size="sm"
+          disabled={saving || !dirty}
+          onClick={() => {
+            onSave(val.trim());
+            setDirty(false);
+          }}
+          className="press bg-primary text-primary-foreground hover:bg-gold-soft shrink-0 h-10 px-4 text-xs font-medium"
+        >
+          {saving ? "Saving..." : "Save Link"}
+        </Button>
+      </div>
+      {event.whatsappGroupUrl && (
+        <div className="flex items-center gap-2 text-xs text-emerald-400 pt-0.5">
+          <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+          <span className="shrink-0 font-medium">Active group link:</span>
+          <a
+            href={event.whatsappGroupUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="underline hover:text-emerald-300 font-mono text-[11px] truncate"
+          >
+            {event.whatsappGroupUrl}
+          </a>
+        </div>
+      )}
     </div>
   );
 }

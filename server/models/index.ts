@@ -182,6 +182,7 @@ export interface IEvent extends Document {
   // ── Event type category ──
   eventType?: string;
   eventTypeLabel?: string | null; // free text when eventType is 'other'
+  whatsappGroupUrl?: string | null; // Attendee WhatsApp group invite link
 }
 
 const EventSchema: Schema = new Schema({
@@ -232,6 +233,7 @@ const EventSchema: Schema = new Schema({
     default: 'party',
   },
   eventTypeLabel: { type: String, maxlength: 40 }, // free text when 'other'
+  whatsappGroupUrl: { type: String, default: null }, // Attendee community / WhatsApp group link
   isDemo: { type: Boolean, default: false, index: true },
 });
 

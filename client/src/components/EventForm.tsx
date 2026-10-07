@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarIcon, Loader2, Image as ImageIcon, X, Plus, Trash2, Video, Upload, Check, AlertCircle, CheckCircle2, Link as LinkIcon } from "lucide-react";
+import { CalendarIcon, Loader2, Image as ImageIcon, X, Plus, Trash2, Video, Upload, Check, AlertCircle, CheckCircle2, Link as LinkIcon, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -85,6 +85,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
       accessCode: null,
       eventType: "party",
       eventTypeLabel: null,
+      whatsappGroupUrl: initialData?.whatsappGroupUrl || "",
       ...initialData,
     },
   });
@@ -1090,6 +1091,47 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
               Square images look best. Used on the event header, ticket PDF, and confirmation emails.
             </p>
           </div>
+        </div>
+
+        {/* ── Attendee Community / WhatsApp Group (Optional) ── */}
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 space-y-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
+              <MessageCircle className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-white font-bold uppercase tracking-wider text-sm">
+                Attendee WhatsApp Group (Optional)
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Invite ticket holders to join your event's official WhatsApp group.
+              </p>
+            </div>
+          </div>
+
+          <FormField
+            control={form.control}
+            name="whatsappGroupUrl"
+            render={({ field }) => (
+              <FormItem className="pt-1">
+                <FormLabel className="text-xs text-muted-foreground uppercase font-bold">
+                  Group Invite Link
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    value={field.value || ""}
+                    placeholder="https://chat.whatsapp.com/..."
+                    className="h-11 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-sm font-mono"
+                  />
+                </FormControl>
+                <FormDescription className="text-xs text-muted-ink">
+                  When attendees complete their booking, they see a direct button on the confirmation screen to join this group.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
         {/* Past Event Media (Optional) */}

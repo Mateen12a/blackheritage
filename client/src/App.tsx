@@ -506,6 +506,9 @@ function Router() {
       <Route path="/admin/talent">
         {() => <AdminRoute component={AdminDashboard} />}
       </Route>
+      <Route path="/admin/brand">
+        {() => <AdminRoute component={AdminDashboard} />}
+      </Route>
       <Route path="/admin/events/new">
         {() => <AdminRoute component={NewEvent} />}
       </Route>

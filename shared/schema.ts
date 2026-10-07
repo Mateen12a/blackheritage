@@ -51,6 +51,9 @@ export const events = pgTable("events", {
   // ── Event type category ──
   eventType: text("event_type").default("party"),
   eventTypeLabel: text("event_type_label"), // free text when eventType is 'other'
+
+  // ── Community: attendee group chat ──
+  whatsappGroupUrl: text("whatsapp_group_url"), // Attendee community / WhatsApp group invite link
 });
 
 export const bookings = pgTable("bookings", {
@@ -230,6 +233,28 @@ export const insertEventSchema = createInsertSchema(events).omit({ id: true }).e
     .nullable(),
   theme: z.enum(["midnight-gold", "ivory-editorial", "sunset-poster"]).optional().nullable(),
   date: dateInput,
+  whatsappGroupUrl: z
+    .string()
+    .trim()
+    .transform((val) => {
+      if (!val) return null;
+      if (!/^https?:\/\//i.test(val)) {
+        return `https://${val}`;
+      }
+      return val;
+    })
+    .refine((val) => {
+      if (!val) return true;
+      try {
+        const u = new URL(val);
+        return u.protocol === "http:" || u.protocol === "https:";
+      } catch {
+        return false;
+      }
+    }, { message: "Enter a valid link (e.g. https://chat.whatsapp.com/...)" })
+    .optional()
+    .nullable()
+    .or(z.literal("")),
 });
 
 // Drafts can be saved with only a title so organizers can announce early and

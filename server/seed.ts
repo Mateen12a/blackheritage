@@ -367,6 +367,7 @@ export async function seedPlatform(): Promise<void> {
         accentHex: "#E3B23C",
         slug: "lagos-street-sound",
       },
+      whatsappGroupUrl: "https://chat.whatsapp.com/invite/lagosstreetsound",
     },
     {
       title: "Lagos Alté & Indie Sound Gathering 2026",
@@ -581,6 +582,7 @@ export async function seedPlatform(): Promise<void> {
         waitlistEnabled: true,
         guestCheckout: true,
         promoCodesPublic: true,
+        whatsappGroupUrl: (item as any).whatsappGroupUrl || null,
       });
       console.log(`Seed: canonical event created: "${item.title}"`);
     } else {
@@ -633,6 +635,10 @@ export async function seedPlatform(): Promise<void> {
       }
       if (item.slugAliases && JSON.stringify(existing.slugAliases) !== JSON.stringify(item.slugAliases)) {
         existing.slugAliases = item.slugAliases;
+        touched = true;
+      }
+      if ((item as any).whatsappGroupUrl && (existing as any).whatsappGroupUrl !== (item as any).whatsappGroupUrl) {
+        (existing as any).whatsappGroupUrl = (item as any).whatsappGroupUrl;
         touched = true;
       }
       if (new Date(existing.date).getTime() < Date.now()) {
