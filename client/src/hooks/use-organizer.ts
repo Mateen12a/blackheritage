@@ -385,7 +385,7 @@ export function useOrganizer(slug: string | undefined) {
         } catch {}
       }
 
-      // Fallback path derives everything from real event data only — no
+      // Fallback path derives everything from real event data only: no
       // localStorage stand-ins, no demo defaults. Guests who followed by
       // email before this session aren't resolvable here; the server
       // endpoint (path 1) already covers that case.

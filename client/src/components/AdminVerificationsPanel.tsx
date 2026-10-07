@@ -232,7 +232,7 @@ export function AdminVerificationsPanel() {
                     return (
                       <tr key={p.id} className="hover:bg-surface-2/40 transition-colors">
                         <td className="py-3.5 px-4 text-muted-ink font-mono text-[11px]">
-                          {p.createdAt ? format(new Date(p.createdAt), "dd MMM yyyy") : "—"}
+                          {p.createdAt ? format(new Date(p.createdAt), "dd MMM yyyy") : "-"}
                         </td>
                         <td className="py-3.5 px-4 font-medium">
                           {p.kind === "platform_fee"

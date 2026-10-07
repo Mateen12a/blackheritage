@@ -43,7 +43,7 @@ Every branded surface keeps the "Powered by / issued via BlackHeritage"
 credit. CORS in `server/index.ts` already trusts subdomain/custom-domain
 origins via `TRUSTED_ORIGIN_SUFFIXES` for stage 4.
 
-## Stage 2: subdomains (1 to 2 weeks, wildcard cert) — not built
+## Stage 2: subdomains (1 to 2 weeks, wildcard cert) - not built
 
 `tunde.blackhevents.com` serves that organizer's public event list with
 their branding applied.
@@ -62,7 +62,7 @@ How it works:
 5. **Cookies**: session cookie must be set on the parent domain
    (`.blackhevents.com`) so login works across subdomains.
 
-## Stage 4: custom domains (only when paying customers ask) — not built
+## Stage 4: custom domains (only when paying customers ask) - not built
 
 `tickets.tundelive.com` pointing at us. Real cost: per-domain SSL via
 Caddy (automatic) or certbot, DNS verification UX, support for broken

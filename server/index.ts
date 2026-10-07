@@ -13,7 +13,7 @@ import cors from "cors";
 const app = express();
 // nginx terminates TLS and forwards X-Forwarded-Proto; without this Express
 // never sees req.secure, and express-session silently skips Set-Cookie for
-// secure cookies — no login (password or Google) survives behind the proxy.
+// secure cookies, so no login (password or Google) survives behind the proxy.
 app.set("trust proxy", 1);
 
 // A rejected promise from any route must never take the whole server down.

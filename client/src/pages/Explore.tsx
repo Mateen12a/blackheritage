@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * App-style Explore: large title, always-present search, one merged filter
- * row (when / type / where — the same shape as the public Events page),
+ * row (when / type / where: the same shape as the public Events page),
  * then a vertical event feed with a vendor rail. Eventbrite/Partyverse
  * structure; DESIGN.md surface (large Playfair title, gold chips, hairlines).
  * Desktop keeps the same feed in a centered column.
@@ -252,7 +252,7 @@ export default function Explore() {
         </div>
       ) : (
         <>
-          {/* Featured spotlight — photo-led card, leads the feed */}
+          {/* Featured spotlight: photo-led card, leads the feed */}
           {spotlight && (
             <Link
               href={"/events/" + spotlight.id}
@@ -337,7 +337,7 @@ export default function Explore() {
             <NativeSponsorSpotlight placement="explore_feed" />
           </div>
 
-          {/* Talent rail — full cards, peeking 24px past the scroll edge */}
+          {/* Talent rail: full cards, peeking 24px past the scroll edge */}
           <section className="mt-10" aria-label="Talent to book">
             <div className="flex items-baseline justify-between mb-3">
               <h2 className="font-display text-xl font-bold text-ink">Creative Talent</h2>

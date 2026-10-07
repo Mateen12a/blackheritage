@@ -480,7 +480,7 @@ export async function sendEventInvite(
 
 /**
  * Organizer notification: a real money sale on one of their events. One
- * concise email per paid booking — the dashboard has the full ledger.
+ * concise email per paid booking, and the dashboard has the full ledger.
  */
 export async function sendOrganizerSaleEmail(
   to: EmailAddress,

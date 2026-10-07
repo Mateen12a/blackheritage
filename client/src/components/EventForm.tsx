@@ -271,7 +271,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
       form.setError("title", { message: "Give the event a title first" });
       return;
     }
-    // The form boots with no date ("Pick a date"). A draft may omit it —
+    // The form boots with no date ("Pick a date"). A draft may omit it -
     // that is the point of defaulting to nothing instead of "today", which
     // used to publish stale listings wearing an EXPIRED chip.
     const draftValues = { ...values, status: "draft" as const };

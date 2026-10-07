@@ -102,7 +102,7 @@ function tabsFor(role?: string, isAdmin?: boolean, isTeamStaff?: boolean, isVend
     ];
   }
 
-  // Attendees and talent (DJs, MCs, caterers, entertainers — anyone the
+  // Attendees and talent (DJs, MCs, caterers, entertainers; anyone the
   // directory serves). Verify is staff-only upstream, so it deliberately does
   // not appear here. My Shop is always present: the studio page doubles as
   // the "get listed" onboarding for people who haven't created a profile yet,

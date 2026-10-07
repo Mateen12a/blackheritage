@@ -328,7 +328,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Left — the brand panel. Sticky: it stays put while the form scrolls. */}
+      {/* Left: the brand panel. Sticky: it stays put while the form scrolls. */}
       <aside className="relative hidden lg:flex lg:sticky lg:top-0 lg:h-screen flex-col justify-between w-[44%] max-w-xl border-r border-hairline bg-surface p-12 overflow-hidden">
         {/* Ambient life: breathing warm glows + floating golden embers */}
         <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -559,7 +559,7 @@ export default function AuthPage() {
         </div>
       </aside>
 
-      {/* Right — the form. Scrolls independently of the fixed brand panel. */}
+      {/* Right: the form. Scrolls independently of the fixed brand panel. */}
       <main className="flex-1 flex flex-col items-center px-4 sm:px-8 py-10 overflow-y-auto lg:h-screen">
         {/* Compact brand lockup for mobile */}
         <Link href="/" className="lg:hidden mb-8">

@@ -237,7 +237,7 @@ export async function suggestEventCopy(req: CopyRequest): Promise<CopyResult> {
         // Empty candidates usually means a safety block or a stop without
         // content. Log the reason so the prompt can be fixed with evidence.
         const reason = json.candidates?.[0]?.finishReason || json.promptFeedback?.blockReason || "no candidates";
-        console.error("AI copy empty text for", req.kind, "— reason:", reason);
+        console.error("AI copy empty text for", req.kind, "- reason:", reason);
         lastError = new Error("The writing helper came back empty. Try again in a moment.");
         continue;
       }

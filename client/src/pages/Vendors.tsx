@@ -30,7 +30,7 @@ export default function Vendors() {
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 pt-6 pb-24">
-        {/* Editorial header — same grammar as Events */}
+        {/* Editorial header: same grammar as Events */}
         <Reveal className="max-w-3xl mb-8 sm:mb-12">
           <p className="eyebrow">Across Nigeria</p>
           <h1 className="mt-2.5 sm:mt-3 font-display text-3xl min-[360px]:text-4xl md:text-5xl font-bold text-ink tracking-tight">
@@ -58,8 +58,7 @@ export default function Vendors() {
           </div>
         </div>
 
-        {/* Category filters — quiet pills, gold only when active */}
-        {/* Category filters — quiet pills, gold only when active */}
+        {/* Category filters: quiet pills, gold only when active */}
         <div
           className="flex gap-2 mb-12 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:flex-wrap max-w-3xl"
           role="group"
@@ -150,7 +149,7 @@ export default function Vendors() {
           </div>
         ) : null}
 
-        {/* Talent CTA — flat panel, hairline, single gold button */}
+        {/* Talent CTA: flat panel, hairline, single gold button */}
         <Reveal className="mt-24">
           <section className="border border-hairline rounded-md bg-surface p-6 sm:p-10 md:p-14">
             <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-ink max-w-lg tracking-tight">

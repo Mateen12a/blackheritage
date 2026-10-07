@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 /**
  * Organizer onboarding progress: one compact card, honest conditions pulled
- * from live account data. Disappears entirely once everything is done —
+ * from live account data. Disappears entirely once everything is done -
  * finished organizers don't need a trophy, they need a clean dashboard.
  */
 

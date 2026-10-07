@@ -17,8 +17,8 @@ interface TemplateCardProps {
 /**
  * One template choice, rendered as a miniature of the organizer's actual
  * event page. The card's body is a wireframe of that template's real
- * structure — poster (hero then story), billboard (full-bleed art with the
- * ticket docked on it), editorial (story first, framed art mid-page) — so
+ * structure: poster (hero then story), billboard (full-bleed art with the
+ * ticket docked on it), editorial (story first, framed art mid-page), so
  * the organizer is choosing a layout and a motion, not a color chip.
  * Their logo, name, and accent are shown inside the wireframe.
  */

@@ -124,7 +124,7 @@ export default function Events() {
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 pt-6 pb-24">
-        {/* Editorial header — left-anchored, solid gold rule */}
+        {/* Editorial header: left-anchored, solid gold rule */}
         <Reveal className="max-w-3xl mb-8 sm:mb-12">
           <p className="eyebrow">Across Nigeria</p>
           <h1 className="mt-2.5 sm:mt-3 font-display text-3xl min-[360px]:text-4xl md:text-5xl font-bold text-ink tracking-tight">
@@ -151,7 +151,7 @@ export default function Events() {
           </div>
         </div>
 
-        {/* Category poster wall — the fastest way into the right kind of
+        {/* Category poster wall: the fastest way into the right kind of
             night. Tiles carry real flyers and real counts, and selecting one
             drives the same type filter as the chips below. */}
         {!isLoading && events && events.length > 0 && (

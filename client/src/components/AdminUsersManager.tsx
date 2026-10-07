@@ -133,7 +133,7 @@ export function AdminUsersManager() {
                         {u.email}
                       </td>
                       <td className="py-3 px-4 text-muted-ink text-[11px] whitespace-nowrap">
-                        {u.createdAt ? format(new Date(u.createdAt), "dd MMM yyyy") : "—"}
+                        {u.createdAt ? format(new Date(u.createdAt), "dd MMM yyyy") : "-"}
                       </td>
                       <td className="py-3 px-4">
                         {isVerified ? (

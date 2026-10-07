@@ -4,21 +4,21 @@ import type { CSSProperties } from "react";
  * Event TEMPLATES (formerly "themes").
  *
  * A template is not a color swap. Each one owns three things:
- *   1. palette  — CSS-variable tokens, used as-is when the organizer has not
+ *   1. palette: CSS-variable tokens, used as-is when the organizer has not
  *                 picked a brand color (falls back to the Black Heritage gold)
- *   2. layout   — the page structure the event page renders:
+ *   2. layout: the page structure the event page renders:
  *                   poster    = flyer hero on top, editorial column under it
  *                   billboard = full-bleed poster with the ticket card docked
  *                               on the flyer itself, details unfold below
  *                   editorial = calm paper look: content column first, flyer
  *                               framed mid-page, serif-led
- *   3. motion   — the entrance animation applied to the page's sections
+ *   3. motion: the entrance animation applied to the page's sections
  *                 (rise = staggered slide-up, bloom = soft scale-fade,
  *                  slide = lateral reveal)
  *
  * COLOR IS NOT THE TEMPLATE. The organizer's brand accent recolors buttons,
  * links and highlights inside any template; if they never picked one, the
- * template's own accent — ultimately the Black Heritage gold — shows. Keys
+ * template's own accent (ultimately the Black Heritage gold) shows. Keys
  * mirror the Event.theme enum in shared/schema.ts, so existing rows keep
  * working and no migration is needed.
  */
@@ -32,7 +32,7 @@ export interface TemplatePreset {
   key: "midnight-gold" | "ivory-editorial" | "sunset-poster";
   name: string;
   tagline: string;
-  /** What actually differs — the structure the page renders. */
+  /** What actually differs: the structure the page renders. */
   layout: TemplateLayout;
   /** How sections animate in. */
   motion: TemplateMotion;
@@ -144,7 +144,7 @@ export const PLATFORM_ACCENT = "#E3B23C";
 /**
  * Brand accent override, derived from the chosen template so the custom
  * color stays legible everywhere. The ACCENT is always the organizer's
- * brand color when set — the template changes structure and motion, never
+ * brand color when set: the template changes structure and motion, never
  * whose color the buttons are. Three layers:
  *  1. interactive accent = their color (or the template's own when unset,
  *     which itself falls back to Black Heritage gold), with a hover step

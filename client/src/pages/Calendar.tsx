@@ -39,7 +39,7 @@ export default function CalendarPage() {
           </p>
         </Reveal>
 
-        {/* Calendar — responsive height, design-token styling */}
+        {/* Calendar: responsive height, design-token styling */}
         <div className="border border-hairline rounded-md bg-surface overflow-hidden">
           {isLoading ? (
             <div className="h-[400px] md:h-[600px] flex items-center justify-center">

@@ -55,7 +55,7 @@ const SCARCITY_SKIN = {
  *
  * The footer states one number and one truth: what the cheapest ticket costs,
  * and (only when it is real) how close the room is to full. Available seats
- * are deliberately not printed — "620 left" is volume, not urgency, and the
+ * are deliberately not printed: "620 left" is volume, not urgency, and the
  * organizer can switch counts off entirely from event settings.
  */
 export function EventCard({ event }: EventCardProps) {

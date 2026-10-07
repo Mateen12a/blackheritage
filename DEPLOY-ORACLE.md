@@ -110,7 +110,7 @@ The server serves the built client from `client/dist` when `NODE_ENV=production`
 
 ## 4b. Required production environment variables
 
-Set these on the server (pm2 ecosystem file or systemd unit) — never committed to the repo:
+Set these on the server (pm2 ecosystem file or systemd unit) - never committed to the repo:
 
 ```
 NODE_ENV=production
@@ -344,7 +344,7 @@ set in code. Also verify Settings → Webhooks still points at
 `X-Accel-Buffering: no` on every response, which is enough for nginx to pass
 frames through instead of holding them in its proxy buffer. If a proxy of your
 own sits in front (Cloudflare is fine), keep `proxy_buffering off;` for that
-location and leave `proxy_read_timeout` above 30s — the server pings every 25s
+location and leave `proxy_read_timeout` above 30s, as the server pings every 25s
 so an idle stream is never closed.
 
 Nothing else is required: the client falls back to polling on its own if the

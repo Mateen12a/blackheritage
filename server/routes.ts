@@ -47,7 +47,7 @@ function slugify(title: string): string {
 /**
  * Mongoose validation failures (an empty required field, a bad enum) arrive
  * here as ValidationErrors. Express 4 does not forward rejections from async
- * handlers, so letting one escape leaves the request unanswered forever — the
+ * handlers, so letting one escape leaves the request unanswered forever - the
  * browser keeps spinning and the submit button stays disabled. Answer with the
  * offending field so the form can point at it.
  * Returns true when the response has been sent.
@@ -77,8 +77,8 @@ function hubSlugGuess(name: string): string {
  * Resolves an organizer from a hub link.
  *
  * This has to be tolerant. The client can render a working-looking hub for any
- * link it can build — including one derived from a display name when an event
- * payload carried no slug — so a strict lookup here produced the worst kind of
+ * link it can build: including one derived from a display name when an event
+ * payload carried no slug, so a strict lookup here produced the worst kind of
  * bug: a page that looks fine and a Follow button that says the account "no
  * longer exists". Every /api/organizers/:slug route uses this one lookup so a
  * link the app can show is a link the app can act on.
@@ -489,7 +489,7 @@ export async function registerRoutes(
       }
 
       // Public payloads carry the real hub slug so /o/:slug links are never a
-      // display-name guess. (Manage views get it too — harmless and consistent.)
+      // display-name guess. (Manage views get it too: harmless and consistent.)
       res.json(await withOrganizerSlug(events as any[]));
     } catch (err) {
       console.error("Events error:", err);
@@ -1464,7 +1464,7 @@ export async function registerRoutes(
       if (accentHex !== undefined) updateData.accentHex = accentHex;
       if (cleanDomain !== undefined) {
         updateData.customDomain = cleanDomain || null;
-        // A domain only becomes "active" through the DNS verify endpoint —
+        // A domain only becomes "active" through the DNS verify endpoint;
         // saving it alone proves nothing. Re-saving an unchanged domain keeps
         // its existing status so verify results survive profile edits.
         updateData.customDomainStatus = !cleanDomain
@@ -3165,7 +3165,7 @@ export async function registerRoutes(
   });
 
   // Live message stream. Registered before /api/messages/:userId so "stream"
-  // is not parsed as a user id. The frame payload is deliberately thin — the
+  // is not parsed as a user id. The frame payload is deliberately thin: the
   // client reacts by re-reading through the normal authenticated endpoints.
   app.get("/api/messages/stream", (req, res) => {
     if (!req.isAuthenticated()) {
@@ -3603,12 +3603,12 @@ export async function registerRoutes(
     res.json(safeUserShape(org.toObject()));
   });
 
-  // ── Close an account ──
+  // -- Close an account --
   // Deliberately not a hard delete. Money, tickets and door lists have to
   // survive a person leaving: the attendee still holds a ticket, the
   // organizer still owes (or is owed) a payout, and a refund dispute months
-  // later needs the row. So the account becomes a tombstone — every personal
-  // field scrubbed, sign-in refused, public identity removed — while the
+  // later needs the row. So the account becomes a tombstone: every personal
+  // field scrubbed, sign-in refused, public identity removed, while the
   // transactions stay intact. The email is freed so someone can sign up again.
   app.delete("/api/account", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });

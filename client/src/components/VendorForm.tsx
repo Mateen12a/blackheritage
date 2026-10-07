@@ -208,7 +208,7 @@ export function VendorForm({
                   </FormLabel>
                   <FormControl>
                     {/* The old placeholder was 46 chars but the field caps at
-                        40 — filling it verbatim failed validation with no
+                        40: filling it verbatim failed validation with no
                         idea why. Placeholder now fits, with the cap stated. */}
                     <Input
                       {...field}
@@ -357,7 +357,7 @@ export function VendorForm({
           )}
         />
 
-        {/* Portfolio — photos */}
+        {/* Portfolio: photos */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-ink font-bold text-sm flex items-center gap-2">
@@ -414,7 +414,7 @@ export function VendorForm({
           )}
         </div>
 
-        {/* Portfolio — videos */}
+        {/* Portfolio: videos */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-ink font-bold text-sm flex items-center gap-2">

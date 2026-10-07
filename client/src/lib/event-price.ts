@@ -135,7 +135,7 @@ export function scarcityFor(event: Event): Scarcity | null {
   // "Only 12 left" is the strongest thing a card can say, so it needs both
   // signals: a small absolute remainder AND a room that is genuinely filling.
   // Without the percentage test, a 50-seat event on 15 sales would announce
-  // "Only 35 left" — true, but it is half empty and not scarce at all.
+  // "Only 35 left" - true, but it is half empty and not scarce at all.
   if (remaining <= 40 && pct >= 0.5) return { label: `Only ${remaining} left`, tone: "hot" };
   if (pct >= 0.9) return { label: "Almost gone", tone: "hot" };
   if (pct >= 0.6) return { label: "Selling fast", tone: "warm" };
@@ -143,7 +143,7 @@ export function scarcityFor(event: Event): Scarcity | null {
 }
 
 /**
- * "142 going" — only when the organizer opted into attendee counts and enough
+ * "142 going" - only when the organizer opted into attendee counts and enough
  * people have actually bought for the number to mean something.
  */
 export function socialProofFor(event: Event): string | null {

@@ -4,7 +4,7 @@
  * The app runs as a single pm2 process, so an in-process registry is enough:
  * one entry per signed-in user, holding every open stream that user has
  * (one per browser tab). Messages are pushed as soon as they are written, so
- * the client never has to guess with a poll — the existing polling stays in
+ * the client never has to guess with a poll, and the existing polling stays in
  * place purely as a fallback for when the stream drops.
  *
  * Frames carry only ids and a type. The client reacts by re-reading through

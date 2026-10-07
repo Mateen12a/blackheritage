@@ -17,7 +17,7 @@ import {
   Palette,
   Mic,
   Send,
-  Sparkles,
+  Megaphone,
 } from "lucide-react";
 
 export default function ChallengesPage() {
@@ -88,7 +88,7 @@ export default function ChallengesPage() {
             </h2>
 
             <p className="mt-2 max-w-2xl text-sm text-muted-ink leading-relaxed">
-              When event organizers, brands, or festival directors open creator submissions — such as DJ opening slot auditions, MC showcases, or concert flyer design briefs — the guidelines, submission criteria, and deadlines will be published here.
+              When event organizers, brands, or festival directors open creator submissions (such as DJ opening slot auditions, MC showcases, or concert flyer design briefs), the guidelines, submission criteria, and deadlines will be published here.
             </p>
           </div>
         </Reveal>
@@ -131,13 +131,13 @@ export default function ChallengesPage() {
             <div className="rounded-md border border-hairline bg-surface p-6 flex flex-col justify-between h-full space-y-6">
               <div>
                 <div className="w-10 h-10 rounded-md bg-surface-2 border border-hairline flex items-center justify-center text-gold mb-4">
-                  <Sparkles className="w-5 h-5" />
+                  <Megaphone className="w-5 h-5" />
                 </div>
                 <h3 className="font-display font-bold text-lg text-ink">
                   Host an open call for your event
                 </h3>
                 <p className="mt-2 text-xs sm:text-sm text-muted-ink leading-relaxed">
-                  Putting on a concert, festival, or brand activation? Black Heritage can power your open audition, talent search, or creator showcase — managing submissions, entry review, and talent discovery.
+                  Putting on a concert, festival, or brand activation? Black Heritage can power your open audition, talent search, or creator showcase by managing submissions, entry review, and talent discovery.
                 </p>
               </div>
 
@@ -209,7 +209,7 @@ export default function ChallengesPage() {
                 Get notified when the next open call launches
               </h3>
               <p className="mt-1 text-xs sm:text-sm text-muted-ink">
-                Leave your email or WhatsApp number. We send one alert when a new brief opens — no promotional spam.
+                Leave your email or WhatsApp number. We send one alert when a new brief opens, with no promotional spam.
               </p>
 
               {subscribed ? (

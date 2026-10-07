@@ -225,7 +225,7 @@ export function setupGoogleAuth(app: Express) {
             : {}),
         });
         await user.save();
-        // Match the password signup path: the audience decides the variant —
+        // Match the password signup path: the audience decides the variant:
         // organizers get next-steps, talent get profile-setup guidance,
         // attendees get discovery. Fire-and-forget: the redirect never waits.
         const emailRole: "user" | "organizer" | "vendor" =

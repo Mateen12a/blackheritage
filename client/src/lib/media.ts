@@ -1,5 +1,5 @@
 /**
- * Vendor portfolio media parsing — the client-side twin of the API shape.
+ * Vendor portfolio media parsing - the client-side twin of the API shape.
  * gallery/videos/socials arrive as JSON strings from the API columns.
  */
 

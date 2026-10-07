@@ -142,7 +142,7 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
 // ─────────────────────────────────────────────────────────────────────────────
 // Brand theming: the event's palette (theme preset + organizer accent) flows
 // into the flyer so a branded page and its flyer feel like the same brand.
-// Everything is optional — with no brand data the built-in themes are used.
+// Everything is optional: with no brand data the built-in themes are used.
 // ─────────────────────────────────────────────────────────────────────────────
 export interface FlyerBrandTheme {
   accent?: string; // hex, e.g. "#E3B23C"
@@ -283,7 +283,7 @@ export function brandThemeFromEvent(event: any): FlyerBrandTheme | undefined {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Text fitting: measure first, then draw. Long titles shrink before they
-// wrap deeper, and wrapping never collides with neighbouring layers — the
+// wrap deeper, and wrapping never collides with neighbouring layers: the
 // same discipline the server-side PDF renderer follows.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -657,7 +657,7 @@ function renderStandardFlyer(
     ctx.restore();
   }
 
-  // 7. Event details block — measured first, then drawn bottom-anchored, so
+  // 7. Event details block: measured first, then drawn bottom-anchored, so
   // a long title grows upward into the photo instead of crashing through the
   // eyebrow above or the footer below. Title font shrinks (fitTitle) before
   // the layout gives up on fitting.
@@ -1330,7 +1330,7 @@ function renderVendorCardFlyer(
     ctx.restore();
   }
 
-  // Name — fitted so a long business name shrinks instead of colliding
+  // Name: fitted so a long business name shrinks instead of colliding
   // with the category chip below it.
   const nameY = photoY + photoH + nameGap;
   const nameFit = nameFit0;
@@ -1535,7 +1535,7 @@ export function downloadCanvasImage(canvas: HTMLCanvasElement, filename: string)
 
 /**
  * A short clip of the card, made from the very same canvas the studio already
- * renders — no render service, no per-export cost, and the colours, artwork
+ * renders: no render service, no per-export cost, and the colours, artwork
  * and QR code are the organizer's real ones rather than a generated look.
  *
  * The motion is deliberately small: a slow push-in with a brief fade up. That

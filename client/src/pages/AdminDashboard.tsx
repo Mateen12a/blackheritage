@@ -534,7 +534,7 @@ export default function AdminDashboard() {
                                   </div>
                                 </td>
                                 <td className="px-6 py-4 text-xs sm:text-sm text-muted-ink hidden sm:table-cell">
-                                  {event.date ? format(new Date(event.date), "MMM d, yyyy") : "—"}
+                                  {event.date ? format(new Date(event.date), "MMM d, yyyy") : "-"}
                                 </td>
                                 <td className="px-6 py-4">
                                   <span

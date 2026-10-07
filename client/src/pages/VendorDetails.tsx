@@ -135,7 +135,7 @@ export default function VendorDetails() {
       {/* Vendor-branded navbar when they set a name/logo; the platform
           default renders otherwise. Same treatment as event pages. */}
       <Navbar eventBrand={brand} overMedia />
-      {/* Hero image — the portfolio leads */}
+      {/* Hero image: the portfolio leads */}
       <div className="relative h-[38vh] sm:h-[42vh] md:h-[46vh] w-full overflow-hidden">
         {gallery[0] ? (
           <img
@@ -171,7 +171,7 @@ export default function VendorDetails() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10">
           {/* Main content */}
           <div className="lg:col-span-2">
-            {/* Title block — editorial, no card box */}
+            {/* Title block: editorial, no card box */}
             <Reveal className="mb-8 sm:mb-10">
               <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1.5">
                 <span className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-bold tracking-[0.18em] uppercase text-gold">
@@ -254,7 +254,7 @@ export default function VendorDetails() {
               )}
             </Reveal>
 
-            {/* Bio — plain editorial text, no box */}
+            {/* Bio: plain editorial text, no box */}
             <p className="text-muted-ink leading-relaxed whitespace-pre-line max-w-2xl mb-10">
               {vendor.bio}
             </p>
@@ -269,7 +269,7 @@ export default function VendorDetails() {
               </div>
             )}
 
-            {/* Videos — proof of work in motion */}
+            {/* Videos: proof of work in motion */}
             {videos.length > 0 && (
               <section aria-label="Videos" className="mb-10">
                 <h2 className="eyebrow mb-5">Videos</h2>
@@ -329,7 +329,7 @@ export default function VendorDetails() {
               </section>
             )}
 
-            {/* Gallery — quiet grid, hairline cells, zoom cursor */}
+            {/* Gallery: quiet grid, hairline cells, zoom cursor */}
             <section aria-label="Portfolio">
               <h2 className="eyebrow mb-5">Photos</h2>
               {gallery.length === 0 ? (
@@ -365,7 +365,7 @@ export default function VendorDetails() {
             </section>
           </div>
 
-          {/* Contact sidebar — the one gold surface on the page */}
+          {/* Contact sidebar: the one gold surface on the page */}
           <aside className="lg:col-span-1">
             <div className="bg-surface border border-hairline rounded-md p-7 lg:sticky lg:top-28">
               <h2 className="font-display text-xl font-bold text-ink">

@@ -26,7 +26,7 @@ interface RevealProps {
   className?: string;
   /** Seconds to wait before starting (for small stagger chains). */
   delay?: number;
-  /** Vertical offset in px. Keep it small — 14 or less. */
+  /** Vertical offset in px. Keep it small: 14 or less. */
   y?: number;
   duration?: number;
   /** Event-page templates can drive the entrance style. Default is the

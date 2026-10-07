@@ -22,7 +22,7 @@ import {
   useRefundBooking, useLiveStats, useCreateGateSale,
 } from "@/hooks/use-organizer";
 
-/** Pill filter chip for the attendee list — same visual language as the
+/** Pill filter chip for the attendee list: same visual language as the
  * Explore/Events filter rows, sized down for a table toolbar. */
 const attendeeChip = (selected: boolean) =>
   cn(
@@ -230,7 +230,7 @@ export default function ManageEvent() {
     refetchInterval: 20000,
   });
 
-  // Quick settings (sponsor/vendor applications) — settings PATCH, then
+  // Quick settings (sponsor/vendor applications): settings PATCH, then
   // refresh the event so the toggle reflects what the server stored.
   const saveSettings = useMutation({
     mutationFn: async (patch: Record<string, unknown>) => {

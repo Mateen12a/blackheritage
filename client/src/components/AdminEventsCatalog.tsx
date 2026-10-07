@@ -144,7 +144,7 @@ export function AdminEventsCatalog() {
                         </Link>
                       </td>
                       <td className="py-3 px-4 text-muted-ink text-[11px] whitespace-nowrap">
-                        {e.date ? format(new Date(e.date), "dd MMM yyyy") : "—"}
+                        {e.date ? format(new Date(e.date), "dd MMM yyyy") : "-"}
                       </td>
                       <td className="py-3 px-4 text-muted-ink truncate max-w-[140px]">
                         {e.location || "Lagos, NG"}

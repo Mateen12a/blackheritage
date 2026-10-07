@@ -156,7 +156,7 @@ export const eventCategoryLabels: Record<EventCategory, string> = {
   other: "Other",
 };
 
-/** "instagram" | "x" | "tiktok" | "youtube" — keyed by social platform */
+/** "instagram" | "x" | "tiktok" | "youtube": keyed by social platform */
 export const vendorSocialKeys = ["instagram", "x", "tiktok", "youtube"] as const;
 export type VendorSocialKey = typeof vendorSocialKeys[number];
 
@@ -454,7 +454,7 @@ export const manualTicketSchema = z.object({
   quantity: z.number().int().min(1).max(10).default(1),
 });
 
-// A ticket sold at the door for cash, POS, transfer — or comped on the spot.
+// A ticket sold at the door for cash, POS, transfer, or comped on the spot.
 // Records real offline money in the same ledger as online sales.
 export const gateSaleSchema = z.object({
   buyerName: z.string().trim().min(2, "Enter the buyer's name").max(120),

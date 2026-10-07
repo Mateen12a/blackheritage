@@ -18,7 +18,7 @@
 }
 
 /*
- * BLACK HERITAGE — DESIGN TOKENS
+ * BLACK HERITAGE: DESIGN TOKENS
  * The direction is locked in DESIGN.md (repo root): deep indigo-black base,
  * ONE warm gold accent used sparingly, Playfair Display for display type and
  * DM Sans for everything else. Do not add new colors, fonts, or motion here
@@ -112,7 +112,7 @@
   }
 
   /* Hero backdrop drift: a slow ken-burns on the concert still. This is the
-     page's one piece of ambient background motion — it replaced a looping
+     page's one piece of ambient background motion: it replaced a looping
      MP4, so it costs a rounding error and keeps the hero breathing. */
   --animate-kenburns: kenburns 26s ease-in-out infinite alternate;
 
@@ -261,7 +261,7 @@
   @apply transition-transform duration-150 active:scale-[0.98];
 }
 
-/* Retired gradient utilities — kept as solid-gold aliases so any straggler
+/* Retired gradient utilities: kept as solid-gold aliases so any straggler
    class still renders correctly. Do not use them in new code. */
 @utility gold-text-gradient {
   @apply text-primary;

@@ -147,7 +147,7 @@ export function AdminTransactionsLedger() {
                         {b.paymentReference}
                       </td>
                       <td className="py-3 px-4 text-muted-ink text-[11px] whitespace-nowrap">
-                        {b.createdAt ? format(new Date(b.createdAt), "dd MMM, HH:mm") : "—"}
+                        {b.createdAt ? format(new Date(b.createdAt), "dd MMM, HH:mm") : "-"}
                       </td>
                       <td className="py-3 px-4">
                         <div className="font-medium text-ink truncate max-w-[150px]">{b.name}</div>
