@@ -23,11 +23,13 @@ export function whatsappLink(message: string = DEFAULT_GREETING): string {
  * Used on post-purchase screens and ticket views so attendees can connect.
  */
 export const BLACK_HERITAGE_WHATSAPP_COMMUNITY_URL =
-  "https://chat.whatsapp.com/invite/blackheritage";
+  "https://chat.whatsapp.com/KuirUdtxvBN5Ev9rKdNDlg";
 
-export function blackHeritageCommunityWhatsAppLink(eventTitle?: string): string {
-  const msg = eventTitle
-    ? `Hi Black Heritage, I just booked my ticket for ${eventTitle} and would like to join the community!`
-    : "Hi Black Heritage, I would like to join the Black Heritage community!";
-  return whatsappLink(msg);
+/**
+ * The "Join the community" buttons open the community invite itself. They
+ * used to open a 1:1 chat with the team number asking to be added, which
+ * left every request waiting on a person. Invite links take no message.
+ */
+export function blackHeritageCommunityWhatsAppLink(_eventTitle?: string): string {
+  return BLACK_HERITAGE_WHATSAPP_COMMUNITY_URL;
 }

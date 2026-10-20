@@ -209,6 +209,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             })}
 
             <div className="pt-2 border-t border-hairline/60 space-y-1">
+              {/* Talent tools only for talent accounts: organizers kept landing in
+                  the talent sign-up from here by mistake. */}
+              {isVendor && (
               <Link href="/vendor-dashboard">
                 <div
                   className={cn(
@@ -222,6 +225,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <span>{isVendor ? "Talent Studio" : "Work as Talent"}</span>
                 </div>
               </Link>
+              )}
               <Link href="/challenges">
                 <div
                   className={cn(
@@ -418,8 +422,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <span className="text-sm font-medium">{upgrading ? "Switching your account…" : "Become an organizer"}</span>
               </button>
             )}
-            {/* Direct access to Talent Studio for all organizers */}
-            {isOrg && (
+            {/* Talent Studio only for talent accounts */}
+            {isVendor && (
               <button
                 type="button"
                 onClick={() => {

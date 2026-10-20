@@ -1,6 +1,9 @@
 import { Resend } from "resend";
 import { PLAYBOOK_FILENAME } from "./playbook";
 
+/** Black Heritage WhatsApp community, linked from ticket emails. */
+const COMMUNITY_URL = "https://chat.whatsapp.com/KuirUdtxvBN5Ev9rKdNDlg";
+
 const FROM = "Black Heritage Entertainment & Events <tickets@blackhevents.com>";
 
 interface Branding {
@@ -152,6 +155,9 @@ export async function sendTicketEmail(to: EmailAddress, data: TicketEmailData): 
       <p style="margin:8px 0 0;font-size:13px;color:#444;">A calendar file is attached too, one tap adds the date to your phone's calendar.</p>
       <p style="margin:8px 0 0;font-size:13px;">
         <a href="${appUrl}/my-tickets" style="color:#111;font-weight:bold;">Re-download your tickets any time</a>
+      </p>
+      <p style="margin:8px 0 0;font-size:13px;color:#444;">
+        Find your next night out: <a href="${COMMUNITY_URL}" style="color:#111;">join the Black Heritage WhatsApp community</a>.
       </p>`,
       data.branding,
       data.imageUrl,

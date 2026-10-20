@@ -2,10 +2,10 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, buildUrl } from "@shared/routes";
 import { EventForm } from "@/components/EventForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 
 /**
  * Edit an existing event. The same form the create page uses, prefilled from
@@ -86,6 +86,9 @@ export default function EditEvent({ id }: { id: string }) {
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="container mx-auto px-4 pt-10 max-w-2xl">
+        <Link href={`/admin/events/${event.id}`} className="press inline-flex items-center gap-1.5 text-sm text-muted-ink hover:text-gold mb-4">
+          <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Back to event
+        </Link>
         <p className="eyebrow">Edit listing</p>
         <h1 className="mt-3 font-display text-3xl font-bold text-ink tracking-tight">{event.title}</h1>
         <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
