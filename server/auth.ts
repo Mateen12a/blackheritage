@@ -230,9 +230,13 @@ export function setupAuth(app: Express) {
           // A bad referral code never blocks a signup.
         }
       }
+      // Every new organizer gets the Founder Hundred perk. It used to depend
+      // on the sign-up form sending the code, so any path that did not
+      // (an older form, a direct link) silently missed it.
       const founderVoucher =
-        typeof req.body.founderVoucher === "string" &&
-        req.body.founderVoucher.trim().toUpperCase() === "FOUNDER100"
+        role === "organizer" ||
+        (typeof req.body.founderVoucher === "string" &&
+          req.body.founderVoucher.trim().toUpperCase() === "FOUNDER100")
           ? "FOUNDER100"
           : undefined;
 

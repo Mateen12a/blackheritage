@@ -70,7 +70,10 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
   }, []);
 
   const isOrg = user && (user.role === "organizer" || user.role === "admin" || user.isAdmin);
-  const links = [
+  // On an organizer-branded event page the guest came to buy a ticket: one
+  // way back into the catalogue, nothing else competing with Get tickets.
+  const onEventPage = Boolean(eventBrand?.displayName || eventBrand?.logoUrl);
+  const links = onEventPage ? [{ href: "/events", label: "More events" }] : [
     { href: "/", label: "Home" },
     { href: "/events", label: "Events" },
     { href: "/talent", label: "Talent" },
@@ -78,7 +81,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
   ];
 
   if (!user) {
-    links.push({ href: "/organizers", label: "For Organizers" });
+    if (!onEventPage) links.push({ href: "/organizers", label: "For Organizers" });
   } else {
     links.push({
       href: isOrg ? "/admin" : user.role === "vendor" ? "/vendor-dashboard" : "/dashboard",
@@ -96,7 +99,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
   const brand = eventBrand?.displayName || eventBrand?.logoUrl ? (
     <BrandLockup
       title={eventBrand?.displayName || "Event"}
-      tag="on BlackHeritage"
+      tag="on Black Heritage"
       logo={
         eventBrand?.logoUrl ? (
           <img
@@ -139,7 +142,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
         {/* Brand segment (desktop): full-round left corners, tight right corners */}
         <Link
           href="/"
-          aria-label={eventBrand?.displayName ? `${eventBrand.displayName} on BlackHeritage` : "Black Heritage Entertainment & Events home"}
+          aria-label={eventBrand?.displayName ? `${eventBrand.displayName} on Black Heritage` : "Black Heritage Entertainment & Events home"}
           className={cn(
             "press shrink-0 h-[52px] pl-3.5 pr-5 rounded-l-full rounded-r-lg hidden lg:flex items-center gap-2.5",
             surface
@@ -179,7 +182,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
         >
           {user ? (
             <>
-              <Link href="/admin/events/new">
+              {!onEventPage && <Link href="/admin/events/new">
                 <span className={cn(
                   "press inline-flex items-center gap-1.5 h-9 rounded-full text-[13px] font-semibold transition-colors cursor-pointer",
                   isOrg
@@ -189,7 +192,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
                   <Plus className="w-3.5 h-3.5" />
                   <span>List Event</span>
                 </span>
-              </Link>
+              </Link>}
               <Link href={links[links.length - 1].href}>
                 <span className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-surface-2/60 transition-colors cursor-pointer">
                   <span className="w-7 h-7 rounded-full bg-surface-2 border border-hairline flex items-center justify-center text-xs font-bold text-gold uppercase">
@@ -217,12 +220,12 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
                   Sign In
                 </span>
               </Link>
-              <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100">
+              {!onEventPage && <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100">
                 <span className="press inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-gold-soft transition-colors cursor-pointer shadow-sm">
                   <Plus className="w-3.5 h-3.5" />
                   <span>List Event</span>
                 </span>
-              </Link>
+              </Link>}
             </>
           )}
         </div>
@@ -232,7 +235,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
             truncates rather than overlapping the action pills. */}
         <Link
           href="/"
-          aria-label={eventBrand?.displayName ? `${eventBrand.displayName} on BlackHeritage` : "Black Heritage Entertainment & Events home"}
+          aria-label={eventBrand?.displayName ? `${eventBrand.displayName} on Black Heritage` : "Black Heritage Entertainment & Events home"}
           className={cn(
             "lg:hidden flex items-center gap-2.5 min-w-0 pl-1"
           )}
@@ -335,6 +338,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
               </>
             ) : (
               <div className="flex flex-col gap-2 px-1">
+                {!onEventPage && (
                 <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100">
                   <Button
                     size="sm"
@@ -345,6 +349,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
                     <span>List an Event · 0% on First 100</span>
                   </Button>
                 </Link>
+                )}
                 <Link href="/auth">
                   <button
                     className="w-full py-2 text-center text-xs font-medium text-muted-ink hover:text-ink transition-colors"
