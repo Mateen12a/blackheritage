@@ -24,6 +24,7 @@ import { EMAIL_HINT, isValidEmail } from "@shared/email";
 import { errorMessage } from "@/lib/errors";
 import type { Event } from "@shared/schema";
 import logoImg from "../assets/logo.png";
+import { AuthShowcase } from "@/components/AuthShowcase";
 
 type Mode = "login" | "register";
 type Audience = "attendee" | "organizer" | "vendor";
@@ -325,6 +326,7 @@ export default function AuthPage() {
     <div className="min-h-screen bg-background flex">
       {/* Left: the brand panel. Sticky: it stays put while the form scrolls. */}
       <aside className="relative hidden lg:flex lg:sticky lg:top-0 lg:h-screen flex-col justify-between w-[44%] max-w-xl border-r border-hairline bg-surface p-12 overflow-hidden">
+        <div aria-hidden="true" className="absolute inset-0 pointer-events-none bg-[radial-gradient(70%_45%_at_0%_0%,rgba(227,178,60,0.10),transparent_70%)]" />
         <div className="relative z-10 flex flex-col justify-between h-full">
           <Link href="/">
             <div className="flex items-center gap-3 cursor-pointer group w-fit">
@@ -342,105 +344,14 @@ export default function AuthPage() {
             </div>
           </Link>
 
-          <div className="my-auto py-4">
-            <h2 className="font-display text-3xl xl:text-4xl font-bold text-ink leading-[1.15] tracking-tight">
-              Where Nigeria comes out to{" "}
-              <span className="italic text-gold">play</span>
-            </h2>
-            <div className="mt-3.5 h-0.5 w-12 bg-gold" aria-hidden="true" />
-            <p className="mt-3 text-sm text-muted-ink leading-relaxed max-w-sm">
-              One home for the shows worth showing up for, and the DJs,
-              caterers, and creatives who make them unforgettable.
-            </p>
-
-            {/* Living Marquee: Real auto-advancing Lagos event showcase */}
-            {featuredEvents.length > 0 && currentEvent && (
-              <div
-                className="my-5"
-                onMouseEnter={() => setIsEventPaused(true)}
-                onMouseLeave={() => setIsEventPaused(false)}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold tracking-[0.16em] uppercase text-gold">
-                    Trending On Sale
-                  </span>
-                  {featuredEvents.length > 1 && (
-                    <div className="flex items-center gap-1.5" role="tablist" aria-label="Featured events">
-                      {featuredEvents.map((_, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setActiveEventIndex(idx)}
-                          aria-label={`Show event ${idx + 1}`}
-                          className={cn(
-                            "h-1 rounded-full transition-all duration-300 cursor-pointer",
-                            idx === activeEventIndex
-                              ? "w-4 bg-gold"
-                              : "w-1.5 bg-white/20 hover:bg-white/40"
-                          )}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <Link href={"/events/" + currentEvent.id}>
-                  <div className="group relative rounded-md border border-hairline bg-surface-2/85 hover:border-gold/40 transition-all duration-300 cursor-pointer overflow-hidden p-3 flex items-center gap-3.5 backdrop-blur-sm">
-                    <div className="relative w-14 h-14 rounded overflow-hidden bg-surface border border-hairline shrink-0">
-                      {currentEvent.imageUrl ? (
-                        <img
-                          src={currentEvent.imageUrl}
-                          alt={currentEvent.title}
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                          }}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Ticket className="w-6 h-6 text-gold/60" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] font-medium text-gold flex items-center gap-1 truncate">
-                        <CalendarDays className="w-3 h-3 shrink-0" />
-                        <span>{format(new Date(currentEvent.date), "EEE d MMM")}</span>
-                        {currentEvent.location && (
-                          <>
-                            <span className="text-muted-ink/40">·</span>
-                            <span className="text-muted-ink truncate">
-                              {currentEvent.location.split(",")[0]}
-                            </span>
-                          </>
-                        )}
-                      </p>
-                      <p className="mt-0.5 font-display text-sm font-semibold text-ink truncate group-hover:text-gold transition-colors">
-                        {currentEvent.title}
-                      </p>
-                      <div className="mt-1 flex items-center gap-2">
-                        <span className="text-xs font-semibold text-ink">
-                          {currentEvent.price === 0
-                            ? "Free Entry"
-                            : `From ₦${(currentEvent.price / 100).toLocaleString()}`}
-                        </span>
-                        <span className="text-[10px] text-muted-ink border border-hairline px-1.5 py-0.2 rounded">
-                          Instant Ticket
-                        </span>
-                      </div>
-                    </div>
-
-                    <ArrowUpRight
-                      className="w-4 h-4 text-muted-ink shrink-0 group-hover:text-gold group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all"
-                      aria-hidden="true"
-                    />
-                  </div>
-                </Link>
-              </div>
-            )}
-
+          <div className="my-auto py-8">
+            <AuthShowcase audience={audience} isRegister={isRegister} event={currentEvent} />
           </div>
+
+          <p className="flex items-center gap-2 text-[11px] text-muted-ink pt-5 border-t border-hairline">
+            <ShieldCheck className="w-3.5 h-3.5 text-gold" aria-hidden="true" />
+            Secure checkout by Paystack · Card, transfer and USSD
+          </p>
         </div>
       </aside>
 
