@@ -78,6 +78,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
       showAttendeeCount: false,
       waitlistEnabled: false,
       guestCheckout: true,
+      buyerPaysFee: false,
       promoCodesPublic: false,
       checkoutFields: { phone: false, tableNote: true, dietaryNote: false },
       branding: null,
@@ -886,6 +887,19 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                 label="Allow guest checkout"
                 hint={"Off requires buyers to create an account first. On is lower friction."}
                 checked={field.value !== false}
+                onChange={field.onChange}
+              />
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="buyerPaysFee"
+            render={({ field }) => (
+              <ToggleRow
+                id="pref-fee"
+                label="Buyers pay the platform fee"
+                hint={"On adds the fee to checkout as a \"Service fee\" line, so you keep 100% of your ticket price. Off takes it from your sales. Founder tickets have no fee either way."}
+                checked={field.value === true}
                 onChange={field.onChange}
               />
             )}

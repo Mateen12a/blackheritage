@@ -1741,6 +1741,7 @@ export async function registerRoutes(
         eventId: String(event.id),
         quantity: input.quantity,
         totalAmount: quote.totalKobo,
+        serviceFeeKobo: quote.serviceFeeKobo,
         userId: user?._id?.toString() || "guest",
         name: input.name,
         email: input.email,
@@ -1800,9 +1801,11 @@ export async function registerRoutes(
           // Founder-waived tickets really keep 0% and admin rate changes apply.
           // Paystack verified: a charge of 0 makes the subaccount bear the
           // gateway fee and the platform keeps nothing.
-          const splitChargeKobo = subaccountCode
-            ? await previewPlatformFee(event.organizerId, input.quantity, quote.totalKobo)
-            : null;
+          const splitChargeKobo = !subaccountCode
+            ? null
+            : event.buyerPaysFee
+              ? quote.serviceFeeKobo
+              : await previewPlatformFee(event.organizerId, input.quantity, quote.totalKobo);
 
           if (subaccountCode) {
             try {

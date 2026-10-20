@@ -111,17 +111,21 @@ export default function AuthPage() {
 
   const searchParams = new URLSearchParams(queryString);
   const rawMode = searchParams.get("tab") || searchParams.get("mode");
+  // A signup destination (List your profile → /talent-signup) means a new
+  // account, so open on Create account instead of Sign in.
+  const isSignupReturn = Boolean(returnTo && /^\/(talent|vendor)-signup/.test(returnTo));
   const isRegisterParam =
     rawMode === "register" ||
     rawMode === "signup" ||
     queryString.includes("tab=register") ||
-    queryString.includes("mode=register");
+    queryString.includes("mode=register") ||
+    (!rawMode && isSignupReturn);
 
   const rawRole = searchParams.get("role") || searchParams.get("audience");
   const initialAudience: Audience =
     rawRole === "organizer" || (returnTo && returnTo.startsWith("/admin"))
       ? "organizer"
-      : rawRole === "vendor" || (returnTo && returnTo.startsWith("/vendor"))
+      : rawRole === "vendor" || rawRole === "talent" || (returnTo && /^\/(vendor|talent)/.test(returnTo))
       ? "vendor"
       : "attendee";
 

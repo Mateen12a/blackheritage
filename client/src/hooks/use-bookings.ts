@@ -58,6 +58,8 @@ export interface BookingQuoteResult {
   subtotalKobo: number;
   discountKobo: number;
   totalKobo: number;
+  /** Platform fee added on top when the organizer passes it to the buyer. */
+  serviceFeeKobo?: number;
   available: number;
   promoApplied: boolean;
   promoMessage: string;

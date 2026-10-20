@@ -80,7 +80,10 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
 
   // Commissions: platform fee on paid money; organizer-chosen promoter share.
   const settings = await PlatformSettingModel.findOne({ key: "platform" }).lean();
-  const total = (booking as any).totalAmount || 0;
+  // Commission is earned on ticket revenue; a buyer-paid service fee is the
+  // platform's share itself, not part of what the fee is charged on.
+  const serviceFee = Number((booking as any).serviceFeeKobo || 0);
+  const total = Math.max(0, ((booking as any).totalAmount || 0) - serviceFee);
   const organizerId = (event as any)?.organizerId;
   const feeBps = settings?.ticketCommissionBps ?? 600;
   let isFounderPerkApplied = false;
@@ -112,7 +115,7 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
   // Calculate platform fee with prorated waiver if partially covered. On a
   // split booking Paystack already kept the flat charge sent at initiate, so
   // the ledger records that figure rather than recomputing it.
-  let platformFeeKobo = platformFeeFor(total, qty, waivedForThisBooking, feeBps);
+  let platformFeeKobo = serviceFee > 0 ? serviceFee : platformFeeFor(total, qty, waivedForThisBooking, feeBps);
   if ((booking as any).subaccountSplit && typeof (booking as any).splitChargeKobo === "number") {
     platformFeeKobo = (booking as any).splitChargeKobo;
   }
@@ -152,7 +155,8 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
     }
 
     // Organizer net share tracking with verification protection
-    const orgNetKobo = Math.max(0, total - platformFeeKobo - promoterCommissionKobo);
+    // The buyer covered the fee on top, so the organizer keeps the full ticket revenue.
+    const orgNetKobo = Math.max(0, total - (serviceFee > 0 ? 0 : platformFeeKobo) - promoterCommissionKobo);
     if (orgNetKobo > 0 && organizerId) {
       try {
         const { User } = await import("./models");
@@ -353,6 +357,8 @@ export interface BookingQuote {
   subtotalKobo: number;
   discountKobo: number;
   totalKobo: number;
+  /** Platform fee added on top when the organizer passes it to the buyer. */
+  serviceFeeKobo: number;
   available: number;
   promoApplied: boolean;
   promoMessage: string;
@@ -407,6 +413,14 @@ export async function quoteBooking(input: {
     promoId = promo.promoId;
   }
 
+  // Organizer passes the fee to the buyer: the same fee they would have
+  // absorbed (Founder waiver included) is added on top, shown as its own line.
+  const ticketsKobo = subtotal - discount;
+  const serviceFeeKobo =
+    (event as any).buyerPaysFee && ticketsKobo > 0
+      ? await previewPlatformFee((event as any).organizerId, input.quantity, ticketsKobo)
+      : 0;
+
   return {
     ok: true,
     quote: {
@@ -414,7 +428,8 @@ export async function quoteBooking(input: {
       quantity: input.quantity,
       subtotalKobo: subtotal,
       discountKobo: discount,
-      totalKobo: subtotal - discount,
+      totalKobo: ticketsKobo + serviceFeeKobo,
+      serviceFeeKobo,
       available,
       promoApplied,
       promoMessage,

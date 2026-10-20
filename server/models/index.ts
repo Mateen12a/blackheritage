@@ -171,6 +171,7 @@ export interface IEvent extends Document {
   showAttendeeCount?: boolean;
   waitlistEnabled?: boolean;
   guestCheckout?: boolean;
+  buyerPaysFee?: boolean;
   promoCodesPublic?: boolean;
   checkoutFields?: { phone: boolean; tableNote: boolean; dietaryNote: boolean } | null;
   branding?: { displayName?: string; logoUrl?: string; accentHex?: string } | null;
@@ -213,6 +214,7 @@ const EventSchema: Schema = new Schema({
   showAttendeeCount: { type: Boolean, default: false },
   waitlistEnabled: { type: Boolean, default: false },
   guestCheckout: { type: Boolean, default: true },
+  buyerPaysFee: { type: Boolean, default: false },
   promoCodesPublic: { type: Boolean, default: false },
   checkoutFields: { type: { phone: Boolean, tableNote: Boolean, dietaryNote: Boolean }, default: null },
   branding: { type: { displayName: String, logoUrl: String, accentHex: String }, default: null },
@@ -286,6 +288,8 @@ const BookingSchema: Schema = new Schema({
   // Flat platform charge sent to Paystack as transaction_charge on split
   // bookings: what the platform actually kept, Founder waiver included.
   splitChargeKobo: { type: Number, default: null },
+  // Platform fee the buyer paid on top of the tickets (buyerPaysFee events).
+  serviceFeeKobo: { type: Number, default: 0 },
   isVerified: { type: Boolean, default: false }, // Added isVerified
   verifiedAt: { type: Date }, // Added verifiedAt
   remindersDisabled: { type: Boolean, default: false }, // guest opt-out for event reminder emails

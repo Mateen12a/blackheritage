@@ -34,6 +34,7 @@ export const events = pgTable("events", {
   showAttendeeCount: boolean("show_attendee_count").default(false), // "142 going" social proof
   waitlistEnabled: boolean("waitlist_enabled").default(false), // sold-out tiers collect emails instead of a dead end
   guestCheckout: boolean("guest_checkout").default(true), // allow buying without an account
+  buyerPaysFee: boolean("buyer_pays_fee").default(false), // add the platform fee to the buyer's total instead of the organizer's share
   promoCodesPublic: boolean("promo_codes_public").default(false), // list public codes on the event page
   checkoutFields: jsonb("checkout_fields"), // which extra fields checkout collects: phone, tableNote, dietaryNote
 
@@ -405,6 +406,7 @@ export const eventSettingsSchema = z.object({
   showAttendeeCount: z.boolean().default(false),
   waitlistEnabled: z.boolean().default(false),
   guestCheckout: z.boolean().default(true),
+  buyerPaysFee: z.boolean().default(false),
   promoCodesPublic: z.boolean().default(false),
   // Sponsor/vendor applications through the public "Partner With Us" modal.
   businessApplicationsEnabled: z.boolean().default(true),

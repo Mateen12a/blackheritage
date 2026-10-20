@@ -443,6 +443,12 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
                     <span className="font-medium text-gold">-{naira(pricing.discountKobo)}</span>
                   </div>
                 )}
+                {pricing && (pricing.serviceFeeKobo ?? 0) > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-ink">Service fee</span>
+                    <span className="font-medium text-ink">{naira(pricing.serviceFeeKobo!)}</span>
+                  </div>
+                )}
                 <div className="border-t border-hairline my-4 pt-4 flex justify-between items-baseline">
                   <span className="eyebrow">Total</span>
                   <span className="font-display text-2xl font-bold text-gold">{totalLabel}</span>

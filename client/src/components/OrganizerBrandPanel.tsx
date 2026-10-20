@@ -820,7 +820,7 @@ export function OrganizerBrandPanel() {
                 Custom Domain & Whitelabel DNS
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm text-muted-ink mt-1">
-                Route your custom subdomain directly to your Black Heritage organizer hub with automated SSL.
+                On request: save your subdomain and add the DNS record, then message the Black Heritage team. We switch on routing and SSL for you; until then your page lives at blackhevents.com/o/your-brand.
               </CardDescription>
             </div>
             {customDomain && (
