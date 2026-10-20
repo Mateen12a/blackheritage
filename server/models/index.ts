@@ -142,6 +142,7 @@ const UserSchema: Schema = new Schema({
   },
   verifiedAt: { type: Date, default: null },
   founderVoucher: { type: String, default: null },
+  payoutRequestedAt: { type: Date, default: null }, // throttles payout request emails
   waivedTicketCount: { type: Number, default: 0 },
   isDemo: { type: Boolean, default: false, index: true },
   createdAt: { type: Date, default: Date.now }

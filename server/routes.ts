@@ -2785,6 +2785,77 @@ export async function registerRoutes(
     res.json(docs.map((d: any) => ({ ...d, id: String(d._id) })));
   });
 
+  // ── Organizer balance: what is held, ready, and already paid out ──
+  // Verified organizers with a linked bank are paid by Paystack split, so
+  // their sales show as settled; everything else waits on the platform.
+  app.get("/api/payouts/summary", async (req, res) => {
+    const ctx = await requireStaffAccess(req, res);
+    if (!ctx) return;
+    const { PayoutModel } = await import("./models");
+    const rows = await PayoutModel.aggregate([
+      { $match: { organizerId: String(ctx.organizerId), kind: "organizer_payout" } },
+      { $group: { _id: "$status", total: { $sum: "$amount" }, count: { $sum: 1 } } },
+    ]);
+    const by = (s: string) => rows.find((r: any) => r._id === s)?.total || 0;
+    const organizer = await User.findById(ctx.organizerId).lean();
+    res.json({
+      heldKobo: by("pending_verification"),
+      readyKobo: by("due"),
+      paidKobo: by("settled"),
+      isVerified: Boolean((organizer as any)?.isVerified),
+      hasBank: Boolean((organizer as any)?.bankDetails?.accountNumber),
+      autoSplit: Boolean((organizer as any)?.isVerified && (organizer as any)?.bankDetails?.subaccountCode),
+      lastRequestedAt: (organizer as any)?.payoutRequestedAt || null,
+    });
+  });
+
+  // Ask the platform to send what is ready. Emails the admins; the transfer
+  // itself is done by an admin, who then marks the payouts settled.
+  app.post("/api/payouts/request", async (req, res) => {
+    const ctx = await requireStaffAccess(req, res);
+    if (!ctx) return;
+    if (ctx.user.staffRole && ctx.user.staffRole !== "finance" && ctx.user.staffRole !== "manager") {
+      return res.status(403).json({ message: "Only the account owner or finance staff can request payouts." });
+    }
+    const { PayoutModel } = await import("./models");
+    const organizer: any = await User.findById(ctx.organizerId).lean();
+    if (!organizer?.isVerified) {
+      return res.status(400).json({ message: "Verify your identity in Settings first. Payouts are released to verified organizers only." });
+    }
+    if (!organizer?.bankDetails?.accountNumber) {
+      return res.status(400).json({ message: "Add your settlement bank account above first." });
+    }
+    const due = await PayoutModel.find({ organizerId: String(ctx.organizerId), kind: "organizer_payout", status: "due" }).lean();
+    const totalKobo = due.reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+    if (totalKobo <= 0) return res.status(400).json({ message: "Nothing is ready to pay out yet." });
+    const last = organizer.payoutRequestedAt ? new Date(organizer.payoutRequestedAt).getTime() : 0;
+    if (Date.now() - last < 6 * 60 * 60 * 1000) {
+      return res.status(429).json({ message: "Request received already. The team pays out within one business day." });
+    }
+
+    const admins = await User.find({ role: "admin" }, { email: 1 }).lean();
+    const to = [process.env.PAYOUT_NOTIFY_EMAIL, ...admins.map((a: any) => a.email)].filter(Boolean) as string[];
+    if (to.length === 0) {
+      console.error("[payouts] Payout request has no recipient: set PAYOUT_NOTIFY_EMAIL or create an admin.");
+      return res.status(503).json({ message: "Payout requests are not set up yet. Message the Black Heritage team on WhatsApp." });
+    }
+    try {
+      const { sendPayoutRequestEmail } = await import("./emails");
+      await sendPayoutRequestEmail(Array.from(new Set(to)), {
+        organizerName: organizer.displayName || organizer.username || "Organizer",
+        organizerEmail: organizer.email || "",
+        bank: `${organizer.bankDetails.bankName || "Bank"} · ${organizer.bankDetails.accountNumber} · ${organizer.bankDetails.accountName || ""}`,
+        totalKobo,
+        count: due.length,
+      });
+    } catch (err: any) {
+      console.error("[payouts] request email failed:", err?.message);
+      return res.status(502).json({ message: "Could not send the request. Try again in a minute." });
+    }
+    await User.updateOne({ _id: ctx.organizerId }, { $set: { payoutRequestedAt: new Date() } });
+    res.json({ ok: true, totalKobo });
+  });
+
   app.post("/api/payouts/:payoutId/settle", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
       return res.status(403).json({ message: "Only the platform settles payouts" });

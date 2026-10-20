@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Landmark, CheckCircle2, AlertCircle, Clock, ShieldCheck, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PayoutBalance } from "@/components/PayoutBalance";
 
 export function BankAccountSettings() {
   const { user } = useAuth();
@@ -158,6 +159,8 @@ export function BankAccountSettings() {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {user?.role !== "user" && <PayoutBalance />}
+
         {/* Current Settlement Account Overview */}
         {hasLinkedBank && (
           <div className="rounded-md border border-hairline bg-surface-2 p-4 space-y-3">

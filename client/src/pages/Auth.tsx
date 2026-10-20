@@ -17,7 +17,6 @@ import {
   ArrowUpRight,
   ShieldCheck,
   Gift,
-  Sparkles,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -93,14 +92,6 @@ function safeReturnTo(search: string): string | null {
 
 const BASE_URL = import.meta.env.VITE_API_URL || "";
 
-/** Sparse rising golden embers for the brand panel, evoking a live Lagos concert stage. */
-const PANEL_EMBERS = [
-  { left: "10%", bottom: "16%", size: 4, delay: "0.5s", duration: "10s", drift: "16px" },
-  { left: "28%", bottom: "24%", size: 3, delay: "2.8s", duration: "11s", drift: "-14px" },
-  { left: "52%", bottom: "12%", size: 5, delay: "4.5s", duration: "9s", drift: "20px" },
-  { left: "74%", bottom: "20%", size: 3, delay: "1.5s", duration: "12s", drift: "-18px" },
-  { left: "88%", bottom: "14%", size: 4, delay: "6.2s", duration: "10s", drift: "15px" },
-];
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const rawSearch = useSearch();
@@ -334,46 +325,6 @@ export default function AuthPage() {
     <div className="min-h-screen bg-background flex">
       {/* Left: the brand panel. Sticky: it stays put while the form scrolls. */}
       <aside className="relative hidden lg:flex lg:sticky lg:top-0 lg:h-screen flex-col justify-between w-[44%] max-w-xl border-r border-hairline bg-surface p-12 overflow-hidden">
-        {/* Ambient life: breathing warm glows + floating golden embers */}
-        <div aria-hidden="true" className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div
-            className="absolute -top-32 -left-24 w-[480px] h-[480px] rounded-full animate-hero-glow"
-            style={{
-              background:
-                "radial-gradient(circle, rgba(227,178,60,0.13) 0%, transparent 70%)",
-              animationDuration: "12s",
-            }}
-          />
-          <div
-            className="absolute -bottom-40 -right-28 w-[500px] h-[500px] rounded-full animate-hero-glow"
-            style={{
-              background:
-                "radial-gradient(circle, rgba(227,178,60,0.08) 0%, transparent 70%)",
-              animationDuration: "16s",
-              animationDelay: "-6s",
-            }}
-          />
-          {PANEL_EMBERS.map((e, i) => (
-            <span
-              key={i}
-              className="absolute rounded-full animate-ember"
-              style={
-                {
-                  left: e.left,
-                  bottom: e.bottom,
-                  width: e.size,
-                  height: e.size,
-                  background: "#E3B23C",
-                  boxShadow: "0 0 6px 1px rgba(227,178,60,0.55)",
-                  animationDelay: e.delay,
-                  animationDuration: e.duration,
-                  "--ember-drift": e.drift,
-                } as React.CSSProperties
-              }
-            />
-          ))}
-        </div>
-
         <div className="relative z-10 flex flex-col justify-between h-full">
           <Link href="/">
             <div className="flex items-center gap-3 cursor-pointer group w-fit">
@@ -392,15 +343,6 @@ export default function AuthPage() {
           </Link>
 
           <div className="my-auto py-4">
-            <div className="flex items-center gap-2 mb-2.5">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gold opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-gold" />
-              </span>
-              <p className="eyebrow text-gold font-bold">
-                {isRegister ? "Join Black Heritage" : "Welcome Back"}
-              </p>
-            </div>
             <h2 className="font-display text-3xl xl:text-4xl font-bold text-ink leading-[1.15] tracking-tight">
               Where Nigeria comes out to{" "}
               <span className="italic text-gold">play</span>
@@ -458,10 +400,7 @@ export default function AuthPage() {
                         <div className="w-full h-full flex items-center justify-center">
                           <Ticket className="w-6 h-6 text-gold/60" />
                         </div>
-                      )}
-                      <span className="absolute bottom-0.5 right-0.5 px-1 py-0.2 bg-background/90 rounded text-[8px] font-bold text-gold tracking-wider border border-hairline">
-                        LIVE
-                      </span>
+                      )}
                     </div>
 
                     <div className="min-w-0 flex-1">
@@ -501,64 +440,6 @@ export default function AuthPage() {
               </div>
             )}
 
-            {/* Clean three-point value assurances */}
-            <div className="space-y-2.5 max-w-sm">
-              {[
-                {
-                  title: isRegister ? "Real Shows" : "Guaranteed Entry",
-                  desc: "Direct tickets with instant QR entry on your phone.",
-                },
-                {
-                  title: "Direct Access",
-                  desc: "Connect directly with top DJs, performers, and caterers.",
-                },
-                {
-                  title: "Standing Profiles",
-                  desc: "A portfolio for organizers and creative talent to find real work.",
-                },
-              ].map((item) => (
-                <div key={item.title} className="flex items-start gap-2.5">
-                  <span
-                    className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0"
-                    aria-hidden="true"
-                  />
-                  <div className="text-xs leading-relaxed">
-                    <span className="text-ink font-medium">{item.title}</span>
-                    <span className="text-muted-ink">: {item.desc}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="pt-5 border-t border-hairline">
-            <div className="flex items-center justify-between text-xs text-muted-ink mb-2">
-              <span className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-                </span>
-                <span className="text-ink font-medium">
-                  <span className="font-display font-bold text-gold tabular-nums">
-                    {events?.length ?? 0}
-                  </span>{" "}
-                  shows on sale right now
-                </span>
-              </span>
-              <span className="text-[10px] uppercase tracking-wider text-muted-ink/70">
-                Nigeria
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-muted-ink">
-              <span className="flex items-center gap-1">
-                <Ticket className="w-3.5 h-3.5 text-gold" aria-hidden="true" />
-                Instant e-tickets
-              </span>
-              <span className="flex items-center gap-1">
-                <Store className="w-3.5 h-3.5 text-gold" aria-hidden="true" />
-                Talent directory
-              </span>
-            </div>
           </div>
         </div>
       </aside>
@@ -680,20 +561,9 @@ export default function AuthPage() {
 
               {/* Founder Hundred Perk Badge for Organizers */}
               {audience === "organizer" && (
-                <div className="p-3.5 rounded-xl border border-gold/40 bg-gold/5 flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-gold/15 border border-gold/30 flex items-center justify-center shrink-0 mt-0.5">
-                    <Sparkles className="w-4 h-4 text-gold" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-gold tracking-wide">FOUNDER HUNDRED PERK</span>
-                      <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-gold/20 text-gold">ACTIVE</span>
-                    </div>
-                    <p className="text-xs text-ink/80 mt-1 leading-relaxed">
-                      0% platform fee on your first 100 paid tickets. Code <span className="font-mono text-gold font-bold">FOUNDER100</span> applied automatically.
-                    </p>
-                  </div>
-                </div>
+                <p className="text-xs text-muted-ink leading-relaxed border-l-2 border-gold pl-3">
+                  <span className="text-ink font-medium">Founder perk applied.</span> No platform fee on your first 100 paid tickets.
+                </p>
               )}
             </div>
           )}

@@ -482,6 +482,31 @@ export async function sendEventInvite(
  * Organizer notification: a real money sale on one of their events. One
  * concise email per paid booking, and the dashboard has the full ledger.
  */
+/** Internal: an organizer asked for their ready balance. Goes to the platform team. */
+export async function sendPayoutRequestEmail(
+  to: string[],
+  data: { organizerName: string; organizerEmail: string; bank: string; totalKobo: number; count: number },
+): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const appUrl = process.env.PUBLIC_APP_URL || "http://localhost:5000";
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Payout request: ${data.organizerName} · ${formatNaira(data.totalKobo)}`,
+    html: shell(
+      "Payout requested",
+      `
+      <p style="margin:0 0 12px;font-size:14px;"><strong>${esc(data.organizerName)}</strong> (${esc(data.organizerEmail)}) asked for their ready balance.</p>
+      <div style="background:#faf9f7;border:1px solid #e5e2dc;border-radius:8px;padding:16px;margin-bottom:16px;font-size:14px;">
+        <div>Amount: <strong>${formatNaira(data.totalKobo)}</strong> across ${data.count} sale${data.count === 1 ? "" : "s"}</div>
+        <div style="margin-top:6px;">Bank: ${esc(data.bank)}</div>
+      </div>
+      <p style="margin:0;font-size:13px;color:#444;">Send the transfer, then mark each payout settled in <a href="${appUrl}/admin" style="color:#111;">the admin dashboard</a>.</p>
+      `,
+    ),
+  });
+}
+
 export async function sendOrganizerSaleEmail(
   to: EmailAddress,
   data: {
