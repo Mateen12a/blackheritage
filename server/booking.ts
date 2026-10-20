@@ -109,12 +109,12 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
     }
   }
 
-  // Calculate platform fee with prorated waiver if partially covered
-  let platformFeeKobo = 0;
-  if (!isFounderPerkApplied || waivedForThisBooking < qty) {
-    const chargeableQty = isFounderPerkApplied ? Math.max(0, qty - waivedForThisBooking) : qty;
-    const chargeableRatio = qty > 0 ? chargeableQty / qty : 1;
-    platformFeeKobo = Math.round(((total * chargeableRatio) * feeBps) / 10000);
+  // Calculate platform fee with prorated waiver if partially covered. On a
+  // split booking Paystack already kept the flat charge sent at initiate, so
+  // the ledger records that figure rather than recomputing it.
+  let platformFeeKobo = platformFeeFor(total, qty, waivedForThisBooking, feeBps);
+  if ((booking as any).subaccountSplit && typeof (booking as any).splitChargeKobo === "number") {
+    platformFeeKobo = (booking as any).splitChargeKobo;
   }
 
   const feeNote = isFounderPerkApplied
@@ -281,6 +281,31 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
       seat: t.seat,
     })),
   };
+}
+
+// ── Platform fee ─────────────────────────────────────────────────────────────
+// Founder Hundred waives the fee on an organizer's first 100 paid tickets;
+// a booking that straddles the 100th ticket pays on the remainder only.
+
+export function platformFeeFor(totalKobo: number, qty: number, waivedQty: number, feeBps: number): number {
+  const chargeableQty = Math.max(0, qty - waivedQty);
+  const chargeableRatio = qty > 0 ? chargeableQty / qty : 1;
+  return Math.round((totalKobo * chargeableRatio * feeBps) / 10000);
+}
+
+/** Read-only preview used at checkout to set Paystack's transaction_charge. */
+export async function previewPlatformFee(organizerId: string | null | undefined, qty: number, totalKobo: number): Promise<number> {
+  const settings = await PlatformSettingModel.findOne({ key: "platform" }).lean();
+  const feeBps = settings?.ticketCommissionBps ?? 600;
+  let waivedQty = 0;
+  if (organizerId) {
+    const { User } = await import("./models");
+    const organizer = await User.findById(organizerId).lean();
+    if ((organizer as any)?.founderVoucher === "FOUNDER100") {
+      waivedQty = Math.min(qty, Math.max(0, 100 - Number((organizer as any).waivedTicketCount || 0)));
+    }
+  }
+  return platformFeeFor(totalKobo, qty, waivedQty, feeBps);
 }
 
 // ── Promo validation ─────────────────────────────────────────────────────────

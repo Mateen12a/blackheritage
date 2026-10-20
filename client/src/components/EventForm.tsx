@@ -5,6 +5,7 @@ import { insertEventSchema, insertDraftEventSchema, type InsertEvent } from "@sh
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { FlyerExtractPanel } from "@/components/FlyerExtractPanel";
 import { CopySuggest } from "@/components/CopySuggest";
 import { ShareFlyerModal } from "@/components/ShareFlyerModal";

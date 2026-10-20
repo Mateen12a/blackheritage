@@ -5,7 +5,8 @@ export type FlyerFormat = "story" | "square"; // 9:16 (1080x1920) or 1:1 (1080x1
 export type FlyerTheme = "midnight" | "stage" | "editorial" | "vibrant" | "brand"; // "brand" = derive from the event/organizer palette
 // Preset layouts. "standard" is the original event flyer; the rest serve
 // organizers announcing early, private gatherings, and vendor marketing.
-export type FlyerPresetType = "standard" | "teaser" | "private_pass" | "vendor_card";
+// "original" keeps the organizer's own flyer untouched and adds a scan strip.
+export type FlyerPresetType = "standard" | "teaser" | "private_pass" | "vendor_card" | "original";
 
 export interface FlyerOptions {
   format: FlyerFormat;
@@ -1461,6 +1462,16 @@ export async function renderFlyerToCanvas(
   }
 
   const preset = (options as CreativeStudioOptions).presetType || "standard";
+
+  // The organizer's own flyer sets its own canvas size, so it is handled
+  // before the fixed story/square dimensions. No artwork: fall through to the
+  // designed card rather than render an empty strip.
+  if (preset === "original") {
+    const source = options.customImageDataUrl || options.imageUrl;
+    const art = source ? await loadImage(source) : null;
+    if (art) return renderOriginalFlyer(canvas, art, options);
+  }
+
   const isStory = options.format === "story";
   const width = 1080;
   const height = isStory ? 1920 : 1080;
@@ -1504,6 +1515,76 @@ export async function renderFlyerToCanvas(
       return renderVendorCardFlyer(ctx, width, height, studioOpts, style, accent, frameInset);
     default:
       return renderStandardFlyer(ctx, width, height, options, style, accent, frameInset);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Original: the organizer's flyer, whole and uncropped, with a scan strip
+// below it. The artwork is never covered, scrimmed, or re-lettered; the strip
+// adds only what the flyer cannot carry: a QR and the booking link.
+// ─────────────────────────────────────────────────────────────────────────────
+function renderOriginalFlyer(canvas: HTMLCanvasElement, art: HTMLImageElement, options: FlyerOptions): void {
+  // Keep the source resolution when it is already sharp; small uploads are
+  // brought up to 1080 wide so the strip text stays crisp on phones.
+  const width = Math.min(Math.max(art.naturalWidth || art.width, 1080), 2160);
+  const scale = width / 1080;
+  const artHeight = Math.round(width * ((art.naturalHeight || art.height) / (art.naturalWidth || art.width)));
+  const showQr = Boolean(options.showQr !== false && options.qrUrl);
+  const stripHeight = Math.round((showQr ? 252 : 132) * scale);
+
+  canvas.width = width;
+  canvas.height = artHeight + stripHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(art, 0, 0, width, artHeight);
+
+  const accent = options.accentColor || "#E3B23C";
+  ctx.fillStyle = "#0B0B0F";
+  ctx.fillRect(0, artHeight, width, stripHeight);
+  ctx.fillStyle = accent;
+  ctx.fillRect(0, artHeight, width, Math.max(2, Math.round(3 * scale)));
+
+  const pad = Math.round(44 * scale);
+  const displayUrl = (options.qrUrl || "blackhevents.com").replace(/^https?:\/\//, "").replace(/\/$/, "");
+  ctx.textBaseline = "alphabetic";
+  ctx.textAlign = "left";
+
+  if (showQr) {
+    const qrSize = Math.round(184 * scale);
+    const tile = Math.round(10 * scale);
+    const qrX = pad;
+    const qrY = artHeight + Math.round((stripHeight - qrSize) / 2);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.roundRect(qrX - tile, qrY - tile, qrSize + tile * 2, qrSize + tile * 2, Math.round(14 * scale));
+    ctx.fill();
+    drawQRCode(ctx, options.qrUrl!, qrX, qrY, qrSize, {
+      darkColor: "#0B0B0F",
+      lightColor: "#FFFFFF",
+      margin: 1,
+      rounded: false,
+    });
+
+    const textX = qrX + qrSize + tile + Math.round(36 * scale);
+    const textW = width - textX - pad;
+    const mid = artHeight + stripHeight / 2;
+    ctx.font = `700 ${Math.round(40 * scale)}px 'DM Sans', sans-serif`;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillText(truncateToWidth(ctx, options.isAttendeePass ? "Scan to verify pass" : "Scan to get tickets", textW), textX, mid - Math.round(22 * scale));
+    ctx.font = `600 ${Math.round(29 * scale)}px 'DM Sans', sans-serif`;
+    ctx.fillStyle = accent;
+    ctx.fillText(truncateToWidth(ctx, displayUrl, textW), textX, mid + Math.round(22 * scale));
+    ctx.font = `400 ${Math.round(23 * scale)}px 'DM Sans', sans-serif`;
+    ctx.fillStyle = "#A3A3B2";
+    ctx.fillText(truncateToWidth(ctx, "Instant e-ticket · Secure checkout by Paystack", textW), textX, mid + Math.round(62 * scale));
+  } else {
+    ctx.textAlign = "center";
+    ctx.font = `600 ${Math.round(32 * scale)}px 'DM Sans', sans-serif`;
+    ctx.fillStyle = accent;
+    ctx.fillText(truncateToWidth(ctx, `Tickets: ${displayUrl}`, width - pad * 2), width / 2, artHeight + stripHeight / 2 + Math.round(11 * scale));
   }
 }
 

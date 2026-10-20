@@ -256,6 +256,7 @@ export interface IBooking extends Document {
   gatewayTxnId?: string | null;
   subaccountSplit?: boolean;
   subaccountCode?: string | null;
+  splitChargeKobo?: number | null;
   isVerified: boolean; // Added isVerified
   verifiedAt?: Date; // Added verifiedAt
   remindersDisabled?: boolean; // guest opt-out for event reminder emails
@@ -282,6 +283,9 @@ const BookingSchema: Schema = new Schema({
   paidAt: { type: Date },
   subaccountSplit: { type: Boolean, default: false },
   subaccountCode: { type: String, default: null },
+  // Flat platform charge sent to Paystack as transaction_charge on split
+  // bookings: what the platform actually kept, Founder waiver included.
+  splitChargeKobo: { type: Number, default: null },
   isVerified: { type: Boolean, default: false }, // Added isVerified
   verifiedAt: { type: Date }, // Added verifiedAt
   remindersDisabled: { type: Boolean, default: false }, // guest opt-out for event reminder emails

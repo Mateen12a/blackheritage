@@ -20,7 +20,7 @@ import Stripe from "stripe";
 import bcrypt from "bcryptjs";
 import { User, TicketModel, ScanEventModel, PlatformSettingModel, BookingModel, WaitlistModel, NativeSponsorModel, OrganizerLeadModel } from "./models";
 import mongoose from "mongoose";
-import { fulfillBooking, quoteBooking, validatePromo, getPlatformSettings, createGateSale } from "./booking";
+import { fulfillBooking, quoteBooking, validatePromo, getPlatformSettings, createGateSale, previewPlatformFee } from "./booking";
 import { initializePayment, verifyPayment, refundPayment, activeGateway, isPaystackConfigured, isPaystackSignatureValid } from "./payments";
 import { buildTicketPdf, generateTicketCode } from "./tickets";
 import { seedPlatform } from "./seed";
@@ -1796,9 +1796,18 @@ export async function registerRoutes(
           let init: any;
           let subaccountUsed = false;
 
+          // A flat transaction_charge overrides the subaccount's stored 6%, so
+          // Founder-waived tickets really keep 0% and admin rate changes apply.
+          // Paystack verified: a charge of 0 makes the subaccount bear the
+          // gateway fee and the platform keeps nothing.
+          const splitChargeKobo = subaccountCode
+            ? await previewPlatformFee(event.organizerId, input.quantity, quote.totalKobo)
+            : null;
+
           if (subaccountCode) {
             try {
               init = await initializePayment({
+                transactionChargeKobo: splitChargeKobo ?? undefined,
                 email: input.email,
                 amountKobo: quote.totalKobo,
                 reference,
@@ -1860,7 +1869,13 @@ export async function registerRoutes(
           // Persist whether automated subaccount split was activated for this booking
           await BookingModel.updateOne(
             { _id: booking._id },
-            { $set: { subaccountSplit: subaccountUsed, subaccountCode: subaccountUsed ? subaccountCode : null } }
+            {
+              $set: {
+                subaccountSplit: subaccountUsed,
+                subaccountCode: subaccountUsed ? subaccountCode : null,
+                splitChargeKobo: subaccountUsed ? splitChargeKobo : null,
+              },
+            }
           );
 
           return res.status(201).json({

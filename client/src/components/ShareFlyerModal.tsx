@@ -98,6 +98,11 @@ export function ShareFlyerModal({
 
   // Creative Studio preset state
   const [preset, setPreset] = useState<FlyerPresetType>("standard");
+  // "original" shares the organizer's own flyer with a scan strip added;
+  // "designed" is the generated card. An event with a flyer opens on its own.
+  const hasArtwork = Boolean(customImage || event?.imageUrl);
+  const [layout, setLayout] = useState<"original" | "designed">("original");
+  const useOriginal = layout === "original" && hasArtwork && !isAttendeePass;
   const [teaserLine, setTeaserLine] = useState("");
   const [teaserBadge, setTeaserBadge] = useState("");
   const [accessCodeState, setAccessCodeState] = useState("");
@@ -162,7 +167,7 @@ export function ShareFlyerModal({
         // themes render their canonical look, untouched by brand colors.
         brandTheme: theme === "brand" ? brand : null,
         accentColor: theme === "brand" ? event.branding?.accentHex || undefined : undefined,
-        presetType: enableStudio ? preset : "standard",
+        presetType: useOriginal ? "original" : enableStudio ? preset : "standard",
         teaserLine,
         teaserBadge,
         accessCode: preset === "private_pass" ? accessCodeState.trim() : undefined,
@@ -192,6 +197,7 @@ export function ShareFlyerModal({
     canonicalUrl,
     enableStudio,
     preset,
+    useOriginal,
     teaserLine,
     teaserBadge,
     accessCodeState,
@@ -227,9 +233,10 @@ export function ShareFlyerModal({
     const reader = new FileReader();
     reader.onload = () => {
       setCustomImage(reader.result as string);
+      setLayout("original");
       toast({
         title: "Flyer uploaded",
-        description: "Your custom flyer artwork is now active.",
+        description: "Your flyer now carries the booking QR and link.",
       });
     };
     reader.readAsDataURL(file);
@@ -444,8 +451,10 @@ export function ShareFlyerModal({
     }
   };
 
-  const showPresetTabs = enableStudio && !isAttendeePass && !guestMode;
+  const showPresetTabs = enableStudio && !isAttendeePass && !guestMode && !useOriginal;
   const showDesignTools = !guestMode;
+  // Format and theme only shape the designed card; the original keeps its own.
+  const showCardControls = !useOriginal;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -482,7 +491,7 @@ export function ShareFlyerModal({
                     ref={canvasRef}
                     className={`max-h-[56vh] w-auto h-auto rounded-lg shadow-xl border border-white/10 object-contain transition-opacity duration-300 ${
                       isRendering ? "opacity-40" : "opacity-100"
-                    } ${format === "story" ? "aspect-[9/16]" : "aspect-square"}`}
+                    } ${useOriginal ? "" : format === "story" ? "aspect-[9/16]" : "aspect-square"}`}
                   />
                   {isRendering && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-xs rounded-lg">
@@ -494,7 +503,9 @@ export function ShareFlyerModal({
                 {/* Resolution Badge */}
                 <div className="mt-3 flex items-center justify-between w-full px-2 text-xs text-muted-ink">
                   <span className="font-mono text-[11px] text-gold">
-                    {format === "story" ? "1080 × 1920 (9:16 Story)" : "1080 × 1080 (1:1 Feed)"}
+                    {useOriginal
+                      ? "Your flyer + booking QR"
+                      : format === "story" ? "1080 × 1920 (9:16 Story)" : "1080 × 1080 (1:1 Feed)"}
                   </span>
                   <span className="text-[11px]">PNG export</span>
                 </div>
@@ -603,7 +614,7 @@ export function ShareFlyerModal({
                   )}
                 </Button>
 
-                {onApplyCover && (
+                {onApplyCover && !useOriginal && (
                   <Button
                     onClick={handleApplyCover}
                     disabled={isApplyingCover}
@@ -623,6 +634,35 @@ export function ShareFlyerModal({
 
             {/* Right Column: Customization Controls */}
             <div className="lg:col-span-6 space-y-6">
+              {/* Layout: the organizer's own flyer, or a designed card */}
+              {hasArtwork && !isAttendeePass && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink">
+                    Layout
+                  </Label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {([
+                      { id: "original", name: "Your flyer", desc: "Untouched, QR + link added below" },
+                      { id: "designed", name: "Designed card", desc: "Story or square, built from details" },
+                    ] as const).map((l) => (
+                      <button
+                        key={l.id}
+                        type="button"
+                        onClick={() => setLayout(l.id)}
+                        className={`press p-2.5 rounded-xl border text-left transition-[border-color,background-color] ${
+                          layout === l.id
+                            ? "border-gold bg-gold/10 text-ink"
+                            : "border-hairline bg-surface-2/60 text-muted-ink hover:text-ink hover:border-hairline/80"
+                        }`}
+                      >
+                        <p className="text-xs font-semibold text-ink truncate">{l.name}</p>
+                        <p className="text-[10px] text-muted-ink truncate">{l.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Preset selection (organizer studio only) */}
               {showPresetTabs && (
                 <div className="space-y-2">
@@ -650,6 +690,7 @@ export function ShareFlyerModal({
               )}
 
               {/* Format Selection */}
+              {showCardControls && (
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink">
                   Canvas Format
@@ -688,9 +729,10 @@ export function ShareFlyerModal({
                   </button>
                 </div>
               </div>
+              )}
 
               {/* Theme Presets */}
-              {showDesignTools && (
+              {showDesignTools && showCardControls && (
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink">
                   Theme

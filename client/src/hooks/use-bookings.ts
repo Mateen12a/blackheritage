@@ -97,6 +97,10 @@ export interface BookingInitResult {
   simulated?: boolean;
   /** Which gateway handles this payment: paystack (inline or hosted) or simulated. */
   gateway?: string;
+  /** Free tiers and 100%-off promos are fulfilled at initiate, tickets included. */
+  isFree?: boolean;
+  status?: "paid";
+  tickets?: { code: string; tierName: string; attendeeName: string; seat: number }[];
 }
 
 export function useInitiateBooking() {

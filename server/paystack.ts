@@ -78,6 +78,7 @@ export async function initializeTransaction(params: {
   metadata: Record<string, unknown>;
   subaccount?: string;
   transactionChargeKobo?: number;
+  callbackUrl?: string;
 }): Promise<PaystackInitResult> {
   const payload: Record<string, any> = {
     email: params.email,
@@ -86,6 +87,9 @@ export async function initializeTransaction(params: {
     currency: "NGN",
     metadata: params.metadata,
   };
+  // Redirect checkout (inline.js blocked or failed to load) returns the buyer
+  // here; without it Paystack strands them on its own receipt page.
+  if (params.callbackUrl) payload.callback_url = params.callbackUrl;
 
   // If organizer has a Paystack subaccount configured, direct split to them
   if (params.subaccount) {

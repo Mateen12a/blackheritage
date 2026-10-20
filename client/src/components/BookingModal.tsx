@@ -155,7 +155,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
       // Free tickets (₦0) or dev simulated gateway: confirmed immediately without opening payment gateway
       if (init.isFree || init.status === "paid" || init.simulated || !init.paymentUrl) {
         if (init.tickets && init.tickets.length > 0) {
-          showSuccess(init);
+          showSuccess({ tickets: init.tickets });
           return;
         }
         const result = await finalize(init.reference);
@@ -168,9 +168,12 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
-      const paystackKey = init.publicKey || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+      // The server already initialized this transaction (amount, split,
+      // callback URL), so the popup resumes it by access code rather than
+      // starting a new one. v1 inline.js silently ignored onSuccess, which
+      // left paid buyers on a spinner with no tickets on screen.
       const PaystackPop = window.PaystackPop;
-      if (!paystackKey || !PaystackPop) {
+      if (!init.accessCode || typeof PaystackPop !== "function") {
         if (init.paymentUrl) {
           window.location.href = init.paymentUrl;
           return;
@@ -182,21 +185,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
         });
         return;
       }
-      const handler = PaystackPop.setup({
-        key: paystackKey,
-        email: email.trim(),
-        amount: init.totalKobo,
-        currency: "NGN",
-        reference: init.reference,
-        metadata: {
-          booking_id: init.bookingId,
-          custom_fields: [
-            { display_name: "Ticket Type", variable_name: "ticket_type", value: selectedTier },
-          ],
-        },
-        // Paystack's current inline API uses onSuccess/onCancel. The legacy
-        // callback/onClose names make inline.js throw "Attribute callback
-        // must be a valid function".
+      new PaystackPop().resumeTransaction(init.accessCode, {
         onSuccess: async (response: any) => {
           try {
             const result = await finalize(response.reference || init.reference);
@@ -218,8 +207,12 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
             description: "Your order is held for a few minutes. Resume any time from the event page.",
           });
         },
+        onError: () => {
+          // The popup could not load (network, blocker): the hosted page
+          // carries the same transaction and returns to this event.
+          if (init.paymentUrl) window.location.href = init.paymentUrl;
+        },
       });
-      handler.openIframe();
     } catch (err: any) {
       toast({
         variant: "destructive",

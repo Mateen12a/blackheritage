@@ -39,6 +39,7 @@ export interface InitPaymentInput {
   redirectUrl?: string;
   metadata: Record<string, unknown>;
   subaccountCode?: string;
+  transactionChargeKobo?: number;
   splitCode?: string;
 }
 
@@ -72,6 +73,8 @@ export async function paystackInitialize(params: InitPaymentInput): Promise<Init
     reference: params.reference,
     metadata: params.metadata,
     subaccount: params.subaccountCode,
+    transactionChargeKobo: params.transactionChargeKobo,
+    callbackUrl: params.redirectUrl,
   });
 
   return {
