@@ -2,9 +2,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Event } from "@shared/schema";
-import { useState } from "react";
-import { Loader2, ArrowLeft, CheckCircle2, Building2, Store } from "lucide-react";
+import type { Event, PartnerPackage, PartnerSettings, PartnerType } from "@shared/schema";
+import { useMemo, useState } from "react";
+import { Loader2, ArrowLeft, CheckCircle2, Building2, Store, Mic2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,84 +14,95 @@ interface BusinessModalProps {
   onClose: () => void;
 }
 
-type Step = 1 | 2 | 3 | 4;
+type Step = "type" | "package" | "details" | "done";
+
+export const PARTNER_COPY: Record<PartnerType, { label: string; hint: string; icon: typeof Store; nameLabel: string; namePlaceholder: string; aboutLabel: string }> = {
+  sponsor: { label: "Sponsor", hint: "Put your brand in front of the crowd", icon: Building2, nameLabel: "Brand or business name", namePlaceholder: "e.g. Zenith Bank", aboutLabel: "What would you like to promote?" },
+  vendor: { label: "Vendor", hint: "Sell food, drinks or products at the event", icon: Store, nameLabel: "Business name", namePlaceholder: "e.g. Kola's Kitchen", aboutLabel: "What do you sell?" },
+  talent: { label: "Talent", hint: "DJ, MC, host, performer or crew", icon: Mic2, nameLabel: "Stage or business name", namePlaceholder: "e.g. DJ Zoro", aboutLabel: "What do you do? Add a link to your work" },
+};
+
+export function partnerSettingsOf(event: Event): PartnerSettings {
+  const raw: any = (event as any).partnerSettings || {};
+  return {
+    types: Array.isArray(raw.types) ? raw.types : [],
+    headline: raw.headline || "",
+    blurb: raw.blurb || "",
+    packages: Array.isArray(raw.packages) ? raw.packages : [],
+    whatsapp: raw.whatsapp || "",
+    closesAt: raw.closesAt || null,
+  };
+}
+
+const priceLabel = (pk: PartnerPackage) =>
+  typeof pk.priceKobo === "number" && pk.priceKobo > 0 ? `₦${(pk.priceKobo / 100).toLocaleString("en-NG")}` : "Price on request";
 
 export function BusinessModal({ event, isOpen, onClose }: BusinessModalProps) {
   const { toast } = useToast();
-  const [step, setStep] = useState<Step>(1);
-  const [type, setType] = useState<"sponsor" | "vendor" | null>(null);
-  const [selectedPackage, setSelectedPackage] = useState<any>(null);
+  const settings = useMemo(() => partnerSettingsOf(event), [event]);
+  const onlyType = settings.types.length === 1 ? settings.types[0] : null;
+  const firstStep = (t: PartnerType | null): Step =>
+    !t ? "type" : settings.packages.some((p) => p.type === t) ? "package" : "details";
+
+  const [type, setType] = useState<PartnerType | null>(onlyType);
+  const [step, setStep] = useState<Step>(firstStep(onlyType));
+  const [selectedPackage, setSelectedPackage] = useState<PartnerPackage | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    businessName: "",
-    contactPerson: "",
-    phoneNumber: "",
-    email: "",
-    description: "",
-  });
+  const [formData, setFormData] = useState({ businessName: "", contactPerson: "", phoneNumber: "", email: "", description: "" });
 
-  const sponsorPackages = [
-    { name: "Gold Sponsor", price: 250000, benefits: ["Logo on main stage", "4 VIP tickets", "Social media mention"] },
-    { name: "Silver Sponsor", price: 100000, benefits: ["Logo on flyers", "2 VIP tickets", "Event shoutout"] },
-  ];
+  const packages = settings.packages.filter((p) => p.type === type);
+  const copy = type ? PARTNER_COPY[type] : null;
 
-  const vendorPackages = [
-    { name: "Food Vendor", price: 50000, benefits: ["3x3m space", "Power supply", "2 vendor passes"] },
-    { name: "Drinks/Snacks", price: 30000, benefits: ["2x2m space", "1 vendor pass", "Cooling space"] },
-  ];
-
-  const handleNext = () => {
-    if (step < 4) setStep((s) => (s + 1) as Step);
+  const chooseType = (t: PartnerType) => {
+    setType(t);
+    setSelectedPackage(null);
+    setStep(firstStep(t));
   };
 
+  const back = () => {
+    if (step === "details" && packages.length > 0) setStep("package");
+    else if (!onlyType) setStep("type");
+  };
+  const canGoBack = (step === "package" && !onlyType) || (step === "details" && (packages.length > 0 || !onlyType));
+
   // Applications go to the organizer, not to a generic inbox: the row is
-  // stored against their event and they get an email with the details.
+  // stored against their event and they get an email with the details. The
+  // server prices it from the organizer's own package list.
   const submitApplication = async () => {
     setSubmitting(true);
     try {
       const res = await fetch(`/api/events/${event.id}/business-applications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type,
-          packageName: selectedPackage?.name || "",
-          price: selectedPackage?.price || 0,
-          ...formData,
-        }),
+        body: JSON.stringify({ type, packageName: selectedPackage?.name || "", ...formData }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message || "Could not send the application. Try again.");
       }
-      setStep(4);
+      setStep("done");
     } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Application not sent",
-        description: err?.message || "Check your connection and try again.",
-      });
+      toast({ variant: "destructive", title: "Application not sent", description: err?.message || "Check your connection and try again." });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleBack = () => {
-    if (step > 1) setStep((s) => (s - 1) as Step);
-  };
-
   const reset = () => {
-    setStep(1);
-    setType(null);
+    setType(onlyType);
+    setStep(firstStep(onlyType));
     setSelectedPackage(null);
-    setFormData({
-      businessName: "",
-      contactPerson: "",
-      phoneNumber: "",
-      email: "",
-      description: "",
-    });
+    setFormData({ businessName: "", contactPerson: "", phoneNumber: "", email: "", description: "" });
     onClose();
   };
+
+  const title =
+    step === "type" ? "Work with this event"
+      : step === "package" ? `Choose a ${copy?.label.toLowerCase()} option`
+        : step === "details" ? "Your details"
+          : "Application sent";
+
+  const inputCls = "h-12 bg-surface-2 border-hairline text-ink focus-visible:border-gold focus-visible:ring-0 rounded-md";
 
   return (
     <Dialog open={isOpen} onOpenChange={reset}>
@@ -99,156 +110,113 @@ export function BusinessModal({ event, isOpen, onClose }: BusinessModalProps) {
         <ScrollArea className="max-h-[90vh]">
           <div className="p-6">
             <DialogHeader className="mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                {step > 1 && step < 4 && (
-                  <button onClick={handleBack} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+              <div className="flex items-center gap-2">
+                {canGoBack && (
+                  <button onClick={back} aria-label="Back" className="p-1 hover:bg-white/10 rounded-full transition-colors">
                     <ArrowLeft className="w-5 h-5" />
                   </button>
                 )}
-                <DialogTitle className="text-xl sm:text-2xl font-display font-bold text-ink">
-                  {step === 1 ? "Partner With Us" : step === 2 ? `Choose ${type === 'sponsor' ? 'Sponsorship' : 'Spot'}` : step === 3 ? "Your Details" : "Success!"}
-                </DialogTitle>
+                <DialogTitle className="text-xl sm:text-2xl font-display font-bold text-ink">{title}</DialogTitle>
               </div>
-              {step < 4 && (
-                <DialogDescription className="eyebrow mt-1.5">
-                  Step {step} of 3
+              {step !== "done" && (
+                <DialogDescription className="text-xs text-muted-ink mt-1">
+                  {event.title}. The organizer reviews every application and replies directly.
                 </DialogDescription>
               )}
             </DialogHeader>
 
-            <div className="py-2">
-              {step === 1 && (
-                <div className="grid grid-cols-1 gap-4">
-                  <button 
-                    onClick={() => { setType("sponsor"); handleNext(); }}
-                    className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 p-4 sm:p-6 bg-surface-2/50 border border-hairline rounded-md hover:border-white/30 hover:bg-surface-2 transition-colors text-center sm:text-left group press"
-                  >
-                    <div className="w-12 h-12 shrink-0 rounded-md bg-surface-2 border border-hairline flex items-center justify-center text-gold">
-                      <Building2 className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-display font-bold text-ink mb-1">Sponsor</h4>
-                      <p className="text-xs sm:text-sm text-muted-ink">Promote your brand to our audience</p>
-                    </div>
-                  </button>
-
-                  <button 
-                    onClick={() => { setType("vendor"); handleNext(); }}
-                    className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 p-4 sm:p-6 bg-surface-2/50 border border-hairline rounded-md hover:border-white/30 hover:bg-surface-2 transition-colors text-center sm:text-left group press"
-                  >
-                    <div className="w-12 h-12 shrink-0 rounded-md bg-surface-2 border border-hairline flex items-center justify-center text-gold">
-                      <Store className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-display font-bold text-ink mb-1">Vendor</h4>
-                      <p className="text-xs sm:text-sm text-muted-ink">Sell your products or food at the event</p>
-                    </div>
-                  </button>
-                </div>
-              )}
-
-              {step === 2 && (
-                <div className="space-y-4 pr-2 custom-scrollbar">
-                  {(type === "sponsor" ? sponsorPackages : vendorPackages).map((pkg) => (
+            {step === "type" && (
+              <div className="grid grid-cols-1 gap-3">
+                {settings.types.map((t) => {
+                  const c = PARTNER_COPY[t];
+                  const Icon = c.icon;
+                  return (
                     <button
-                      key={pkg.name}
-                      onClick={() => { setSelectedPackage(pkg); handleNext(); }}
-                      className="w-full p-4 sm:p-6 bg-surface-2/50 border border-hairline rounded-md hover:border-white/30 hover:bg-surface-2 transition-colors text-left group press"
+                      key={t}
+                      onClick={() => chooseType(t)}
+                      className="press flex items-center gap-4 p-4 bg-surface-2/50 border border-hairline rounded-md hover:border-gold/50 hover:bg-surface-2 transition-colors text-left"
                     >
-                      <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-4">
-                        <h4 className="text-lg font-display font-bold text-ink">{pkg.name}</h4>
-                        <span className="font-display text-gold font-bold text-lg">₦{pkg.price.toLocaleString()}</span>
-                      </div>
-                      <ul className="space-y-2">
-                        {pkg.benefits.map((benefit: string) => (
-                          <li key={benefit} className="flex items-center gap-2 text-xs sm:text-sm text-muted-ink">
-                            <CheckCircle2 className="w-4 h-4 text-gold shrink-0" />
-                            {benefit}
-                          </li>
-                        ))}
-                      </ul>
+                      <span className="w-11 h-11 shrink-0 rounded-md bg-surface-2 border border-hairline flex items-center justify-center text-gold">
+                        <Icon className="w-5 h-5" />
+                      </span>
+                      <span>
+                        <span className="block text-base font-display font-bold text-ink">{c.label}</span>
+                        <span className="block text-xs text-muted-ink">{c.hint}</span>
+                      </span>
                     </button>
-                  ))}
-                </div>
-              )}
+                  );
+                })}
+              </div>
+            )}
 
-              {step === 3 && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="eyebrow">Business Name</label>
-                    <Input 
-                      placeholder="e.g. Kola's Kitchen" 
-                      value={formData.businessName}
-                      onChange={e => setFormData({...formData, businessName: e.target.value})}
-                      className="h-12 bg-surface-2 border-hairline text-ink focus-visible:border-gold focus-visible:ring-0 rounded-md"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="eyebrow">Contact Person</label>
-                      <Input 
-                        placeholder="Full Name" 
-                        value={formData.contactPerson}
-                        onChange={e => setFormData({...formData, contactPerson: e.target.value})}
-                        className="h-12 bg-surface-2 border-hairline text-ink focus-visible:border-gold focus-visible:ring-0 rounded-md"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="eyebrow">Phone Number</label>
-                      <Input 
-                        placeholder="080..." 
-                        value={formData.phoneNumber}
-                        onChange={e => setFormData({...formData, phoneNumber: e.target.value})}
-                        className="h-12 bg-surface-2 border-hairline text-ink focus-visible:border-gold focus-visible:ring-0 rounded-md"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="eyebrow">Email (Optional)</label>
-                    <Input 
-                      type="email"
-                      placeholder="email@example.com" 
-                      value={formData.email}
-                      onChange={e => setFormData({...formData, email: e.target.value})}
-                      className="h-12 bg-surface-2 border-hairline text-ink focus-visible:border-gold focus-visible:ring-0 rounded-md"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="eyebrow">What do you sell or promote?</label>
-                    <Textarea 
-                      placeholder="Short description..." 
-                      value={formData.description}
-                      onChange={e => setFormData({...formData, description: e.target.value})}
-                      className="bg-surface-2 border-hairline text-ink focus-visible:border-gold focus-visible:ring-0 resize-none h-24 rounded-md"
-                    />
-                  </div>
-                  <Button 
-                    onClick={submitApplication}
-                    disabled={submitting || !formData.businessName || !formData.contactPerson || !formData.phoneNumber || !formData.description}
-                    className="press w-full h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md mt-4"
+            {step === "package" && (
+              <div className="space-y-3">
+                {packages.map((pk) => (
+                  <button
+                    key={pk.name}
+                    onClick={() => { setSelectedPackage(pk); setStep("details"); }}
+                    className="press w-full p-4 bg-surface-2/50 border border-hairline rounded-md hover:border-gold/50 hover:bg-surface-2 transition-colors text-left"
                   >
-                    {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending…</> : "Submit Application"}
-                  </Button>
-                </div>
-              )}
+                    <span className="flex items-start justify-between gap-3">
+                      <span className="text-base font-display font-bold text-ink">{pk.name}</span>
+                      <span className="font-display text-gold font-bold shrink-0">{priceLabel(pk)}</span>
+                    </span>
+                    {pk.details && <span className="mt-1.5 block text-xs text-muted-ink leading-relaxed">{pk.details}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
 
-              {step === 4 && (
-                <div className="py-6 sm:py-10 text-center space-y-6">
-                  <div className="w-16 h-16 rounded-md bg-surface-2 border border-hairline flex items-center justify-center text-gold mx-auto">
-                    <CheckCircle2 className="w-8 h-8" />
+            {step === "details" && copy && (
+              <div className="space-y-4">
+                {selectedPackage && (
+                  <p className="text-xs text-muted-ink rounded-md border border-hairline bg-surface-2/60 px-3 py-2">
+                    <span className="text-ink font-medium">{selectedPackage.name}</span> · {priceLabel(selectedPackage)}
+                  </p>
+                )}
+                <div className="space-y-2">
+                  <label className="eyebrow">{copy.nameLabel}</label>
+                  <Input placeholder={copy.namePlaceholder} value={formData.businessName} onChange={(e) => setFormData({ ...formData, businessName: e.target.value })} className={inputCls} />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="eyebrow">Contact person</label>
+                    <Input placeholder="Full name" value={formData.contactPerson} onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })} className={inputCls} />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-2xl sm:text-3xl font-display font-bold text-ink">Application Sent!</h3>
-                    <p className="text-muted-ink text-base px-2 sm:px-6">
-                      Your application for <strong className="text-ink">{formData.businessName}</strong> is with the organizer of {event.title}. They will reach you on {formData.phoneNumber} to confirm the spot.
-                    </p>
+                    <label className="eyebrow">Phone / WhatsApp</label>
+                    <Input inputMode="tel" placeholder="080..." value={formData.phoneNumber} onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })} className={inputCls} />
                   </div>
-                  <Button onClick={reset} className="press w-full h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md">
-                    Close
-                  </Button>
                 </div>
-              )}
-            </div>
+                <div className="space-y-2">
+                  <label className="eyebrow">Email (optional)</label>
+                  <Input type="email" placeholder="email@example.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className={inputCls} />
+                </div>
+                <div className="space-y-2">
+                  <label className="eyebrow">{copy.aboutLabel}</label>
+                  <Textarea placeholder="A few lines is enough" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="bg-surface-2 border-hairline text-ink focus-visible:border-gold focus-visible:ring-0 resize-none h-24 rounded-md" />
+                </div>
+                <Button
+                  onClick={submitApplication}
+                  disabled={submitting || !formData.businessName || !formData.contactPerson || !formData.phoneNumber || !formData.description}
+                  className="press w-full h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md"
+                >
+                  {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending…</> : "Send application"}
+                </Button>
+              </div>
+            )}
+
+            {step === "done" && (
+              <div className="py-6 text-center space-y-5">
+                <div className="w-14 h-14 rounded-md bg-surface-2 border border-hairline flex items-center justify-center text-gold mx-auto">
+                  <CheckCircle2 className="w-7 h-7" />
+                </div>
+                <p className="text-muted-ink text-sm px-2">
+                  <strong className="text-ink">{formData.businessName}</strong> is with the organizer of {event.title}. They will reach you on {formData.phoneNumber}.
+                </p>
+                <Button onClick={reset} className="press w-full h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md">Close</Button>
+              </div>
+            )}
           </div>
         </ScrollArea>
       </DialogContent>

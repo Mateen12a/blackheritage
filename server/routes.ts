@@ -550,21 +550,38 @@ export async function registerRoutes(
       if (!event) return res.status(404).json({ message: "That event no longer exists." });
 
       const body = req.body || {};
-      const type = body.type === "sponsor" ? "sponsor" : body.type === "vendor" ? "vendor" : null;
+      // The organizer decides who can apply and on what terms. The card only
+      // exists when they switched it on, for the types they chose, until
+      // their closing date; package and price come from their list, never
+      // from the request body.
+      const partner: any = (event as any).partnerSettings || {};
+      const allowed: string[] = Array.isArray(partner.types) ? partner.types : [];
+      if ((event as any).businessApplicationsEnabled !== true || allowed.length === 0) {
+        return res.status(400).json({ message: "This event is not taking partner applications." });
+      }
+      if (partner.closesAt && new Date(partner.closesAt).getTime() < Date.now()) {
+        return res.status(400).json({ message: "Applications for this event have closed." });
+      }
+      const type = ["sponsor", "vendor", "talent"].includes(body.type) && allowed.includes(body.type) ? body.type : null;
       const businessName = String(body.businessName || "").trim();
       const contactPerson = String(body.contactPerson || "").trim();
       const phoneNumber = String(body.phoneNumber || "").trim();
       const email = String(body.email || "").trim();
       const description = String(body.description || "").trim();
-      const packageName = String(body.packageName || "").trim();
+      const offered: any[] = (Array.isArray(partner.packages) ? partner.packages : []).filter((pk: any) => pk.type === type);
+      const chosen = offered.find((pk: any) => pk.name === String(body.packageName || "").trim());
+      // No packages for this type means an open enquiry: they describe what
+      // they offer and the organizer quotes.
+      const packageName = offered.length === 0 ? "Open enquiry" : chosen ? String(chosen.name) : "";
+      const priceKobo = chosen && typeof chosen.priceKobo === "number" ? chosen.priceKobo : 0;
 
       const problems: string[] = [];
-      if (!type) problems.push("Choose sponsor or vendor");
+      if (!type) problems.push("Choose how you want to work with this event");
       if (businessName.length < 2) problems.push("Add your business name");
       if (contactPerson.length < 2) problems.push("Add a contact person");
       if (phoneNumber.replace(/\D/g, "").length < 7) problems.push("Add a valid phone number");
       if (description.length < 3) problems.push("Tell the organizer what you sell or promote");
-      if (!packageName) problems.push("Pick a package");
+      if (!packageName) problems.push("Pick one of the organizer's options");
       if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) problems.push("That email address looks wrong");
       if (problems.length) return res.status(400).json({ message: problems[0] });
 
@@ -572,7 +589,7 @@ export async function registerRoutes(
         eventId: new mongoose.Types.ObjectId(String(event._id)),
         type,
         packageName,
-        price: Math.max(0, Math.round(Number(body.price) || 0)),
+        price: priceKobo,
         businessName,
         contactPerson,
         phoneNumber,
@@ -591,9 +608,9 @@ export async function registerRoutes(
             { name: (organizer as any).name || (organizer as any).username || "Organizer", email: organizer.email },
             {
               eventTitle: (event as any).title,
-              businessType: type as "sponsor" | "vendor",
+              businessType: type as "sponsor" | "vendor" | "talent",
               packageName,
-              packagePriceKobo: Math.max(0, Math.round(Number(body.price) || 0)),
+              packagePriceKobo: priceKobo,
               businessName,
               contactPerson,
               phoneNumber,

@@ -591,7 +591,7 @@ export async function sendBusinessApplicationEmail(
   to: EmailAddress,
   data: {
     eventTitle: string;
-    businessType: "sponsor" | "vendor";
+    businessType: "sponsor" | "vendor" | "talent";
     packageName: string;
     packagePriceKobo: number;
     businessName: string;
@@ -604,7 +604,7 @@ export async function sendBusinessApplicationEmail(
 ): Promise<void> {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to.email)) return;
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const label = data.businessType === "sponsor" ? "Sponsorship" : "Vendor spot";
+  const label = data.businessType === "sponsor" ? "Sponsorship" : data.businessType === "talent" ? "Talent booking" : "Vendor spot";
   await resend.emails.send({
     from: FROM,
     to: [to.email],
@@ -619,7 +619,7 @@ export async function sendBusinessApplicationEmail(
           <tr><td style="padding:4px 0;color:#666;">Contact</td><td style="text-align:right;font-weight:bold;">${esc(data.contactPerson)}</td></tr>
           <tr><td style="padding:4px 0;color:#666;">Phone</td><td style="text-align:right;">${esc(data.phoneNumber)}</td></tr>
           ${data.email ? `<tr><td style="padding:4px 0;color:#666;">Email</td><td style="text-align:right;">${esc(data.email)}</td></tr>` : ""}
-          <tr><td style="padding:4px 0;color:#666;">Package</td><td style="text-align:right;">${esc(data.packageName)} · ${formatNaira(data.packagePriceKobo)}</td></tr>
+          <tr><td style="padding:4px 0;color:#666;">Package</td><td style="text-align:right;">${esc(data.packageName)} · ${data.packagePriceKobo > 0 ? formatNaira(data.packagePriceKobo) : "Price on request"}</td></tr>
         </table>
         <p style="margin:12px 0 0;color:#444;">${esc(data.description)}</p>
       </div>

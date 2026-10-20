@@ -37,6 +37,8 @@ export const events = pgTable("events", {
   buyerPaysFee: boolean("buyer_pays_fee").default(false), // add the platform fee to the buyer's total instead of the organizer's share
   promoCodesPublic: boolean("promo_codes_public").default(false), // list public codes on the event page
   checkoutFields: jsonb("checkout_fields"), // which extra fields checkout collects: phone, tableNote, dietaryNote
+  businessApplicationsEnabled: boolean("business_applications_enabled").default(false), // show the partner card
+  partnerSettings: jsonb("partner_settings"), // PartnerSettings: types, packages, contact
 
   // ── Organizer branding lite: their identity on their event surfaces ──
   branding: jsonb("branding"), // { logoUrl, accentHex, displayName }
@@ -401,6 +403,32 @@ export type StaffRole = typeof staffRoles[number];
 export const checkoutFieldKeys = ["phone", "tableNote", "dietaryNote"] as const;
 export type CheckoutFieldKey = typeof checkoutFieldKeys[number];
 
+// ── Partner applications: sponsors, vendors and talent ──
+// Everything the public "work with this event" card shows comes from here,
+// set by the organizer. No platform-invented packages or prices.
+export const partnerTypes = ["sponsor", "vendor", "talent"] as const;
+export type PartnerType = typeof partnerTypes[number];
+
+export const partnerPackageSchema = z.object({
+  type: z.enum(partnerTypes),
+  name: z.string().trim().min(1, "Name the package").max(60),
+  // Kobo. null means "price on request": the organizer quotes after talking.
+  priceKobo: z.number().int().min(0).nullable(),
+  details: z.string().trim().max(160).optional().default(""),
+});
+export type PartnerPackage = z.infer<typeof partnerPackageSchema>;
+
+export const partnerSettingsSchema = z.object({
+  types: z.array(z.enum(partnerTypes)).max(3).default([]),
+  headline: z.string().trim().max(80).optional().default(""),
+  blurb: z.string().trim().max(220).optional().default(""),
+  packages: z.array(partnerPackageSchema).max(8).default([]),
+  // Optional direct line: digits only, shown as a WhatsApp button.
+  whatsapp: z.string().trim().max(20).optional().default(""),
+  closesAt: z.string().optional().nullable(),
+});
+export type PartnerSettings = z.infer<typeof partnerSettingsSchema>;
+
 export const eventSettingsSchema = z.object({
   showRemainingCounts: z.boolean().default(true),
   showAttendeeCount: z.boolean().default(false),
@@ -409,7 +437,8 @@ export const eventSettingsSchema = z.object({
   buyerPaysFee: z.boolean().default(false),
   promoCodesPublic: z.boolean().default(false),
   // Sponsor/vendor applications through the public "Partner With Us" modal.
-  businessApplicationsEnabled: z.boolean().default(true),
+  businessApplicationsEnabled: z.boolean().default(false),
+  partnerSettings: partnerSettingsSchema.optional(),
   checkoutFields: z.object({
     phone: z.boolean().default(false),
     tableNote: z.boolean().default(true), // table bookings always had this; toggle can widen it

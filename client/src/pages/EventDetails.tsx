@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
-import { BusinessModal } from "@/components/BusinessModal";
+import { BusinessModal, PARTNER_COPY, partnerSettingsOf } from "@/components/BusinessModal";
 import { Reveal, FadeImg } from "@/components/motion";
 import { PastEventProof } from "@/components/PastEventProof";
 import { useToast } from "@/hooks/use-toast";
@@ -108,6 +108,14 @@ export default function EventDetails() {
     if (!slug || !params?.id) return;
     window.history.replaceState(window.history.state, "", `/e/${slug}${window.location.search}${window.location.hash}`);
   }, [(event as any)?.slug, params?.id]);
+
+  // Partner card: only when the organizer switched it on, chose who they want,
+  // and the closing date (if any) has not passed.
+  const partner = event ? partnerSettingsOf(event as any) : null;
+  const partnerOpen = Boolean(
+    event && (event as any).businessApplicationsEnabled === true && partner && partner.types.length > 0 &&
+    (!partner.closesAt || new Date(partner.closesAt).getTime() > Date.now()),
+  );
 
   const handleShare = () => {
     if (!event) return;
@@ -567,22 +575,38 @@ export default function EventDetails() {
                 </p>
               </div>
 
-              {(event as any).businessApplicationsEnabled !== false && (
-              <div className="rounded-xl border border-gold/25 bg-gradient-to-b from-gold/[0.08] to-transparent p-5 sm:p-6 shadow-[0_0_40px_-16px_rgba(227,178,60,0.35)]">
-                <p className="eyebrow">Sponsors &amp; talent</p>
+              {partnerOpen && partner && (
+              <div className="rounded-md border border-hairline bg-surface p-5 sm:p-6">
+                <p className="eyebrow">
+                  {partner.types.map((t) => PARTNER_COPY[t].label + (t === "talent" ? "" : "s")).join(" · ")} wanted
+                </p>
                 <h2 className="mt-1 sm:mt-2 font-display text-base sm:text-lg font-bold text-ink leading-snug">
-                  Be in front of everyone at this event
+                  {partner.headline || "Work with this event"}
                 </h2>
                 <p className="mt-2 text-xs text-muted-ink leading-relaxed">
-                  A sponsor or creative talent spot puts your brand next to the whole
-                  crowd. The organizer reviews every application.
+                  {partner.blurb || "Tell the organizer what you offer. They review every application and reply directly."}
                 </p>
+                {partner.closesAt && (
+                  <p className="mt-2 text-[11px] text-muted-ink">
+                    Applications close {format(new Date(partner.closesAt), "EEE d MMM")}
+                  </p>
+                )}
                 <Button
                   className="press mt-4 w-full h-10 sm:h-11 bg-gold text-[#1a1408] hover:bg-gold-soft font-semibold rounded-md text-xs sm:text-sm"
                   onClick={() => setIsBusinessModalOpen(true)}
                 >
-                  Apply as Sponsor or Talent
+                  {partner.types.length === 1 ? `Apply as ${partner.types[0] === "talent" ? "talent" : "a " + partner.types[0]}` : "Apply to work with us"}
                 </Button>
+                {partner.whatsapp && (
+                  <a
+                    href={`https://wa.me/${partner.whatsapp.replace(/\D/g, "").replace(/^0/, "234")}?text=${encodeURIComponent(`Hi, I'd like to work with you on ${event.title}.`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="press mt-2 w-full h-10 inline-flex items-center justify-center gap-2 rounded-md border border-hairline text-xs sm:text-sm text-ink hover:border-gold/50"
+                  >
+                    <MessageCircle className="w-4 h-4 text-[#25D366]" /> Message the organizer
+                  </a>
+                )}
               </div>
               )}
             </div>

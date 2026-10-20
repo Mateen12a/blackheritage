@@ -13,6 +13,7 @@ import { RowListSkeleton } from "@/components/AsyncStates";
 import { InviteGuestsPanel } from "@/components/InviteGuestsPanel";
 import { BookingLinkPanel } from "@/components/BookingLinkPanel";
 import { ShareFlyerModal } from "@/components/ShareFlyerModal";
+import { PartnerSettingsEditor } from "@/components/PartnerSettingsEditor";
 import { EventMediaPanel } from "@/components/EventMediaPanel";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -750,20 +751,11 @@ export default function ManageEvent() {
                 onSave={(whatsappGroupUrl) => saveSettings.mutate({ whatsappGroupUrl })}
               />
 
-              <div className="flex items-center justify-between p-4 bg-surface-2 rounded-md border border-hairline">
-                <div className="min-w-0 pr-3">
-                  <div className="font-medium text-ink">Sponsor &amp; vendor applications</div>
-                  <div className="text-sm text-muted-ink">Show the "Partner With Us" box on your public event page. Applications arrive here with an email to you.</div>
-                </div>
-                <Button
-                  variant="outline"
-                  disabled={settingsSaving}
-                  onClick={() => saveSettings.mutate({ businessApplicationsEnabled: !event.businessApplicationsEnabled })}
-                  className={cn("shrink-0 border-gold/40", event.businessApplicationsEnabled !== false ? "text-gold" : "text-muted-ink")}
-                >
-                  {event.businessApplicationsEnabled !== false ? "Enabled" : "Off"}
-                </Button>
-              </div>
+              <PartnerSettingsEditor
+                event={event}
+                saving={settingsSaving}
+                onSave={(patch) => saveSettings.mutate(patch as any)}
+              />
               <p className="text-xs text-muted-foreground">
                 Selling preferences, templates, and branding live in the Organizer Tools and Booking Link tabs.
               </p>

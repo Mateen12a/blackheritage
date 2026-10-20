@@ -173,6 +173,8 @@ export interface IEvent extends Document {
   waitlistEnabled?: boolean;
   guestCheckout?: boolean;
   buyerPaysFee?: boolean;
+  businessApplicationsEnabled?: boolean;
+  partnerSettings?: any;
   promoCodesPublic?: boolean;
   checkoutFields?: { phone: boolean; tableNote: boolean; dietaryNote: boolean } | null;
   branding?: { displayName?: string; logoUrl?: string; accentHex?: string } | null;
@@ -216,6 +218,9 @@ const EventSchema: Schema = new Schema({
   waitlistEnabled: { type: Boolean, default: false },
   guestCheckout: { type: Boolean, default: true },
   buyerPaysFee: { type: Boolean, default: false },
+  // Partner card (sponsors, vendors, talent). Off unless the organizer turns it on.
+  businessApplicationsEnabled: { type: Boolean, default: false },
+  partnerSettings: { type: Schema.Types.Mixed, default: null },
   promoCodesPublic: { type: Boolean, default: false },
   checkoutFields: { type: { phone: Boolean, tableNote: Boolean, dietaryNote: Boolean }, default: null },
   branding: { type: { displayName: String, logoUrl: String, accentHex: String }, default: null },
@@ -386,7 +391,7 @@ export interface IBusinessBooking extends Document {
 
 const BusinessBookingSchema: Schema = new Schema({
   eventId: { type: Schema.Types.ObjectId, ref: 'Event', required: true },
-  type: { type: String, enum: ['sponsor', 'vendor'], required: true },
+  type: { type: String, enum: ['sponsor', 'vendor', 'talent'], required: true },
   packageName: { type: String, required: true },
   price: { type: Number, required: true },
   businessName: { type: String, required: true },
