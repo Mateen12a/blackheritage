@@ -238,26 +238,35 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
                 <span className="text-xs text-muted-ink">Flyer coming soon</span>
               </div>
             ) : (
-              <img
-                src={current.imageUrl}
-                alt={current.title}
-                onError={() => setFailed(true)}
-                className="w-full h-full object-cover animate-slow-zoom"
-              />
+              <>
+                {/* The flyer carries its own lettering, so it is shown whole:
+                    a blurred copy fills the frame, the poster sits on top
+                    uncropped, and our caption lives below it, not on it. */}
+                <img src={current.imageUrl} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-50" />
+                <img
+                  src={current.imageUrl}
+                  alt={current.title}
+                  onError={() => setFailed(true)}
+                  // Portrait flyers are shown whole; a landscape photo would sit
+                  // as a thin strip, so it fills the frame instead.
+                  onLoad={(e) => {
+                    const img = e.currentTarget;
+                    img.style.objectFit = img.naturalWidth > img.naturalHeight * 1.05 ? "cover" : "contain";
+                  }}
+                  className="relative w-full h-full object-contain animate-slow-zoom"
+                />
+              </>
             )}
           </motion.div>
         </AnimatePresence>
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/10 to-transparent pointer-events-none"
-        />
         {/* Real ticket scarcity, keyed to this poster. Every poster used to
             wear the same "Selling Fast · 89% Booked" sticker, invented from
             the event id. The fill rate now comes from the tiers the organizer
             actually set, and the tag moves with it: On Sale, Filling Up,
             Selling Fast, Last Few Spots. */}
         <ScarcityBadge event={current} slideKey={current.id} />
-        <div className="absolute inset-x-3 sm:inset-x-4 bottom-3 sm:bottom-4 flex items-center justify-between gap-2 sm:gap-3 pointer-events-none">
+      </div>
+        <div className="mt-3 flex items-center justify-between gap-2 sm:gap-3">
           <div className="min-w-0 pr-1">
             <p className="eyebrow text-[10px] sm:text-[11px] truncate">{format(new Date(current.date), "EEE d MMM · ha")}</p>
             <p className="mt-0.5 sm:mt-1 font-display text-base sm:text-lg font-bold text-ink truncate">
@@ -265,14 +274,13 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
             </p>
             <p className="mt-0.5 text-xs sm:text-[13px] font-medium text-gold/90">{priceLabelFor(current)}</p>
           </div>
-          <Link href={eventPath(current as any)} className="pointer-events-auto shrink-0">
+          <Link href={eventPath(current as any)} className="shrink-0">
             <span className="press inline-flex items-center gap-1 h-8 sm:h-9 px-3 sm:px-4 rounded-full bg-primary text-primary-foreground text-xs sm:text-[13px] font-medium hover:bg-gold-soft transition-colors cursor-pointer whitespace-nowrap">
               Get tickets
               <ArrowUpRight className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
             </span>
           </Link>
         </div>
-      </div>
       {/* Poster thumbs: pick what's on the marquee.
           Each control is a 24×24 hit area with the visible 2px bar centred
           inside it. The old version made the bar itself the button (8×8),

@@ -117,6 +117,10 @@ export default function EventDetails() {
     (!partner.closesAt || new Date(partner.closesAt).getTime() > Date.now()),
   );
 
+  const heroAccent = /^#[0-9a-fA-F]{6}$/.test((event as any)?.branding?.accentHex || "")
+    ? (event as any).branding.accentHex
+    : "#E3B23C";
+
   const handleShare = () => {
     if (!event) return;
     setIsFlyerModalOpen(true);
@@ -277,14 +281,23 @@ export default function EventDetails() {
           src={event.imageUrl}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60"
+          className="absolute inset-0 w-full h-full object-cover scale-125 blur-3xl opacity-30"
         />
-        <div aria-hidden="true" className="absolute inset-0 bg-background/35" />
+        {/* A dark stage lit in the event's own colour: the accent comes from
+            the flyer (or the organizer), so every event page feels like its
+            own night instead of one template with a different picture. */}
+        <div aria-hidden="true" className="absolute inset-0 bg-background/70" />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0"
+          style={{ background: `radial-gradient(45% 60% at 50% 45%, ${heroAccent}38 0%, transparent 70%)` }}
+        />
         <div className="absolute inset-x-0 top-16 md:top-24 bottom-14 sm:bottom-20 md:bottom-28 flex items-center justify-center px-4">
           <FadeImg
             src={event.imageUrl}
             alt={event.title}
-            className="max-h-full max-w-full w-auto h-full object-contain rounded-md"
+            className="max-h-full max-w-full w-auto h-full object-contain rounded-md ring-1 ring-white/10"
+            style={{ boxShadow: `0 30px 90px -20px ${heroAccent}66, 0 20px 60px rgba(0,0,0,0.6)` }}
           />
         </div>
         <div

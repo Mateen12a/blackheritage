@@ -110,9 +110,16 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
         ) : (
           <span
             aria-hidden="true"
-            className="flex h-7 w-7 min-[380px]:h-8 min-[380px]:w-8 items-center justify-center rounded-lg bg-primary font-display text-xs sm:text-sm font-bold text-primary-foreground"
+            className="flex h-7 w-7 min-[380px]:h-8 min-[380px]:w-8 items-center justify-center rounded-lg border border-gold/60 bg-background font-display italic text-[11px] sm:text-xs font-bold text-gold tracking-tight"
           >
-            {(eventBrand?.displayName || "E").slice(0, 1).toUpperCase()}
+            {/* A monogram until the organizer uploads a logo: first letters of
+                the name's main words, so it reads as a mark, not a fallback. */}
+            {(eventBrand?.displayName || "Event")
+              .split(/\s+/)
+              .filter((w) => w && !/^(and|by|the|of|x|&|×)$/i.test(w))
+              .slice(0, 2)
+              .map((w) => w[0]!.toUpperCase())
+              .join("")}
           </span>
         )
       }
