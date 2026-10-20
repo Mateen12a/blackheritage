@@ -5,7 +5,7 @@ import { FadeImg } from "@/components/motion";
 import { format } from "date-fns";
 import { useState } from "react";
 import { CalendarDays } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, eventPath } from "@/lib/utils";
 import {
   priceLabelFor,
   scarcityFor,
@@ -66,7 +66,7 @@ export function EventCard({ event }: EventCardProps) {
   const soldOut = priceLabel === "Sold out";
 
   return (
-    <Link href={"/events/" + event.id}>
+    <Link href={eventPath(event as any)}>
       <article className="group relative overflow-hidden rounded-md bg-surface border border-hairline hover:border-white/20 transition-colors duration-200 h-full flex flex-col cursor-pointer">
         {/* The flyer is the hero */}
         <div className="relative aspect-[3/4] overflow-hidden bg-surface-2">

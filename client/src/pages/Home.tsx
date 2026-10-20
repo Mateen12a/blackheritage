@@ -10,7 +10,7 @@ import { Flame, ArrowUpRight, MapPin } from "lucide-react";
 import { priceLabelFor } from "@/lib/event-price";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
-import { cn } from "@/lib/utils";
+import { cn, eventPath } from "@/lib/utils";
 import type { Event } from "@shared/schema";
 import { NativeSponsorSpotlight } from "@/components/NativeSponsorSpotlight";
 import { MostBooked } from "@/components/MostBooked";
@@ -265,7 +265,7 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
             </p>
             <p className="mt-0.5 text-xs sm:text-[13px] font-medium text-gold/90">{priceLabelFor(current)}</p>
           </div>
-          <Link href={"/events/" + current.id} className="pointer-events-auto shrink-0">
+          <Link href={eventPath(current as any)} className="pointer-events-auto shrink-0">
             <span className="press inline-flex items-center gap-1 h-8 sm:h-9 px-3 sm:px-4 rounded-full bg-primary text-primary-foreground text-xs sm:text-[13px] font-medium hover:bg-gold-soft transition-colors cursor-pointer whitespace-nowrap">
               Get tickets
               <ArrowUpRight className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />

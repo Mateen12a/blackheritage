@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { eventPath } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -137,7 +138,7 @@ export function AdminEventsCatalog() {
                   return (
                     <tr key={e.id} className="hover:bg-surface-2/40 transition-colors">
                       <td className="py-3 px-6">
-                        <Link href={`/events/${e.slug || e.id}`}>
+                        <Link href={eventPath(e)}>
                           <span className="font-semibold text-ink hover:text-gold transition-colors block cursor-pointer">
                             {e.title}
                           </span>

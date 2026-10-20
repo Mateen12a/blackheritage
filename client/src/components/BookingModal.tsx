@@ -185,6 +185,10 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
         });
         return;
       }
+      // Close our dialog first: its overlay and focus trap otherwise sit in
+      // the same layer as Paystack's checkout and dim it. The ticket reveal
+      // renders outside the dialog, so success still lands on this page.
+      onClose();
       new PaystackPop().resumeTransaction(init.accessCode, {
         onSuccess: async (response: any) => {
           try {

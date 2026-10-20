@@ -1,4 +1,5 @@
 import { useEvents } from "@/hooks/use-events";
+import { eventPath } from "@/lib/utils";
 import { Reveal } from "@/components/motion";
 import { format, getDay, parse, startOfWeek } from "date-fns";
 import { Calendar as BigCalendar, dateFnsLocalizer } from "react-big-calendar";
@@ -102,7 +103,7 @@ export default function CalendarPage() {
                 events={calendarEvents}
                 startAccessor="start"
                 endAccessor="end"
-                onSelectEvent={(event) => setLocation(`/events/${event.id}`)}
+                onSelectEvent={(event) => setLocation(eventPath(event as any))}
                 style={{ height: "clamp(400px, 70vh, 640px)" }}
               />
             </>

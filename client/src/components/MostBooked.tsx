@@ -1,4 +1,5 @@
 import { Event } from "@shared/schema";
+import { eventPath } from "@/lib/utils";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { Reveal } from "@/components/motion";
@@ -70,7 +71,7 @@ export function MostBooked({ events, limit = 5 }: { events: Event[]; limit?: num
             const price = priceLabelFor(event);
             return (
               <li key={event.id} className="border-b border-hairline">
-                <Link href={"/events/" + event.id}>
+                <Link href={eventPath(event as any)}>
                   <article className="group py-3.5 md:py-4 cursor-pointer">
                     <div className="flex items-center gap-2.5 sm:gap-3 md:gap-5">
                       {/* The rank is a real order, so it is a real numeral:

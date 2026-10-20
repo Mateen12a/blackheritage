@@ -13,7 +13,7 @@ import { format } from "date-fns";
 import { useMemo, useState } from "react";
 import { NativeSponsorSpotlight } from "@/components/NativeSponsorSpotlight";
 import { stateForLocation, stateOptionsForEvents } from "@/lib/nigeria";
-import { cn } from "@/lib/utils";
+import { cn, eventPath } from "@/lib/utils";
 
 /**
  * App-style Explore: large title, always-present search, one merged filter
@@ -255,7 +255,7 @@ export default function Explore() {
           {/* Featured spotlight: photo-led card, leads the feed */}
           {spotlight && (
             <Link
-              href={"/events/" + spotlight.id}
+              href={eventPath(spotlight as any)}
               className="block mt-6 group"
               aria-label={"Featured: " + spotlight.title}
             >

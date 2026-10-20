@@ -71,22 +71,6 @@
     <meta property="og:site_name" content="Black Heritage Entertainment & Events" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <style>
-      /* Force Paystack iframe to be visible and interactive over Radix UI Dialog */
-      iframe[src*="paystack"], .paystack-modal, #paystack-iframe, .paystack-iframe {
-        z-index: 99999999 !important;
-        position: fixed !important;
-        pointer-events: auto !important;
-      }
-      /* Ensure nothing else is blocking interactions when Paystack is open */
-      body.paystack-open {
-        overflow: hidden !important;
-      }
-      /* Prevent Radix Dialog's pointer-events: none from affecting Paystack */
-      [data-radix-focus-guard], [data-radix-popper-content-wrapper] {
-        z-index: 10 !important;
-      }
-    </style>
   </head>
   <body>
     <div id="root"></div>

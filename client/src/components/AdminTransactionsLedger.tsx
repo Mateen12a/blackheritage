@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { eventPath } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -155,7 +156,7 @@ export function AdminTransactionsLedger() {
                       </td>
                       <td className="py-3 px-4">
                         {b.event ? (
-                          <Link href={`/events/${b.event.slug || b.event.id}`}>
+                          <Link href={eventPath(b.event)}>
                             <span className="text-ink hover:text-gold transition-colors font-medium truncate max-w-[160px] block cursor-pointer">
                               {b.event.title}
                             </span>

@@ -125,7 +125,7 @@ export function TicketReveal({
     <>
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
         <DialogContent
-          className="bg-surface border-hairline text-ink w-[95vw] sm:max-w-md p-0 overflow-hidden z-[60]"
+          className="bg-surface border-hairline text-ink w-[95vw] sm:max-w-md p-0 max-h-[90dvh] overflow-y-auto overscroll-contain z-[60]"
           onInteractOutside={(e) => e.preventDefault()}
         >
           <div className="p-7 space-y-6">

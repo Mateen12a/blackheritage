@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { MapPin } from "lucide-react";
 import { FadeImg } from "@/components/motion";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, eventPath } from "@/lib/utils";
 import { priceLabelFor, scarcityFor, hostNameFor } from "@/lib/event-price";
 
 interface EventCardCompactProps {
@@ -28,7 +28,7 @@ export function EventCardCompact({ event }: EventCardCompactProps) {
 
   return (
     <Link
-      href={"/events/" + event.id}
+      href={eventPath(event as any)}
       aria-label={`${event.title}, ${format(d, "EEE d MMM")}, ${event.location}, ${priceLabel}`}
     >
       <article className="flex gap-3 sm:gap-4 p-2.5 sm:p-3 -mx-2.5 sm:-mx-3 rounded-md active:bg-surface-2 transition-colors cursor-pointer">

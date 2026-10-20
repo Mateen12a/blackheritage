@@ -423,7 +423,7 @@ export default function ManageEvent() {
             className="flex-1 md:flex-none border-hairline text-ink hover:text-gold hover:border-gold/40 h-10 px-4"
             onClick={() => setIsFlyerModalOpen(true)}
           >
-            <ImageIcon className="w-4 h-4 mr-2 text-gold" /> Flyers &amp; Stories
+            <ImageIcon className="w-4 h-4 mr-2 text-gold" /> Flyer with QR
           </Button>
           <Button 
             variant={event.status === 'published' ? 'outline' : 'default'}

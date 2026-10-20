@@ -100,6 +100,15 @@ export default function EventDetails() {
     return () => { alive = false; };
   }, [(event as any)?.id]);
 
+  // Old /events/<id> links keep working, but the address bar settles on the
+  // pretty /e/<slug> link: Copy link, WhatsApp and Share all read the URL, so
+  // whatever a guest shares from here is the clean one.
+  useEffect(() => {
+    const slug = (event as any)?.slug;
+    if (!slug || !params?.id) return;
+    window.history.replaceState(window.history.state, "", `/e/${slug}${window.location.search}${window.location.hash}`);
+  }, [(event as any)?.slug, params?.id]);
+
   const handleShare = () => {
     if (!event) return;
     setIsFlyerModalOpen(true);
@@ -249,17 +258,30 @@ export default function EventDetails() {
       <div
         className={cn(
           "relative w-full overflow-hidden",
-          isBillboard ? "h-[75vh] md:h-[86vh]" : isEditorial ? "h-[32vh] md:h-[36vh]" : "h-[42vh] sm:h-[48vh] md:h-[52vh]",
+          isBillboard ? "h-[78vh] md:h-[88vh]" : isEditorial ? "h-[46vh] md:h-[56vh]" : "h-[58vh] sm:h-[64vh] md:h-[74vh]",
         )}
       >
-        <FadeImg
+        {/* The flyer is the hero object, shown whole: a portrait poster in a
+            wide band used to be cropped to its middle and dimmed under a
+            70% scrim. A blurred copy fills the band; the real one sits on
+            top, uncropped, clear of the navbar and the title block. */}
+        <img
           src={event.imageUrl}
-          alt={event.title}
-          className="w-full h-full object-cover"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60"
         />
+        <div aria-hidden="true" className="absolute inset-0 bg-background/35" />
+        <div className="absolute inset-x-0 top-16 md:top-24 bottom-14 sm:bottom-20 md:bottom-28 flex items-center justify-center px-4">
+          <FadeImg
+            src={event.imageUrl}
+            alt={event.title}
+            className="max-h-full max-w-full w-auto h-full object-contain rounded-md"
+          />
+        </div>
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-transparent"
+          className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-background to-transparent"
         />
         <div className="absolute top-[4.75rem] md:top-28 left-3 sm:left-4 right-3 sm:right-4 z-20 flex items-center justify-between pointer-events-none">
           {cameFromApp ? (
