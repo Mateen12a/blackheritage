@@ -220,6 +220,7 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
           eventDate: new Date((event as any).date),
           eventLocation: (event as any)?.location || "To be announced",
           branding: (event as any)?.branding || null,
+          imageUrl: (event as any)?.imageUrl || null,
           tickets: tickets.map((t: any) => ({
             code: t.code,
             tierName: t.tierName,

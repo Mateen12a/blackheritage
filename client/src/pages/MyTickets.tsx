@@ -1,3 +1,4 @@
+import { TicketQR } from "@/components/TicketQR";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -365,9 +366,10 @@ function TicketCodes({ bookingId }: { bookingId: string }) {
       {tickets.map((t) => (
         <div
           key={t.id}
-          className="bg-surface-2 border border-hairline rounded-md p-4 flex items-center justify-between"
+          className="bg-surface-2 border border-hairline rounded-md p-4 flex items-center justify-between gap-4"
         >
-          <div>
+          {t.status !== "void" && <TicketQR code={t.code} size={96} />}
+          <div className="flex-1 min-w-0">
             <p className="font-mono text-lg font-bold text-ink tracking-wider">
               {t.code}
             </p>

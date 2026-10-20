@@ -172,6 +172,20 @@ const portfolioUpload = multer({
   },
 });
 
+
+// An event with tiers has no independent price or capacity: the page header,
+// share cards and OG tags read event.price, so it is derived here from the
+// cheapest paid tier (0 only when every tier is free), and capacity is the
+// seats still open across tiers. Without this, a ₦6,000 event read "Free".
+function priceAndCapacityFromTiers(ticketTypes: unknown): { price: number; capacity: number } | null {
+  let tiers: any[] = [];
+  try { tiers = JSON.parse(String(ticketTypes || "[]")); } catch { return null; }
+  if (!Array.isArray(tiers) || tiers.length === 0) return null;
+  const paid = tiers.map((t) => Number(t.price || 0)).filter((n) => n > 0);
+  const capacity = tiers.reduce((sum, t) => sum + Math.max(0, Number(t.capacity || 0) - Number(t.sold || 0)), 0);
+  return { price: paid.length ? Math.min(...paid) : 0, capacity };
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -894,6 +908,7 @@ export async function registerRoutes(
       }
       const event = await storage.createEvent({
         ...input,
+        ...(priceAndCapacityFromTiers(input.ticketTypes) || {}),
         slug,
         organizerId: (req.user as any)._id.toString(),
         // Drafts legitimately omit date; the publish gate owns completeness.
@@ -987,7 +1002,8 @@ export async function registerRoutes(
           }
         }
       }
-      const updated = await storage.updateEvent(event.id, input);
+      const derived = input.ticketTypes !== undefined ? priceAndCapacityFromTiers(input.ticketTypes) : null;
+      const updated = await storage.updateEvent(event.id, derived ? { ...input, ...derived } : input);
       // Ticket-drop blast: the first transition into published emails every
       // follower. Fire-and-forget so a Resend hiccup never blocks the save;
       // per-event dedupe keeps a retry from double-sending.
@@ -3432,31 +3448,57 @@ export async function registerRoutes(
     res.json(safeUserShape(updated));
   });
 
-  // ── Curated Nigerian banks list for settlement selection ──
+  // ── Nigerian banks for settlement selection ──
+  // Paystack's own list is the source of truth: a bank code it does not know
+  // cannot be resolved or paid (a hand-kept list had Moniepoint as 100004, a
+  // NIBSS code Paystack rejects). Popular banks lead; cached for 12 hours.
+  const POPULAR_BANKS = ["058", "044", "057", "011", "033", "999992", "50515", "999991", "50211", "070", "214", "035", "232", "221"];
+  const FALLBACK_BANKS = [
+    { code: "058", name: "Guaranty Trust Bank (GTBank)" },
+    { code: "044", name: "Access Bank" },
+    { code: "057", name: "Zenith Bank" },
+    { code: "011", name: "First Bank of Nigeria" },
+    { code: "033", name: "United Bank for Africa (UBA)" },
+    { code: "999992", name: "OPay" },
+    { code: "50515", name: "Moniepoint MFB" },
+    { code: "999991", name: "PalmPay" },
+    { code: "50211", name: "Kuda Bank" },
+    { code: "070", name: "Fidelity Bank" },
+    { code: "214", name: "First City Monument Bank (FCMB)" },
+    { code: "035", name: "Wema Bank" },
+    { code: "232", name: "Sterling Bank" },
+    { code: "221", name: "Stanbic IBTC Bank" },
+    { code: "032", name: "Union Bank of Nigeria" },
+    { code: "101", name: "Providus Bank" },
+    { code: "082", name: "Keystone Bank" },
+    { code: "076", name: "Polaris Bank" },
+  ];
+  let bankCache: { at: number; banks: { code: string; name: string }[] } | null = null;
   app.get("/api/banks", async (_req, res) => {
-    const banks = [
-      { code: "058", name: "Guaranty Trust Bank (GTBank)" },
-      { code: "057", name: "Zenith Bank" },
-      { code: "044", name: "Access Bank" },
-      { code: "011", name: "First Bank of Nigeria" },
-      { code: "033", name: "United Bank for Africa (UBA)" },
-      { code: "035", name: "Wema Bank" },
-      { code: "070", name: "Fidelity Bank" },
-      { code: "232", name: "Sterling Bank" },
-      { code: "032", name: "Union Bank of Nigeria" },
-      { code: "214", name: "First City Monument Bank (FCMB)" },
-      { code: "221", name: "Stanbic IBTC Bank" },
-      { code: "101", name: "Providus Bank" },
-      { code: "082", name: "Keystone Bank" },
-      { code: "076", name: "Polaris Bank" },
-      { code: "50211", name: "Kuda Microfinance Bank" },
-      { code: "999992", name: "OPay Digital Services" },
-      { code: "999991", name: "PalmPay" },
-      { code: "090110", name: "VFD Microfinance Bank" },
-      { code: "100004", name: "Moniepoint Microfinance Bank" },
-      { code: "000014", name: "Mainstreet Bank" },
-    ];
-    res.json(banks);
+    if (bankCache && Date.now() - bankCache.at < 12 * 60 * 60 * 1000) return res.json(bankCache.banks);
+    try {
+      if (!isPaystackConfigured()) throw new Error("no gateway");
+      const { secretKey } = await import("./paystack");
+      const r = await fetch("https://api.paystack.co/bank?country=nigeria&perPage=200&use_cursor=false", {
+        headers: { Authorization: `Bearer ${secretKey()}` },
+      });
+      const body: any = await r.json();
+      if (!r.ok || !Array.isArray(body?.data)) throw new Error(body?.message || "bank list failed");
+      const seen = new Set<string>();
+      const all: { code: string; name: string }[] = [];
+      for (const b of body.data) {
+        const code = String(b.code || "");
+        if (!code || b.active === false || b.currency !== "NGN" || seen.has(code)) continue;
+        seen.add(code);
+        all.push({ code, name: String(b.name) });
+      }
+      const rank = (c: string) => { const i = POPULAR_BANKS.indexOf(c); return i < 0 ? 999 : i; };
+      all.sort((x, y) => rank(x.code) - rank(y.code) || x.name.localeCompare(y.name));
+      bankCache = { at: Date.now(), banks: all };
+      res.json(all);
+    } catch {
+      res.json(FALLBACK_BANKS);
+    }
   });
 
   // ── Account name resolution: verify account number with bank via Paystack ──
@@ -3648,6 +3690,23 @@ export async function registerRoutes(
 
     const updated = await User.findByIdAndUpdate(user._id, { $set: update }, { new: true }).lean();
     if (!updated) return res.status(404).json({ message: "Account not found." });
+
+    // Tell the team a review is waiting: a pending submission nobody sees is
+    // an organizer who never gets paid. Fire and forget.
+    if (!isAutoVerified) {
+      (async () => {
+        const admins = await User.find({ role: "admin" }, { email: 1 }).lean();
+        const to = Array.from(new Set([process.env.PAYOUT_NOTIFY_EMAIL, ...admins.map((a: any) => a.email)].filter(Boolean))) as string[];
+        if (to.length === 0) return console.warn("[verification] No PAYOUT_NOTIFY_EMAIL or admin to notify.");
+        const { sendTeamNoticeEmail } = await import("./emails");
+        await sendTeamNoticeEmail(to, `Verify organizer: ${verificationDetails.businessName}`, [
+          `${user.displayName || user.username} (${user.email || "no email"}) submitted verification.`,
+          `Business: ${verificationDetails.businessName} · Phone: ${verificationDetails.phone}`,
+          `CAC: ${verificationDetails.cacNumber || "-"} · ${verificationDetails.idType}: ${verificationDetails.idNumber || "-"} · BVN last 4: ${verificationDetails.bvnLast4 || "-"}`,
+          "Approve or reject it under Verifications.",
+        ]);
+      })().catch((err) => console.error("[verification] notify failed:", err?.message));
+    }
 
     // If auto-verified, unlock any pending organizer payouts that were held for verification
     if (isAutoVerified) {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TicketQR } from "@/components/TicketQR";
 import { motion } from "framer-motion";
 import { CalendarPlus, Check, Copy, MessageCircle, PartyPopper, Image as ImageIcon } from "lucide-react";
 import { buildOutlookCalendarUrl } from "@/lib/calendar-links";
@@ -179,6 +180,7 @@ export function TicketReveal({
                   transition={{ duration: 0.45, delay: 0.3 + i * 0.08, ease: EASE_OUT }}
                   className="flex items-center gap-3 rounded-md border border-hairline bg-surface-2/60 px-4 py-3"
                 >
+                  <TicketQR code={t.code} size={88} />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-ink truncate">{t.attendeeName}</p>
                     <p className="text-xs text-muted-ink">{t.tierName}</p>

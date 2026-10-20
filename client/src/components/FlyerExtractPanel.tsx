@@ -28,6 +28,62 @@ interface ExtractResponse {
 
 const nairaToKobo = (n: number) => Math.round(n * 100);
 
+/**
+ * The flyer's signature colour: the most common vivid hue, ignoring near-black,
+ * near-white and greys so the dark background of a party flyer does not win.
+ * Returns #RRGGBB or null when nothing vivid enough exists.
+ */
+async function flyerAccent(file: File): Promise<string | null> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const size = 64;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(bitmap, 0, 0, size, size);
+    const { data } = ctx.getImageData(0, 0, size, size);
+    const buckets = new Map<number, { w: number; r: number; g: number; b: number }>();
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const sat = max === 0 ? 0 : (max - min) / max;
+      const val = max / 255;
+      if (sat < 0.5 || val < 0.6) continue;
+      let h = 0;
+      if (max === r) h = ((g - b) / (max - min)) % 6;
+      else if (max === g) h = (b - r) / (max - min) + 2;
+      else h = (r - g) / (max - min) + 4;
+      const key = Math.floor((((h * 60) + 360) % 360) / 20);
+      const w = sat * val * val * val; // bright, saturated hues win over a dark wash
+      const cur = buckets.get(key) || { w: 0, r: 0, g: 0, b: 0 };
+      buckets.set(key, { w: cur.w + w, r: cur.r + r * w, g: cur.g + g * w, b: cur.b + b * w });
+    }
+    let best: { w: number; r: number; g: number; b: number } | null = null;
+    buckets.forEach((v) => { if (!best || v.w > best.w) best = v; });
+    if (!best || (best as any).w < 20) return null;
+    const pick = best as { w: number; r: number; g: number; b: number };
+    const hex = (n: number) => Math.round(n / pick.w).toString(16).padStart(2, "0");
+    return ("#" + hex(pick.r) + hex(pick.g) + hex(pick.b)).toUpperCase();
+  } catch {
+    return null;
+  }
+}
+
+async function uploadCover(file: File): Promise<string | null> {
+  try {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/uploads/portfolio", { method: "POST", body: fd, credentials: "include" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.url === "string" ? data.url : null;
+  } catch {
+    return null;
+  }
+}
+
 export function FlyerExtractPanel() {
   const form = useFormContext<InsertEvent>();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -43,16 +99,35 @@ export function FlyerExtractPanel() {
     try {
       const fd = new FormData();
       fd.append("file", file);
+      // An image flyer is also the event cover: upload it alongside the read
+      // so the organizer does not have to pick the same file twice.
+      const coverUpload = file.type.startsWith("image/") ? uploadCover(file) : Promise.resolve(null);
       const res = await fetch("/api/ai/extract-event", {
         method: "POST",
         body: fd,
         credentials: "include",
       });
+      const coverUrl = await coverUpload;
+      if (coverUrl && !form.getValues("imageUrl")) {
+        form.setValue("imageUrl", coverUrl, { shouldDirty: true, shouldValidate: true });
+      }
       const json: ExtractResponse = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.message || "Could not read that file");
 
       const d = json.details || {};
       let count = 0;
+
+      // Branding from the flyer: who presents it and its signature colour.
+      // Only fills what the organizer has not already set.
+      const branding = ((form.getValues() as any).branding || {}) as Record<string, any>;
+      const accent = file.type.startsWith("image/") && !branding.accentHex ? await flyerAccent(file) : null;
+      const brandPatch: Record<string, any> = {};
+      if (d.organizerName && !branding.displayName) brandPatch.displayName = d.organizerName;
+      if (accent) brandPatch.accentHex = accent;
+      if (Object.keys(brandPatch).length > 0) {
+        form.setValue("branding" as any, { ...branding, ...brandPatch } as any, { shouldDirty: true });
+        count++;
+      }
 
       if (d.title) { form.setValue("title", d.title, { shouldValidate: true }); count++; }
       if (d.description) { form.setValue("description", d.description, { shouldValidate: true }); count++; }
@@ -70,15 +145,13 @@ export function FlyerExtractPanel() {
           setTypes(d.tiers.map((t) => ({
             name: t.name || "General Admission",
             price: nairaToKobo(Number(t.price) || 0),
-            capacity: 0,
+            capacity: 100, // a sellable starting point; the organizer adjusts it
+
             sold: 0,
           })));
           count++;
         }
       }
-      // The flyer itself becomes the cover image candidate is NOT automatic:
-      // the model read the flyer, the organizer can still upload or paste the
-      // image in the Event Image field below.
 
       setFilledCount(count);
       setState("done");

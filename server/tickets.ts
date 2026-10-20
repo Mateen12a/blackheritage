@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import qrcode from "qrcode-generator";
 
 // Gate codes use an unambiguous alphabet: no 0/O/1/I, so staff can read them
 // off a phone screen or a printout without mistaking characters.
@@ -89,15 +90,16 @@ export async function buildTicketPdf(
 
     // Header band
     page.drawRectangle({ x: 0, y: 742, width, height: 100, color: INK });
-    page.drawText(spaced(brandName), {
-      x: 48, y: 790, size: 20, font: helvBold, color: PAPER,
+    // The organizer name owns the header; long names shrink to fit. The code
+    // lives in the QR block below, so the header never has to share a line.
+    const headerText = spaced(brandName);
+    let headerSize = 20;
+    while (headerSize > 11 && helvBold.widthOfTextAtSize(headerText, headerSize) > width - 96) headerSize -= 1;
+    page.drawText(headerText, {
+      x: 48, y: 790, size: headerSize, font: helvBold, color: PAPER, maxWidth: width - 96,
     });
     page.drawText(spaced("EVENT TICKET"), {
       x: 48, y: 768, size: 9, font: helv, color: GOLD,
-    });
-    page.drawText(ticket.code, {
-      x: width - 48 - mono.widthOfTextAtSize(ticket.code, 12),
-      y: 788, size: 12, font: mono, color: GOLD,
     });
 
     // Event block
@@ -127,33 +129,43 @@ export async function buildTicketPdf(
       y -= 42;
     }
 
-    // Code block: the thing the gate verifies
+    // Code block: the thing the gate verifies. The QR carries the same code
+    // the gate camera reads; the printed code is the fallback for typing.
     page.drawRectangle({
       x: 48, y: 250, width: width - 96, height: 170,
       color: rgb(0.97, 0.965, 0.955),
       borderColor: rgb(0.9, 0.9, 0.9), borderWidth: 1,
     });
-    page.drawText(spaced("TICKET CODE"), {
-      x: width / 2 - mono.widthOfTextAtSize("TICKET CODE", 9) / 2,
-      y: 388, size: 9, font: helvBold, color: MUTED,
-    });
-    page.drawText(ticket.code, {
-      x: width / 2 - mono.widthOfTextAtSize(ticket.code, 30) / 2,
-      y: 340, size: 30, font: mono, color: INK,
-    });
-    page.drawText("Present this code at the gate. One scan per ticket.", {
-      x: width / 2 - helv.widthOfTextAtSize("Present this code at the gate. One scan per ticket.", 10) / 2,
-      y: 305, size: 10, font: helv, color: MUTED,
-    });
-    page.drawText("Each code is single-use and tied to this ticket only.", {
-      x: width / 2 - helv.widthOfTextAtSize("Each code is single-use and tied to this ticket only.", 10) / 2,
-      y: 285, size: 10, font: helv, color: MUTED,
-    });
+    const qrSize = 140;
+    const qrX = 64;
+    const qrY = 265;
+    page.drawRectangle({ x: qrX, y: qrY, width: qrSize, height: qrSize, color: PAPER });
+    const qr = qrcode(0, "M");
+    qr.addData(ticket.code, "Byte");
+    qr.make();
+    const n = qr.getModuleCount();
+    const quiet = 2;
+    const cell = qrSize / (n + quiet * 2);
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        if (!qr.isDark(r, c)) continue;
+        page.drawRectangle({
+          x: qrX + (c + quiet) * cell,
+          y: qrY + qrSize - (r + quiet + 1) * cell,
+          width: cell + 0.2, height: cell + 0.2, color: INK,
+        });
+      }
+    }
+    const textX = qrX + qrSize + 28;
+    page.drawText(spaced("TICKET CODE"), { x: textX, y: 380, size: 9, font: helvBold, color: MUTED });
+    page.drawText(ticket.code, { x: textX, y: 345, size: 26, font: mono, color: INK });
+    page.drawText("Show this QR at the gate. One scan per ticket.", { x: textX, y: 312, size: 10, font: helv, color: MUTED });
+    page.drawText("No camera? Staff can type the code.", { x: textX, y: 294, size: 10, font: helv, color: MUTED });
 
     // Footer: platform credit survives any organizer branding
     const footerText = event.branding?.displayName
-      ? `This ticket was issued via BlackHeritage for ${safeText(event.branding.displayName)}. Keep it until the event ends.`
-      : "This ticket was issued by BlackHeritage. Keep it until the event ends.";
+      ? `Tickets for ${safeText(event.branding.displayName)} by Black Heritage - blackhevents.com. Keep this until the event ends.`
+      : "Issued by Black Heritage - blackhevents.com. Keep this until the event ends.";
     page.drawText(footerText, { x: 48, y: 60, size: 9, font: helv, color: MUTED });
 
     if (event.branding?.slug) {

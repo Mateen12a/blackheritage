@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScanLine, CheckCircle2, XCircle, AlertTriangle, WifiOff, CloudUpload, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
+import { QrScanner } from "@/components/QrScanner";
 
 type ScanResult = "ok" | "duplicate" | "invalid" | "void" | "override";
 
@@ -43,6 +44,7 @@ export default function Verify() {
   const [queue, setQueue] = useState<QueuedScan[]>([]);
   const [eventId, setEventId] = useState<string | null>(null);
   const [overrideCode, setOverrideCode] = useState<string | null>(null);
+  const [mode, setMode] = useState<"camera" | "type">("camera");
 
   useEffect(() => {
     const goOnline = () => {
@@ -130,7 +132,12 @@ export default function Verify() {
 
   const verify = async (e: React.FormEvent) => {
     e.preventDefault();
-    const normalized = code.trim().toUpperCase();
+    await checkCode(code);
+  };
+
+  // One check-in path for typed and camera-scanned codes.
+  const checkCode = async (raw: string) => {
+    const normalized = raw.trim().toUpperCase();
     if (!normalized || busy) return;
     setBusy(true);
     setOverrideCode(null);
@@ -285,7 +292,23 @@ export default function Verify() {
         </div>
       </div>
 
-      <form onSubmit={verify} className="mt-5 flex gap-2">
+      <div className="mt-5">
+        <div className="grid grid-cols-2 gap-1 rounded-md border border-hairline bg-surface-2 p-1" role="tablist">
+          {(["camera", "type"] as const).map((m) => (
+            <button key={m} type="button" role="tab" aria-selected={mode === m} onClick={() => setMode(m)}
+              className={`press h-10 rounded text-sm font-medium ${mode === m ? "bg-primary text-primary-foreground" : "text-muted-ink hover:text-ink"}`}>
+              {m === "camera" ? "Scan with camera" : "Type code"}
+            </button>
+          ))}
+        </div>
+        {mode === "camera" && (
+          <div className="mt-3">
+            <QrScanner onCode={(c) => { void checkCode(c); }} paused={busy} />
+          </div>
+        )}
+      </div>
+
+      <form onSubmit={verify} className="mt-3 flex gap-2">
         <Input
           placeholder="BH-XXXXXXX"
           value={code}

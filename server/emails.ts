@@ -17,23 +17,36 @@ function escAttr(value: string): string {
   return esc(value).replace(/'/g, "&#39;");
 }
 
+/** Email clients cannot load site-relative paths; make every image URL absolute. */
+function absUrl(url: string | undefined | null): string {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  const base = (process.env.PUBLIC_APP_URL || "https://blackhevents.com").replace(/\/+$/, "");
+  return base + (url.startsWith("/") ? url : "/" + url);
+}
+
 /**
  * Email shell. With organizer branding, their name, logo, and accent take
- * over the header; the footer keeps the BlackHeritage platform credit.
+ * over the header; the event flyer (when given) sits under it; the footer
+ * keeps a linked Black Heritage credit.
  */
-function shell(title: string, bodyHtml: string, branding?: Branding | null): string {
+function shell(title: string, bodyHtml: string, branding?: Branding | null, heroUrl?: string | null): string {
   const accent = safeHex(branding?.accentHex);
   const hasBrand = Boolean(branding?.displayName || branding?.logoUrl);
   const brandLabel = hasBrand ? esc((branding?.displayName || "").toUpperCase()) : "BLACKHERITAGE";
   const brandLogo = branding?.logoUrl
-    ? `<img src="${escAttr(branding.logoUrl)}" alt="" width="40" height="40" style="display:block;border-radius:8px;object-fit:cover;" />`
+    ? `<img src="${escAttr(absUrl(branding.logoUrl))}" alt="" width="40" height="40" style="display:block;border-radius:8px;object-fit:cover;" />`
     : "";
-  const subLabel = hasBrand ? "IN PARTNERSHIP WITH BLACKHERITAGE" : "ENTERTAINMENT & EVENTS";
+  const subLabel = hasBrand ? "TICKETS BY BLACK HERITAGE" : "ENTERTAINMENT & EVENTS";
   const footer = hasBrand
-    ? `Issued via <strong>BlackHeritage</strong>${branding?.displayName ? ` for ${esc(branding.displayName)}` : ""}. Questions about this ticket? Reply to this email or contact the organizer.`
-    : `Sent by BlackHeritage. Questions about this ticket? Reply to this email or message the event organizer from your dashboard.`;
+    ? `Tickets for ${esc(branding?.displayName || "this event")} by <a href="https://blackhevents.com" style="color:#777;"><strong>Black Heritage</strong></a>. Questions about this ticket? Reply to this email or contact the organizer.`
+    : `Sent by <a href="https://blackhevents.com" style="color:#777;"><strong>Black Heritage</strong></a>. Questions about this ticket? Reply to this email or message the event organizer from your dashboard.`;
+  const hero = heroUrl
+    ? `<img src="${escAttr(absUrl(heroUrl))}" alt="" width="560" style="display:block;width:100%;max-height:420px;object-fit:cover;border-left:1px solid #e5e2dc;border-right:1px solid #e5e2dc;" />`
+    : "";
   return `<!DOCTYPE html>
-<html>
+<html lang="en">
+  <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
   <body style="margin:0;padding:0;background:#f4f2ee;">
     <div style="max-width:560px;margin:0 auto;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;color:#111;">
       <div style="background:#111114;padding:24px 28px;border-radius:12px 12px 0 0;">
@@ -45,6 +58,7 @@ function shell(title: string, bodyHtml: string, branding?: Branding | null): str
           </td>
         </tr></table>
       </div>
+      ${hero}
       <div style="background:#ffffff;padding:28px;border:1px solid #e5e2dc;border-top:3px solid ${accent};">
         <h1 style="margin:0 0 16px;font-size:20px;">${title}</h1>
         ${bodyHtml}
@@ -103,6 +117,7 @@ export interface TicketEmailData {
   pdfBase64?: string; // omitted for refund-only sends
   icsBase64?: string; // calendar file, attached when provided
   branding?: Branding | null;
+  imageUrl?: string | null; // the event flyer, shown under the header
 }
 
 export async function sendTicketEmail(to: EmailAddress, data: TicketEmailData): Promise<void> {
@@ -133,12 +148,13 @@ export async function sendTicketEmail(to: EmailAddress, data: TicketEmailData): 
         ${ticketRowsHtml(data.tickets)}
       </table>
 
-      <p style="margin:20px 0 0;font-size:13px;color:#444;">Your PDF ticket is attached. Present the code at the gate, on your phone or printed. Each code works once.</p>
+      <p style="margin:20px 0 0;font-size:13px;color:#444;">Your PDF ticket is attached. Show its QR at the gate, on your phone or printed. Each ticket scans once.</p>
       <p style="margin:8px 0 0;font-size:13px;color:#444;">A calendar file is attached too, one tap adds the date to your phone's calendar.</p>
       <p style="margin:8px 0 0;font-size:13px;">
-        <a href="${appUrl}/tickets" style="color:#111;font-weight:bold;">Re-download your tickets any time</a>
+        <a href="${appUrl}/my-tickets" style="color:#111;font-weight:bold;">Re-download your tickets any time</a>
       </p>`,
       data.branding,
+      data.imageUrl,
     ),
     attachments: [
       ...(data.pdfBase64
@@ -183,7 +199,7 @@ export async function sendManualTicketEmail(
         ${ticketRowsHtml(data.tickets)}
       </table>
 
-      <p style="margin:20px 0 0;font-size:13px;color:#444;">Your PDF ticket is attached. Present the code at the gate.</p>`,
+      <p style="margin:20px 0 0;font-size:13px;color:#444;">Your PDF ticket is attached. Show its QR at the gate.</p>`,
       data.branding,
     ),
     attachments: [
@@ -382,11 +398,11 @@ export async function sendEventReminderEmail(
       </div>
 
       <p style="margin:0 0 8px;font-size:14px;">
-        <a href="${escAttr(data.ticketsUrl || `${appUrl}/tickets`)}" style="display:inline-block;background:#111114;color:#ffffff;font-weight:bold;font-size:13px;padding:12px 24px;border-radius:8px;text-decoration:none;">${copy.cta}</a>
+        <a href="${escAttr(data.ticketsUrl || `${appUrl}/my-tickets`)}" style="display:inline-block;background:#111114;color:#ffffff;font-weight:bold;font-size:13px;padding:12px 24px;border-radius:8px;text-decoration:none;">${copy.cta}</a>
       </p>
       <p style="margin:16px 0 0;font-size:12px;color:#777;">
         Your calendar file is attached, one tap adds the event to your phone.
-        <a href="${escAttr(`${appUrl}/tickets`)}" style="color:#111;">Your tickets live here any time.</a>
+        <a href="${escAttr(`${appUrl}/my-tickets`)}" style="color:#111;">Your tickets live here any time.</a>
       </p>
       <p style="margin:12px 0 0;font-size:11px;color:#999;">
         <a href="${escAttr(`${appUrl}/api/bookings/${data.bookingId}/reminders/unsubscribe`)}" style="color:#999;">Stop reminder emails for this event</a>.
@@ -482,6 +498,22 @@ export async function sendEventInvite(
  * Organizer notification: a real money sale on one of their events. One
  * concise email per paid booking, and the dashboard has the full ledger.
  */
+/** Internal: something needs a platform admin (a verification to review). */
+export async function sendTeamNoticeEmail(to: string[], subject: string, lines: string[], actionPath = "/admin"): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const appUrl = process.env.PUBLIC_APP_URL || "http://localhost:5000";
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject,
+    html: shell(
+      subject,
+      `${lines.map((l) => `<p style="margin:0 0 8px;font-size:14px;color:#222;">${esc(l)}</p>`).join("")}
+      <p style="margin:16px 0 0;font-size:13px;"><a href="${appUrl}${actionPath}" style="color:#111;">Open the admin dashboard</a></p>`,
+    ),
+  });
+}
+
 /** Internal: an organizer asked for their ready balance. Goes to the platform team. */
 export async function sendPayoutRequestEmail(
   to: string[],

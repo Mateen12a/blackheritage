@@ -579,11 +579,13 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                       <Input 
                         type="number"
                         min="0"
-                        value={type.price === 0 ? "0" : type.price || ""} 
-                        placeholder="0 for free"
+                        inputMode="numeric"
+                        // Stored in kobo like every money figure; typed and shown in naira.
+                        value={type.price === 0 ? "0" : type.price ? Math.round(Number(type.price) / 100) : ""}
+                        placeholder="e.g. 6000"
                         onChange={(e) => {
-                          const val = e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
-                          updateTicketType(index, 'price', val);
+                          const naira = e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                          updateTicketType(index, 'price', naira * 100);
                         }}
                         className="bg-background border-white/10"
                       />
@@ -614,6 +616,8 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
           </div>
         </div>
 
+        {/* Tiers own price and capacity once they exist; these fields are for tier-less events. */}
+        {ticketTypes.length === 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <FormField
             control={form.control}
@@ -625,8 +629,10 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                   <Input 
                     type="number" 
                     min="0"
-                    {...field} 
-                    onChange={e => field.onChange(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    {...field}
+                    inputMode="numeric"
+                    value={field.value ? Math.round(Number(field.value) / 100) : 0}
+                    onChange={e => field.onChange(Math.max(0, parseInt(e.target.value, 10) || 0) * 100)}
                     className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-base" 
                   />
                 </FormControl>
@@ -655,6 +661,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
             )}
           />
         </div>
+        )}
 
         <FormField
           control={form.control}
@@ -1418,7 +1425,8 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
             className="press flex-1 bg-primary text-primary-foreground hover:bg-gold-soft font-medium text-base h-12 rounded-md"
           >
             {isLoading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
-            Save Event
+            {/* Saving publishes (status defaults to published), so the button says so. */}
+            {initialData ? "Save changes" : "Publish event"}
           </Button>
         </div>
       </form>
