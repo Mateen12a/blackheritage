@@ -2388,6 +2388,21 @@ export async function registerRoutes(
     );
   });
 
+  // Whether checkout should offer a promo field at all. Says yes or no, never
+  // which codes exist, so private codes stay private.
+  app.get("/api/events/:id/has-promos", async (req, res) => {
+    const event = await storage.getEvent(req.params.id);
+    if (!event) return res.json({ active: false });
+    const { PromoCodeModel } = await import("./models");
+    const now = new Date();
+    const docs = await PromoCodeModel.find({
+      eventId: new mongoose.Types.ObjectId(String(event.id)),
+      active: true,
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
+    }).select("maxUses usedCount").lean();
+    res.json({ active: docs.some((d: any) => d.maxUses == null || d.usedCount < d.maxUses) });
+  });
+
   // ── Public pulse: anonymized social proof for one event ──
   // Only first names and coarse counts leave the database. Recent buyers are
   // public proof, never a directory.

@@ -15,7 +15,8 @@ import {
   useInitiateBooking,
   useFinalizeBooking,
 } from "@/hooks/use-bookings";
-import { Loader2, CreditCard, Users, Tag, Check, AlertTriangle, Ticket } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2, CreditCard, Tag, Check, AlertTriangle, Ticket, Minus, Plus } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -100,6 +101,19 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
   );
   const pricing = quote.data;
   const promoFailed = promoTouched && debouncedPromo.trim().length > 2 && quote.isError;
+
+  // Only offer a code field when the organizer has a live code to redeem.
+  const { data: promoState } = useQuery<{ active: boolean }>({
+    queryKey: ["/api/events", String(event.id), "has-promos"],
+    queryFn: async () => {
+      const res = await fetch(`/api/events/${event.id}/has-promos`);
+      return res.ok ? res.json() : { active: false };
+    },
+    enabled: isOpen,
+    staleTime: 60_000,
+  });
+  const hasPromos = !!promoState?.active;
+  const [promoOpen, setPromoOpen] = useState(false);
 
   const currentType = ticketTypes.find((t: any) => t.name === selectedTier) || ticketTypes[0];
   const isTable = /table/i.test(currentType?.name || "");
@@ -240,6 +254,8 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
   };
 
   const totalLabel = pricing ? naira(pricing.totalKobo) : "...";
+  const fieldClass =
+    "h-12 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base";
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -257,148 +273,168 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
         }}
       >
         <ScrollArea className="max-h-[90vh]">
-          <div className="p-6 space-y-6">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-display font-bold text-ink">
-                Buy Your Ticket
+          <div className="p-5 sm:p-6 space-y-6">
+            <DialogHeader className="text-left space-y-1 pr-8">
+              <DialogTitle className="text-xl sm:text-2xl font-display font-bold text-ink leading-tight">
+                {event.title}
               </DialogTitle>
               <DialogDescription className="text-sm text-muted-ink">
-                {event.title}
+                Choose your ticket. It arrives by email the moment you pay.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-6 py-2">
-              <div className="space-y-3">
-                <label className="eyebrow">Select Ticket Type</label>
-                <div className="grid grid-cols-1 gap-2">
-                  {ticketTypes.map((type: any) => {
-                    const remaining = Math.max(0, Number(type.capacity || 0) - Number(type.sold || 0));
-                    const saleClosed = type.saleClose && new Date(type.saleClose).getTime() < Date.now();
-                    const soldOut = remaining <= 0;
-                    return (
-                      <button
-                        key={type.name}
-                        onClick={() => setSelectedTier(type.name)}
-                        disabled={soldOut || saleClosed}
-                        className={`p-4 rounded-md border text-left transition-colors ${
-                          selectedTier === type.name
-                            ? "border-gold bg-surface-2"
-                            : "border-hairline bg-surface-2/50 hover:border-white/30"
-                        } ${soldOut || saleClosed ? "opacity-50 cursor-not-allowed" : ""}`}
+            <section className="space-y-2" aria-label="Ticket type">
+              <div role="radiogroup" className="rounded-md border border-hairline divide-y divide-hairline overflow-hidden">
+                {ticketTypes.map((type: any) => {
+                  const remaining = Math.max(0, Number(type.capacity || 0) - Number(type.sold || 0));
+                  const saleClosed = type.saleClose && new Date(type.saleClose).getTime() < Date.now();
+                  const unavailable = remaining <= 0 || saleClosed;
+                  const selected = selectedTier === type.name;
+                  const status = remaining <= 0
+                    ? "Sold out"
+                    : saleClosed
+                      ? "Sales closed"
+                      : showCounts && remaining <= 20
+                        ? `Only ${remaining} left`
+                        : showCounts
+                          ? `${remaining.toLocaleString()} available`
+                          : null;
+                  return (
+                    <button
+                      key={type.name}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => setSelectedTier(type.name)}
+                      disabled={unavailable}
+                      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors ${
+                        selected ? "bg-surface-2" : "bg-transparent hover:bg-surface-2/60"
+                      } ${unavailable ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`w-4 h-4 rounded-full border shrink-0 grid place-items-center ${
+                          selected ? "border-gold" : "border-white/30"
+                        }`}
                       >
-                        <div className="flex justify-between items-baseline">
-                          <span className="font-medium text-ink">{type.name}</span>
-                          <span className="font-display font-bold text-gold">
-                            {type.price === 0 ? "Free" : naira(type.price)}
+                        {selected && <span className="w-2 h-2 rounded-full bg-gold" />}
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block font-medium text-ink truncate">{type.name}</span>
+                        {status && (
+                          <span className={`block text-xs ${remaining > 0 && remaining <= 20 && !saleClosed ? "text-gold" : "text-muted-ink"}`}>
+                            {status}
                           </span>
-                        </div>
-                        <div className="eyebrow mt-1">
-                          {soldOut
-                            ? "Sold out"
-                            : saleClosed
-                              ? "Sales closed"
-                              : showCounts
-                                ? `${remaining.toLocaleString()} available`
-                                : "On sale now"}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                        )}
+                      </span>
+                      <span className="font-display font-bold text-ink tabular-nums">
+                        {type.price === 0 ? "Free" : naira(type.price)}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <label className="eyebrow">Your Full Name</label>
-                  <Input
-                    placeholder="Enter your name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="h-12 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base"
-                  />
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-sm text-muted-ink">How many?</span>
+                <div className="flex items-center rounded-md border border-hairline">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    disabled={quantity <= 1}
+                    className="press w-10 h-10 grid place-items-center text-ink disabled:opacity-30"
+                    aria-label="One fewer ticket"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="w-8 text-center font-medium text-ink tabular-nums" aria-live="polite">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.min(10, q + 1))}
+                    disabled={quantity >= 10 || (pricing ? quantity >= pricing.available : false)}
+                    className="press w-10 h-10 grid place-items-center text-ink disabled:opacity-30"
+                    aria-label="One more ticket"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
                 </div>
-                <div className="space-y-2">
-                  <label className="eyebrow">Email Address</label>
-                  <Input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="h-12 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base"
-                  />
-                  <p className="text-xs text-muted-ink">
-                    Your ticket will be sent to this email
-                  </p>
-                </div>
-                {wantsPhone && (
-                  <div className="space-y-2">
-                    <label className="eyebrow">Phone Number</label>
-                    <Input
-                      type="tel"
-                      placeholder="e.g. 0803 555 0117"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="h-12 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base"
-                    />
-                  </div>
-                )}
-                {wantsTable && (
-                  <div className="space-y-2">
-                    <label className="eyebrow">Table Details</label>
-                    <Input
-                      placeholder={tableHint}
-                      value={tableNote}
-                      onChange={(e) => setTableNote(e.target.value)}
-                      className="h-12 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base"
-                    />
-                    {isTable && (
-                      <p className="text-xs text-muted-ink">
-                        Your table assignment is confirmed by the organizer and
-                        arrives with your ticket email.
-                      </p>
-                    )}
-                  </div>
-                )}
-                {wantsDietary && (
-                  <div className="space-y-2">
-                    <label className="eyebrow">Dietary Requirement</label>
-                    <Input
-                      placeholder="Allergies or dietary needs"
-                      value={dietaryNote}
-                      onChange={(e) => setDietaryNote(e.target.value)}
-                      className="h-12 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base"
-                    />
-                  </div>
-                )}
               </div>
+            </section>
 
-              <div className="space-y-3">
-                <label className="eyebrow">Number of Tickets</label>
+            <section className="space-y-4" aria-label="Your details">
+              <div className="space-y-1.5">
+                <label htmlFor="bk-name" className="text-sm text-ink">Full name</label>
                 <Input
-                  type="number"
-                  min={1}
-                  max={10}
-                  value={quantity}
-                  onChange={(e) => setQuantity(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
-                  className="h-12 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md px-4 text-base"
+                  id="bk-name"
+                  autoComplete="name"
+                  placeholder="As it should appear on the ticket"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className={fieldClass}
                 />
               </div>
-
-              <div className="space-y-2">
-                <label className="eyebrow">Promo Code</label>
-                <div className="relative">
-                  <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-ink" aria-hidden="true" />
+              <div className="space-y-1.5">
+                <label htmlFor="bk-email" className="text-sm text-ink">Email</label>
+                <Input
+                  id="bk-email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={fieldClass}
+                />
+                <p className="text-xs text-muted-ink">Your ticket is sent here.</p>
+              </div>
+              {wantsPhone && (
+                <div className="space-y-1.5">
+                  <label htmlFor="bk-phone" className="text-sm text-ink">Phone number</label>
                   <Input
-                    placeholder="Enter code if you have one"
-                    value={promoCode}
-                    onChange={(e) => {
-                      setPromoCode(e.target.value.toUpperCase());
-                      setPromoTouched(true);
-                    }}
-                    className="h-12 pl-10 pr-4 bg-surface-2 border-hairline focus-visible:border-gold focus-visible:ring-0 text-ink rounded-md text-base uppercase"
+                    id="bk-phone"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="e.g. 0803 555 0117"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className={fieldClass}
                   />
                 </div>
-                {pricing?.promoApplied ? (
+              )}
+              {wantsTable && (
+                <div className="space-y-1.5">
+                  <label htmlFor="bk-table" className="text-sm text-ink">Table details</label>
+                  <Input
+                    id="bk-table"
+                    placeholder={tableHint}
+                    value={tableNote}
+                    onChange={(e) => setTableNote(e.target.value)}
+                    className={fieldClass}
+                  />
+                  {isTable && (
+                    <p className="text-xs text-muted-ink">
+                      The organizer confirms your table, and it arrives with your ticket email.
+                    </p>
+                  )}
+                </div>
+              )}
+              {wantsDietary && (
+                <div className="space-y-1.5">
+                  <label htmlFor="bk-diet" className="text-sm text-ink">Dietary requirement</label>
+                  <Input
+                    id="bk-diet"
+                    placeholder="Allergies or dietary needs"
+                    value={dietaryNote}
+                    onChange={(e) => setDietaryNote(e.target.value)}
+                    className={fieldClass}
+                  />
+                </div>
+              )}
+
+              {hasPromos && (
+                pricing?.promoApplied ? (
                   <div className="flex items-center justify-between gap-2 rounded-md border border-gold/40 bg-gold/5 px-3 py-2">
                     <span className="text-xs text-gold flex items-center gap-1.5 min-w-0">
                       <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
@@ -419,92 +455,92 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
                       Remove
                     </button>
                   </div>
-                ) : promoFailed && (
-                  <p className="text-xs text-red-400 flex items-center gap-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
-                    That code didn't apply. It may be expired or used up.
-                  </p>
-                )}
-              </div>
-
-              <div className="bg-surface-2 rounded-md p-4 sm:p-6 space-y-3 border border-hairline">
-                {showCounts && (
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="eyebrow text-gold">Availability</span>
-                    <span className="flex items-center gap-1.5 text-xs font-medium text-muted-ink">
-                      <Users className="w-3 h-3 text-gold" aria-hidden="true" />
-                      {pricing
-                        ? `${pricing.available.toLocaleString()} left in ${pricing.ticketType}`
-                        : "Checking..."}
-                    </span>
+                ) : promoOpen ? (
+                  <div className="space-y-1.5">
+                    <label htmlFor="bk-promo" className="text-sm text-ink">Promo code</label>
+                    <div className="relative">
+                      <Tag className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-ink" aria-hidden="true" />
+                      <Input
+                        id="bk-promo"
+                        autoFocus
+                        placeholder="Code"
+                        value={promoCode}
+                        onChange={(e) => {
+                          setPromoCode(e.target.value.toUpperCase());
+                          setPromoTouched(true);
+                        }}
+                        className={`${fieldClass} pl-10 uppercase`}
+                      />
+                    </div>
+                    {promoFailed && (
+                      <p className="text-xs text-red-400 flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
+                        That code didn't apply. It may be expired or used up.
+                      </p>
+                    )}
                   </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-ink">
-                    {pricing ? `${pricing.ticketType} x ${pricing.quantity}` : "Price"}
-                  </span>
-                  <span className="font-medium text-ink">
-                    {pricing ? naira(pricing.subtotalKobo) : "..."}
-                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setPromoOpen(true)}
+                    className="text-sm text-gold hover:text-gold-soft inline-flex items-center gap-1.5"
+                  >
+                    <Tag className="w-3.5 h-3.5" aria-hidden="true" />
+                    Have a promo code?
+                  </button>
+                )
+              )}
+            </section>
+
+            <section className="space-y-2 border-t border-hairline pt-4 text-sm" aria-label="Order summary">
+              <div className="flex justify-between">
+                <span className="text-muted-ink">
+                  {pricing ? `${pricing.quantity} × ${pricing.ticketType}` : "Tickets"}
+                </span>
+                <span className="text-ink tabular-nums">{pricing ? naira(pricing.subtotalKobo) : "..."}</span>
+              </div>
+              {pricing && pricing.discountKobo > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-ink">Promo discount</span>
+                  <span className="text-gold tabular-nums">-{naira(pricing.discountKobo)}</span>
                 </div>
-                {pricing && pricing.discountKobo > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-ink">Promo discount</span>
-                    <span className="font-medium text-gold">-{naira(pricing.discountKobo)}</span>
-                  </div>
-                )}
-                {pricing && (pricing.serviceFeeKobo ?? 0) > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-ink">Service fee</span>
-                    <span className="font-medium text-ink">{naira(pricing.serviceFeeKobo!)}</span>
-                  </div>
-                )}
-                <div className="border-t border-hairline my-4 pt-4 flex justify-between items-baseline">
-                  <span className="eyebrow">Total</span>
-                  <span className="font-display text-2xl font-bold text-gold">{totalLabel}</span>
+              )}
+              {pricing && (pricing.serviceFeeKobo ?? 0) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-ink">Service fee</span>
+                  <span className="text-ink tabular-nums">{naira(pricing.serviceFeeKobo!)}</span>
                 </div>
+              )}
+              <div className="flex justify-between items-baseline pt-2">
+                <span className="font-medium text-ink">Total</span>
+                <span className="font-display text-2xl font-bold text-ink tabular-nums">{totalLabel}</span>
               </div>
+            </section>
 
-              <div className="flex flex-col gap-3">
-                <Button
-                  onClick={handleBooking}
-                  disabled={busy || quote.isLoading || !pricing}
-                  className="press w-full h-14 bg-primary text-primary-foreground hover:bg-gold-soft font-medium text-lg rounded-md"
-                >
-                  {busy ? (
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                  ) : (
-                    <>
-                      {pricing && pricing.totalKobo === 0 ? (
-                        <>
-                          <Ticket className="w-5 h-5 mr-2.5" />
-                          Confirm Free RSVP
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="w-5 h-5 mr-2.5" />
-                          Pay {totalLabel}
-                        </>
-                      )}
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              <p className="text-xs text-center text-muted-ink leading-relaxed pb-2">
-                {pricing && pricing.totalKobo === 0 ? (
+            <div className="space-y-3 pb-1">
+              <Button
+                onClick={handleBooking}
+                disabled={busy || quote.isLoading || !pricing}
+                className="press w-full h-13 py-3.5 bg-primary text-primary-foreground hover:bg-gold-soft font-semibold text-base rounded-md"
+              >
+                {busy ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : pricing && pricing.totalKobo === 0 ? (
                   <>
-                    No payment required.
-                    <br />
-                    Your free ticket is issued instantly with a scannable QR code and email confirmation.
+                    <Ticket className="w-5 h-5 mr-2" />
+                    Get my free ticket
                   </>
                 ) : (
                   <>
-                    Pay safely with card, bank transfer, or USSD.
-                    <br />
-                    Your coded ticket is issued the moment payment clears, and a PDF copy goes to your email.
+                    <CreditCard className="w-5 h-5 mr-2" />
+                    Pay {totalLabel}
                   </>
                 )}
+              </Button>
+              <p className="text-xs text-center text-muted-ink">
+                {pricing && pricing.totalKobo === 0
+                  ? "No payment needed. Your QR ticket is issued instantly."
+                  : "Card, bank transfer or USSD. Your QR ticket and PDF arrive by email."}
               </p>
             </div>
           </div>
