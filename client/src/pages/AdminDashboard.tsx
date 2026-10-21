@@ -176,15 +176,6 @@ export default function AdminDashboard() {
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
           {!isAdmin && (
             <>
-              <Link href="/vendor-dashboard">
-                <Button
-                  variant="outline"
-                  className="press border-hairline text-ink hover:text-gold text-xs h-9 sm:h-10 px-3 sm:px-3.5"
-                >
-                  <Store className="w-3.5 h-3.5 mr-1.5" />
-                  Work as Talent
-                </Button>
-              </Link>
               <Link href="/challenges">
                 <Button
                   variant="outline"
@@ -266,9 +257,6 @@ export default function AdminDashboard() {
             <>
               <TabsTrigger value="events">My Events &amp; Overview</TabsTrigger>
               <TabsTrigger value="brand">Brand &amp; Custom Link</TabsTrigger>
-              <TabsTrigger value="talent" onClick={() => setLocation("/vendor-dashboard")}>
-                Work as Talent
-              </TabsTrigger>
               <TabsTrigger value="challenges" onClick={() => setLocation("/challenges")}>
                 Creative Challenges
               </TabsTrigger>
@@ -519,7 +507,8 @@ export default function AdminDashboard() {
                             </tr>
                           )}
                           {events?.map((event: any) => {
-                            const sales = eventSales(event);
+                            // Paid bookings only; tier counters include seats held mid-checkout.
+                            const sales = stats?.byEvent?.[String(event.id)] ?? { tickets: 0, revenue: 0 };
                             return (
                               <tr
                                 key={event.id}

@@ -55,7 +55,11 @@ export function Reveal({
       className={className}
       initial={styles.hidden}
       whileInView={styles.shown}
-      viewport={{ once: true, amount: 0.25 }}
+      // Reveal when the block's top edge enters the screen. A fraction-of-
+      // height threshold (was 0.25) can never be met by a block taller than
+      // ~4 screens, so long panels (Brand & Custom Link, Settings) sat
+      // invisible until the user scrolled.
+      viewport={{ once: true, amount: 0, margin: "0px 0px -8% 0px" }}
       transition={{ duration, delay, ease: EASE_OUT }}
     >
       {children}

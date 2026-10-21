@@ -15,7 +15,7 @@ export interface IStorage {
   getBookingsByUser(userId: string): Promise<(Booking & { event: Event })[]>;
   getBookingsByEvent(eventId: string | number): Promise<(Booking & { user: any })[]>;
   getBusinessBookingsByEvent(eventId: string | number): Promise<BusinessBooking[]>;
-  getAdminStats(organizerId?: string): Promise<{ totalEvents: number; totalTicketsSold: number; totalRevenue: number }>;
+  getAdminStats(organizerId?: string): Promise<{ totalEvents: number; totalTicketsSold: number; totalRevenue: number; byEvent: Record<string, { tickets: number; revenue: number }> }>;
   getVendors(category?: string): Promise<Vendor[]>;
   getVendor(id: string | number): Promise<Vendor | undefined>;
   getAllVendors(): Promise<Vendor[]>;
@@ -654,7 +654,7 @@ export class MongoStorage implements IStorage {
    * Only `paid` bookings count. Pending holds have not been collected, and
    * `cancelled` covers refunds and voids, which are revenue that came back.
    */
-  async getAdminStats(organizerId?: string): Promise<{ totalEvents: number; totalTicketsSold: number; totalRevenue: number }> {
+  async getAdminStats(organizerId?: string): Promise<{ totalEvents: number; totalTicketsSold: number; totalRevenue: number; byEvent: Record<string, { tickets: number; revenue: number }> }> {
     const scope = organizerId
       ? { eventId: { $in: await EventModel.find({ organizerId }).distinct("_id") } }
       : {};
@@ -667,10 +667,20 @@ export class MongoStorage implements IStorage {
     ]);
 
     const stats = result[0] || { totalSold: 0, totalRevenue: 0 };
+    // Per-event paid totals for the dashboard rows. Tier "sold" counters
+    // include seats held by checkouts still in progress, so a cancelled
+    // checkout used to show as a sale until its 30-minute hold expired.
+    const perEvent = await BookingModel.aggregate([
+      { $match: { ...scope, status: "paid" } },
+      { $group: { _id: "$eventId", tickets: { $sum: "$quantity" }, revenue: { $sum: "$totalAmount" } } }
+    ]);
+    const byEvent: Record<string, { tickets: number; revenue: number }> = {};
+    for (const row of perEvent) byEvent[String(row._id)] = { tickets: row.tickets, revenue: row.revenue };
     return {
       totalEvents,
       totalTicketsSold: stats.totalSold,
-      totalRevenue: stats.totalRevenue
+      totalRevenue: stats.totalRevenue,
+      byEvent,
     };
   }
 

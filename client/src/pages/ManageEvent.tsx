@@ -330,11 +330,12 @@ export default function ManageEvent() {
   // Attendee list: quick search + status filter, showing the first 25 by
   // default so the table stays scannable on big events.
   const [attendeeSearch, setAttendeeSearch] = useState("");
-  const [attendeeStatus, setAttendeeStatus] = useState("all");
+  // Open on confirmed buyers: an unpaid or abandoned checkout is not an attendee.
+  const [attendeeStatus, setAttendeeStatus] = useState("paid");
   const [attendeeLimit, setAttendeeLimit] = useState(25);
 
   const attendeeStatuses = useMemo(() => {
-    const found = new Set<string>();
+    const found = new Set<string>(["paid"]); // the default view, present before the first sale
     (bookings || []).forEach((b: any) => found.add(String(b.status || "unknown")));
     return Array.from(found).sort();
   }, [bookings]);
@@ -558,7 +559,7 @@ export default function ManageEvent() {
               try {
                 const types = JSON.parse(event.ticketTypes || '[]');
                 if (types.length === 0) {
-                  const sold = bookings?.reduce((acc, b) => acc + b.quantity, 0) || 0;
+                  const sold = bookings?.filter((b) => b.status === "paid").reduce((acc, b) => acc + b.quantity, 0) || 0;
                   return (
                     <Card className="bg-surface border-hairline">
                       <CardHeader className="pb-2">
@@ -593,7 +594,7 @@ export default function ManageEvent() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-ink">Attendee List</CardTitle>
-                <CardDescription>View all users who have purchased tickets</CardDescription>
+                <CardDescription>Confirmed buyers are under Paid. Pending means checkout was started but not paid.</CardDescription>
               </div>
               <Button 
                 variant="outline" 
@@ -900,7 +901,8 @@ function OrganizerTools({ event, bookings }: { event: any; bookings: any[] }) {
   const revenue = bookings
     .filter((b) => b.status === "paid")
     .reduce((acc, b) => acc + Number(b.totalAmount || 0), 0);
-  const ticketsSold = bookings.reduce((acc, b) => acc + Number(b.quantity || 0), 0);
+  // Confirmed sales only: pending and abandoned checkouts are not tickets.
+  const ticketsSold = bookings.filter((b) => b.status === "paid").reduce((acc, b) => acc + Number(b.quantity || 0), 0);
 
   const submitPromo = (e: React.FormEvent) => {
     e.preventDefault();

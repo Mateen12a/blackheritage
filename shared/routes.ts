@@ -61,6 +61,7 @@ export const api = {
         200: z.object({
           totalEvents: z.number(),
           totalTicketsSold: z.number(),
+          byEvent: z.record(z.object({ tickets: z.number(), revenue: z.number() })).optional(),
           totalRevenue: z.number(),
         }),
       },
