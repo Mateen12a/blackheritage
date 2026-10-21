@@ -1,5 +1,5 @@
 import { MotionConfig, motion, type HTMLMotionProps } from "framer-motion";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { TemplateMotion } from "@shared/themes";
 
 /**
@@ -73,21 +73,37 @@ type FadeImgProps = HTMLMotionProps<"img"> & {
 };
 
 /**
- * Images fade in when they enter the viewport (no scale, no slide).
- * The hover zoom stays a CSS transform on the same element
- * (`data-motion="scale-on-hover"` pattern in the cards).
+ * Images fade in once they have actually loaded, not merely scrolled into
+ * view: on a slow network the box pulses until the pixels arrive, instead of
+ * fading into an empty frame and popping later. No scale, no slide; the hover
+ * zoom stays a CSS transform on the same element.
  */
-export function FadeImg({ src, alt, ...rest }: FadeImgProps) {
+export function FadeImg({ src, alt, className, onLoad, onError, ...rest }: FadeImgProps) {
+  const ref = useRef<HTMLImageElement | null>(null);
+  const [ready, setReady] = useState(false);
+  // A cached image can finish before React attaches onLoad.
+  useEffect(() => {
+    setReady(Boolean(ref.current?.complete && ref.current.naturalWidth));
+  }, [src]);
   return (
     <motion.img
+      ref={ref}
       src={src}
       alt={alt}
-      initial={{ opacity: 0 }}
-      whileInView={{ opacity: 1 }}
-      viewport={{ once: true, amount: 0.1 }}
-      transition={{ duration: 0.6, ease: "linear" }}
+      initial={false}
+      animate={{ opacity: ready ? 1 : 0.55 }}
+      transition={{ duration: 0.5, ease: "linear" }}
       loading="lazy"
       decoding="async"
+      onLoad={(e) => {
+        setReady(true);
+        onLoad?.(e);
+      }}
+      onError={(e) => {
+        setReady(true);
+        onError?.(e);
+      }}
+      className={[className, ready ? "" : "bg-surface-2 animate-pulse"].filter(Boolean).join(" ")}
       {...rest}
     />
   );

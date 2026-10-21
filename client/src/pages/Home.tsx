@@ -163,16 +163,40 @@ function ScarcityBadge({ event, slideKey }: { event: Event; slideKey: string }) 
  * venue. Auto-advances with a slow push-in, pauses on hover, and any poster
  * can be called up by its thumb. One event is always on screen.
  */
-function HeroPosterDeck({ events }: { events: Event[] }) {
+function HeroPosterDeck({ events, loading = false }: { events: Event[]; loading?: boolean }) {
   const { user } = useAuth();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [failed, setFailed] = useState(false);
+  // Until the poster decodes, a pulse holds its place instead of a blank frame.
+  const [imgReady, setImgReady] = useState(false);
+  // The frame takes the flyer's own shape (within portrait limits), so a 3:4
+  // flyer is not boxed into 4:5 with dark bars down both sides.
+  const [ratio, setRatio] = useState(0.8);
 
   useEffect(() => {
     if (paused || !events || events.length < 2) return;
     const t = setInterval(() => setIndex((i) => (i + 1) % events.length), 4500);
     return () => clearInterval(t);
   }, [paused, events?.length]);
+
+  // Still fetching: hold the poster's footprint so nothing jumps, and never
+  // flash the "no events" card at someone whose events are on the way.
+  if (loading) {
+    return (
+      <div className="relative mx-auto w-full max-w-[34rem]" aria-busy="true" aria-label="Loading events">
+        <div className="aspect-[4/5] rounded-2xl border border-white/10 bg-surface-2 animate-pulse" />
+        <div className="mt-4 px-1 space-y-2">
+          <div className="h-6 w-3/4 rounded bg-surface-2 animate-pulse" />
+          <div className="h-4 w-1/2 rounded bg-surface-2 animate-pulse" />
+          <div className="mt-3 flex items-center justify-between">
+            <div className="h-5 w-24 rounded bg-surface-2 animate-pulse" />
+            <div className="h-10 w-32 rounded-full bg-surface-2 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!events || events.length === 0) {
     return (
@@ -192,10 +216,6 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
   }
 
   const current = events[index % events.length];
-  const [failed, setFailed] = useState(false);
-  // The frame takes the flyer's own shape (within portrait limits), so a 3:4
-  // flyer is not boxed into 4:5 with dark bars down both sides.
-  const [ratio, setRatio] = useState(0.8);
 
   return (
     <div
@@ -236,6 +256,9 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
             transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0"
           >
+            {!imgReady && !failed && current.imageUrl && (
+              <div className="absolute inset-0 bg-surface-2 animate-pulse" aria-hidden="true" />
+            )}
             {failed || !current.imageUrl ? (
               <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-surface-2">
                 <Flame className="w-10 h-10 text-gold/40" aria-hidden="true" />
@@ -258,8 +281,9 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
                     const r = img.naturalWidth / img.naturalHeight;
                     img.style.objectFit = r > 1.05 ? "cover" : "contain";
                     setRatio(Math.min(1, Math.max(0.7, r)));
+                    setImgReady(true);
                   }}
-                  className="relative w-full h-full object-contain animate-slow-zoom"
+                  className={cn("relative w-full h-full object-contain animate-slow-zoom transition-opacity duration-500", imgReady ? "opacity-100" : "opacity-0")}
                 />
               </>
             )}
@@ -388,7 +412,7 @@ export default function Home() {
               against the only fixed thing inside it, the 4 × 24px thumb row,
               and collapses to 108px. */}
           {/* When no events exist, center-align hero text. When events exist, show split layout with text on left and image deck on right. */}
-          {posterDeck.length === 0 ? (
+          {posterDeck.length === 0 && !isLoading ? (
             <div className="max-w-3xl mx-auto text-center flex flex-col items-center py-6 sm:py-10">
               <Reveal y={16} duration={0.55}>
                 <p className="text-[10px] min-[360px]:text-[11px] font-bold tracking-[0.10em] min-[360px]:tracking-[0.16em] sm:tracking-[0.18em] uppercase text-gold text-center">
@@ -484,7 +508,7 @@ export default function Home() {
                 duration={0.7}
                 className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-center"
               >
-                <HeroPosterDeck events={posterDeck} />
+                <HeroPosterDeck events={posterDeck} loading={isLoading} />
               </Reveal>
 
               {/* Copy, part two: the action */}
