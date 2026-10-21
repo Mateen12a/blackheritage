@@ -118,7 +118,7 @@ function SalesObject() {
     <div className="relative max-w-sm">
       <div className="rounded-md border border-hairline bg-surface-2 p-5">
         <p className="text-[11px] text-muted-ink">This week</p>
-        <p className="font-display text-3xl font-bold text-ink tabular-nums">₦1,248,000</p>
+        <p className="font-display text-3xl font-bold text-ink tabular-nums">₦1,260,000</p>
         <div className="mt-5 flex items-end gap-2 h-20">
           {BARS.map((h, i) => (
             <div
@@ -143,7 +143,7 @@ function SalesObject() {
         </span>
         <div className="min-w-0">
           <p className="text-xs font-semibold text-ink">New ticket sold</p>
-          <p className="text-[11px] text-muted-ink truncate">General Admission · ₦6,000</p>
+          <p className="text-[11px] text-muted-ink truncate">General Admission · ₦15,000</p>
         </div>
       </div>
     </div>
