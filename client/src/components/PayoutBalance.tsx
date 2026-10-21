@@ -52,7 +52,7 @@ export function PayoutBalance() {
 
   const cells = [
     { label: "Held", value: data.heldKobo, hint: "Released once you are verified" },
-    { label: "Ready to pay", value: data.readyKobo, hint: data.autoSplit ? "Paystack pays you automatically" : "Request it below" },
+    { label: "Ready to pay", value: data.readyKobo, hint: data.autoSplit ? "Paid to your bank automatically" : "Request it below" },
     { label: "Paid out", value: data.paidKobo, hint: "Sent to your bank" },
   ];
 

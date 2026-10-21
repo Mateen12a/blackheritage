@@ -485,7 +485,7 @@ export default function ManageEvent() {
             <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
             <div>
               <span className="font-semibold text-amber-300">Settlement bank account needed. </span>
-              Your identity is verified, but you have not linked a settlement bank account to receive automatic Paystack payouts.
+              Your identity is verified, but you have not linked a settlement bank account to receive automatic payouts.
             </div>
           </div>
           <Link href="/settings#bank">

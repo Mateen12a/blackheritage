@@ -192,7 +192,7 @@ export function BankAccountSettings() {
               <div className="flex items-start gap-2.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">
                 <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-semibold text-emerald-300">Automated Paystack Split Active. </span>
+                  <span className="font-semibold text-emerald-300">Automatic payouts active. </span>
                   Ticket revenues settle directly into this account on a T+1 schedule after each sale, with the 6% platform commission retained.
                 </div>
               </div>
@@ -276,7 +276,7 @@ export function BankAccountSettings() {
 
           <div className="pt-2 flex items-center justify-between gap-4 flex-wrap">
             <p className="text-xs text-muted-ink">
-              Powered by Paystack split settlement &middot; T+1 deposit schedule
+              Paid to your bank automatically &middot; next business day
             </p>
             <Button
               type="submit"

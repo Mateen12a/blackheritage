@@ -1579,7 +1579,7 @@ function renderOriginalFlyer(canvas: HTMLCanvasElement, art: HTMLImageElement, o
     ctx.fillText(truncateToWidth(ctx, displayUrl, textW), textX, mid + Math.round(22 * scale));
     ctx.font = `400 ${Math.round(23 * scale)}px 'DM Sans', sans-serif`;
     ctx.fillStyle = "#A3A3B2";
-    ctx.fillText(truncateToWidth(ctx, "Instant e-ticket · Secure checkout by Paystack", textW), textX, mid + Math.round(62 * scale));
+    ctx.fillText(truncateToWidth(ctx, "Instant e-ticket · Pay by card, transfer or USSD", textW), textX, mid + Math.round(62 * scale));
   } else {
     ctx.textAlign = "center";
     ctx.font = `600 ${Math.round(32 * scale)}px 'DM Sans', sans-serif`;
@@ -1638,11 +1638,16 @@ export function flyerClipMimeType(): string | null {
   if (typeof window === "undefined" || typeof (window as any).MediaRecorder === "undefined") {
     return null;
   }
+  // MP4/H.264 first: it plays on iPhone, Android, WhatsApp and Instagram.
+  // WebM (Chrome's old default) does not play on iOS. Chrome 126+ and
+  // Safari record MP4; Firefox only records WebM, so it stays as a fallback.
   const candidates = [
+    "video/mp4;codecs=avc1.42E01E",
+    "video/mp4;codecs=avc1",
+    "video/mp4",
     "video/webm;codecs=vp9",
     "video/webm;codecs=vp8",
     "video/webm",
-    "video/mp4",
   ];
   for (const type of candidates) {
     try {
@@ -1714,7 +1719,8 @@ export async function recordFlyerClip(
       if (chunks.length === 0) {
         reject(new Error("The clip came out empty. Try again."));
       } else {
-        resolve(new Blob(chunks, { type: mimeType }));
+        // Plain container type (no codecs list) so share sheets recognise the file.
+        resolve(new Blob(chunks, { type: mimeType.split(";")[0] }));
       }
     };
     recorder.onerror = () => reject(new Error("Recording failed. Try again."));

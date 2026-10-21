@@ -113,7 +113,7 @@ export function OrganizerVerificationCard() {
               <div>
                 <p className="font-semibold text-ink text-sm">Account Verified</p>
                 <p className="text-xs text-muted-ink mt-0.5">
-                  Your identity has been verified. All ticket sales split automatically into your linked Paystack settlement account on a T+1 schedule.
+                  Your identity has been verified. Ticket sales are paid to your linked bank account automatically, the next business day.
                 </p>
                 {details?.businessName && (
                   <div className="mt-3 flex items-center gap-3 text-xs text-muted-ink font-mono flex-wrap">

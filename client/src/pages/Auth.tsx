@@ -350,7 +350,7 @@ export default function AuthPage() {
 
           <p className="flex items-center gap-2 text-[11px] text-muted-ink pt-5 border-t border-hairline">
             <ShieldCheck className="w-3.5 h-3.5 text-gold" aria-hidden="true" />
-            Secure checkout by Paystack · Card, transfer and USSD
+            Pay by card, transfer or USSD · Instant e-tickets
           </p>
         </div>
       </aside>
