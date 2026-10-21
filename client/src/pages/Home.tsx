@@ -222,7 +222,8 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
           </div>
         </div>
       )}
-      <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/15 shadow-[0_30px_80px_rgba(0,0,0,0.55)] outline outline-1 outline-white/10">
+      {/* The whole poster opens the event: on phones it is the obvious thing to tap. */}
+      <Link href={eventPath(current as any)} aria-label={"Open " + current.title} className="block relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/15 shadow-[0_30px_80px_rgba(0,0,0,0.55)] outline outline-1 outline-white/10">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={current.id}
@@ -265,7 +266,7 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
             actually set, and the tag moves with it: On Sale, Filling Up,
             Selling Fast, Last Few Spots. */}
         <ScarcityBadge event={current} slideKey={current.id} />
-      </div>
+      </Link>
         <div className="mt-3 flex items-center justify-between gap-2 sm:gap-3">
           <div className="min-w-0 pr-1">
             <p className="eyebrow text-[10px] sm:text-[11px] truncate">{format(new Date(current.date), "EEE d MMM · ha")}</p>

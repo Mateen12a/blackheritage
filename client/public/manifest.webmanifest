@@ -1,17 +1,23 @@
 {
+  "id": "/",
   "name": "Black Heritage Entertainment & Events",
-  "short_name": "BlackHeritage",
-  "description": "Discover and book events, concerts and hangouts across Nigeria.",
-  "start_url": "/",
+  "short_name": "Black Heritage",
+  "description": "Tickets to Nigerian shows and festivals, and the DJs, caterers and creatives who work them.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#111114",
-  "theme_color": "#111114",
+  "orientation": "portrait",
+  "background_color": "#0F0F14",
+  "theme_color": "#0F0F14",
+  "categories": ["entertainment", "events", "lifestyle"],
   "icons": [
-    {
-      "src": "/favicon.png",
-      "sizes": "192x192 512x512",
-      "type": "image/png",
-      "purpose": "any"
-    }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "My tickets", "url": "/my-tickets", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Gate check-in", "url": "/verify", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Events", "url": "/events", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

@@ -3414,6 +3414,26 @@ export async function registerRoutes(
     }
 
     try {
+      // Paid tickets mean other people's money. Deleting the row would leave
+      // buyers holding tickets for nothing and orphan the payout ledger, so an
+      // event with paid sales is never hard-deleted: organizers refund or
+      // unpublish; an admin archives it (hidden, records kept).
+      const { BookingModel } = await import("./models");
+      const paid = await BookingModel.find({ eventId: event.id, status: "paid" }).select("quantity totalAmount").lean();
+      if (paid.length > 0) {
+        const tickets = paid.reduce((n: number, b: any) => n + Number(b.quantity || 0), 0);
+        const kobo = paid.reduce((n: number, b: any) => n + Number(b.totalAmount || 0), 0);
+        if ((req.user as any).role === "admin") {
+          await storage.updateEvent(String(event.id), { status: "unpublished", archivedAt: new Date() } as any);
+          return res.json({
+            archived: true,
+            message: `Archived instead of deleted: ${tickets} paid ticket${tickets === 1 ? "" : "s"} (₦${(kobo / 100).toLocaleString("en-NG")}) keep their records.`,
+          });
+        }
+        return res.status(409).json({
+          message: `${tickets} ticket${tickets === 1 ? " has" : "s have"} been paid for (₦${(kobo / 100).toLocaleString("en-NG")}). Refund ${tickets === 1 ? "it" : "them"} in Bookings first, or unpublish the event to hide it.`,
+        });
+      }
       await storage.deleteEvent(event.id);
       res.status(204).end();
     } catch (err) {
@@ -3805,6 +3825,21 @@ export async function registerRoutes(
         });
       }
 
+      // Money the platform still owes this organizer must reach them before
+      // the account (and its bank details) are scrubbed.
+      const { PayoutModel } = await import("./models");
+      const owed = await PayoutModel.find({
+        organizerId: userId,
+        kind: "organizer_payout",
+        status: { $in: ["due", "pending_verification"] },
+      }).select("amount").lean();
+      const owedKobo = owed.reduce((n: number, p: any) => n + Number(p.amount || 0), 0);
+      if (owedKobo > 0) {
+        return res.status(409).json({
+          message: `₦${(owedKobo / 100).toLocaleString("en-NG")} from your ticket sales has not been paid out yet. Request your payout in Settings (or message the team) before closing the account.`,
+        });
+      }
+
       // Staff accounts belong to the people using them, not to the account
       // being closed: hand them back rather than deleting anyone's login.
       const staff = await User.updateMany(
@@ -3853,6 +3888,20 @@ export async function registerRoutes(
           },
         },
       );
+
+      // The account is a tombstone, not gone: tell the team so a later dispute
+      // or "where did my organizer go" has a record. Fire and forget.
+      (async () => {
+        const admins = await User.find({ role: "admin" }, { email: 1 }).lean();
+        const to = Array.from(new Set([process.env.PAYOUT_NOTIFY_EMAIL, ...admins.map((a: any) => a.email)].filter(Boolean))) as string[];
+        if (to.length === 0) return;
+        const { sendTeamNoticeEmail } = await import("./emails");
+        await sendTeamNoticeEmail(to, `Account closed: ${user.username}`, [
+          `${user.displayName || user.username} (${user.email || "no email"}, ${user.role}) closed their account.`,
+          `Account id ${userId}. Events, tickets, bookings and payouts are kept; personal details were removed.`,
+          `Staff detached: ${(staff as any).modifiedCount ?? 0}. Talent listings unpublished: ${(vendors as any).modifiedCount ?? 0}.`,
+        ]);
+      })().catch((err) => console.error("[account] closure notice failed:", err?.message));
 
       // End the session last so the client can still read this response.
       req.logout(() => {

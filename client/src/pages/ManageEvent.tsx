@@ -281,12 +281,20 @@ export default function ManageEvent() {
     mutationFn: async () => {
       const res = await fetch(buildUrl(api.events.update.path, { id: id as string }), {
         method: "DELETE",
+        credentials: "include",
       });
-      if (!res.ok) throw new Error("Failed to delete event");
+      // 409: paid tickets exist, the server says what to do instead.
+      // 200 + archived: an admin removed an event with paid sales.
+      const body = res.status === 204 ? {} : await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || "Could not delete this event.");
+      return body as { archived?: boolean; message?: string };
     },
-    onSuccess: () => {
-      toast({ title: "Event deleted successfully" });
+    onSuccess: (body) => {
+      toast(body?.archived ? { title: "Event archived", description: body.message } : { title: "Event deleted" });
       setLocation("/admin");
+    },
+    onError: (err: any) => {
+      toast({ variant: "destructive", title: "Event not deleted", description: err.message });
     },
   });
 
@@ -441,7 +449,7 @@ export default function ManageEvent() {
             variant="destructive" 
             className="h-10 px-3"
             onClick={() => {
-              if (confirm("Are you sure you want to delete this event?")) {
+              if (confirm("Delete this event? If tickets have been paid for you will be asked to refund them or unpublish instead.")) {
                 deleteEventMutation.mutate();
               }
             }}

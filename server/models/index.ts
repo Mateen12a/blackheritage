@@ -221,6 +221,7 @@ const EventSchema: Schema = new Schema({
   // Partner card (sponsors, vendors, talent). Off unless the organizer turns it on.
   businessApplicationsEnabled: { type: Boolean, default: false },
   partnerSettings: { type: Schema.Types.Mixed, default: null },
+  archivedAt: { type: Date, default: null }, // admin-archived: hidden, records kept
   promoCodesPublic: { type: Boolean, default: false },
   checkoutFields: { type: { phone: Boolean, tableNote: Boolean, dietaryNote: Boolean }, default: null },
   branding: { type: { displayName: String, logoUrl: String, accentHex: String }, default: null },
