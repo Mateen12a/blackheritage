@@ -375,7 +375,18 @@ export async function registerRoutes(
           `<meta name="twitter:description" content="${escapeHtml(shareDesc)}" />\n` +
           `<meta name="twitter:image" content="${escapeHtml(image)}" />\n` +
           ldScript;
-        html = html.replace("</head>", () => `${tags}\n  </head>`);
+        // Slow-network help: start the flyer download alongside the JS, and
+        // ship the event itself so the page renders without a second round
+        // trip. Only public, published events reach this branch.
+        const [withSlug] = await withOrganizerSlug([event as any]);
+        const bootstrap = JSON.stringify({ key: (event as any).slug || String(event.id), event: withSlug })
+          .replace(/</g, "\\u003c")
+          .replace(new RegExp(String.fromCharCode(0x2028), "g"), "\\u2028")
+          .replace(new RegExp(String.fromCharCode(0x2029), "g"), "\\u2029");
+        const speed =
+          `<link rel="preload" as="image" href="${escapeHtml(image)}" fetchpriority="high" />\n` +
+          `<script>window.__BH_EVENT__=${bootstrap}</script>`;
+        html = html.replace("</head>", () => `${tags}\n${speed}\n  </head>`);
       }
 
       res.set("Cache-Control", "public, max-age=300");

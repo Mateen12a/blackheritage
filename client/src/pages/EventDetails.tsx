@@ -1,6 +1,8 @@
 import { useEvent } from "@/hooks/use-events";
-import { BookingModal } from "@/components/BookingModal";
-import { ShareFlyerModal } from "@/components/ShareFlyerModal";
+import { lazy, Suspense } from "react";
+// Checkout, the share studio and the partner form load on first use, not with the page.
+const BookingModal = lazy(() => import("@/components/BookingModal").then((m) => ({ default: m.BookingModal })));
+const ShareFlyerModal = lazy(() => import("@/components/ShareFlyerModal").then((m) => ({ default: m.ShareFlyerModal })));
 import { FlyerLightbox } from "@/components/FlyerLightbox";
 import { Button } from "@/components/ui/button";
 import { useRoute } from "wouter";
@@ -9,13 +11,16 @@ import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Link } from "wouter";
-import { BusinessModal, PARTNER_COPY, partnerSettingsOf } from "@/components/BusinessModal";
+const BusinessModal = lazy(() => import("@/components/BusinessModal").then((m) => ({ default: m.BusinessModal })));
+import { PARTNER_COPY, partnerSettingsOf } from "@/lib/partner";
 import { Reveal, FadeImg } from "@/components/motion";
 import { PastEventProof } from "@/components/PastEventProof";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/Navbar";
-import { BookingReturnHandler } from "@/components/BookingReturnHandler";
+// Only a return from a redirected payment (?ref=) needs this, and it pulls in
+// the ticket reveal and flyer studio, so it loads only then.
+const BookingReturnHandler = lazy(() => import("@/components/BookingReturnHandler").then((m) => ({ default: m.BookingReturnHandler })));
 import { getTemplate, accentOverrides, templateFor } from "@shared/themes";
 import { useEventPulse } from "@/hooks/use-pulse";
 import { useCountdown } from "@/hooks/use-countdown";
@@ -77,6 +82,13 @@ export default function EventDetails() {
   const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
   const [isFlyerModalOpen, setIsFlyerModalOpen] = useState(false);
   const [isFlyerZoomOpen, setIsFlyerZoomOpen] = useState(false);
+  // Keep lazily loaded modals mounted after first open (exit animations, reveal).
+  const [bookingMounted, setBookingMounted] = useState(false);
+  const [businessMounted, setBusinessMounted] = useState(false);
+  const [shareMounted, setShareMounted] = useState(false);
+  useEffect(() => { if (isBookingOpen) setBookingMounted(true); }, [isBookingOpen]);
+  useEffect(() => { if (isBusinessModalOpen) setBusinessMounted(true); }, [isBusinessModalOpen]);
+  useEffect(() => { if (isFlyerModalOpen) setShareMounted(true); }, [isFlyerModalOpen]);
   const [publicPromos, setPublicPromos] = useState<PublicPromo[]>([]);
   const { toast } = useToast();
 
@@ -756,29 +768,47 @@ export default function EventDetails() {
         {waitlistEnabled && soldOut && <WaitlistInline eventId={String(event.id)} compact />}
       </div>
 
-      <BookingReturnHandler event={event} />
+      {typeof window !== "undefined" && new URLSearchParams(window.location.search).has("ref") && (
+        <Suspense fallback={null}>
+          <BookingReturnHandler event={event} />
+        </Suspense>
+      )}
 
-      <BookingModal
-        event={event}
-        isOpen={isBookingOpen}
-        onClose={() => setIsBookingOpen(false)}
-      />
+      {/* Mounted from first open onward: the ticket reveal lives inside the
+          booking modal and must survive it closing after payment. */}
+      {(isBookingOpen || bookingMounted) && (
+        <Suspense fallback={null}>
+          <BookingModal
+            event={event}
+            isOpen={isBookingOpen}
+            onClose={() => setIsBookingOpen(false)}
+          />
+        </Suspense>
+      )}
 
-      <BusinessModal
-        event={event}
-        isOpen={isBusinessModalOpen}
-        onClose={() => setIsBusinessModalOpen(false)}
-      />
+      {(isBusinessModalOpen || businessMounted) && (
+        <Suspense fallback={null}>
+          <BusinessModal
+            event={event}
+            isOpen={isBusinessModalOpen}
+            onClose={() => setIsBusinessModalOpen(false)}
+          />
+        </Suspense>
+      )}
 
       {isFlyerZoomOpen && event.imageUrl && (
         <FlyerLightbox src={event.imageUrl} alt={event.title} onClose={() => setIsFlyerZoomOpen(false)} />
       )}
-      <ShareFlyerModal
-        open={isFlyerModalOpen}
-        onClose={() => setIsFlyerModalOpen(false)}
-        event={event}
-        guestMode
-      />
+      {(isFlyerModalOpen || shareMounted) && (
+        <Suspense fallback={null}>
+          <ShareFlyerModal
+            open={isFlyerModalOpen}
+            onClose={() => setIsFlyerModalOpen(false)}
+            event={event}
+            guestMode
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

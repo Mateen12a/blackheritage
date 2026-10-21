@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -7,9 +7,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2, Sparkles, ArrowRight } from "lucide-react";
 import NotFound from "@/pages/not-found";
-import Home from "@/pages/Home";
-import Explore from "@/pages/Explore";
-import EditEvent from "@/pages/EditEvent";
 
 /** Reads the :id off the admin edit route for the shared edit page. */
 function EditEventRoute() {
@@ -17,32 +14,39 @@ function EditEventRoute() {
   const id = location.match(/^\/admin\/events\/([^/?#]+)\/edit/)?.[1] || "";
   return <EditEvent id={id} />;
 }
-import Events from "@/pages/Events";
 import EventDetails from "@/pages/EventDetails";
-import Vendors from "@/pages/Vendors";
-import VendorDetails from "@/pages/VendorDetails";
-import VendorAccount from "@/pages/VendorAccount";
-import CalendarPage from "@/pages/Calendar";
-import MyTickets from "@/pages/MyTickets";
-import AuthPage from "@/pages/Auth";
-import PasswordReset from "@/pages/PasswordReset";
-import AdminDashboard from "@/pages/AdminDashboard";
-import AttendeeDashboard from "@/pages/AttendeeDashboard";
-import VendorDashboard from "@/pages/VendorDashboard";
-import Messages from "@/pages/Messages";
-import Verify from "@/pages/Verify";
-import ManageEvent from "@/pages/ManageEvent";
-import NewEvent from "@/pages/NewEvent";
-import OrganizerDetails from "@/pages/OrganizerDetails";
-import OrganizersLanding from "@/pages/OrganizersLanding";
-import Challenges from "@/pages/Challenges";
-import Settings from "@/pages/Settings";
-import Terms from "@/pages/Terms";
-import Privacy from "@/pages/Privacy";
-import MotionReel from "@/pages/MotionReel";
 import { PublicLayout } from "@/components/PublicLayout";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { MotionProvider } from "@/components/motion";
+
+// Pages load on demand: a guest opening a shared event link downloads the
+// event page, not the dashboards, admin and film studio. Only the
+// event page stays in the main bundle because that is where shared links land.
+const Home = lazy(() => import("@/pages/Home"));
+const Explore = lazy(() => import("@/pages/Explore"));
+const EditEvent = lazy(() => import("@/pages/EditEvent"));
+const Events = lazy(() => import("@/pages/Events"));
+const Vendors = lazy(() => import("@/pages/Vendors"));
+const VendorDetails = lazy(() => import("@/pages/VendorDetails"));
+const VendorAccount = lazy(() => import("@/pages/VendorAccount"));
+const CalendarPage = lazy(() => import("@/pages/Calendar"));
+const MyTickets = lazy(() => import("@/pages/MyTickets"));
+const AuthPage = lazy(() => import("@/pages/Auth"));
+const PasswordReset = lazy(() => import("@/pages/PasswordReset"));
+const AdminDashboard = lazy(() => import("@/pages/AdminDashboard"));
+const AttendeeDashboard = lazy(() => import("@/pages/AttendeeDashboard"));
+const VendorDashboard = lazy(() => import("@/pages/VendorDashboard"));
+const Messages = lazy(() => import("@/pages/Messages"));
+const Verify = lazy(() => import("@/pages/Verify"));
+const ManageEvent = lazy(() => import("@/pages/ManageEvent"));
+const NewEvent = lazy(() => import("@/pages/NewEvent"));
+const OrganizerDetails = lazy(() => import("@/pages/OrganizerDetails"));
+const OrganizersLanding = lazy(() => import("@/pages/OrganizersLanding"));
+const Challenges = lazy(() => import("@/pages/Challenges"));
+const Settings = lazy(() => import("@/pages/Settings"));
+const Terms = lazy(() => import("@/pages/Terms"));
+const Privacy = lazy(() => import("@/pages/Privacy"));
+const MotionReel = lazy(() => import("@/pages/MotionReel"));
 
 function ProtectedRoute({
   component: Component,
@@ -271,6 +275,7 @@ function Router() {
   const { user } = useAuth();
 
   return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-7 h-7 text-gold animate-spin" aria-label="Loading" /></div>}>
     <Switch>
       {/* Logged-in users get the app Explore; guests get the marketing Home */}
       <Route path="/">
@@ -536,6 +541,7 @@ function Router() {
         )}
       </Route>
     </Switch>
+    </Suspense>
   );
 }
 

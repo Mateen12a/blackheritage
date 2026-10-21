@@ -21,8 +21,27 @@ export function useEvents() {
   });
 }
 
+/**
+ * The server embeds the event in the page it serves for /e/<slug> (see the
+ * og: injection in routes.ts). Using it as initial data paints the page
+ * without waiting for a second request, which matters most on slow networks.
+ * It is used once, for the event it was served for, then refreshed in the
+ * background as usual.
+ */
+function bootstrappedEvent(id: string): any | undefined {
+  if (typeof window === "undefined") return undefined;
+  const boot = (window as any).__BH_EVENT__;
+  if (!boot || !id) return undefined;
+  const match = boot.key === id || String(boot.event?.id) === id || boot.event?.slug === id;
+  return match ? boot.event : undefined;
+}
+
 export function useEvent(id: string) {
+  const initial = bootstrappedEvent(id);
   return useQuery({
+    initialData: initial,
+    // Embedded data is fresh from the server; refetch quietly soon after.
+    initialDataUpdatedAt: initial ? Date.now() - 50_000 : undefined,
     queryKey: [`${BASE_URL}${api.events.get.path}`, id],
     queryFn: async () => {
       // /e/:slug pages pass the slug; the id route passes a raw id. Both hit

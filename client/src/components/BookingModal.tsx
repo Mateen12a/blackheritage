@@ -20,6 +20,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { TicketReveal, type RevealTicket } from "@/components/TicketReveal";
+import { loadPaystack } from "@/lib/paystack";
 
 declare global {
   interface Window {
@@ -62,6 +63,11 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
       return [{ name: "Regular", price: event.price, capacity: event.capacity, sold: 0 }];
     }
   }, [event]);
+
+  // Start fetching Paystack the moment the dialog opens, not on page load.
+  useEffect(() => {
+    if (isOpen) void loadPaystack();
+  }, [isOpen]);
 
   useEffect(() => {
     if (ticketTypes.length > 0 && !selectedTier) {
@@ -172,7 +178,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
       // callback URL), so the popup resumes it by access code rather than
       // starting a new one. v1 inline.js silently ignored onSuccess, which
       // left paid buyers on a spinner with no tickets on screen.
-      const PaystackPop = window.PaystackPop;
+      const PaystackPop = await loadPaystack();
       if (!init.accessCode || typeof PaystackPop !== "function") {
         if (init.paymentUrl) {
           window.location.href = init.paymentUrl;

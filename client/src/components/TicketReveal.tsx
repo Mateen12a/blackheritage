@@ -32,7 +32,7 @@ interface TicketRevealProps {
 }
 
 const nairaDate = (d: string | Date) =>
-  new Date(d).toLocaleString("en-NG", {
+  new Date(d).toLocaleString("en-NG", { timeZone: "Africa/Lagos", hour12: true,
     weekday: "short",
     day: "numeric",
     month: "short",
