@@ -5,14 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <!-- Brand type: Self-hosted Playfair Display (display) + DM Sans (body). See DESIGN.md. -->
+    <!-- Self-hosted fonts only (Google Fonts duplicated every file). Preload just
+         the two faces the first screen paints; the rest arrive on use. -->
     <link rel="stylesheet" href="/fonts/fonts.css" />
-    <link rel="preload" href="/fonts/playfair-display-normal-800.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/playfair-display-normal-700.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/playfair-display-italic-400.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/dm-sans-normal-400.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/dm-sans-normal-500.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/dm-sans-normal-700.woff2" as="font" type="font/woff2" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
     <title>Black Heritage Entertainment & Events | Tickets, Hangouts & Experiences in Nigeria</title>
     <meta name="description" content="Concerts, beach hangouts, festivals, and parties across Nigeria (Lagos, Abuja, PH & beyond). Instant QR e-tickets, VIP tables, and verified event talent." />
     <link rel="canonical" href="https://blackhevents.com/" />
@@ -24,8 +21,19 @@
     <meta property="og:title" content="Black Heritage Entertainment & Events | Tickets, Hangouts & Experiences in Nigeria" />
     <meta property="og:description" content="Concerts, beach hangouts, festivals, and parties across Nigeria (Lagos, Abuja, PH & beyond). Instant QR e-tickets, VIP tables, and verified event talent." />
     <meta property="og:image" content="https://blackhevents.com/og-home.png" />
+    <meta property="og:image:secure_url" content="https://blackhevents.com/og-home.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Black Heritage Entertainment and Events in Nigeria" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#111114" />
+    <meta name="theme-color" content="#0F0F14" />
+    <!-- iPhone "Add to Home Screen": its own icon, full-screen, dark status bar -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Black Heritage" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
@@ -45,7 +53,7 @@
           "name": "Black Heritage Entertainment & Events",
           "url": "https://blackhevents.com/",
           "logo": "https://blackhevents.com/favicon.png",
-          "description": "Discover and book concerts, festivals, beach hangouts and parties across Nigeria — or list your own event and sell tickets with verified e-tickets. Hire trusted DJs, caterers, photographers and more."
+          "description": "Discover and book concerts, festivals, beach hangouts and parties across Nigeria, or list your own event and sell tickets with verified e-tickets. Hire trusted DJs, caterers, photographers and more."
         },
         {
           "@type": "WebSite",
@@ -66,27 +74,10 @@
     <meta property="og:site_name" content="Black Heritage Entertainment & Events" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <style>
-      /* Force Paystack iframe to be visible and interactive over Radix UI Dialog */
-      iframe[src*="paystack"], .paystack-modal, #paystack-iframe, .paystack-iframe {
-        z-index: 99999999 !important;
-        position: fixed !important;
-        pointer-events: auto !important;
-      }
-      /* Ensure nothing else is blocking interactions when Paystack is open */
-      body.paystack-open {
-        overflow: hidden !important;
-      }
-      /* Prevent Radix Dialog's pointer-events: none from affecting Paystack */
-      [data-radix-focus-guard], [data-radix-popper-content-wrapper] {
-        z-index: 10 !important;
-      }
-    </style>
-    <script type="module" crossorigin src="/assets/index-DzoPtew-.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-iUh9iT4s.css">
+    <script type="module" crossorigin src="/assets/index-k5iDSC4E.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-C8ltUljx.css">
   </head>
   <body>
-    <div id="root"></div>
-    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <div id="root"></div>
   </body>
 </html>

@@ -19946,14 +19946,14 @@ var require_etag = __commonJS({
   "node_modules/etag/index.js"(exports2, module2) {
     "use strict";
     module2.exports = etag;
-    var crypto11 = require("crypto");
+    var crypto12 = require("crypto");
     var Stats = require("fs").Stats;
     var toString = Object.prototype.toString;
     function entitytag(entity) {
       if (entity.length === 0) {
         return '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"';
       }
-      var hash3 = crypto11.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
+      var hash3 = crypto12.createHash("sha1").update(entity, "utf8").digest("base64").substring(0, 27);
       var len = typeof entity === "string" ? Buffer.byteLength(entity, "utf8") : entity.length;
       return '"' + len.toString(16) + "-" + hash3 + '"';
     }
@@ -22845,11 +22845,11 @@ var require_request = __commonJS({
 // node_modules/cookie-signature/index.js
 var require_cookie_signature = __commonJS({
   "node_modules/cookie-signature/index.js"(exports2) {
-    var crypto11 = require("crypto");
+    var crypto12 = require("crypto");
     exports2.sign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Cookie value must be provided as a string.");
       if (null == secret) throw new TypeError("Secret key must be provided.");
-      return val + "." + crypto11.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
+      return val + "." + crypto12.createHmac("sha256", secret).update(val).digest("base64").replace(/\=+$/, "");
     };
     exports2.unsign = function(val, secret) {
       if ("string" !== typeof val) throw new TypeError("Signed cookie string must be provided.");
@@ -22858,7 +22858,7 @@ var require_cookie_signature = __commonJS({
       return sha12(mac) == sha12(val) ? str : false;
     };
     function sha12(str) {
-      return crypto11.createHash("sha1").update(str).digest("hex");
+      return crypto12.createHash("sha1").update(str).digest("hex");
     }
   }
 });
@@ -28193,7 +28193,7 @@ var require_disk = __commonJS({
     var fs5 = require("fs");
     var os = require("os");
     var path5 = require("path");
-    var crypto11 = require("crypto");
+    var crypto12 = require("crypto");
     var pipeline = require("stream").pipeline;
     var MulterError = require_multer_error();
     var openStreams = /* @__PURE__ */ new WeakMap();
@@ -28205,7 +28205,7 @@ var require_disk = __commonJS({
       if (flush.onClosed) flush.onClosed();
     }
     function getFilename(req, file, cb) {
-      crypto11.randomBytes(16, function(err, raw) {
+      crypto12.randomBytes(16, function(err, raw) {
         cb(err, err ? void 0 : raw.toString("hex"));
       });
     }
@@ -28645,8 +28645,8 @@ var require_bson = __commonJS({
       return crypto.getRandomValues(nodeJsByteUtils.allocate(byteLength));
     }
     var nodejsRandomBytes = (() => {
-      const { crypto: crypto11 } = globalThis;
-      if (crypto11 != null && typeof crypto11.getRandomValues === "function") {
+      const { crypto: crypto12 } = globalThis;
+      if (crypto12 != null && typeof crypto12.getRandomValues === "function") {
         return nodejsSecureRandomBytes;
       } else {
         return nodejsMathRandomBytes;
@@ -28738,10 +28738,10 @@ var require_bson = __commonJS({
       return webByteUtils.fromNumberArray(Array.from({ length: byteLength }, () => Math.floor(Math.random() * 256)));
     }
     var webRandomBytes = (() => {
-      const { crypto: crypto11 } = globalThis;
-      if (crypto11 != null && typeof crypto11.getRandomValues === "function") {
+      const { crypto: crypto12 } = globalThis;
+      if (crypto12 != null && typeof crypto12.getRandomValues === "function") {
         return (byteLength) => {
-          return crypto11.getRandomValues(webByteUtils.allocate(byteLength));
+          return crypto12.getRandomValues(webByteUtils.allocate(byteLength));
         };
       } else {
         if (isReactNative()) {
@@ -34485,7 +34485,7 @@ var require_utils4 = __commonJS({
     exports2.decorateDecryptionResult = decorateDecryptionResult;
     exports2.addAbortListener = addAbortListener;
     exports2.abortable = abortable;
-    var crypto11 = require("crypto");
+    var crypto12 = require("crypto");
     var fs_1 = require("fs");
     var http2 = require("http");
     var timers_1 = require("timers");
@@ -34635,7 +34635,7 @@ var require_utils4 = __commonJS({
       }
     }
     function uuidV4() {
-      const result = crypto11.randomBytes(16);
+      const result = crypto12.randomBytes(16);
       result[6] = result[6] & 15 | 64;
       result[8] = result[8] & 63 | 128;
       return result;
@@ -35219,7 +35219,7 @@ var require_utils4 = __commonJS({
     function squashError(_error) {
       return;
     }
-    exports2.randomBytes = (0, util_1.promisify)(crypto11.randomBytes);
+    exports2.randomBytes = (0, util_1.promisify)(crypto12.randomBytes);
     async function once(ee, name, options) {
       options?.signal?.throwIfAborted();
       const { promise, resolve, reject } = promiseWithResolvers();
@@ -56657,7 +56657,7 @@ var require_scram = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.ScramSHA256 = exports2.ScramSHA1 = void 0;
     var saslprep_1 = require_node5();
-    var crypto11 = require("crypto");
+    var crypto12 = require("crypto");
     var bson_1 = require_bson2();
     var error_1 = require_error();
     var utils_1 = require_utils4();
@@ -56810,9 +56810,9 @@ var require_scram = __commonJS({
       }
       let md52;
       try {
-        md52 = crypto11.createHash("md5");
+        md52 = crypto12.createHash("md5");
       } catch (err) {
-        if (crypto11.getFips()) {
+        if (crypto12.getFips()) {
           throw new Error("Auth mechanism SCRAM-SHA-1 is not supported in FIPS mode");
         }
         throw err;
@@ -56835,10 +56835,10 @@ var require_scram = __commonJS({
       return Buffer.from(res).toString("base64");
     }
     function H(method, text2) {
-      return crypto11.createHash(method).update(text2).digest();
+      return crypto12.createHash(method).update(text2).digest();
     }
     function HMAC(method, key, text2) {
-      return crypto11.createHmac(method, key).update(text2).digest();
+      return crypto12.createHmac(method, key).update(text2).digest();
     }
     var _hiCache = {};
     var _hiCacheCount = 0;
@@ -56855,7 +56855,7 @@ var require_scram = __commonJS({
       if (_hiCache[key] != null) {
         return _hiCache[key];
       }
-      const saltedData = crypto11.pbkdf2Sync(data, salt, iterations, hiLengthMap[cryptoMethod], cryptoMethod);
+      const saltedData = crypto12.pbkdf2Sync(data, salt, iterations, hiLengthMap[cryptoMethod], cryptoMethod);
       if (_hiCacheCount >= 200) {
         _hiCachePurge();
       }
@@ -56867,8 +56867,8 @@ var require_scram = __commonJS({
       if (lhs.length !== rhs.length) {
         return false;
       }
-      if (typeof crypto11.timingSafeEqual === "function") {
-        return crypto11.timingSafeEqual(lhs, rhs);
+      if (typeof crypto12.timingSafeEqual === "function") {
+        return crypto12.timingSafeEqual(lhs, rhs);
       }
       let result = 0;
       for (let i = 0; i < lhs.length; i++) {
@@ -79976,10 +79976,10 @@ var require_connection2 = __commonJS({
         });
       });
     };
-    async function _wrapUserTransaction(fn, session3, mongoose8) {
+    async function _wrapUserTransaction(fn, session3, mongoose9) {
       try {
-        const res = mongoose8.transactionAsyncLocalStorage == null ? await fn(session3) : await new Promise((resolve) => {
-          mongoose8.transactionAsyncLocalStorage.run(
+        const res = mongoose9.transactionAsyncLocalStorage == null ? await fn(session3) : await new Promise((resolve) => {
+          mongoose9.transactionAsyncLocalStorage.run(
             { session: session3 },
             () => resolve(fn(session3))
           );
@@ -92175,7 +92175,7 @@ var require_mongoose = __commonJS({
     Mongoose.prototype.ConnectionStates = STATES;
     Mongoose.prototype.driver = driver;
     Mongoose.prototype.setDriver = function setDriver(driver2) {
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       if (_mongoose.__driver === driver2) {
         return _mongoose;
       }
@@ -92193,7 +92193,7 @@ var require_mongoose = __commonJS({
         }
       }
       if (driver2.SchemaTypes != null) {
-        Object.assign(mongoose8.Schema.Types, driver2.SchemaTypes);
+        Object.assign(mongoose9.Schema.Types, driver2.SchemaTypes);
       }
       const Connection = driver2.Connection;
       const oldDefaultConnection = _mongoose.connections[0];
@@ -92211,7 +92211,7 @@ var require_mongoose = __commonJS({
       return _mongoose;
     };
     Mongoose.prototype.set = function getsetOptions(key, value) {
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       if (arguments.length === 1 && typeof key !== "object") {
         if (VALID_OPTIONS.indexOf(key) === -1) {
           const error2 = new SetOptionError();
@@ -92272,7 +92272,7 @@ var require_mongoose = __commonJS({
     };
     Mongoose.prototype.get = Mongoose.prototype.set;
     Mongoose.prototype.createConnection = function createConnection(uri, options) {
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       const Connection = _mongoose.__driver.Connection;
       const conn = new Connection(_mongoose);
       _mongoose.connections.push(conn);
@@ -92287,7 +92287,7 @@ var require_mongoose = __commonJS({
       if (typeof options === "function" || arguments.length >= 3 && typeof arguments[2] === "function") {
         throw new MongooseError("Mongoose.prototype.connect() no longer accepts a callback");
       }
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       if (_mongoose.connection == null) {
         _createDefaultConnection(_mongoose);
       }
@@ -92298,7 +92298,7 @@ var require_mongoose = __commonJS({
       if (arguments.length >= 1 && typeof arguments[0] === "function") {
         throw new MongooseError("Mongoose.prototype.disconnect() no longer accepts a callback");
       }
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       const remaining = _mongoose.connections.length;
       if (remaining <= 0) {
         return;
@@ -92306,18 +92306,18 @@ var require_mongoose = __commonJS({
       await Promise.all(_mongoose.connections.map((conn) => conn.close()));
     };
     Mongoose.prototype.startSession = function startSession() {
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       return _mongoose.connection.startSession.apply(_mongoose.connection, arguments);
     };
     Mongoose.prototype.pluralize = function pluralize(fn) {
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       if (arguments.length > 0) {
         _mongoose._pluralize = fn;
       }
       return _mongoose._pluralize;
     };
     Mongoose.prototype.model = function model2(name, schema, collection, options) {
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       if (typeof schema === "string") {
         collection = schema;
         schema = false;
@@ -92365,7 +92365,7 @@ var require_mongoose = __commonJS({
       return model3;
     };
     Mongoose.prototype._model = function _model(name, schema, collection, options) {
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       let model2;
       if (typeof name === "function") {
         model2 = name;
@@ -92404,25 +92404,25 @@ var require_mongoose = __commonJS({
       return model2;
     };
     Mongoose.prototype.deleteModel = function deleteModel(name) {
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       _mongoose.connection.deleteModel(name);
       delete _mongoose.models[name];
       return _mongoose;
     };
     Mongoose.prototype.modelNames = function modelNames() {
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       const names = Object.keys(_mongoose.models);
       return names;
     };
     Mongoose.prototype._applyPlugins = function _applyPlugins(schema, options) {
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       options = options || {};
       options.applyPluginsToDiscriminators = _mongoose.options?.applyPluginsToDiscriminators || false;
       options.applyPluginsToChildSchemas = typeof _mongoose.options?.applyPluginsToChildSchemas === "boolean" ? _mongoose.options.applyPluginsToChildSchemas : true;
       applyPlugins(schema, _mongoose.plugins, options, "$globalPluginsApplied");
     };
     Mongoose.prototype.plugin = function plugin(fn, opts) {
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       _mongoose.plugins.push([fn, opts]);
       return _mongoose;
     };
@@ -92471,14 +92471,14 @@ var require_mongoose = __commonJS({
     Mongoose.prototype.Document = Document;
     Mongoose.prototype.ObjectId = SchemaTypes.ObjectId;
     Mongoose.prototype.isValidObjectId = function isValidObjectId(v) {
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       return _mongoose.Types.ObjectId.isValid(v);
     };
     Mongoose.prototype.isObjectIdOrHexString = function isObjectIdOrHexString(v) {
       return isBsonType(v, "ObjectId") || typeof v === "string" && objectIdHexRegexp.test(v);
     };
     Mongoose.prototype.syncIndexes = function syncIndexes(options) {
-      const _mongoose = this instanceof Mongoose ? this : mongoose8;
+      const _mongoose = this instanceof Mongoose ? this : mongoose9;
       return _mongoose.connection.syncIndexes(options);
     };
     Mongoose.prototype.Decimal128 = SchemaTypes.Decimal128;
@@ -92499,15 +92499,15 @@ var require_mongoose = __commonJS({
     Mongoose.prototype.overwriteMiddlewareResult = Kareem.overwriteResult;
     Mongoose.prototype.overwriteMiddlewareArguments = Kareem.overwriteArguments;
     Mongoose.prototype.omitUndefined = require_omitUndefined();
-    function _createDefaultConnection(mongoose9) {
-      if (mongoose9.connection) {
+    function _createDefaultConnection(mongoose10) {
+      if (mongoose10.connection) {
         return;
       }
-      const conn = mongoose9.createConnection();
+      const conn = mongoose10.createConnection();
       conn[defaultConnectionSymbol] = true;
-      conn.models = mongoose9.models;
+      conn.models = mongoose10.models;
     }
-    var mongoose8 = module2.exports = exports2 = new Mongoose({
+    var mongoose9 = module2.exports = exports2 = new Mongoose({
       [defaultMongooseSymbol]: true
     });
   }
@@ -92519,10 +92519,10 @@ var require_lib9 = __commonJS({
     "use strict";
     var mongodbDriver = require_node_mongodb_native();
     require_driver().set(mongodbDriver);
-    var mongoose8 = require_mongoose();
-    mongoose8.setDriver(mongodbDriver);
-    mongoose8.Mongoose.prototype.mongo = require_lib6();
-    module2.exports = mongoose8;
+    var mongoose9 = require_mongoose();
+    mongoose9.setDriver(mongodbDriver);
+    mongoose9.Mongoose.prototype.mongo = require_lib6();
+    module2.exports = mongoose9;
   }
 });
 
@@ -92530,55 +92530,55 @@ var require_lib9 = __commonJS({
 var require_mongoose2 = __commonJS({
   "node_modules/mongoose/index.js"(exports2, module2) {
     "use strict";
-    var mongoose8 = require_lib9();
-    module2.exports = mongoose8;
-    module2.exports.default = mongoose8;
-    module2.exports.mongoose = mongoose8;
-    module2.exports.cast = mongoose8.cast;
-    module2.exports.STATES = mongoose8.STATES;
-    module2.exports.setDriver = mongoose8.setDriver;
-    module2.exports.set = mongoose8.set;
-    module2.exports.get = mongoose8.get;
-    module2.exports.createConnection = mongoose8.createConnection;
-    module2.exports.connect = mongoose8.connect;
-    module2.exports.disconnect = mongoose8.disconnect;
-    module2.exports.startSession = mongoose8.startSession;
-    module2.exports.pluralize = mongoose8.pluralize;
-    module2.exports.model = mongoose8.model;
-    module2.exports.deleteModel = mongoose8.deleteModel;
-    module2.exports.modelNames = mongoose8.modelNames;
-    module2.exports.plugin = mongoose8.plugin;
-    module2.exports.connections = mongoose8.connections;
-    module2.exports.version = mongoose8.version;
-    module2.exports.Aggregate = mongoose8.Aggregate;
-    module2.exports.Mongoose = mongoose8.Mongoose;
-    module2.exports.Schema = mongoose8.Schema;
-    module2.exports.SchemaType = mongoose8.SchemaType;
-    module2.exports.SchemaTypes = mongoose8.SchemaTypes;
-    module2.exports.VirtualType = mongoose8.VirtualType;
-    module2.exports.Types = mongoose8.Types;
-    module2.exports.Query = mongoose8.Query;
-    module2.exports.Model = mongoose8.Model;
-    module2.exports.Document = mongoose8.Document;
-    module2.exports.ObjectId = mongoose8.ObjectId;
-    module2.exports.isValidObjectId = mongoose8.isValidObjectId;
-    module2.exports.isObjectIdOrHexString = mongoose8.isObjectIdOrHexString;
-    module2.exports.syncIndexes = mongoose8.syncIndexes;
-    module2.exports.Decimal128 = mongoose8.Decimal128;
-    module2.exports.Mixed = mongoose8.Mixed;
-    module2.exports.Date = mongoose8.Date;
-    module2.exports.Number = mongoose8.Number;
-    module2.exports.Error = mongoose8.Error;
-    module2.exports.MongooseError = mongoose8.MongooseError;
-    module2.exports.now = mongoose8.now;
-    module2.exports.CastError = mongoose8.CastError;
-    module2.exports.SchemaTypeOptions = mongoose8.SchemaTypeOptions;
-    module2.exports.mongo = mongoose8.mongo;
-    module2.exports.mquery = mongoose8.mquery;
-    module2.exports.sanitizeFilter = mongoose8.sanitizeFilter;
-    module2.exports.trusted = mongoose8.trusted;
-    module2.exports.skipMiddlewareFunction = mongoose8.skipMiddlewareFunction;
-    module2.exports.overwriteMiddlewareResult = mongoose8.overwriteMiddlewareResult;
+    var mongoose9 = require_lib9();
+    module2.exports = mongoose9;
+    module2.exports.default = mongoose9;
+    module2.exports.mongoose = mongoose9;
+    module2.exports.cast = mongoose9.cast;
+    module2.exports.STATES = mongoose9.STATES;
+    module2.exports.setDriver = mongoose9.setDriver;
+    module2.exports.set = mongoose9.set;
+    module2.exports.get = mongoose9.get;
+    module2.exports.createConnection = mongoose9.createConnection;
+    module2.exports.connect = mongoose9.connect;
+    module2.exports.disconnect = mongoose9.disconnect;
+    module2.exports.startSession = mongoose9.startSession;
+    module2.exports.pluralize = mongoose9.pluralize;
+    module2.exports.model = mongoose9.model;
+    module2.exports.deleteModel = mongoose9.deleteModel;
+    module2.exports.modelNames = mongoose9.modelNames;
+    module2.exports.plugin = mongoose9.plugin;
+    module2.exports.connections = mongoose9.connections;
+    module2.exports.version = mongoose9.version;
+    module2.exports.Aggregate = mongoose9.Aggregate;
+    module2.exports.Mongoose = mongoose9.Mongoose;
+    module2.exports.Schema = mongoose9.Schema;
+    module2.exports.SchemaType = mongoose9.SchemaType;
+    module2.exports.SchemaTypes = mongoose9.SchemaTypes;
+    module2.exports.VirtualType = mongoose9.VirtualType;
+    module2.exports.Types = mongoose9.Types;
+    module2.exports.Query = mongoose9.Query;
+    module2.exports.Model = mongoose9.Model;
+    module2.exports.Document = mongoose9.Document;
+    module2.exports.ObjectId = mongoose9.ObjectId;
+    module2.exports.isValidObjectId = mongoose9.isValidObjectId;
+    module2.exports.isObjectIdOrHexString = mongoose9.isObjectIdOrHexString;
+    module2.exports.syncIndexes = mongoose9.syncIndexes;
+    module2.exports.Decimal128 = mongoose9.Decimal128;
+    module2.exports.Mixed = mongoose9.Mixed;
+    module2.exports.Date = mongoose9.Date;
+    module2.exports.Number = mongoose9.Number;
+    module2.exports.Error = mongoose9.Error;
+    module2.exports.MongooseError = mongoose9.MongooseError;
+    module2.exports.now = mongoose9.now;
+    module2.exports.CastError = mongoose9.CastError;
+    module2.exports.SchemaTypeOptions = mongoose9.SchemaTypeOptions;
+    module2.exports.mongo = mongoose9.mongo;
+    module2.exports.mquery = mongoose9.mquery;
+    module2.exports.sanitizeFilter = mongoose9.sanitizeFilter;
+    module2.exports.trusted = mongoose9.trusted;
+    module2.exports.skipMiddlewareFunction = mongoose9.skipMiddlewareFunction;
+    module2.exports.overwriteMiddlewareResult = mongoose9.overwriteMiddlewareResult;
   }
 });
 
@@ -92613,6 +92613,10 @@ var init_models = __esm({
       username: { type: String, required: true, unique: true },
       email: { type: String, required: true, unique: true },
       password: { type: String, required: true },
+      // Password reset: only a SHA-256 hash of the emailed token is stored, so a
+      // database leak cannot be replayed into a reset. Single use, 1 hour.
+      resetTokenHash: { type: String, default: null },
+      resetTokenExpires: { type: Date, default: null },
       role: { type: String, enum: ["user", "organizer", "admin"], default: "organizer" },
       teamOwnerId: { type: String, default: null },
       staffRole: { type: String, enum: ["manager", "finance", "entry", null], default: null },
@@ -92660,6 +92664,42 @@ var init_models = __esm({
       videoLoopUrl: { type: String, default: null },
       spotifyPlaylistUrl: { type: String, default: null },
       tourCities: { type: [String], default: [] },
+      bankDetails: {
+        type: {
+          accountNumber: String,
+          bankCode: String,
+          bankName: String,
+          accountName: String,
+          subaccountCode: { type: String, default: null },
+          recipientCode: { type: String, default: null },
+          updatedAt: { type: Date, default: Date.now }
+        },
+        default: null
+      },
+      isVerified: { type: Boolean, default: false },
+      verificationStatus: {
+        type: String,
+        enum: ["unverified", "pending", "verified", "rejected"],
+        default: "unverified"
+      },
+      verificationDetails: {
+        type: {
+          businessName: String,
+          bvnLast4: String,
+          cacNumber: String,
+          idType: String,
+          idNumber: String,
+          phone: String,
+          notes: String,
+          submittedAt: { type: Date, default: Date.now }
+        },
+        default: null
+      },
+      verifiedAt: { type: Date, default: null },
+      founderVoucher: { type: String, default: null },
+      payoutRequestedAt: { type: Date, default: null },
+      // throttles payout request emails
+      waivedTicketCount: { type: Number, default: 0 },
       isDemo: { type: Boolean, default: false, index: true },
       createdAt: { type: Date, default: Date.now }
     }, {
@@ -92701,6 +92741,16 @@ var init_models = __esm({
       showAttendeeCount: { type: Boolean, default: false },
       waitlistEnabled: { type: Boolean, default: false },
       guestCheckout: { type: Boolean, default: true },
+      buyerPaysFee: { type: Boolean, default: false },
+      // Partner card (sponsors, vendors, talent). Off unless the organizer turns it on.
+      businessApplicationsEnabled: { type: Boolean, default: false },
+      partnerSettings: { type: import_mongoose.Schema.Types.Mixed, default: null },
+      archivedAt: { type: Date, default: null },
+      // admin-archived: hidden, records kept
+      ageLimit: { type: String, default: null },
+      endsText: { type: String, default: null },
+      dressCode: { type: String, default: null },
+      refundPolicy: { type: String, default: null },
       promoCodesPublic: { type: Boolean, default: false },
       checkoutFields: { type: { phone: Boolean, tableNote: Boolean, dietaryNote: Boolean }, default: null },
       branding: { type: { displayName: String, logoUrl: String, accentHex: String }, default: null },
@@ -92733,6 +92783,8 @@ var init_models = __esm({
       },
       eventTypeLabel: { type: String, maxlength: 40 },
       // free text when 'other'
+      whatsappGroupUrl: { type: String, default: null },
+      // Attendee community / WhatsApp group link
       isDemo: { type: Boolean, default: false, index: true }
     });
     EventModel = import_mongoose.default.models.Event || (0, import_mongoose.model)("Event", EventSchema);
@@ -92759,6 +92811,13 @@ var init_models = __esm({
       // optional checkout fields, organizer-toggled
       dietaryNote: { type: String, default: null },
       paidAt: { type: Date },
+      subaccountSplit: { type: Boolean, default: false },
+      subaccountCode: { type: String, default: null },
+      // Flat platform charge sent to Paystack as transaction_charge on split
+      // bookings: what the platform actually kept, Founder waiver included.
+      splitChargeKobo: { type: Number, default: null },
+      // Platform fee the buyer paid on top of the tickets (buyerPaysFee events).
+      serviceFeeKobo: { type: Number, default: 0 },
       isVerified: { type: Boolean, default: false },
       // Added isVerified
       verifiedAt: { type: Date },
@@ -92804,7 +92863,7 @@ var init_models = __esm({
     VendorModel = import_mongoose.default.models.Vendor || (0, import_mongoose.model)("Vendor", VendorSchema);
     BusinessBookingSchema = new import_mongoose.Schema({
       eventId: { type: import_mongoose.Schema.Types.ObjectId, ref: "Event", required: true },
-      type: { type: String, enum: ["sponsor", "vendor"], required: true },
+      type: { type: String, enum: ["sponsor", "vendor", "talent"], required: true },
       packageName: { type: String, required: true },
       price: { type: Number, required: true },
       businessName: { type: String, required: true },
@@ -92878,14 +92937,14 @@ var init_models = __esm({
     });
     PlatformSettingModel = import_mongoose.default.models.PlatformSetting || (0, import_mongoose.model)("PlatformSetting", PlatformSettingSchema);
     PayoutSchema = new import_mongoose.Schema({
-      kind: { type: String, enum: ["platform_fee", "promoter_commission"], required: true },
+      kind: { type: String, enum: ["platform_fee", "promoter_commission", "organizer_payout"], required: true },
       eventId: { type: import_mongoose.Schema.Types.ObjectId, ref: "Event", required: true, index: true },
       organizerId: { type: String },
       recipientName: { type: String, required: true },
       recipientId: { type: String, default: null },
       amount: { type: Number, required: true },
       sourceBookingId: { type: import_mongoose.Schema.Types.ObjectId, ref: "Booking", default: null },
-      status: { type: String, enum: ["due", "settled"], default: "due" },
+      status: { type: String, enum: ["due", "settled", "pending_verification"], default: "due" },
       note: { type: String },
       createdAt: { type: Date, default: Date.now }
     });
@@ -94262,8 +94321,8 @@ var require_on_headers = __commonJS({
 var require_random_bytes = __commonJS({
   "node_modules/random-bytes/index.js"(exports2, module2) {
     "use strict";
-    var crypto11 = require("crypto");
-    var generateAttempts = crypto11.randomBytes === crypto11.pseudoRandomBytes ? 1 : 3;
+    var crypto12 = require("crypto");
+    var generateAttempts = crypto12.randomBytes === crypto12.pseudoRandomBytes ? 1 : 3;
     module2.exports = randomBytes3;
     module2.exports.sync = randomBytesSync;
     function randomBytes3(size, callback) {
@@ -94287,7 +94346,7 @@ var require_random_bytes = __commonJS({
       var err = null;
       for (var i = 0; i < generateAttempts; i++) {
         try {
-          return crypto11.randomBytes(size);
+          return crypto12.randomBytes(size);
         } catch (e) {
           err = e;
         }
@@ -94295,7 +94354,7 @@ var require_random_bytes = __commonJS({
       throw err;
     }
     function generateRandomBytes(size, attempts, callback) {
-      crypto11.randomBytes(size, function onRandomBytes(err, buf) {
+      crypto12.randomBytes(size, function onRandomBytes(err, buf) {
         if (!err) return callback(null, buf);
         if (!--attempts) return callback(err);
         setTimeout(generateRandomBytes.bind(null, size, attempts, callback), 10);
@@ -94637,7 +94696,7 @@ var require_express_session = __commonJS({
     "use strict";
     var Buffer2 = require_safe_buffer().Buffer;
     var cookie = require_cookie();
-    var crypto11 = require("crypto");
+    var crypto12 = require("crypto");
     var debug2 = require_src5()("express-session");
     var deprecate = require_depd()("express-session");
     var onHeaders = require_on_headers();
@@ -95005,7 +95064,7 @@ var require_express_session = __commonJS({
         }
         return val;
       });
-      return crypto11.createHash("sha1").update(str, "utf8").digest("hex");
+      return crypto12.createHash("sha1").update(str, "utf8").digest("hex");
     }
     function issecure(req, trustProxy) {
       if (req.connection && req.connection.encrypted) {
@@ -131941,8 +132000,11 @@ __export(emails_exports, {
   sendFollowerDropEmail: () => sendFollowerDropEmail,
   sendManualTicketEmail: () => sendManualTicketEmail,
   sendOrganizerSaleEmail: () => sendOrganizerSaleEmail,
+  sendPasswordResetEmail: () => sendPasswordResetEmail,
+  sendPayoutRequestEmail: () => sendPayoutRequestEmail,
   sendPlaybookEmail: () => sendPlaybookEmail,
   sendRefundEmail: () => sendRefundEmail,
+  sendTeamNoticeEmail: () => sendTeamNoticeEmail,
   sendTicketEmail: () => sendTicketEmail,
   sendWelcomeEmail: () => sendWelcomeEmail
 });
@@ -131952,15 +132014,23 @@ function safeHex(hex) {
 function escAttr(value) {
   return esc(value).replace(/'/g, "&#39;");
 }
-function shell(title, bodyHtml, branding) {
+function absUrl(url) {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  const base = (process.env.PUBLIC_APP_URL || "https://blackhevents.com").replace(/\/+$/, "");
+  return base + (url.startsWith("/") ? url : "/" + url);
+}
+function shell(title, bodyHtml, branding, heroUrl) {
   const accent = safeHex(branding?.accentHex);
   const hasBrand = Boolean(branding?.displayName || branding?.logoUrl);
-  const brandLabel = hasBrand ? esc((branding?.displayName || "").toUpperCase()) : "BLACKHERITAGE";
-  const brandLogo = branding?.logoUrl ? `<img src="${escAttr(branding.logoUrl)}" alt="" width="40" height="40" style="display:block;border-radius:8px;object-fit:cover;" />` : "";
-  const subLabel = hasBrand ? "IN PARTNERSHIP WITH BLACKHERITAGE" : "ENTERTAINMENT & EVENTS";
-  const footer = hasBrand ? `Issued via <strong>BlackHeritage</strong>${branding?.displayName ? ` for ${esc(branding.displayName)}` : ""}. Questions about this ticket? Reply to this email or contact the organizer.` : `Sent by BlackHeritage. Questions about this ticket? Reply to this email or message the event organizer from your dashboard.`;
+  const brandLabel = hasBrand ? esc((branding?.displayName || "").toUpperCase()) : "BLACK HERITAGE";
+  const brandLogo = branding?.logoUrl ? `<img src="${escAttr(absUrl(branding.logoUrl))}" alt="" width="40" height="40" style="display:block;border-radius:8px;object-fit:cover;" />` : "";
+  const subLabel = hasBrand ? "TICKETS BY BLACK HERITAGE" : "ENTERTAINMENT & EVENTS";
+  const footer = hasBrand ? `Tickets for ${esc(branding?.displayName || "this event")} by <a href="https://blackhevents.com" style="color:#777;"><strong>Black Heritage</strong></a>. Questions about this ticket? Reply to this email or contact the organizer.` : `Sent by <a href="https://blackhevents.com" style="color:#777;"><strong>Black Heritage</strong></a>. Questions? Reply to this email and the team will help.`;
+  const hero = heroUrl ? `<img src="${escAttr(absUrl(heroUrl))}" alt="" width="560" style="display:block;width:100%;max-height:420px;object-fit:cover;border-left:1px solid #e5e2dc;border-right:1px solid #e5e2dc;" />` : "";
   return `<!DOCTYPE html>
-<html>
+<html lang="en">
+  <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
   <body style="margin:0;padding:0;background:#f4f2ee;">
     <div style="max-width:560px;margin:0 auto;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;color:#111;">
       <div style="background:#111114;padding:24px 28px;border-radius:12px 12px 0 0;">
@@ -131972,6 +132042,7 @@ function shell(title, bodyHtml, branding) {
           </td>
         </tr></table>
       </div>
+      ${hero}
       <div style="background:#ffffff;padding:28px;border:1px solid #e5e2dc;border-top:3px solid ${accent};">
         <h1 style="margin:0 0 16px;font-size:20px;">${title}</h1>
         ${bodyHtml}
@@ -132006,6 +132077,8 @@ function ticketRowsHtml(tickets2) {
 async function sendTicketEmail(to, data) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const dateStr = data.eventDate.toLocaleString("en-NG", {
+    timeZone: "Africa/Lagos",
+    hour12: true,
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -132035,12 +132108,16 @@ async function sendTicketEmail(to, data) {
         ${ticketRowsHtml(data.tickets)}
       </table>
 
-      <p style="margin:20px 0 0;font-size:13px;color:#444;">Your PDF ticket is attached. Present the code at the gate, on your phone or printed. Each code works once.</p>
+      <p style="margin:20px 0 0;font-size:13px;color:#444;">Your PDF ticket is attached. Show its QR at the gate, on your phone or printed. Each ticket scans once.</p>
       <p style="margin:8px 0 0;font-size:13px;color:#444;">A calendar file is attached too, one tap adds the date to your phone's calendar.</p>
       <p style="margin:8px 0 0;font-size:13px;">
-        <a href="${appUrl2}/tickets" style="color:#111;font-weight:bold;">Re-download your tickets any time</a>
+        <a href="${appUrl2}/my-tickets" style="color:#111;font-weight:bold;">Re-download your tickets any time</a>
+      </p>
+      <p style="margin:8px 0 0;font-size:13px;color:#444;">
+        Find your next night out: <a href="${COMMUNITY_URL}" style="color:#111;">join the Black Heritage WhatsApp community</a>.
       </p>`,
-      data.branding
+      data.branding,
+      data.imageUrl
     ),
     attachments: [
       ...data.pdfBase64 ? [{
@@ -132054,6 +132131,8 @@ async function sendTicketEmail(to, data) {
 async function sendManualTicketEmail(to, data) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const dateStr = data.eventDate.toLocaleString("en-NG", {
+    timeZone: "Africa/Lagos",
+    hour12: true,
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -132081,7 +132160,7 @@ async function sendManualTicketEmail(to, data) {
         ${ticketRowsHtml(data.tickets)}
       </table>
 
-      <p style="margin:20px 0 0;font-size:13px;color:#444;">Your PDF ticket is attached. Present the code at the gate.</p>`,
+      <p style="margin:20px 0 0;font-size:13px;color:#444;">Your PDF ticket is attached. Show its QR at the gate.</p>`,
       data.branding
     ),
     attachments: [
@@ -132157,6 +132236,8 @@ async function sendWelcomeEmail(to, role = "user") {
 async function sendFollowerDropEmail(to, data) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const dateStr = data.eventDate.toLocaleString("en-NG", {
+    timeZone: "Africa/Lagos",
+    hour12: true,
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -132195,6 +132276,8 @@ async function sendEventReminderEmail(to, data) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const copy = REMINDER_COPY[data.kind];
   const dateStr = data.eventDate.toLocaleString("en-NG", {
+    timeZone: "Africa/Lagos",
+    hour12: true,
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -132219,11 +132302,11 @@ async function sendEventReminderEmail(to, data) {
       </div>
 
       <p style="margin:0 0 8px;font-size:14px;">
-        <a href="${escAttr(data.ticketsUrl || `${appUrl2}/tickets`)}" style="display:inline-block;background:#111114;color:#ffffff;font-weight:bold;font-size:13px;padding:12px 24px;border-radius:8px;text-decoration:none;">${copy.cta}</a>
+        <a href="${escAttr(data.ticketsUrl || `${appUrl2}/my-tickets`)}" style="display:inline-block;background:#111114;color:#ffffff;font-weight:bold;font-size:13px;padding:12px 24px;border-radius:8px;text-decoration:none;">${copy.cta}</a>
       </p>
       <p style="margin:16px 0 0;font-size:12px;color:#777;">
         Your calendar file is attached, one tap adds the event to your phone.
-        <a href="${escAttr(`${appUrl2}/tickets`)}" style="color:#111;">Your tickets live here any time.</a>
+        <a href="${escAttr(`${appUrl2}/my-tickets`)}" style="color:#111;">Your tickets live here any time.</a>
       </p>
       <p style="margin:12px 0 0;font-size:11px;color:#999;">
         <a href="${escAttr(`${appUrl2}/api/bookings/${data.bookingId}/reminders/unsubscribe`)}" style="color:#999;">Stop reminder emails for this event</a>.
@@ -132268,6 +132351,8 @@ async function sendEventInvite(to, data) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const accent = safeHex(data.branding?.accentHex);
   const dateStr = data.eventDate.toLocaleString("en-NG", {
+    timeZone: "Africa/Lagos",
+    hour12: true,
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -132296,10 +132381,66 @@ async function sendEventInvite(to, data) {
   });
   return result.data?.id;
 }
+async function sendPasswordResetEmail(to, data) {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  await resend.emails.send({
+    from: FROM,
+    to: [to.email],
+    subject: "Reset your Black Heritage password",
+    html: shell(
+      "Reset your password",
+      `
+      <p style="margin:0 0 12px;font-size:14px;">Hi ${esc(to.name)},</p>
+      <p style="margin:0 0 16px;font-size:14px;color:#444;">Someone asked to reset the password for your Black Heritage account. Your username is <strong>${esc(data.username)}</strong>.</p>
+      <p style="margin:0 0 20px;">
+        <a href="${escAttr(data.link)}" style="display:inline-block;background:#111114;color:#ffffff;font-weight:bold;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none;">Set a new password</a>
+      </p>
+      <p style="margin:0 0 8px;font-size:13px;color:#666;">This link works once and expires in 1 hour.</p>
+      <p style="margin:0;font-size:13px;color:#666;">If you did not ask for this, ignore this email. Your password stays the same.</p>
+      `
+    )
+  });
+}
+async function sendTeamNoticeEmail(to, subject, lines, actionPath = "/admin") {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const appUrl2 = process.env.PUBLIC_APP_URL || "http://localhost:5000";
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject,
+    html: shell(
+      subject,
+      `${lines.map((l) => `<p style="margin:0 0 8px;font-size:14px;color:#222;">${esc(l)}</p>`).join("")}
+      <p style="margin:16px 0 0;font-size:13px;"><a href="${appUrl2}${actionPath}" style="color:#111;">Open the admin dashboard</a></p>`
+    )
+  });
+}
+async function sendPayoutRequestEmail(to, data) {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const appUrl2 = process.env.PUBLIC_APP_URL || "http://localhost:5000";
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Payout request: ${data.organizerName} \xB7 ${formatNaira(data.totalKobo)}`,
+    html: shell(
+      "Payout requested",
+      `
+      <p style="margin:0 0 12px;font-size:14px;"><strong>${esc(data.organizerName)}</strong> (${esc(data.organizerEmail)}) asked for their ready balance.</p>
+      <div style="background:#faf9f7;border:1px solid #e5e2dc;border-radius:8px;padding:16px;margin-bottom:16px;font-size:14px;">
+        <div>Amount: <strong>${formatNaira(data.totalKobo)}</strong> across ${data.count} sale${data.count === 1 ? "" : "s"}</div>
+        <div style="margin-top:6px;">Bank: ${esc(data.bank)}</div>
+      </div>
+      <p style="margin:0;font-size:13px;color:#444;">Send the transfer, then mark each payout settled in <a href="${appUrl2}/admin" style="color:#111;">the admin dashboard</a>.</p>
+      `
+    )
+  });
+}
 async function sendOrganizerSaleEmail(to, data) {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to.email)) return;
   const resend = new Resend(process.env.RESEND_API_KEY);
   const dateStr = data.eventDate.toLocaleString("en-NG", {
+    timeZone: "Africa/Lagos",
+    hour12: true,
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -132331,7 +132472,7 @@ async function sendOrganizerSaleEmail(to, data) {
 async function sendBusinessApplicationEmail(to, data) {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to.email)) return;
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const label = data.businessType === "sponsor" ? "Sponsorship" : "Vendor spot";
+  const label = data.businessType === "sponsor" ? "Sponsorship" : data.businessType === "talent" ? "Talent booking" : "Vendor spot";
   await resend.emails.send({
     from: FROM,
     to: [to.email],
@@ -132346,7 +132487,7 @@ async function sendBusinessApplicationEmail(to, data) {
           <tr><td style="padding:4px 0;color:#666;">Contact</td><td style="text-align:right;font-weight:bold;">${esc(data.contactPerson)}</td></tr>
           <tr><td style="padding:4px 0;color:#666;">Phone</td><td style="text-align:right;">${esc(data.phoneNumber)}</td></tr>
           ${data.email ? `<tr><td style="padding:4px 0;color:#666;">Email</td><td style="text-align:right;">${esc(data.email)}</td></tr>` : ""}
-          <tr><td style="padding:4px 0;color:#666;">Package</td><td style="text-align:right;">${esc(data.packageName)} \xB7 ${formatNaira(data.packagePriceKobo)}</td></tr>
+          <tr><td style="padding:4px 0;color:#666;">Package</td><td style="text-align:right;">${esc(data.packageName)} \xB7 ${data.packagePriceKobo > 0 ? formatNaira(data.packagePriceKobo) : "Price on request"}</td></tr>
         </table>
         <p style="margin:12px 0 0;color:#444;">${esc(data.description)}</p>
       </div>
@@ -132355,12 +132496,13 @@ async function sendBusinessApplicationEmail(to, data) {
     )
   });
 }
-var FROM, REMINDER_COPY;
+var COMMUNITY_URL, FROM, REMINDER_COPY;
 var init_emails = __esm({
   "server/emails.ts"() {
     "use strict";
     init_dist();
     init_playbook();
+    COMMUNITY_URL = "https://chat.whatsapp.com/KuirUdtxvBN5Ev9rKdNDlg";
     FROM = "Black Heritage Entertainment & Events <tickets@blackhevents.com>";
     REMINDER_COPY = {
       week: {
@@ -144282,6 +144424,13 @@ var init_auth = __esm({
       announcement: jsonb("announcement"),
       // { message, linkUrl, active }
       followersCount: varchar("followers_count").default("0"),
+      bankDetails: jsonb("bank_details"),
+      isVerified: boolean("is_verified").default(false),
+      verificationStatus: text("verification_status").default("unverified"),
+      verificationDetails: jsonb("verification_details"),
+      verifiedAt: timestamp("verified_at"),
+      founderVoucher: text("founder_voucher"),
+      waivedTicketCount: integer("waived_ticket_count").default(0),
       createdAt: timestamp("created_at").defaultNow(),
       updatedAt: timestamp("updated_at").defaultNow()
     });
@@ -144316,6 +144465,9 @@ __export(schema_exports, {
   messages: () => messages,
   missingEventPublishFields: () => missingEventPublishFields,
   parseVendorMedia: () => parseVendorMedia,
+  partnerPackageSchema: () => partnerPackageSchema,
+  partnerSettingsSchema: () => partnerSettingsSchema,
+  partnerTypes: () => partnerTypes,
   platformSettingsSchema: () => platformSettingsSchema,
   promoCreateSchema: () => promoCreateSchema,
   scanOverrideSchema: () => scanOverrideSchema,
@@ -144357,7 +144509,7 @@ function parseVendorMedia(v) {
     socials: parse2(v.socials, {})
   };
 }
-var events, bookings, tickets, businessBookings, bookingsRelations, businessBookingsRelations, vendorCategories, eventCategories, eventCategoryLabels, vendorSocialKeys, messages, vendors, eventsRelations, vendorsRelations, dateInput, insertEventSchema, insertDraftEventSchema, insertBookingSchema, insertBusinessBookingSchema, insertVendorSchema, insertMessageSchema, staffRoles, checkoutFieldKeys, eventSettingsSchema, brandingSchema, eventThemeKeys, waitlistJoinSchema, ticketTierSchema, bookingInitiateSchema, bookingFinalizeSchema, promoCreateSchema, manualTicketSchema, gateSaleSchema, scanRequestSchema, scanOverrideSchema, scanSyncSchema, teamCreateSchema, platformSettingsSchema;
+var events, bookings, tickets, businessBookings, bookingsRelations, businessBookingsRelations, vendorCategories, eventCategories, eventCategoryLabels, vendorSocialKeys, messages, vendors, eventsRelations, vendorsRelations, dateInput, insertEventSchema, insertDraftEventSchema, insertBookingSchema, insertBusinessBookingSchema, insertVendorSchema, insertMessageSchema, staffRoles, checkoutFieldKeys, partnerTypes, partnerPackageSchema, partnerSettingsSchema, eventSettingsSchema, brandingSchema, eventThemeKeys, waitlistJoinSchema, ticketTierSchema, bookingInitiateSchema, bookingFinalizeSchema, promoCreateSchema, manualTicketSchema, gateSaleSchema, scanRequestSchema, scanOverrideSchema, scanSyncSchema, teamCreateSchema, platformSettingsSchema;
 var init_schema2 = __esm({
   "shared/schema.ts"() {
     "use strict";
@@ -144406,10 +144558,24 @@ var init_schema2 = __esm({
       // sold-out tiers collect emails instead of a dead end
       guestCheckout: boolean("guest_checkout").default(true),
       // allow buying without an account
+      buyerPaysFee: boolean("buyer_pays_fee").default(false),
+      // add the platform fee to the buyer's total instead of the organizer's share
       promoCodesPublic: boolean("promo_codes_public").default(false),
       // list public codes on the event page
       checkoutFields: jsonb("checkout_fields"),
       // which extra fields checkout collects: phone, tableNote, dietaryNote
+      businessApplicationsEnabled: boolean("business_applications_enabled").default(false),
+      // show the partner card
+      partnerSettings: jsonb("partner_settings"),
+      // PartnerSettings: types, packages, contact
+      // Good to know: optional facts guests ask before buying.
+      ageLimit: text("age_limit"),
+      // "18+", "16+", "21+"; empty = not stated
+      endsText: text("ends_text"),
+      // free text, e.g. "Till dawn", "2am"
+      dressCode: text("dress_code"),
+      refundPolicy: text("refund_policy"),
+      // "none" | "7_days" | "contact"
       // ── Organizer branding lite: their identity on their event surfaces ──
       branding: jsonb("branding"),
       // { logoUrl, accentHex, displayName }
@@ -144425,8 +144591,11 @@ var init_schema2 = __esm({
       // for invite_only events
       // ── Event type category ──
       eventType: text("event_type").default("party"),
-      eventTypeLabel: text("event_type_label")
+      eventTypeLabel: text("event_type_label"),
       // free text when eventType is 'other'
+      // ── Community: attendee group chat ──
+      whatsappGroupUrl: text("whatsapp_group_url")
+      // Attendee community / WhatsApp group invite link
     });
     bookings = pgTable("bookings", {
       id: text("id").primaryKey(),
@@ -144446,6 +144615,8 @@ var init_schema2 = __esm({
       tableNote: text("table_note"),
       // group size or seating preference for table bookings
       paidAt: timestamp("paid_at"),
+      subaccountSplit: boolean("subaccount_split").default(false),
+      subaccountCode: text("subaccount_code"),
       isVerified: boolean("is_verified").default(false),
       verifiedAt: timestamp("verified_at"),
       createdAt: timestamp("created_at").defaultNow()
@@ -144620,7 +144791,22 @@ var init_schema2 = __esm({
       title: external_exports.string().trim().min(1, "Give the event a title"),
       slug: external_exports.string().trim().max(80, "Keep the link under 80 characters").regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Lowercase letters, numbers, and dashes only").optional().nullable(),
       theme: external_exports.enum(["midnight-gold", "ivory-editorial", "sunset-poster"]).optional().nullable(),
-      date: dateInput
+      date: dateInput,
+      whatsappGroupUrl: external_exports.string().trim().transform((val) => {
+        if (!val) return null;
+        if (!/^https?:\/\//i.test(val)) {
+          return `https://${val}`;
+        }
+        return val;
+      }).refine((val) => {
+        if (!val) return true;
+        try {
+          const u = new URL(val);
+          return u.protocol === "http:" || u.protocol === "https:";
+        } catch {
+          return false;
+        }
+      }, { message: "Enter a valid link (e.g. https://chat.whatsapp.com/...)" }).optional().nullable().or(external_exports.literal(""))
     });
     insertDraftEventSchema = insertEventSchema.extend({
       description: external_exports.string().optional().default(""),
@@ -144648,14 +144834,33 @@ var init_schema2 = __esm({
     });
     staffRoles = ["manager", "finance", "entry"];
     checkoutFieldKeys = ["phone", "tableNote", "dietaryNote"];
+    partnerTypes = ["sponsor", "vendor", "talent"];
+    partnerPackageSchema = external_exports.object({
+      type: external_exports.enum(partnerTypes),
+      name: external_exports.string().trim().min(1, "Name the package").max(60),
+      // Kobo. null means "price on request": the organizer quotes after talking.
+      priceKobo: external_exports.number().int().min(0).nullable(),
+      details: external_exports.string().trim().max(160).optional().default("")
+    });
+    partnerSettingsSchema = external_exports.object({
+      types: external_exports.array(external_exports.enum(partnerTypes)).max(3).default([]),
+      headline: external_exports.string().trim().max(80).optional().default(""),
+      blurb: external_exports.string().trim().max(220).optional().default(""),
+      packages: external_exports.array(partnerPackageSchema).max(8).default([]),
+      // Optional direct line: digits only, shown as a WhatsApp button.
+      whatsapp: external_exports.string().trim().max(20).optional().default(""),
+      closesAt: external_exports.string().optional().nullable()
+    });
     eventSettingsSchema = external_exports.object({
       showRemainingCounts: external_exports.boolean().default(true),
       showAttendeeCount: external_exports.boolean().default(false),
       waitlistEnabled: external_exports.boolean().default(false),
       guestCheckout: external_exports.boolean().default(true),
+      buyerPaysFee: external_exports.boolean().default(false),
       promoCodesPublic: external_exports.boolean().default(false),
       // Sponsor/vendor applications through the public "Partner With Us" modal.
-      businessApplicationsEnabled: external_exports.boolean().default(true),
+      businessApplicationsEnabled: external_exports.boolean().default(false),
+      partnerSettings: partnerSettingsSchema.optional(),
       checkoutFields: external_exports.object({
         phone: external_exports.boolean().default(false),
         tableNote: external_exports.boolean().default(true),
@@ -144753,6 +144958,1960 @@ var init_schema2 = __esm({
       // 0-15%
       vendorCommissionBps: external_exports.number().int().min(0).max(1500)
     });
+  }
+});
+
+// node_modules/qrcode-generator/qrcode.js
+var require_qrcode = __commonJS({
+  "node_modules/qrcode-generator/qrcode.js"(exports2, module2) {
+    var qrcode2 = (function() {
+      var qrcode3 = function(typeNumber, errorCorrectionLevel) {
+        var PAD0 = 236;
+        var PAD1 = 17;
+        var _typeNumber = typeNumber;
+        var _errorCorrectionLevel = QRErrorCorrectionLevel[errorCorrectionLevel];
+        var _modules = null;
+        var _moduleCount = 0;
+        var _dataCache = null;
+        var _dataList = [];
+        var _this = {};
+        var makeImpl = function(test, maskPattern) {
+          _moduleCount = _typeNumber * 4 + 17;
+          _modules = (function(moduleCount) {
+            var modules = new Array(moduleCount);
+            for (var row = 0; row < moduleCount; row += 1) {
+              modules[row] = new Array(moduleCount);
+              for (var col = 0; col < moduleCount; col += 1) {
+                modules[row][col] = null;
+              }
+            }
+            return modules;
+          })(_moduleCount);
+          setupPositionProbePattern(0, 0);
+          setupPositionProbePattern(_moduleCount - 7, 0);
+          setupPositionProbePattern(0, _moduleCount - 7);
+          setupPositionAdjustPattern();
+          setupTimingPattern();
+          setupTypeInfo(test, maskPattern);
+          if (_typeNumber >= 7) {
+            setupTypeNumber(test);
+          }
+          if (_dataCache == null) {
+            _dataCache = createData(_typeNumber, _errorCorrectionLevel, _dataList);
+          }
+          mapData(_dataCache, maskPattern);
+        };
+        var setupPositionProbePattern = function(row, col) {
+          for (var r = -1; r <= 7; r += 1) {
+            if (row + r <= -1 || _moduleCount <= row + r) continue;
+            for (var c = -1; c <= 7; c += 1) {
+              if (col + c <= -1 || _moduleCount <= col + c) continue;
+              if (0 <= r && r <= 6 && (c == 0 || c == 6) || 0 <= c && c <= 6 && (r == 0 || r == 6) || 2 <= r && r <= 4 && 2 <= c && c <= 4) {
+                _modules[row + r][col + c] = true;
+              } else {
+                _modules[row + r][col + c] = false;
+              }
+            }
+          }
+        };
+        var getBestMaskPattern = function() {
+          var minLostPoint = 0;
+          var pattern = 0;
+          for (var i = 0; i < 8; i += 1) {
+            makeImpl(true, i);
+            var lostPoint = QRUtil.getLostPoint(_this);
+            if (i == 0 || minLostPoint > lostPoint) {
+              minLostPoint = lostPoint;
+              pattern = i;
+            }
+          }
+          return pattern;
+        };
+        var setupTimingPattern = function() {
+          for (var r = 8; r < _moduleCount - 8; r += 1) {
+            if (_modules[r][6] != null) {
+              continue;
+            }
+            _modules[r][6] = r % 2 == 0;
+          }
+          for (var c = 8; c < _moduleCount - 8; c += 1) {
+            if (_modules[6][c] != null) {
+              continue;
+            }
+            _modules[6][c] = c % 2 == 0;
+          }
+        };
+        var setupPositionAdjustPattern = function() {
+          var pos = QRUtil.getPatternPosition(_typeNumber);
+          for (var i = 0; i < pos.length; i += 1) {
+            for (var j = 0; j < pos.length; j += 1) {
+              var row = pos[i];
+              var col = pos[j];
+              if (_modules[row][col] != null) {
+                continue;
+              }
+              for (var r = -2; r <= 2; r += 1) {
+                for (var c = -2; c <= 2; c += 1) {
+                  if (r == -2 || r == 2 || c == -2 || c == 2 || r == 0 && c == 0) {
+                    _modules[row + r][col + c] = true;
+                  } else {
+                    _modules[row + r][col + c] = false;
+                  }
+                }
+              }
+            }
+          }
+        };
+        var setupTypeNumber = function(test) {
+          var bits = QRUtil.getBCHTypeNumber(_typeNumber);
+          for (var i = 0; i < 18; i += 1) {
+            var mod = !test && (bits >> i & 1) == 1;
+            _modules[Math.floor(i / 3)][i % 3 + _moduleCount - 8 - 3] = mod;
+          }
+          for (var i = 0; i < 18; i += 1) {
+            var mod = !test && (bits >> i & 1) == 1;
+            _modules[i % 3 + _moduleCount - 8 - 3][Math.floor(i / 3)] = mod;
+          }
+        };
+        var setupTypeInfo = function(test, maskPattern) {
+          var data = _errorCorrectionLevel << 3 | maskPattern;
+          var bits = QRUtil.getBCHTypeInfo(data);
+          for (var i = 0; i < 15; i += 1) {
+            var mod = !test && (bits >> i & 1) == 1;
+            if (i < 6) {
+              _modules[i][8] = mod;
+            } else if (i < 8) {
+              _modules[i + 1][8] = mod;
+            } else {
+              _modules[_moduleCount - 15 + i][8] = mod;
+            }
+          }
+          for (var i = 0; i < 15; i += 1) {
+            var mod = !test && (bits >> i & 1) == 1;
+            if (i < 8) {
+              _modules[8][_moduleCount - i - 1] = mod;
+            } else if (i < 9) {
+              _modules[8][15 - i - 1 + 1] = mod;
+            } else {
+              _modules[8][15 - i - 1] = mod;
+            }
+          }
+          _modules[_moduleCount - 8][8] = !test;
+        };
+        var mapData = function(data, maskPattern) {
+          var inc = -1;
+          var row = _moduleCount - 1;
+          var bitIndex = 7;
+          var byteIndex = 0;
+          var maskFunc = QRUtil.getMaskFunction(maskPattern);
+          for (var col = _moduleCount - 1; col > 0; col -= 2) {
+            if (col == 6) col -= 1;
+            while (true) {
+              for (var c = 0; c < 2; c += 1) {
+                if (_modules[row][col - c] == null) {
+                  var dark = false;
+                  if (byteIndex < data.length) {
+                    dark = (data[byteIndex] >>> bitIndex & 1) == 1;
+                  }
+                  var mask = maskFunc(row, col - c);
+                  if (mask) {
+                    dark = !dark;
+                  }
+                  _modules[row][col - c] = dark;
+                  bitIndex -= 1;
+                  if (bitIndex == -1) {
+                    byteIndex += 1;
+                    bitIndex = 7;
+                  }
+                }
+              }
+              row += inc;
+              if (row < 0 || _moduleCount <= row) {
+                row -= inc;
+                inc = -inc;
+                break;
+              }
+            }
+          }
+        };
+        var createBytes = function(buffer, rsBlocks) {
+          var offset = 0;
+          var maxDcCount = 0;
+          var maxEcCount = 0;
+          var dcdata = new Array(rsBlocks.length);
+          var ecdata = new Array(rsBlocks.length);
+          for (var r = 0; r < rsBlocks.length; r += 1) {
+            var dcCount = rsBlocks[r].dataCount;
+            var ecCount = rsBlocks[r].totalCount - dcCount;
+            maxDcCount = Math.max(maxDcCount, dcCount);
+            maxEcCount = Math.max(maxEcCount, ecCount);
+            dcdata[r] = new Array(dcCount);
+            for (var i = 0; i < dcdata[r].length; i += 1) {
+              dcdata[r][i] = 255 & buffer.getBuffer()[i + offset];
+            }
+            offset += dcCount;
+            var rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
+            var rawPoly = qrPolynomial(dcdata[r], rsPoly.getLength() - 1);
+            var modPoly = rawPoly.mod(rsPoly);
+            ecdata[r] = new Array(rsPoly.getLength() - 1);
+            for (var i = 0; i < ecdata[r].length; i += 1) {
+              var modIndex = i + modPoly.getLength() - ecdata[r].length;
+              ecdata[r][i] = modIndex >= 0 ? modPoly.getAt(modIndex) : 0;
+            }
+          }
+          var totalCodeCount = 0;
+          for (var i = 0; i < rsBlocks.length; i += 1) {
+            totalCodeCount += rsBlocks[i].totalCount;
+          }
+          var data = new Array(totalCodeCount);
+          var index2 = 0;
+          for (var i = 0; i < maxDcCount; i += 1) {
+            for (var r = 0; r < rsBlocks.length; r += 1) {
+              if (i < dcdata[r].length) {
+                data[index2] = dcdata[r][i];
+                index2 += 1;
+              }
+            }
+          }
+          for (var i = 0; i < maxEcCount; i += 1) {
+            for (var r = 0; r < rsBlocks.length; r += 1) {
+              if (i < ecdata[r].length) {
+                data[index2] = ecdata[r][i];
+                index2 += 1;
+              }
+            }
+          }
+          return data;
+        };
+        var createData = function(typeNumber2, errorCorrectionLevel2, dataList) {
+          var rsBlocks = QRRSBlock.getRSBlocks(typeNumber2, errorCorrectionLevel2);
+          var buffer = qrBitBuffer();
+          for (var i = 0; i < dataList.length; i += 1) {
+            var data = dataList[i];
+            buffer.put(data.getMode(), 4);
+            buffer.put(data.getLength(), QRUtil.getLengthInBits(data.getMode(), typeNumber2));
+            data.write(buffer);
+          }
+          var totalDataCount = 0;
+          for (var i = 0; i < rsBlocks.length; i += 1) {
+            totalDataCount += rsBlocks[i].dataCount;
+          }
+          if (buffer.getLengthInBits() > totalDataCount * 8) {
+            throw "code length overflow. (" + buffer.getLengthInBits() + ">" + totalDataCount * 8 + ")";
+          }
+          if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
+            buffer.put(0, 4);
+          }
+          while (buffer.getLengthInBits() % 8 != 0) {
+            buffer.putBit(false);
+          }
+          while (true) {
+            if (buffer.getLengthInBits() >= totalDataCount * 8) {
+              break;
+            }
+            buffer.put(PAD0, 8);
+            if (buffer.getLengthInBits() >= totalDataCount * 8) {
+              break;
+            }
+            buffer.put(PAD1, 8);
+          }
+          return createBytes(buffer, rsBlocks);
+        };
+        _this.addData = function(data, mode) {
+          mode = mode || "Byte";
+          var newData = null;
+          switch (mode) {
+            case "Numeric":
+              newData = qrNumber(data);
+              break;
+            case "Alphanumeric":
+              newData = qrAlphaNum(data);
+              break;
+            case "Byte":
+              newData = qr8BitByte(data);
+              break;
+            case "Kanji":
+              newData = qrKanji(data);
+              break;
+            default:
+              throw "mode:" + mode;
+          }
+          _dataList.push(newData);
+          _dataCache = null;
+        };
+        _this.isDark = function(row, col) {
+          if (row < 0 || _moduleCount <= row || col < 0 || _moduleCount <= col) {
+            throw row + "," + col;
+          }
+          return _modules[row][col];
+        };
+        _this.getModuleCount = function() {
+          return _moduleCount;
+        };
+        _this.make = function() {
+          if (_typeNumber < 1) {
+            var typeNumber2 = 1;
+            for (; typeNumber2 < 40; typeNumber2++) {
+              var rsBlocks = QRRSBlock.getRSBlocks(typeNumber2, _errorCorrectionLevel);
+              var buffer = qrBitBuffer();
+              for (var i = 0; i < _dataList.length; i++) {
+                var data = _dataList[i];
+                buffer.put(data.getMode(), 4);
+                buffer.put(data.getLength(), QRUtil.getLengthInBits(data.getMode(), typeNumber2));
+                data.write(buffer);
+              }
+              var totalDataCount = 0;
+              for (var i = 0; i < rsBlocks.length; i++) {
+                totalDataCount += rsBlocks[i].dataCount;
+              }
+              if (buffer.getLengthInBits() <= totalDataCount * 8) {
+                break;
+              }
+            }
+            _typeNumber = typeNumber2;
+          }
+          makeImpl(false, getBestMaskPattern());
+        };
+        _this.createTableTag = function(cellSize, margin) {
+          cellSize = cellSize || 2;
+          margin = typeof margin == "undefined" ? cellSize * 4 : margin;
+          var qrHtml = "";
+          qrHtml += '<table style="';
+          qrHtml += " border-width: 0px; border-style: none;";
+          qrHtml += " border-collapse: collapse;";
+          qrHtml += " padding: 0px; margin: " + margin + "px;";
+          qrHtml += '">';
+          qrHtml += "<tbody>";
+          for (var r = 0; r < _this.getModuleCount(); r += 1) {
+            qrHtml += "<tr>";
+            for (var c = 0; c < _this.getModuleCount(); c += 1) {
+              qrHtml += '<td style="';
+              qrHtml += " border-width: 0px; border-style: none;";
+              qrHtml += " border-collapse: collapse;";
+              qrHtml += " padding: 0px; margin: 0px;";
+              qrHtml += " width: " + cellSize + "px;";
+              qrHtml += " height: " + cellSize + "px;";
+              qrHtml += " background-color: ";
+              qrHtml += _this.isDark(r, c) ? "#000000" : "#ffffff";
+              qrHtml += ";";
+              qrHtml += '"/>';
+            }
+            qrHtml += "</tr>";
+          }
+          qrHtml += "</tbody>";
+          qrHtml += "</table>";
+          return qrHtml;
+        };
+        _this.createSvgTag = function(cellSize, margin, alt, title) {
+          var opts = {};
+          if (typeof arguments[0] == "object") {
+            opts = arguments[0];
+            cellSize = opts.cellSize;
+            margin = opts.margin;
+            alt = opts.alt;
+            title = opts.title;
+          }
+          cellSize = cellSize || 2;
+          margin = typeof margin == "undefined" ? cellSize * 4 : margin;
+          alt = typeof alt === "string" ? { text: alt } : alt || {};
+          alt.text = alt.text || null;
+          alt.id = alt.text ? alt.id || "qrcode-description" : null;
+          title = typeof title === "string" ? { text: title } : title || {};
+          title.text = title.text || null;
+          title.id = title.text ? title.id || "qrcode-title" : null;
+          var size = _this.getModuleCount() * cellSize + margin * 2;
+          var c, mc, r, mr, qrSvg = "", rect;
+          rect = "l" + cellSize + ",0 0," + cellSize + " -" + cellSize + ",0 0,-" + cellSize + "z ";
+          qrSvg += '<svg version="1.1" xmlns="http://www.w3.org/2000/svg"';
+          qrSvg += !opts.scalable ? ' width="' + size + 'px" height="' + size + 'px"' : "";
+          qrSvg += ' viewBox="0 0 ' + size + " " + size + '" ';
+          qrSvg += ' preserveAspectRatio="xMinYMin meet"';
+          qrSvg += title.text || alt.text ? ' role="img" aria-labelledby="' + escapeXml([title.id, alt.id].join(" ").trim()) + '"' : "";
+          qrSvg += ">";
+          qrSvg += title.text ? '<title id="' + escapeXml(title.id) + '">' + escapeXml(title.text) + "</title>" : "";
+          qrSvg += alt.text ? '<description id="' + escapeXml(alt.id) + '">' + escapeXml(alt.text) + "</description>" : "";
+          qrSvg += '<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>';
+          qrSvg += '<path d="';
+          for (r = 0; r < _this.getModuleCount(); r += 1) {
+            mr = r * cellSize + margin;
+            for (c = 0; c < _this.getModuleCount(); c += 1) {
+              if (_this.isDark(r, c)) {
+                mc = c * cellSize + margin;
+                qrSvg += "M" + mc + "," + mr + rect;
+              }
+            }
+          }
+          qrSvg += '" stroke="transparent" fill="black"/>';
+          qrSvg += "</svg>";
+          return qrSvg;
+        };
+        _this.createDataURL = function(cellSize, margin) {
+          cellSize = cellSize || 2;
+          margin = typeof margin == "undefined" ? cellSize * 4 : margin;
+          var size = _this.getModuleCount() * cellSize + margin * 2;
+          var min = margin;
+          var max = size - margin;
+          return createDataURL(size, size, function(x, y) {
+            if (min <= x && x < max && min <= y && y < max) {
+              var c = Math.floor((x - min) / cellSize);
+              var r = Math.floor((y - min) / cellSize);
+              return _this.isDark(r, c) ? 0 : 1;
+            } else {
+              return 1;
+            }
+          });
+        };
+        _this.createImgTag = function(cellSize, margin, alt) {
+          cellSize = cellSize || 2;
+          margin = typeof margin == "undefined" ? cellSize * 4 : margin;
+          var size = _this.getModuleCount() * cellSize + margin * 2;
+          var img = "";
+          img += "<img";
+          img += ' src="';
+          img += _this.createDataURL(cellSize, margin);
+          img += '"';
+          img += ' width="';
+          img += size;
+          img += '"';
+          img += ' height="';
+          img += size;
+          img += '"';
+          if (alt) {
+            img += ' alt="';
+            img += escapeXml(alt);
+            img += '"';
+          }
+          img += "/>";
+          return img;
+        };
+        var escapeXml = function(s) {
+          var escaped = "";
+          for (var i = 0; i < s.length; i += 1) {
+            var c = s.charAt(i);
+            switch (c) {
+              case "<":
+                escaped += "&lt;";
+                break;
+              case ">":
+                escaped += "&gt;";
+                break;
+              case "&":
+                escaped += "&amp;";
+                break;
+              case '"':
+                escaped += "&quot;";
+                break;
+              default:
+                escaped += c;
+                break;
+            }
+          }
+          return escaped;
+        };
+        var _createHalfASCII = function(margin) {
+          var cellSize = 1;
+          margin = typeof margin == "undefined" ? cellSize * 2 : margin;
+          var size = _this.getModuleCount() * cellSize + margin * 2;
+          var min = margin;
+          var max = size - margin;
+          var y, x, r1, r2, p;
+          var blocks = {
+            "\u2588\u2588": "\u2588",
+            "\u2588 ": "\u2580",
+            " \u2588": "\u2584",
+            "  ": " "
+          };
+          var blocksLastLineNoMargin = {
+            "\u2588\u2588": "\u2580",
+            "\u2588 ": "\u2580",
+            " \u2588": " ",
+            "  ": " "
+          };
+          var ascii = "";
+          for (y = 0; y < size; y += 2) {
+            r1 = Math.floor((y - min) / cellSize);
+            r2 = Math.floor((y + 1 - min) / cellSize);
+            for (x = 0; x < size; x += 1) {
+              p = "\u2588";
+              if (min <= x && x < max && min <= y && y < max && _this.isDark(r1, Math.floor((x - min) / cellSize))) {
+                p = " ";
+              }
+              if (min <= x && x < max && min <= y + 1 && y + 1 < max && _this.isDark(r2, Math.floor((x - min) / cellSize))) {
+                p += " ";
+              } else {
+                p += "\u2588";
+              }
+              ascii += margin < 1 && y + 1 >= max ? blocksLastLineNoMargin[p] : blocks[p];
+            }
+            ascii += "\n";
+          }
+          if (size % 2 && margin > 0) {
+            return ascii.substring(0, ascii.length - size - 1) + Array(size + 1).join("\u2580");
+          }
+          return ascii.substring(0, ascii.length - 1);
+        };
+        _this.createASCII = function(cellSize, margin) {
+          cellSize = cellSize || 1;
+          if (cellSize < 2) {
+            return _createHalfASCII(margin);
+          }
+          cellSize -= 1;
+          margin = typeof margin == "undefined" ? cellSize * 2 : margin;
+          var size = _this.getModuleCount() * cellSize + margin * 2;
+          var min = margin;
+          var max = size - margin;
+          var y, x, r, p;
+          var white = Array(cellSize + 1).join("\u2588\u2588");
+          var black = Array(cellSize + 1).join("  ");
+          var ascii = "";
+          var line2 = "";
+          for (y = 0; y < size; y += 1) {
+            r = Math.floor((y - min) / cellSize);
+            line2 = "";
+            for (x = 0; x < size; x += 1) {
+              p = 1;
+              if (min <= x && x < max && min <= y && y < max && _this.isDark(r, Math.floor((x - min) / cellSize))) {
+                p = 0;
+              }
+              line2 += p ? white : black;
+            }
+            for (r = 0; r < cellSize; r += 1) {
+              ascii += line2 + "\n";
+            }
+          }
+          return ascii.substring(0, ascii.length - 1);
+        };
+        _this.renderTo2dContext = function(context, cellSize) {
+          cellSize = cellSize || 2;
+          var length = _this.getModuleCount();
+          for (var row = 0; row < length; row++) {
+            for (var col = 0; col < length; col++) {
+              context.fillStyle = _this.isDark(row, col) ? "black" : "white";
+              context.fillRect(row * cellSize, col * cellSize, cellSize, cellSize);
+            }
+          }
+        };
+        return _this;
+      };
+      qrcode3.stringToBytesFuncs = {
+        "default": function(s) {
+          var bytes = [];
+          for (var i = 0; i < s.length; i += 1) {
+            var c = s.charCodeAt(i);
+            bytes.push(c & 255);
+          }
+          return bytes;
+        }
+      };
+      qrcode3.stringToBytes = qrcode3.stringToBytesFuncs["default"];
+      qrcode3.createStringToBytes = function(unicodeData, numChars) {
+        var unicodeMap = (function() {
+          var bin = base64DecodeInputStream(unicodeData);
+          var read = function() {
+            var b = bin.read();
+            if (b == -1) throw "eof";
+            return b;
+          };
+          var count = 0;
+          var unicodeMap2 = {};
+          while (true) {
+            var b0 = bin.read();
+            if (b0 == -1) break;
+            var b1 = read();
+            var b2 = read();
+            var b3 = read();
+            var k = String.fromCharCode(b0 << 8 | b1);
+            var v = b2 << 8 | b3;
+            unicodeMap2[k] = v;
+            count += 1;
+          }
+          if (count != numChars) {
+            throw count + " != " + numChars;
+          }
+          return unicodeMap2;
+        })();
+        var unknownChar = "?".charCodeAt(0);
+        return function(s) {
+          var bytes = [];
+          for (var i = 0; i < s.length; i += 1) {
+            var c = s.charCodeAt(i);
+            if (c < 128) {
+              bytes.push(c);
+            } else {
+              var b = unicodeMap[s.charAt(i)];
+              if (typeof b == "number") {
+                if ((b & 255) == b) {
+                  bytes.push(b);
+                } else {
+                  bytes.push(b >>> 8);
+                  bytes.push(b & 255);
+                }
+              } else {
+                bytes.push(unknownChar);
+              }
+            }
+          }
+          return bytes;
+        };
+      };
+      var QRMode = {
+        MODE_NUMBER: 1 << 0,
+        MODE_ALPHA_NUM: 1 << 1,
+        MODE_8BIT_BYTE: 1 << 2,
+        MODE_KANJI: 1 << 3
+      };
+      var QRErrorCorrectionLevel = {
+        L: 1,
+        M: 0,
+        Q: 3,
+        H: 2
+      };
+      var QRMaskPattern = {
+        PATTERN000: 0,
+        PATTERN001: 1,
+        PATTERN010: 2,
+        PATTERN011: 3,
+        PATTERN100: 4,
+        PATTERN101: 5,
+        PATTERN110: 6,
+        PATTERN111: 7
+      };
+      var QRUtil = (function() {
+        var PATTERN_POSITION_TABLE = [
+          [],
+          [6, 18],
+          [6, 22],
+          [6, 26],
+          [6, 30],
+          [6, 34],
+          [6, 22, 38],
+          [6, 24, 42],
+          [6, 26, 46],
+          [6, 28, 50],
+          [6, 30, 54],
+          [6, 32, 58],
+          [6, 34, 62],
+          [6, 26, 46, 66],
+          [6, 26, 48, 70],
+          [6, 26, 50, 74],
+          [6, 30, 54, 78],
+          [6, 30, 56, 82],
+          [6, 30, 58, 86],
+          [6, 34, 62, 90],
+          [6, 28, 50, 72, 94],
+          [6, 26, 50, 74, 98],
+          [6, 30, 54, 78, 102],
+          [6, 28, 54, 80, 106],
+          [6, 32, 58, 84, 110],
+          [6, 30, 58, 86, 114],
+          [6, 34, 62, 90, 118],
+          [6, 26, 50, 74, 98, 122],
+          [6, 30, 54, 78, 102, 126],
+          [6, 26, 52, 78, 104, 130],
+          [6, 30, 56, 82, 108, 134],
+          [6, 34, 60, 86, 112, 138],
+          [6, 30, 58, 86, 114, 142],
+          [6, 34, 62, 90, 118, 146],
+          [6, 30, 54, 78, 102, 126, 150],
+          [6, 24, 50, 76, 102, 128, 154],
+          [6, 28, 54, 80, 106, 132, 158],
+          [6, 32, 58, 84, 110, 136, 162],
+          [6, 26, 54, 82, 110, 138, 166],
+          [6, 30, 58, 86, 114, 142, 170]
+        ];
+        var G15 = 1 << 10 | 1 << 8 | 1 << 5 | 1 << 4 | 1 << 2 | 1 << 1 | 1 << 0;
+        var G18 = 1 << 12 | 1 << 11 | 1 << 10 | 1 << 9 | 1 << 8 | 1 << 5 | 1 << 2 | 1 << 0;
+        var G15_MASK = 1 << 14 | 1 << 12 | 1 << 10 | 1 << 4 | 1 << 1;
+        var _this = {};
+        var getBCHDigit = function(data) {
+          var digit = 0;
+          while (data != 0) {
+            digit += 1;
+            data >>>= 1;
+          }
+          return digit;
+        };
+        _this.getBCHTypeInfo = function(data) {
+          var d = data << 10;
+          while (getBCHDigit(d) - getBCHDigit(G15) >= 0) {
+            d ^= G15 << getBCHDigit(d) - getBCHDigit(G15);
+          }
+          return (data << 10 | d) ^ G15_MASK;
+        };
+        _this.getBCHTypeNumber = function(data) {
+          var d = data << 12;
+          while (getBCHDigit(d) - getBCHDigit(G18) >= 0) {
+            d ^= G18 << getBCHDigit(d) - getBCHDigit(G18);
+          }
+          return data << 12 | d;
+        };
+        _this.getPatternPosition = function(typeNumber) {
+          return PATTERN_POSITION_TABLE[typeNumber - 1];
+        };
+        _this.getMaskFunction = function(maskPattern) {
+          switch (maskPattern) {
+            case QRMaskPattern.PATTERN000:
+              return function(i, j) {
+                return (i + j) % 2 == 0;
+              };
+            case QRMaskPattern.PATTERN001:
+              return function(i, j) {
+                return i % 2 == 0;
+              };
+            case QRMaskPattern.PATTERN010:
+              return function(i, j) {
+                return j % 3 == 0;
+              };
+            case QRMaskPattern.PATTERN011:
+              return function(i, j) {
+                return (i + j) % 3 == 0;
+              };
+            case QRMaskPattern.PATTERN100:
+              return function(i, j) {
+                return (Math.floor(i / 2) + Math.floor(j / 3)) % 2 == 0;
+              };
+            case QRMaskPattern.PATTERN101:
+              return function(i, j) {
+                return i * j % 2 + i * j % 3 == 0;
+              };
+            case QRMaskPattern.PATTERN110:
+              return function(i, j) {
+                return (i * j % 2 + i * j % 3) % 2 == 0;
+              };
+            case QRMaskPattern.PATTERN111:
+              return function(i, j) {
+                return (i * j % 3 + (i + j) % 2) % 2 == 0;
+              };
+            default:
+              throw "bad maskPattern:" + maskPattern;
+          }
+        };
+        _this.getErrorCorrectPolynomial = function(errorCorrectLength) {
+          var a = qrPolynomial([1], 0);
+          for (var i = 0; i < errorCorrectLength; i += 1) {
+            a = a.multiply(qrPolynomial([1, QRMath.gexp(i)], 0));
+          }
+          return a;
+        };
+        _this.getLengthInBits = function(mode, type) {
+          if (1 <= type && type < 10) {
+            switch (mode) {
+              case QRMode.MODE_NUMBER:
+                return 10;
+              case QRMode.MODE_ALPHA_NUM:
+                return 9;
+              case QRMode.MODE_8BIT_BYTE:
+                return 8;
+              case QRMode.MODE_KANJI:
+                return 8;
+              default:
+                throw "mode:" + mode;
+            }
+          } else if (type < 27) {
+            switch (mode) {
+              case QRMode.MODE_NUMBER:
+                return 12;
+              case QRMode.MODE_ALPHA_NUM:
+                return 11;
+              case QRMode.MODE_8BIT_BYTE:
+                return 16;
+              case QRMode.MODE_KANJI:
+                return 10;
+              default:
+                throw "mode:" + mode;
+            }
+          } else if (type < 41) {
+            switch (mode) {
+              case QRMode.MODE_NUMBER:
+                return 14;
+              case QRMode.MODE_ALPHA_NUM:
+                return 13;
+              case QRMode.MODE_8BIT_BYTE:
+                return 16;
+              case QRMode.MODE_KANJI:
+                return 12;
+              default:
+                throw "mode:" + mode;
+            }
+          } else {
+            throw "type:" + type;
+          }
+        };
+        _this.getLostPoint = function(qrcode4) {
+          var moduleCount = qrcode4.getModuleCount();
+          var lostPoint = 0;
+          for (var row = 0; row < moduleCount; row += 1) {
+            for (var col = 0; col < moduleCount; col += 1) {
+              var sameCount = 0;
+              var dark = qrcode4.isDark(row, col);
+              for (var r = -1; r <= 1; r += 1) {
+                if (row + r < 0 || moduleCount <= row + r) {
+                  continue;
+                }
+                for (var c = -1; c <= 1; c += 1) {
+                  if (col + c < 0 || moduleCount <= col + c) {
+                    continue;
+                  }
+                  if (r == 0 && c == 0) {
+                    continue;
+                  }
+                  if (dark == qrcode4.isDark(row + r, col + c)) {
+                    sameCount += 1;
+                  }
+                }
+              }
+              if (sameCount > 5) {
+                lostPoint += 3 + sameCount - 5;
+              }
+            }
+          }
+          ;
+          for (var row = 0; row < moduleCount - 1; row += 1) {
+            for (var col = 0; col < moduleCount - 1; col += 1) {
+              var count = 0;
+              if (qrcode4.isDark(row, col)) count += 1;
+              if (qrcode4.isDark(row + 1, col)) count += 1;
+              if (qrcode4.isDark(row, col + 1)) count += 1;
+              if (qrcode4.isDark(row + 1, col + 1)) count += 1;
+              if (count == 0 || count == 4) {
+                lostPoint += 3;
+              }
+            }
+          }
+          for (var row = 0; row < moduleCount; row += 1) {
+            for (var col = 0; col < moduleCount - 6; col += 1) {
+              if (qrcode4.isDark(row, col) && !qrcode4.isDark(row, col + 1) && qrcode4.isDark(row, col + 2) && qrcode4.isDark(row, col + 3) && qrcode4.isDark(row, col + 4) && !qrcode4.isDark(row, col + 5) && qrcode4.isDark(row, col + 6)) {
+                lostPoint += 40;
+              }
+            }
+          }
+          for (var col = 0; col < moduleCount; col += 1) {
+            for (var row = 0; row < moduleCount - 6; row += 1) {
+              if (qrcode4.isDark(row, col) && !qrcode4.isDark(row + 1, col) && qrcode4.isDark(row + 2, col) && qrcode4.isDark(row + 3, col) && qrcode4.isDark(row + 4, col) && !qrcode4.isDark(row + 5, col) && qrcode4.isDark(row + 6, col)) {
+                lostPoint += 40;
+              }
+            }
+          }
+          var darkCount = 0;
+          for (var col = 0; col < moduleCount; col += 1) {
+            for (var row = 0; row < moduleCount; row += 1) {
+              if (qrcode4.isDark(row, col)) {
+                darkCount += 1;
+              }
+            }
+          }
+          var ratio = Math.abs(100 * darkCount / moduleCount / moduleCount - 50) / 5;
+          lostPoint += ratio * 10;
+          return lostPoint;
+        };
+        return _this;
+      })();
+      var QRMath = (function() {
+        var EXP_TABLE = new Array(256);
+        var LOG_TABLE = new Array(256);
+        for (var i = 0; i < 8; i += 1) {
+          EXP_TABLE[i] = 1 << i;
+        }
+        for (var i = 8; i < 256; i += 1) {
+          EXP_TABLE[i] = EXP_TABLE[i - 4] ^ EXP_TABLE[i - 5] ^ EXP_TABLE[i - 6] ^ EXP_TABLE[i - 8];
+        }
+        for (var i = 0; i < 255; i += 1) {
+          LOG_TABLE[EXP_TABLE[i]] = i;
+        }
+        var _this = {};
+        _this.glog = function(n) {
+          if (n < 1) {
+            throw "glog(" + n + ")";
+          }
+          return LOG_TABLE[n];
+        };
+        _this.gexp = function(n) {
+          while (n < 0) {
+            n += 255;
+          }
+          while (n >= 256) {
+            n -= 255;
+          }
+          return EXP_TABLE[n];
+        };
+        return _this;
+      })();
+      function qrPolynomial(num, shift) {
+        if (typeof num.length == "undefined") {
+          throw num.length + "/" + shift;
+        }
+        var _num = (function() {
+          var offset = 0;
+          while (offset < num.length && num[offset] == 0) {
+            offset += 1;
+          }
+          var _num2 = new Array(num.length - offset + shift);
+          for (var i = 0; i < num.length - offset; i += 1) {
+            _num2[i] = num[i + offset];
+          }
+          return _num2;
+        })();
+        var _this = {};
+        _this.getAt = function(index2) {
+          return _num[index2];
+        };
+        _this.getLength = function() {
+          return _num.length;
+        };
+        _this.multiply = function(e) {
+          var num2 = new Array(_this.getLength() + e.getLength() - 1);
+          for (var i = 0; i < _this.getLength(); i += 1) {
+            for (var j = 0; j < e.getLength(); j += 1) {
+              num2[i + j] ^= QRMath.gexp(QRMath.glog(_this.getAt(i)) + QRMath.glog(e.getAt(j)));
+            }
+          }
+          return qrPolynomial(num2, 0);
+        };
+        _this.mod = function(e) {
+          if (_this.getLength() - e.getLength() < 0) {
+            return _this;
+          }
+          var ratio = QRMath.glog(_this.getAt(0)) - QRMath.glog(e.getAt(0));
+          var num2 = new Array(_this.getLength());
+          for (var i = 0; i < _this.getLength(); i += 1) {
+            num2[i] = _this.getAt(i);
+          }
+          for (var i = 0; i < e.getLength(); i += 1) {
+            num2[i] ^= QRMath.gexp(QRMath.glog(e.getAt(i)) + ratio);
+          }
+          return qrPolynomial(num2, 0).mod(e);
+        };
+        return _this;
+      }
+      ;
+      var QRRSBlock = (function() {
+        var RS_BLOCK_TABLE = [
+          // L
+          // M
+          // Q
+          // H
+          // 1
+          [1, 26, 19],
+          [1, 26, 16],
+          [1, 26, 13],
+          [1, 26, 9],
+          // 2
+          [1, 44, 34],
+          [1, 44, 28],
+          [1, 44, 22],
+          [1, 44, 16],
+          // 3
+          [1, 70, 55],
+          [1, 70, 44],
+          [2, 35, 17],
+          [2, 35, 13],
+          // 4
+          [1, 100, 80],
+          [2, 50, 32],
+          [2, 50, 24],
+          [4, 25, 9],
+          // 5
+          [1, 134, 108],
+          [2, 67, 43],
+          [2, 33, 15, 2, 34, 16],
+          [2, 33, 11, 2, 34, 12],
+          // 6
+          [2, 86, 68],
+          [4, 43, 27],
+          [4, 43, 19],
+          [4, 43, 15],
+          // 7
+          [2, 98, 78],
+          [4, 49, 31],
+          [2, 32, 14, 4, 33, 15],
+          [4, 39, 13, 1, 40, 14],
+          // 8
+          [2, 121, 97],
+          [2, 60, 38, 2, 61, 39],
+          [4, 40, 18, 2, 41, 19],
+          [4, 40, 14, 2, 41, 15],
+          // 9
+          [2, 146, 116],
+          [3, 58, 36, 2, 59, 37],
+          [4, 36, 16, 4, 37, 17],
+          [4, 36, 12, 4, 37, 13],
+          // 10
+          [2, 86, 68, 2, 87, 69],
+          [4, 69, 43, 1, 70, 44],
+          [6, 43, 19, 2, 44, 20],
+          [6, 43, 15, 2, 44, 16],
+          // 11
+          [4, 101, 81],
+          [1, 80, 50, 4, 81, 51],
+          [4, 50, 22, 4, 51, 23],
+          [3, 36, 12, 8, 37, 13],
+          // 12
+          [2, 116, 92, 2, 117, 93],
+          [6, 58, 36, 2, 59, 37],
+          [4, 46, 20, 6, 47, 21],
+          [7, 42, 14, 4, 43, 15],
+          // 13
+          [4, 133, 107],
+          [8, 59, 37, 1, 60, 38],
+          [8, 44, 20, 4, 45, 21],
+          [12, 33, 11, 4, 34, 12],
+          // 14
+          [3, 145, 115, 1, 146, 116],
+          [4, 64, 40, 5, 65, 41],
+          [11, 36, 16, 5, 37, 17],
+          [11, 36, 12, 5, 37, 13],
+          // 15
+          [5, 109, 87, 1, 110, 88],
+          [5, 65, 41, 5, 66, 42],
+          [5, 54, 24, 7, 55, 25],
+          [11, 36, 12, 7, 37, 13],
+          // 16
+          [5, 122, 98, 1, 123, 99],
+          [7, 73, 45, 3, 74, 46],
+          [15, 43, 19, 2, 44, 20],
+          [3, 45, 15, 13, 46, 16],
+          // 17
+          [1, 135, 107, 5, 136, 108],
+          [10, 74, 46, 1, 75, 47],
+          [1, 50, 22, 15, 51, 23],
+          [2, 42, 14, 17, 43, 15],
+          // 18
+          [5, 150, 120, 1, 151, 121],
+          [9, 69, 43, 4, 70, 44],
+          [17, 50, 22, 1, 51, 23],
+          [2, 42, 14, 19, 43, 15],
+          // 19
+          [3, 141, 113, 4, 142, 114],
+          [3, 70, 44, 11, 71, 45],
+          [17, 47, 21, 4, 48, 22],
+          [9, 39, 13, 16, 40, 14],
+          // 20
+          [3, 135, 107, 5, 136, 108],
+          [3, 67, 41, 13, 68, 42],
+          [15, 54, 24, 5, 55, 25],
+          [15, 43, 15, 10, 44, 16],
+          // 21
+          [4, 144, 116, 4, 145, 117],
+          [17, 68, 42],
+          [17, 50, 22, 6, 51, 23],
+          [19, 46, 16, 6, 47, 17],
+          // 22
+          [2, 139, 111, 7, 140, 112],
+          [17, 74, 46],
+          [7, 54, 24, 16, 55, 25],
+          [34, 37, 13],
+          // 23
+          [4, 151, 121, 5, 152, 122],
+          [4, 75, 47, 14, 76, 48],
+          [11, 54, 24, 14, 55, 25],
+          [16, 45, 15, 14, 46, 16],
+          // 24
+          [6, 147, 117, 4, 148, 118],
+          [6, 73, 45, 14, 74, 46],
+          [11, 54, 24, 16, 55, 25],
+          [30, 46, 16, 2, 47, 17],
+          // 25
+          [8, 132, 106, 4, 133, 107],
+          [8, 75, 47, 13, 76, 48],
+          [7, 54, 24, 22, 55, 25],
+          [22, 45, 15, 13, 46, 16],
+          // 26
+          [10, 142, 114, 2, 143, 115],
+          [19, 74, 46, 4, 75, 47],
+          [28, 50, 22, 6, 51, 23],
+          [33, 46, 16, 4, 47, 17],
+          // 27
+          [8, 152, 122, 4, 153, 123],
+          [22, 73, 45, 3, 74, 46],
+          [8, 53, 23, 26, 54, 24],
+          [12, 45, 15, 28, 46, 16],
+          // 28
+          [3, 147, 117, 10, 148, 118],
+          [3, 73, 45, 23, 74, 46],
+          [4, 54, 24, 31, 55, 25],
+          [11, 45, 15, 31, 46, 16],
+          // 29
+          [7, 146, 116, 7, 147, 117],
+          [21, 73, 45, 7, 74, 46],
+          [1, 53, 23, 37, 54, 24],
+          [19, 45, 15, 26, 46, 16],
+          // 30
+          [5, 145, 115, 10, 146, 116],
+          [19, 75, 47, 10, 76, 48],
+          [15, 54, 24, 25, 55, 25],
+          [23, 45, 15, 25, 46, 16],
+          // 31
+          [13, 145, 115, 3, 146, 116],
+          [2, 74, 46, 29, 75, 47],
+          [42, 54, 24, 1, 55, 25],
+          [23, 45, 15, 28, 46, 16],
+          // 32
+          [17, 145, 115],
+          [10, 74, 46, 23, 75, 47],
+          [10, 54, 24, 35, 55, 25],
+          [19, 45, 15, 35, 46, 16],
+          // 33
+          [17, 145, 115, 1, 146, 116],
+          [14, 74, 46, 21, 75, 47],
+          [29, 54, 24, 19, 55, 25],
+          [11, 45, 15, 46, 46, 16],
+          // 34
+          [13, 145, 115, 6, 146, 116],
+          [14, 74, 46, 23, 75, 47],
+          [44, 54, 24, 7, 55, 25],
+          [59, 46, 16, 1, 47, 17],
+          // 35
+          [12, 151, 121, 7, 152, 122],
+          [12, 75, 47, 26, 76, 48],
+          [39, 54, 24, 14, 55, 25],
+          [22, 45, 15, 41, 46, 16],
+          // 36
+          [6, 151, 121, 14, 152, 122],
+          [6, 75, 47, 34, 76, 48],
+          [46, 54, 24, 10, 55, 25],
+          [2, 45, 15, 64, 46, 16],
+          // 37
+          [17, 152, 122, 4, 153, 123],
+          [29, 74, 46, 14, 75, 47],
+          [49, 54, 24, 10, 55, 25],
+          [24, 45, 15, 46, 46, 16],
+          // 38
+          [4, 152, 122, 18, 153, 123],
+          [13, 74, 46, 32, 75, 47],
+          [48, 54, 24, 14, 55, 25],
+          [42, 45, 15, 32, 46, 16],
+          // 39
+          [20, 147, 117, 4, 148, 118],
+          [40, 75, 47, 7, 76, 48],
+          [43, 54, 24, 22, 55, 25],
+          [10, 45, 15, 67, 46, 16],
+          // 40
+          [19, 148, 118, 6, 149, 119],
+          [18, 75, 47, 31, 76, 48],
+          [34, 54, 24, 34, 55, 25],
+          [20, 45, 15, 61, 46, 16]
+        ];
+        var qrRSBlock = function(totalCount, dataCount) {
+          var _this2 = {};
+          _this2.totalCount = totalCount;
+          _this2.dataCount = dataCount;
+          return _this2;
+        };
+        var _this = {};
+        var getRsBlockTable = function(typeNumber, errorCorrectionLevel) {
+          switch (errorCorrectionLevel) {
+            case QRErrorCorrectionLevel.L:
+              return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 0];
+            case QRErrorCorrectionLevel.M:
+              return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 1];
+            case QRErrorCorrectionLevel.Q:
+              return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 2];
+            case QRErrorCorrectionLevel.H:
+              return RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 3];
+            default:
+              return void 0;
+          }
+        };
+        _this.getRSBlocks = function(typeNumber, errorCorrectionLevel) {
+          var rsBlock = getRsBlockTable(typeNumber, errorCorrectionLevel);
+          if (typeof rsBlock == "undefined") {
+            throw "bad rs block @ typeNumber:" + typeNumber + "/errorCorrectionLevel:" + errorCorrectionLevel;
+          }
+          var length = rsBlock.length / 3;
+          var list = [];
+          for (var i = 0; i < length; i += 1) {
+            var count = rsBlock[i * 3 + 0];
+            var totalCount = rsBlock[i * 3 + 1];
+            var dataCount = rsBlock[i * 3 + 2];
+            for (var j = 0; j < count; j += 1) {
+              list.push(qrRSBlock(totalCount, dataCount));
+            }
+          }
+          return list;
+        };
+        return _this;
+      })();
+      var qrBitBuffer = function() {
+        var _buffer = [];
+        var _length = 0;
+        var _this = {};
+        _this.getBuffer = function() {
+          return _buffer;
+        };
+        _this.getAt = function(index2) {
+          var bufIndex = Math.floor(index2 / 8);
+          return (_buffer[bufIndex] >>> 7 - index2 % 8 & 1) == 1;
+        };
+        _this.put = function(num, length) {
+          for (var i = 0; i < length; i += 1) {
+            _this.putBit((num >>> length - i - 1 & 1) == 1);
+          }
+        };
+        _this.getLengthInBits = function() {
+          return _length;
+        };
+        _this.putBit = function(bit2) {
+          var bufIndex = Math.floor(_length / 8);
+          if (_buffer.length <= bufIndex) {
+            _buffer.push(0);
+          }
+          if (bit2) {
+            _buffer[bufIndex] |= 128 >>> _length % 8;
+          }
+          _length += 1;
+        };
+        return _this;
+      };
+      var qrNumber = function(data) {
+        var _mode = QRMode.MODE_NUMBER;
+        var _data = data;
+        var _this = {};
+        _this.getMode = function() {
+          return _mode;
+        };
+        _this.getLength = function(buffer) {
+          return _data.length;
+        };
+        _this.write = function(buffer) {
+          var data2 = _data;
+          var i = 0;
+          while (i + 2 < data2.length) {
+            buffer.put(strToNum(data2.substring(i, i + 3)), 10);
+            i += 3;
+          }
+          if (i < data2.length) {
+            if (data2.length - i == 1) {
+              buffer.put(strToNum(data2.substring(i, i + 1)), 4);
+            } else if (data2.length - i == 2) {
+              buffer.put(strToNum(data2.substring(i, i + 2)), 7);
+            }
+          }
+        };
+        var strToNum = function(s) {
+          var num = 0;
+          for (var i = 0; i < s.length; i += 1) {
+            num = num * 10 + chatToNum(s.charAt(i));
+          }
+          return num;
+        };
+        var chatToNum = function(c) {
+          if ("0" <= c && c <= "9") {
+            return c.charCodeAt(0) - "0".charCodeAt(0);
+          }
+          throw "illegal char :" + c;
+        };
+        return _this;
+      };
+      var qrAlphaNum = function(data) {
+        var _mode = QRMode.MODE_ALPHA_NUM;
+        var _data = data;
+        var _this = {};
+        _this.getMode = function() {
+          return _mode;
+        };
+        _this.getLength = function(buffer) {
+          return _data.length;
+        };
+        _this.write = function(buffer) {
+          var s = _data;
+          var i = 0;
+          while (i + 1 < s.length) {
+            buffer.put(
+              getCode(s.charAt(i)) * 45 + getCode(s.charAt(i + 1)),
+              11
+            );
+            i += 2;
+          }
+          if (i < s.length) {
+            buffer.put(getCode(s.charAt(i)), 6);
+          }
+        };
+        var getCode = function(c) {
+          if ("0" <= c && c <= "9") {
+            return c.charCodeAt(0) - "0".charCodeAt(0);
+          } else if ("A" <= c && c <= "Z") {
+            return c.charCodeAt(0) - "A".charCodeAt(0) + 10;
+          } else {
+            switch (c) {
+              case " ":
+                return 36;
+              case "$":
+                return 37;
+              case "%":
+                return 38;
+              case "*":
+                return 39;
+              case "+":
+                return 40;
+              case "-":
+                return 41;
+              case ".":
+                return 42;
+              case "/":
+                return 43;
+              case ":":
+                return 44;
+              default:
+                throw "illegal char :" + c;
+            }
+          }
+        };
+        return _this;
+      };
+      var qr8BitByte = function(data) {
+        var _mode = QRMode.MODE_8BIT_BYTE;
+        var _data = data;
+        var _bytes = qrcode3.stringToBytes(data);
+        var _this = {};
+        _this.getMode = function() {
+          return _mode;
+        };
+        _this.getLength = function(buffer) {
+          return _bytes.length;
+        };
+        _this.write = function(buffer) {
+          for (var i = 0; i < _bytes.length; i += 1) {
+            buffer.put(_bytes[i], 8);
+          }
+        };
+        return _this;
+      };
+      var qrKanji = function(data) {
+        var _mode = QRMode.MODE_KANJI;
+        var _data = data;
+        var stringToBytes2 = qrcode3.stringToBytesFuncs["SJIS"];
+        if (!stringToBytes2) {
+          throw "sjis not supported.";
+        }
+        !(function(c, code) {
+          var test = stringToBytes2(c);
+          if (test.length != 2 || (test[0] << 8 | test[1]) != code) {
+            throw "sjis not supported.";
+          }
+        })("\u53CB", 38726);
+        var _bytes = stringToBytes2(data);
+        var _this = {};
+        _this.getMode = function() {
+          return _mode;
+        };
+        _this.getLength = function(buffer) {
+          return ~~(_bytes.length / 2);
+        };
+        _this.write = function(buffer) {
+          var data2 = _bytes;
+          var i = 0;
+          while (i + 1 < data2.length) {
+            var c = (255 & data2[i]) << 8 | 255 & data2[i + 1];
+            if (33088 <= c && c <= 40956) {
+              c -= 33088;
+            } else if (57408 <= c && c <= 60351) {
+              c -= 49472;
+            } else {
+              throw "illegal char at " + (i + 1) + "/" + c;
+            }
+            c = (c >>> 8 & 255) * 192 + (c & 255);
+            buffer.put(c, 13);
+            i += 2;
+          }
+          if (i < data2.length) {
+            throw "illegal char at " + (i + 1);
+          }
+        };
+        return _this;
+      };
+      var byteArrayOutputStream = function() {
+        var _bytes = [];
+        var _this = {};
+        _this.writeByte = function(b) {
+          _bytes.push(b & 255);
+        };
+        _this.writeShort = function(i) {
+          _this.writeByte(i);
+          _this.writeByte(i >>> 8);
+        };
+        _this.writeBytes = function(b, off, len) {
+          off = off || 0;
+          len = len || b.length;
+          for (var i = 0; i < len; i += 1) {
+            _this.writeByte(b[i + off]);
+          }
+        };
+        _this.writeString = function(s) {
+          for (var i = 0; i < s.length; i += 1) {
+            _this.writeByte(s.charCodeAt(i));
+          }
+        };
+        _this.toByteArray = function() {
+          return _bytes;
+        };
+        _this.toString = function() {
+          var s = "";
+          s += "[";
+          for (var i = 0; i < _bytes.length; i += 1) {
+            if (i > 0) {
+              s += ",";
+            }
+            s += _bytes[i];
+          }
+          s += "]";
+          return s;
+        };
+        return _this;
+      };
+      var base64EncodeOutputStream = function() {
+        var _buffer = 0;
+        var _buflen = 0;
+        var _length = 0;
+        var _base64 = "";
+        var _this = {};
+        var writeEncoded = function(b) {
+          _base64 += String.fromCharCode(encode(b & 63));
+        };
+        var encode = function(n) {
+          if (n < 0) {
+          } else if (n < 26) {
+            return 65 + n;
+          } else if (n < 52) {
+            return 97 + (n - 26);
+          } else if (n < 62) {
+            return 48 + (n - 52);
+          } else if (n == 62) {
+            return 43;
+          } else if (n == 63) {
+            return 47;
+          }
+          throw "n:" + n;
+        };
+        _this.writeByte = function(n) {
+          _buffer = _buffer << 8 | n & 255;
+          _buflen += 8;
+          _length += 1;
+          while (_buflen >= 6) {
+            writeEncoded(_buffer >>> _buflen - 6);
+            _buflen -= 6;
+          }
+        };
+        _this.flush = function() {
+          if (_buflen > 0) {
+            writeEncoded(_buffer << 6 - _buflen);
+            _buffer = 0;
+            _buflen = 0;
+          }
+          if (_length % 3 != 0) {
+            var padlen = 3 - _length % 3;
+            for (var i = 0; i < padlen; i += 1) {
+              _base64 += "=";
+            }
+          }
+        };
+        _this.toString = function() {
+          return _base64;
+        };
+        return _this;
+      };
+      var base64DecodeInputStream = function(str) {
+        var _str = str;
+        var _pos = 0;
+        var _buffer = 0;
+        var _buflen = 0;
+        var _this = {};
+        _this.read = function() {
+          while (_buflen < 8) {
+            if (_pos >= _str.length) {
+              if (_buflen == 0) {
+                return -1;
+              }
+              throw "unexpected end of file./" + _buflen;
+            }
+            var c = _str.charAt(_pos);
+            _pos += 1;
+            if (c == "=") {
+              _buflen = 0;
+              return -1;
+            } else if (c.match(/^\s$/)) {
+              continue;
+            }
+            _buffer = _buffer << 6 | decode(c.charCodeAt(0));
+            _buflen += 6;
+          }
+          var n = _buffer >>> _buflen - 8 & 255;
+          _buflen -= 8;
+          return n;
+        };
+        var decode = function(c) {
+          if (65 <= c && c <= 90) {
+            return c - 65;
+          } else if (97 <= c && c <= 122) {
+            return c - 97 + 26;
+          } else if (48 <= c && c <= 57) {
+            return c - 48 + 52;
+          } else if (c == 43) {
+            return 62;
+          } else if (c == 47) {
+            return 63;
+          } else {
+            throw "c:" + c;
+          }
+        };
+        return _this;
+      };
+      var gifImage = function(width, height) {
+        var _width = width;
+        var _height = height;
+        var _data = new Array(width * height);
+        var _this = {};
+        _this.setPixel = function(x, y, pixel) {
+          _data[y * _width + x] = pixel;
+        };
+        _this.write = function(out) {
+          out.writeString("GIF87a");
+          out.writeShort(_width);
+          out.writeShort(_height);
+          out.writeByte(128);
+          out.writeByte(0);
+          out.writeByte(0);
+          out.writeByte(0);
+          out.writeByte(0);
+          out.writeByte(0);
+          out.writeByte(255);
+          out.writeByte(255);
+          out.writeByte(255);
+          out.writeString(",");
+          out.writeShort(0);
+          out.writeShort(0);
+          out.writeShort(_width);
+          out.writeShort(_height);
+          out.writeByte(0);
+          var lzwMinCodeSize = 2;
+          var raster = getLZWRaster(lzwMinCodeSize);
+          out.writeByte(lzwMinCodeSize);
+          var offset = 0;
+          while (raster.length - offset > 255) {
+            out.writeByte(255);
+            out.writeBytes(raster, offset, 255);
+            offset += 255;
+          }
+          out.writeByte(raster.length - offset);
+          out.writeBytes(raster, offset, raster.length - offset);
+          out.writeByte(0);
+          out.writeString(";");
+        };
+        var bitOutputStream = function(out) {
+          var _out = out;
+          var _bitLength = 0;
+          var _bitBuffer = 0;
+          var _this2 = {};
+          _this2.write = function(data, length) {
+            if (data >>> length != 0) {
+              throw "length over";
+            }
+            while (_bitLength + length >= 8) {
+              _out.writeByte(255 & (data << _bitLength | _bitBuffer));
+              length -= 8 - _bitLength;
+              data >>>= 8 - _bitLength;
+              _bitBuffer = 0;
+              _bitLength = 0;
+            }
+            _bitBuffer = data << _bitLength | _bitBuffer;
+            _bitLength = _bitLength + length;
+          };
+          _this2.flush = function() {
+            if (_bitLength > 0) {
+              _out.writeByte(_bitBuffer);
+            }
+          };
+          return _this2;
+        };
+        var getLZWRaster = function(lzwMinCodeSize) {
+          var clearCode = 1 << lzwMinCodeSize;
+          var endCode = (1 << lzwMinCodeSize) + 1;
+          var bitLength = lzwMinCodeSize + 1;
+          var table = lzwTable();
+          for (var i = 0; i < clearCode; i += 1) {
+            table.add(String.fromCharCode(i));
+          }
+          table.add(String.fromCharCode(clearCode));
+          table.add(String.fromCharCode(endCode));
+          var byteOut = byteArrayOutputStream();
+          var bitOut = bitOutputStream(byteOut);
+          bitOut.write(clearCode, bitLength);
+          var dataIndex = 0;
+          var s = String.fromCharCode(_data[dataIndex]);
+          dataIndex += 1;
+          while (dataIndex < _data.length) {
+            var c = String.fromCharCode(_data[dataIndex]);
+            dataIndex += 1;
+            if (table.contains(s + c)) {
+              s = s + c;
+            } else {
+              bitOut.write(table.indexOf(s), bitLength);
+              if (table.size() < 4095) {
+                if (table.size() == 1 << bitLength) {
+                  bitLength += 1;
+                }
+                table.add(s + c);
+              }
+              s = c;
+            }
+          }
+          bitOut.write(table.indexOf(s), bitLength);
+          bitOut.write(endCode, bitLength);
+          bitOut.flush();
+          return byteOut.toByteArray();
+        };
+        var lzwTable = function() {
+          var _map = {};
+          var _size = 0;
+          var _this2 = {};
+          _this2.add = function(key) {
+            if (_this2.contains(key)) {
+              throw "dup key:" + key;
+            }
+            _map[key] = _size;
+            _size += 1;
+          };
+          _this2.size = function() {
+            return _size;
+          };
+          _this2.indexOf = function(key) {
+            return _map[key];
+          };
+          _this2.contains = function(key) {
+            return typeof _map[key] != "undefined";
+          };
+          return _this2;
+        };
+        return _this;
+      };
+      var createDataURL = function(width, height, getPixel) {
+        var gif = gifImage(width, height);
+        for (var y = 0; y < height; y += 1) {
+          for (var x = 0; x < width; x += 1) {
+            gif.setPixel(x, y, getPixel(x, y));
+          }
+        }
+        var b = byteArrayOutputStream();
+        gif.write(b);
+        var base64 = base64EncodeOutputStream();
+        var bytes = b.toByteArray();
+        for (var i = 0; i < bytes.length; i += 1) {
+          base64.writeByte(bytes[i]);
+        }
+        base64.flush();
+        return "data:image/gif;base64," + base64;
+      };
+      return qrcode3;
+    })();
+    !(function() {
+      qrcode2.stringToBytesFuncs["UTF-8"] = function(s) {
+        function toUTF8Array(str) {
+          var utf8 = [];
+          for (var i = 0; i < str.length; i++) {
+            var charcode = str.charCodeAt(i);
+            if (charcode < 128) utf8.push(charcode);
+            else if (charcode < 2048) {
+              utf8.push(
+                192 | charcode >> 6,
+                128 | charcode & 63
+              );
+            } else if (charcode < 55296 || charcode >= 57344) {
+              utf8.push(
+                224 | charcode >> 12,
+                128 | charcode >> 6 & 63,
+                128 | charcode & 63
+              );
+            } else {
+              i++;
+              charcode = 65536 + ((charcode & 1023) << 10 | str.charCodeAt(i) & 1023);
+              utf8.push(
+                240 | charcode >> 18,
+                128 | charcode >> 12 & 63,
+                128 | charcode >> 6 & 63,
+                128 | charcode & 63
+              );
+            }
+          }
+          return utf8;
+        }
+        return toUTF8Array(s);
+      };
+    })();
+    (function(factory) {
+      if (typeof define === "function" && define.amd) {
+        define([], factory);
+      } else if (typeof exports2 === "object") {
+        module2.exports = factory();
+      }
+    })(function() {
+      return qrcode2;
+    });
+  }
+});
+
+// server/paystack.ts
+var paystack_exports = {};
+__export(paystack_exports, {
+  createSubaccount: () => createSubaccount,
+  createTransferRecipient: () => createTransferRecipient,
+  initializeTransaction: () => initializeTransaction,
+  initiateTransfer: () => initiateTransfer,
+  isPaystackConfigured: () => isPaystackConfigured,
+  isTestMode: () => isTestMode,
+  publicKey: () => publicKey,
+  refundTransaction: () => refundTransaction,
+  resolveAccountNumber: () => resolveAccountNumber,
+  secretKey: () => secretKey,
+  updateSubaccount: () => updateSubaccount,
+  verifyTransaction: () => verifyTransaction,
+  verifyWebhookSignature: () => verifyWebhookSignature
+});
+function isTestMode() {
+  if (process.env.NODE_ENV === "production") return false;
+  if (process.env.PAYSTACK_MODE === "live" || process.env.PAYSTACK_FORCE_LIVE === "true") return false;
+  const mongo = process.env.MONGODB_URI || "";
+  if (mongo && !mongo.includes("_dev") && !mongo.includes("_verify")) return false;
+  try {
+    const dbName = import_mongoose4.default?.connection?.name || "";
+    if (dbName && !dbName.endsWith("_dev") && !dbName.endsWith("_verify")) {
+      return false;
+    }
+  } catch {
+  }
+  if (process.env.PAYSTACK_MODE === "test") return true;
+  return Boolean(process.env.PAYSTACK_TEST_SECRET_KEY);
+}
+function secretKey() {
+  const useTest = isTestMode();
+  if (!useTest) {
+    const liveKey = process.env.PAYSTACK_SECRET_KEY;
+    if (liveKey) return liveKey;
+    if (process.env.PAYSTACK_TEST_SECRET_KEY) {
+      console.warn("[paystack] WARNING: Operating in live mode but PAYSTACK_SECRET_KEY is missing; falling back to PAYSTACK_TEST_SECRET_KEY.");
+      return process.env.PAYSTACK_TEST_SECRET_KEY;
+    }
+    throw new Error("PAYSTACK_SECRET_KEY is not configured for live production mode");
+  }
+  const testKey = process.env.PAYSTACK_TEST_SECRET_KEY || process.env.PAYSTACK_SECRET_KEY;
+  if (!testKey) {
+    throw new Error("Paystack secret key is not configured");
+  }
+  return testKey;
+}
+function publicKey() {
+  const useTest = isTestMode();
+  if (!useTest) {
+    return process.env.PAYSTACK_PUBLIC_KEY || process.env.PAYSTACK_TEST_PUBLIC_KEY || null;
+  }
+  return process.env.PAYSTACK_TEST_PUBLIC_KEY || process.env.PAYSTACK_PUBLIC_KEY || null;
+}
+async function initializeTransaction(params) {
+  const payload = {
+    email: params.email,
+    amount: params.amountKobo,
+    reference: params.reference,
+    currency: "NGN",
+    metadata: params.metadata
+  };
+  if (params.callbackUrl) payload.callback_url = params.callbackUrl;
+  if (params.subaccount) {
+    payload.subaccount = params.subaccount;
+    if (params.transactionChargeKobo !== void 0) {
+      payload.transaction_charge = params.transactionChargeKobo;
+    }
+  }
+  const res = await fetch(`${PAYSTACK_BASE}/transaction/initialize`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey()}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  const body = await res.json();
+  if (!res.ok || !body.status || !body.data) {
+    throw new Error(body.message || `Paystack initialize failed (${res.status})`);
+  }
+  return {
+    authorizationUrl: body.data.authorization_url,
+    accessCode: body.data.access_code,
+    reference: body.data.reference
+  };
+}
+async function verifyTransaction(reference) {
+  const res = await fetch(`${PAYSTACK_BASE}/transaction/verify/${encodeURIComponent(reference)}`, {
+    headers: { Authorization: `Bearer ${secretKey()}` }
+  });
+  const body = await res.json();
+  if (!res.ok || !body.status || !body.data) {
+    throw new Error(body.message || `Paystack verify failed (${res.status})`);
+  }
+  const raw = body.data.status;
+  const status = raw === "success" ? "success" : raw === "failed" ? "failed" : raw === "abandoned" ? "abandoned" : "pending";
+  return {
+    status,
+    amount: body.data.amount,
+    reference: body.data.reference,
+    paidAt: body.data.paid_at,
+    currency: body.data.currency,
+    gatewayResponse: body.data.gateway_response
+  };
+}
+async function refundTransaction(reference, amountKobo) {
+  const res = await fetch(`${PAYSTACK_BASE}/refund`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey()}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ transaction: reference, ...amountKobo ? { amount: amountKobo } : {} })
+  });
+  const body = await res.json();
+  if (!res.ok || !body.status) {
+    throw new Error(body.message || `Paystack refund failed (${res.status})`);
+  }
+}
+function verifyWebhookSignature(rawBody, signature) {
+  if (!signature) return false;
+  const activeKey = secretKey();
+  const testKey = process.env.PAYSTACK_TEST_SECRET_KEY;
+  const liveKey = process.env.PAYSTACK_SECRET_KEY;
+  const keysToTry = Array.from(new Set([activeKey, testKey, liveKey].filter(Boolean)));
+  for (const key of keysToTry) {
+    try {
+      const hash3 = import_crypto4.default.createHmac("sha512", key).update(rawBody).digest("hex");
+      const a = Buffer.from(hash3, "utf8");
+      const b = Buffer.from(signature, "utf8");
+      if (a.length === b.length && import_crypto4.default.timingSafeEqual(a, b)) {
+        return true;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return false;
+}
+function isPaystackConfigured() {
+  return Boolean(process.env.PAYSTACK_SECRET_KEY || process.env.PAYSTACK_TEST_SECRET_KEY);
+}
+async function createSubaccount(params) {
+  const res = await fetch(`${PAYSTACK_BASE}/subaccount`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey()}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      business_name: params.businessName,
+      settlement_bank: params.settlementBank,
+      account_number: params.accountNumber,
+      percentage_charge: params.percentageCharge,
+      description: params.description || `Subaccount for ${params.businessName}`
+    })
+  });
+  const body = await res.json();
+  if (!res.ok || !body.status || !body.data) {
+    throw new Error(body.message || `Paystack subaccount creation failed (${res.status})`);
+  }
+  return {
+    subaccountCode: body.data.subaccount_code,
+    id: body.data.id
+  };
+}
+async function updateSubaccount(subaccountCode, params) {
+  const payload = {};
+  if (params.businessName) payload.business_name = params.businessName;
+  if (params.settlementBank) payload.settlement_bank = params.settlementBank;
+  if (params.accountNumber) payload.account_number = params.accountNumber;
+  if (params.percentageCharge !== void 0) payload.percentage_charge = params.percentageCharge;
+  if (params.description) payload.description = params.description;
+  const res = await fetch(`${PAYSTACK_BASE}/subaccount/${encodeURIComponent(subaccountCode)}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${secretKey()}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  const body = await res.json();
+  if (!res.ok || !body.status || !body.data) {
+    throw new Error(body.message || `Paystack subaccount update failed (${res.status})`);
+  }
+  return {
+    subaccountCode: body.data.subaccount_code,
+    id: body.data.id
+  };
+}
+async function createTransferRecipient(params) {
+  const res = await fetch(`${PAYSTACK_BASE}/transferrecipient`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey()}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      type: "nuban",
+      name: params.name,
+      account_number: params.accountNumber,
+      bank_code: params.bankCode,
+      currency: "NGN"
+    })
+  });
+  const body = await res.json();
+  if (!res.ok || !body.status || !body.data) {
+    throw new Error(body.message || `Paystack recipient creation failed (${res.status})`);
+  }
+  return { recipientCode: body.data.recipient_code };
+}
+async function initiateTransfer(params) {
+  const res = await fetch(`${PAYSTACK_BASE}/transfer`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${secretKey()}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      source: "balance",
+      amount: params.amountKobo,
+      recipient: params.recipientCode,
+      reason: params.reason,
+      reference: params.reference
+    })
+  });
+  const body = await res.json();
+  if (!res.ok || !body.status || !body.data) {
+    throw new Error(body.message || `Paystack transfer failed (${res.status})`);
+  }
+  return {
+    transferCode: body.data.transfer_code,
+    status: body.data.status
+  };
+}
+async function resolveAccountNumber(params) {
+  const res = await fetch(
+    `${PAYSTACK_BASE}/bank/resolve?account_number=${encodeURIComponent(params.accountNumber)}&bank_code=${encodeURIComponent(params.bankCode)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${secretKey()}`
+      }
+    }
+  );
+  const body = await res.json();
+  if (!res.ok || !body.status || !body.data) {
+    throw new Error(body.message || `Could not resolve bank account (${res.status})`);
+  }
+  return {
+    accountNumber: body.data.account_number,
+    accountName: body.data.account_name
+  };
+}
+var import_crypto4, import_mongoose4, PAYSTACK_BASE;
+var init_paystack = __esm({
+  "server/paystack.ts"() {
+    "use strict";
+    import_crypto4 = __toESM(require("crypto"), 1);
+    import_mongoose4 = __toESM(require_mongoose2(), 1);
+    PAYSTACK_BASE = "https://api.paystack.co";
   }
 });
 
@@ -145068,6 +147227,10 @@ function loadEnvFiles() {
 
 // server/env-load.ts
 loadEnvFiles();
+if (!process.env.TZ) process.env.TZ = "Africa/Lagos";
+if (!process.env.PUBLIC_APP_URL && process.env.BASE_URL) {
+  process.env.PUBLIC_APP_URL = process.env.BASE_URL.replace(/\/+$/, "");
+}
 
 // server/routes.ts
 var import_express = __toESM(require_express2(), 1);
@@ -145084,6 +147247,7 @@ var import_passport = __toESM(require_lib11(), 1);
 var import_passport_local = __toESM(require_lib12(), 1);
 var import_express_session = __toESM(require_express_session(), 1);
 init_bcryptjs();
+var import_crypto3 = __toESM(require("crypto"), 1);
 var import_mongoose2 = __toESM(require_mongoose2(), 1);
 init_models();
 
@@ -145165,7 +147329,7 @@ var MongoStore = class MongoStore2 extends session.Store {
   collectionP;
   options;
   transformFunctions;
-  constructor({ collectionName = "sessions", ttl = 1209600, mongoOptions = {}, autoRemove = "native", autoRemoveInterval = 10, touchAfter = 0, stringify: stringify3 = true, timestamps = false, crypto: crypto11, cryptoAdapter, ...required }) {
+  constructor({ collectionName = "sessions", ttl = 1209600, mongoOptions = {}, autoRemove = "native", autoRemoveInterval = 10, touchAfter = 0, stringify: stringify3 = true, timestamps = false, crypto: crypto12, cryptoAdapter, ...required }) {
     super();
     debug("create MongoStore instance");
     const options = {
@@ -145177,15 +147341,15 @@ var MongoStore = class MongoStore2 extends session.Store {
       touchAfter,
       stringify: stringify3,
       timestamps,
-      crypto: crypto11,
+      crypto: crypto12,
       cryptoAdapter: cryptoAdapter ?? null,
       ...required
     };
     (0, import_strict.default)(options.mongoUrl || options.clientPromise || options.client, "You must provide either mongoUrl|clientPromise|client in options");
     (0, import_strict.default)(options.createAutoRemoveIdx === null || options.createAutoRemoveIdx === void 0, "options.createAutoRemoveIdx has been reverted to autoRemove and autoRemoveInterval");
     (0, import_strict.default)(!options.autoRemoveInterval || options.autoRemoveInterval <= 71582, "autoRemoveInterval is too large. options.autoRemoveInterval is in minutes but not seconds nor mills");
-    if (crypto11 !== void 0 && cryptoAdapter !== void 0) throw new Error("Provide either the legacy crypto option or cryptoAdapter, not both");
-    const legacyCryptoRequested = crypto11 !== void 0 && crypto11.secret !== false;
+    if (crypto12 !== void 0 && cryptoAdapter !== void 0) throw new Error("Provide either the legacy crypto option or cryptoAdapter, not both");
+    const legacyCryptoRequested = crypto12 !== void 0 && crypto12.secret !== false;
     if (options.cryptoAdapter) this.cryptoAdapter = options.cryptoAdapter;
     else if (legacyCryptoRequested) this.cryptoAdapter = createKrupteinAdapter(options.crypto);
     options.cryptoAdapter = this.cryptoAdapter;
@@ -145461,7 +147625,7 @@ async function findUserById(id) {
 function safeUser(user) {
   const obj = typeof user?.toObject === "function" ? user.toObject() : user;
   if (!obj) return obj;
-  const { password, ...rest } = obj;
+  const { password, resetTokenHash, resetTokenExpires, ...rest } = obj;
   return rest;
 }
 function rateLimit(max, windowMs) {
@@ -145598,6 +147762,7 @@ function setupAuth(app2) {
         } catch {
         }
       }
+      const founderVoucher = role === "organizer" || typeof req.body.founderVoucher === "string" && req.body.founderVoucher.trim().toUpperCase() === "FOUNDER100" ? "FOUNDER100" : void 0;
       const user = new User({
         username,
         email,
@@ -145606,6 +147771,7 @@ function setupAuth(app2) {
         ...displayName ? { displayName } : {},
         ...phone ? { phone } : {},
         ...referrerId ? { referredBy: referrerId } : {},
+        ...founderVoucher ? { founderVoucher, waivedTicketCount: 0 } : {},
         referralCode: generateReferralCode(),
         termsAcceptedAt: /* @__PURE__ */ new Date()
         // consent record, NDPA audit trail
@@ -145650,6 +147816,48 @@ function setupAuth(app2) {
       });
     })(req, res, next);
   });
+  app2.post("/api/auth/forgot-password", rateLimit(8, 15 * 60 * 1e3), async (req, res) => {
+    const generic = { ok: true, message: "If an account matches, a reset link is on its way. Check your inbox and spam folder." };
+    const raw = typeof req.body?.identifier === "string" ? req.body.identifier.trim() : "";
+    if (!raw) return res.status(400).json({ message: "Enter your email or username." });
+    try {
+      const email = normalizeEmail(raw);
+      const user = await User.findOne(
+        isValidEmail(email) ? { email: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } : { username: raw }
+      );
+      if (!user || user.deletedAt || !user.email) return res.json(generic);
+      const token = import_crypto3.default.randomBytes(32).toString("base64url");
+      user.resetTokenHash = import_crypto3.default.createHash("sha256").update(token).digest("hex");
+      user.resetTokenExpires = new Date(Date.now() + 60 * 60 * 1e3);
+      await user.save();
+      const base = (process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/+$/, "");
+      const { sendPasswordResetEmail: sendPasswordResetEmail2 } = await Promise.resolve().then(() => (init_emails(), emails_exports));
+      await sendPasswordResetEmail2(
+        { name: user.displayName || user.username, email: user.email },
+        { username: user.username, link: `${base}/reset-password?token=${token}` }
+      );
+      res.json(generic);
+    } catch (err) {
+      console.error("[auth] forgot-password failed:", err?.message);
+      res.json(generic);
+    }
+  });
+  app2.post("/api/auth/reset-password", rateLimit(10, 15 * 60 * 1e3), async (req, res) => {
+    const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    if (!token) return res.status(400).json({ message: "This reset link is incomplete. Request a new one." });
+    if (password.length < 8) return res.status(400).json({ message: "Use at least 8 characters for your new password." });
+    const hash3 = import_crypto3.default.createHash("sha256").update(token).digest("hex");
+    const user = await User.findOne({ resetTokenHash: hash3, resetTokenExpires: { $gt: /* @__PURE__ */ new Date() } });
+    if (!user || user.deletedAt) {
+      return res.status(400).json({ message: "This reset link has expired or was already used. Request a new one." });
+    }
+    user.password = await bcryptjs_default.hash(password, 10);
+    user.resetTokenHash = null;
+    user.resetTokenExpires = null;
+    await user.save();
+    res.json({ ok: true, username: user.username, message: "Password updated. Sign in with your new password." });
+  });
   app2.post("/api/auth/logout", (req, res, next) => {
     req.logout((err) => {
       if (err) return next(err);
@@ -145679,6 +147887,21 @@ function setupAuth(app2) {
       invites: invites || 0,
       referredBy: fresh.referredBy || null
     });
+  });
+  app2.post("/api/user/become-organizer", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in first" });
+    const me = req.user;
+    const user = await User.findById(me._id);
+    if (!user) return res.status(404).json({ message: "Account not found" });
+    if (user.role === "user") {
+      user.role = "organizer";
+      if (!user.founderVoucher) {
+        user.founderVoucher = "FOUNDER100";
+        user.waivedTicketCount = 0;
+      }
+      await user.save();
+    }
+    return res.json(safeUser(user));
   });
 }
 
@@ -145909,6 +148132,13 @@ var mockEvents = [
     showAttendeeCount: false,
     waitlistEnabled: false,
     guestCheckout: true,
+    buyerPaysFee: false,
+    businessApplicationsEnabled: false,
+    partnerSettings: null,
+    ageLimit: null,
+    endsText: null,
+    dressCode: null,
+    refundPolicy: null,
     promoCodesPublic: false,
     checkoutFields: { phone: false, tableNote: true, dietaryNote: false },
     branding: null,
@@ -145922,7 +148152,8 @@ var mockEvents = [
       { name: "Regular", price: 7e5, capacity: 4e3, sold: 1830 },
       { name: "VIP", price: 2e6, capacity: 900, sold: 240 },
       { name: "VVIP Table", price: 8e6, capacity: 100, sold: 31 }
-    ])
+    ]),
+    whatsappGroupUrl: "https://chat.whatsapp.com/invite/afrobeatslagos"
   },
   {
     id: "event-owambe-royale",
@@ -145948,6 +148179,13 @@ var mockEvents = [
     showAttendeeCount: false,
     waitlistEnabled: false,
     guestCheckout: true,
+    buyerPaysFee: false,
+    businessApplicationsEnabled: false,
+    partnerSettings: null,
+    ageLimit: null,
+    endsText: null,
+    dressCode: null,
+    refundPolicy: null,
     promoCodesPublic: false,
     checkoutFields: { phone: false, tableNote: true, dietaryNote: false },
     branding: null,
@@ -145960,7 +148198,8 @@ var mockEvents = [
     ticketTypes: JSON.stringify([
       { name: "Regular", price: 5e5, capacity: 1e3, sold: 410 },
       { name: "VIP", price: 15e5, capacity: 200, sold: 88 }
-    ])
+    ]),
+    whatsappGroupUrl: null
   },
   {
     id: "event-detty-jazz-sessions",
@@ -145986,6 +148225,13 @@ var mockEvents = [
     showAttendeeCount: false,
     waitlistEnabled: false,
     guestCheckout: true,
+    buyerPaysFee: false,
+    businessApplicationsEnabled: false,
+    partnerSettings: null,
+    ageLimit: null,
+    endsText: null,
+    dressCode: null,
+    refundPolicy: null,
     promoCodesPublic: false,
     checkoutFields: { phone: false, tableNote: true, dietaryNote: false },
     branding: null,
@@ -145995,7 +148241,8 @@ var mockEvents = [
     accessCode: null,
     eventType: "party",
     eventTypeLabel: null,
-    ticketTypes: "[]"
+    ticketTypes: "[]",
+    whatsappGroupUrl: null
   }
 ];
 var MongoStorage = class {
@@ -146250,10 +148497,17 @@ var MongoStorage = class {
       { $group: { _id: null, totalSold: { $sum: "$quantity" }, totalRevenue: { $sum: "$totalAmount" } } }
     ]);
     const stats = result[0] || { totalSold: 0, totalRevenue: 0 };
+    const perEvent = await BookingModel.aggregate([
+      { $match: { ...scope, status: "paid" } },
+      { $group: { _id: "$eventId", tickets: { $sum: "$quantity" }, revenue: { $sum: "$totalAmount" } } }
+    ]);
+    const byEvent = {};
+    for (const row of perEvent) byEvent[String(row._id)] = { tickets: row.tickets, revenue: row.revenue };
     return {
       totalEvents,
       totalTicketsSold: stats.totalSold,
-      totalRevenue: stats.totalRevenue
+      totalRevenue: stats.totalRevenue,
+      byEvent
     };
   }
   async getUser(id) {
@@ -146483,6 +148737,7 @@ var api = {
         200: external_exports.object({
           totalEvents: external_exports.number(),
           totalTicketsSold: external_exports.number(),
+          byEvent: external_exports.record(external_exports.object({ tickets: external_exports.number(), revenue: external_exports.number() })).optional(),
           totalRevenue: external_exports.number()
         })
       }
@@ -146624,11 +148879,11 @@ init_schema2();
 init_zod();
 
 // node_modules/stripe/esm/platform/NodePlatformFunctions.js
-var crypto8 = __toESM(require("crypto"), 1);
+var crypto9 = __toESM(require("crypto"), 1);
 var import_events = require("events");
 
 // node_modules/stripe/esm/crypto/NodeCryptoProvider.js
-var crypto7 = __toESM(require("crypto"), 1);
+var crypto8 = __toESM(require("crypto"), 1);
 
 // node_modules/stripe/esm/crypto/CryptoProvider.js
 var CryptoProvider = class {
@@ -146671,7 +148926,7 @@ var CryptoProviderOnlySupportsAsyncError = class extends Error {
 var NodeCryptoProvider = class extends CryptoProvider {
   /** @override */
   computeHMACSignature(payload, secret) {
-    return crypto7.createHmac("sha256", secret).update(payload, "utf8").digest("hex");
+    return crypto8.createHmac("sha256", secret).update(payload, "utf8").digest("hex");
   }
   /** @override */
   async computeHMACSignatureAsync(payload, secret) {
@@ -146680,7 +148935,7 @@ var NodeCryptoProvider = class extends CryptoProvider {
   }
   /** @override */
   async computeSHA256Async(data) {
-    return new Uint8Array(await crypto7.createHash("sha256").update(data).digest());
+    return new Uint8Array(await crypto8.createHash("sha256").update(data).digest());
   }
 };
 
@@ -147467,8 +149722,8 @@ var NodePlatformFunctions = class extends PlatformFunctions {
   }
   /** @override */
   uuid4() {
-    if (crypto8.randomUUID) {
-      return crypto8.randomUUID();
+    if (crypto9.randomUUID) {
+      return crypto9.randomUUID();
     }
     return super.uuid4();
   }
@@ -147509,11 +149764,11 @@ var NodePlatformFunctions = class extends PlatformFunctions {
     if (a.length !== b.length) {
       return false;
     }
-    if (crypto8.timingSafeEqual) {
+    if (crypto9.timingSafeEqual) {
       const textEncoder = new TextEncoder();
       const aEncoded = textEncoder.encode(a);
       const bEncoded = textEncoder.encode(b);
-      return crypto8.timingSafeEqual(aEncoded, bEncoded);
+      return crypto9.timingSafeEqual(aEncoded, bEncoded);
     }
     return super.secureCompare(a, b);
   }
@@ -151952,14 +154207,15 @@ var stripe_esm_node_default = Stripe;
 // server/routes.ts
 init_bcryptjs();
 init_models();
-var import_mongoose6 = __toESM(require_mongoose2(), 1);
+var import_mongoose7 = __toESM(require_mongoose2(), 1);
 
 // server/booking.ts
-var import_mongoose4 = __toESM(require_mongoose2(), 1);
+var import_mongoose5 = __toESM(require_mongoose2(), 1);
 init_models();
 
 // server/tickets.ts
 var import_pdf_lib2 = __toESM(require_cjs(), 1);
+var import_qrcode_generator = __toESM(require_qrcode(), 1);
 var CODE_ALPHABET2 = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 function generateTicketCode() {
   let suffix = "";
@@ -151984,13 +154240,19 @@ var INK2 = (0, import_pdf_lib2.rgb)(0.06, 0.06, 0.07);
 var MUTED2 = (0, import_pdf_lib2.rgb)(0.45, 0.45, 0.48);
 var PAPER2 = (0, import_pdf_lib2.rgb)(1, 1, 1);
 function formatEventDate(date2) {
-  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const h = date2.getHours();
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  const ampm = h < 12 ? "AM" : "PM";
-  const minutes = String(date2.getMinutes()).padStart(2, "0");
-  return `${days[date2.getDay()]}, ${months[date2.getMonth()]} ${date2.getDate()}, ${date2.getFullYear()} - ${hour12}:${minutes} ${ampm}`;
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "Africa/Lagos",
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true
+    }).formatToParts(date2).map((p) => [p.type, p.value])
+  );
+  return `${parts.weekday}, ${parts.month} ${parts.day}, ${parts.year} - ${parts.hour}:${parts.minute} ${String(parts.dayPeriod).toUpperCase()}`;
 }
 async function buildTicketPdf(tickets2, event) {
   const pdf = await import_pdf_lib2.PDFDocument.create();
@@ -152009,25 +154271,22 @@ async function buildTicketPdf(tickets2, event) {
     const page = pdf.addPage([595, 842]);
     const { width } = page.getSize();
     page.drawRectangle({ x: 0, y: 742, width, height: 100, color: INK2 });
-    page.drawText(spaced(brandName), {
+    const headerText = spaced(brandName);
+    let headerSize = 20;
+    while (headerSize > 11 && helvBold.widthOfTextAtSize(headerText, headerSize) > width - 96) headerSize -= 1;
+    page.drawText(headerText, {
       x: 48,
       y: 790,
-      size: 20,
+      size: headerSize,
       font: helvBold,
-      color: PAPER2
+      color: PAPER2,
+      maxWidth: width - 96
     });
     page.drawText(spaced("EVENT TICKET"), {
       x: 48,
       y: 768,
       size: 9,
       font: helv,
-      color: GOLD2
-    });
-    page.drawText(ticket.code, {
-      x: width - 48 - mono.widthOfTextAtSize(ticket.code, 12),
-      y: 788,
-      size: 12,
-      font: mono,
       color: GOLD2
     });
     page.drawText(eventTitle, {
@@ -152075,35 +154334,34 @@ async function buildTicketPdf(tickets2, event) {
       borderColor: (0, import_pdf_lib2.rgb)(0.9, 0.9, 0.9),
       borderWidth: 1
     });
-    page.drawText(spaced("TICKET CODE"), {
-      x: width / 2 - mono.widthOfTextAtSize("TICKET CODE", 9) / 2,
-      y: 388,
-      size: 9,
-      font: helvBold,
-      color: MUTED2
-    });
-    page.drawText(ticket.code, {
-      x: width / 2 - mono.widthOfTextAtSize(ticket.code, 30) / 2,
-      y: 340,
-      size: 30,
-      font: mono,
-      color: INK2
-    });
-    page.drawText("Present this code at the gate. One scan per ticket.", {
-      x: width / 2 - helv.widthOfTextAtSize("Present this code at the gate. One scan per ticket.", 10) / 2,
-      y: 305,
-      size: 10,
-      font: helv,
-      color: MUTED2
-    });
-    page.drawText("Each code is single-use and tied to this ticket only.", {
-      x: width / 2 - helv.widthOfTextAtSize("Each code is single-use and tied to this ticket only.", 10) / 2,
-      y: 285,
-      size: 10,
-      font: helv,
-      color: MUTED2
-    });
-    const footerText = event.branding?.displayName ? `This ticket was issued via BlackHeritage for ${safeText(event.branding.displayName)}. Keep it until the event ends.` : "This ticket was issued by BlackHeritage. Keep it until the event ends.";
+    const qrSize = 140;
+    const qrX = 64;
+    const qrY = 265;
+    page.drawRectangle({ x: qrX, y: qrY, width: qrSize, height: qrSize, color: PAPER2 });
+    const qr = (0, import_qrcode_generator.default)(0, "M");
+    qr.addData(ticket.code, "Byte");
+    qr.make();
+    const n = qr.getModuleCount();
+    const quiet = 2;
+    const cell = qrSize / (n + quiet * 2);
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        if (!qr.isDark(r, c)) continue;
+        page.drawRectangle({
+          x: qrX + (c + quiet) * cell,
+          y: qrY + qrSize - (r + quiet + 1) * cell,
+          width: cell + 0.2,
+          height: cell + 0.2,
+          color: INK2
+        });
+      }
+    }
+    const textX = qrX + qrSize + 28;
+    page.drawText(spaced("TICKET CODE"), { x: textX, y: 380, size: 9, font: helvBold, color: MUTED2 });
+    page.drawText(ticket.code, { x: textX, y: 345, size: 26, font: mono, color: INK2 });
+    page.drawText("Show this QR at the gate. One scan per ticket.", { x: textX, y: 312, size: 10, font: helv, color: MUTED2 });
+    page.drawText("No camera? Staff can type the code.", { x: textX, y: 294, size: 10, font: helv, color: MUTED2 });
+    const footerText = event.branding?.displayName ? `Tickets for ${safeText(event.branding.displayName)} by Black Heritage - blackhevents.com. Keep this until the event ends.` : "Issued by Black Heritage - blackhevents.com. Keep this until the event ends.";
     page.drawText(footerText, { x: 48, y: 60, size: 9, font: helv, color: MUTED2 });
     if (event.branding?.slug) {
       page.drawText(`Organizer Hub: blackhevents.com/o/${event.branding.slug}`, {
@@ -152118,99 +154376,8 @@ async function buildTicketPdf(tickets2, event) {
   return pdf.save();
 }
 
-// server/paystack.ts
-var import_crypto3 = __toESM(require("crypto"), 1);
-var PAYSTACK_BASE = "https://api.paystack.co";
-function secretKey() {
-  const key = process.env.PAYSTACK_SECRET_KEY;
-  if (!key) {
-    throw new Error("PAYSTACK_SECRET_KEY is not configured");
-  }
-  return key;
-}
-async function initializeTransaction(params) {
-  const payload = {
-    email: params.email,
-    amount: params.amountKobo,
-    reference: params.reference,
-    currency: "NGN",
-    metadata: params.metadata
-  };
-  if (params.subaccount) {
-    payload.subaccount = params.subaccount;
-    if (params.transactionChargeKobo !== void 0) {
-      payload.transaction_charge = params.transactionChargeKobo;
-    }
-  }
-  const res = await fetch(`${PAYSTACK_BASE}/transaction/initialize`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secretKey()}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  });
-  const body = await res.json();
-  if (!res.ok || !body.status || !body.data) {
-    throw new Error(body.message || `Paystack initialize failed (${res.status})`);
-  }
-  return {
-    authorizationUrl: body.data.authorization_url,
-    accessCode: body.data.access_code,
-    reference: body.data.reference
-  };
-}
-async function verifyTransaction(reference) {
-  const res = await fetch(`${PAYSTACK_BASE}/transaction/verify/${encodeURIComponent(reference)}`, {
-    headers: { Authorization: `Bearer ${secretKey()}` }
-  });
-  const body = await res.json();
-  if (!res.ok || !body.status || !body.data) {
-    throw new Error(body.message || `Paystack verify failed (${res.status})`);
-  }
-  const raw = body.data.status;
-  const status = raw === "success" ? "success" : raw === "failed" ? "failed" : raw === "abandoned" ? "abandoned" : "pending";
-  return {
-    status,
-    amount: body.data.amount,
-    reference: body.data.reference,
-    paidAt: body.data.paid_at,
-    currency: body.data.currency,
-    gatewayResponse: body.data.gateway_response
-  };
-}
-async function refundTransaction(reference, amountKobo) {
-  const res = await fetch(`${PAYSTACK_BASE}/refund`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secretKey()}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ transaction: reference, ...amountKobo ? { amount: amountKobo } : {} })
-  });
-  const body = await res.json();
-  if (!res.ok || !body.status) {
-    throw new Error(body.message || `Paystack refund failed (${res.status})`);
-  }
-}
-function verifyWebhookSignature(rawBody, signature) {
-  if (!signature) return false;
-  const key = process.env.PAYSTACK_SECRET_KEY;
-  if (!key) return false;
-  const hash3 = import_crypto3.default.createHmac("sha512", key).update(rawBody).digest("hex");
-  try {
-    const a = Buffer.from(hash3, "utf8");
-    const b = Buffer.from(signature, "utf8");
-    return a.length === b.length && import_crypto3.default.timingSafeEqual(a, b);
-  } catch {
-    return false;
-  }
-}
-function isPaystackConfigured() {
-  return Boolean(process.env.PAYSTACK_SECRET_KEY);
-}
-
 // server/payments.ts
+init_paystack();
 function activeGateway() {
   if (isPaystackConfigured()) return "paystack";
   return "simulated";
@@ -152224,13 +154391,15 @@ async function paystackInitialize(params) {
     amountKobo: params.amountKobo,
     reference: params.reference,
     metadata: params.metadata,
-    subaccount: params.subaccountCode
+    subaccount: params.subaccountCode,
+    transactionChargeKobo: params.transactionChargeKobo,
+    callbackUrl: params.redirectUrl
   });
   return {
     gateway: "paystack",
     authorizationUrl: result.authorizationUrl,
     accessCode: result.accessCode,
-    publicKey: process.env.PAYSTACK_PUBLIC_KEY || null,
+    publicKey: publicKey(),
     reference: result.reference
   };
 }
@@ -152314,32 +154483,93 @@ async function fulfillBooking(bookingId) {
     }
   }
   const settings = await PlatformSettingModel.findOne({ key: "platform" }).lean();
-  const total = booking.totalAmount || 0;
-  if (total > 0) {
-    const feeBps = settings?.ticketCommissionBps ?? 600;
+  const serviceFee = Number(booking.serviceFeeKobo || 0);
+  const total = Math.max(0, (booking.totalAmount || 0) - serviceFee);
+  const organizerId = event?.organizerId;
+  const feeBps = settings?.ticketCommissionBps ?? 600;
+  let isFounderPerkApplied = false;
+  let waivedForThisBooking = 0;
+  let totalWaivedCount = 0;
+  if (organizerId && total > 0) {
+    try {
+      const { User: User2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+      const organizer = await User2.findById(organizerId);
+      if (organizer && organizer.founderVoucher === "FOUNDER100") {
+        const used = Number(organizer.waivedTicketCount || 0);
+        if (used < 100) {
+          const remainingWaiver = 100 - used;
+          waivedForThisBooking = Math.min(qty, remainingWaiver);
+          totalWaivedCount = used + waivedForThisBooking;
+          await User2.updateOne(
+            { _id: organizer._id },
+            { $inc: { waivedTicketCount: waivedForThisBooking } }
+          );
+          isFounderPerkApplied = true;
+        }
+      }
+    } catch (voucherErr) {
+      console.warn("[booking] Founder voucher check failed:", voucherErr);
+    }
+  }
+  let platformFeeKobo = serviceFee > 0 ? serviceFee : platformFeeFor(total, qty, waivedForThisBooking, feeBps);
+  if (booking.subaccountSplit && typeof booking.splitChargeKobo === "number") {
+    platformFeeKobo = booking.splitChargeKobo;
+  }
+  const feeNote = isFounderPerkApplied ? waivedForThisBooking >= qty ? `0% platform fee \xB7 Founder Hundred perk (${totalWaivedCount}/100 tickets used)` : `${feeBps / 100}% platform fee on remaining ${qty - waivedForThisBooking} tickets \xB7 Founder Hundred (${totalWaivedCount}/100 tickets used)` : `${feeBps / 100}% platform commission`;
+  await PayoutModel.create({
+    kind: "platform_fee",
+    eventId: booking.eventId,
+    organizerId: event?.organizerId || null,
+    recipientName: "BlackHeritage",
+    amount: platformFeeKobo,
+    sourceBookingId: booking._id,
+    status: "due",
+    note: feeNote
+  }).catch(() => {
+  });
+  const promoterShareBps = event?.promoterCommissionBps || 0;
+  const promoterName = event?.promoterName;
+  let promoterCommissionKobo = 0;
+  if (promoterShareBps > 0 && promoterName) {
+    promoterCommissionKobo = Math.round(total * promoterShareBps / 1e4);
     await PayoutModel.create({
-      kind: "platform_fee",
+      kind: "promoter_commission",
       eventId: booking.eventId,
       organizerId: event?.organizerId || null,
-      recipientName: "BlackHeritage",
-      amount: Math.round(total * feeBps / 1e4),
+      recipientName: promoterName,
+      amount: promoterCommissionKobo,
       sourceBookingId: booking._id,
       status: "due",
-      note: `${feeBps / 100}% platform commission`
+      note: `${promoterShareBps / 100}% promoter share chosen by the organizer`
+    }).catch(() => {
     });
-    const promoterShareBps = event?.promoterCommissionBps || 0;
-    const promoterName = event?.promoterName;
-    if (promoterShareBps > 0 && promoterName) {
+  }
+  const orgNetKobo = Math.max(0, total - (serviceFee > 0 ? 0 : platformFeeKobo) - promoterCommissionKobo);
+  if (orgNetKobo > 0 && organizerId) {
+    try {
+      const { User: User2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+      const organizer = await User2.findById(organizerId).lean();
+      const orgName = organizer?.displayName || organizer?.username || event?.organizerName || "Organizer";
+      const isVerified = Boolean(organizer?.isVerified);
+      const hasSubaccount = Boolean(organizer?.bankDetails?.subaccountCode);
+      const wasAutoSplit = Boolean(booking?.subaccountSplit);
+      const gateway = booking?.paymentGateway;
+      const isAutoSplitSettled = isVerified && wasAutoSplit && gateway === "paystack";
       await PayoutModel.create({
-        kind: "promoter_commission",
+        kind: "organizer_payout",
         eventId: booking.eventId,
-        organizerId: event?.organizerId || null,
-        recipientName: promoterName,
-        amount: Math.round(total * promoterShareBps / 1e4),
+        organizerId: String(organizerId),
+        recipientName: orgName,
+        recipientId: organizer?.bankDetails?.recipientCode || null,
+        amount: orgNetKobo,
         sourceBookingId: booking._id,
-        status: "due",
-        note: `${promoterShareBps / 100}% promoter share chosen by the organizer`
+        status: isAutoSplitSettled ? "settled" : isVerified ? "due" : "pending_verification",
+        note: isAutoSplitSettled ? "Automatic split settlement via Paystack subaccount" : !isVerified ? "Pending verification: identity verification required before payout disbursement" : !hasSubaccount ? "Pending bank setup: link settlement bank account in Settings" : "Settlement due for payout transfer"
+      }).catch((err) => {
+        console.warn("Organizer payout note:", err?.message);
       });
+    } catch (orgErr) {
+      console.warn("Organizer lookup for payout notice:", orgErr?.message);
     }
   }
   try {
@@ -152366,6 +154596,7 @@ async function fulfillBooking(bookingId) {
           eventDate: new Date(event.date),
           eventLocation: event?.location || "To be announced",
           branding: event?.branding || null,
+          imageUrl: event?.imageUrl || null,
           tickets: tickets2.map((t) => ({
             code: t.code,
             tierName: t.tierName,
@@ -152396,7 +154627,6 @@ async function fulfillBooking(bookingId) {
     console.error("Ticket email failed:", emailErr);
   }
   try {
-    const organizerId = event?.organizerId;
     if (organizerId) {
       const { User: User2 } = await Promise.resolve().then(() => (init_models(), models_exports));
       const organizer = await User2.findById(organizerId).lean();
@@ -152431,16 +154661,34 @@ async function fulfillBooking(bookingId) {
     }))
   };
 }
+function platformFeeFor(totalKobo, qty, waivedQty, feeBps) {
+  const chargeableQty = Math.max(0, qty - waivedQty);
+  const chargeableRatio = qty > 0 ? chargeableQty / qty : 1;
+  return Math.round(totalKobo * chargeableRatio * feeBps / 1e4);
+}
+async function previewPlatformFee(organizerId, qty, totalKobo) {
+  const settings = await PlatformSettingModel.findOne({ key: "platform" }).lean();
+  const feeBps = settings?.ticketCommissionBps ?? 600;
+  let waivedQty = 0;
+  if (organizerId) {
+    const { User: User2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+    const organizer = await User2.findById(organizerId).lean();
+    if (organizer?.founderVoucher === "FOUNDER100") {
+      waivedQty = Math.min(qty, Math.max(0, 100 - Number(organizer.waivedTicketCount || 0)));
+    }
+  }
+  return platformFeeFor(totalKobo, qty, waivedQty, feeBps);
+}
 async function validatePromo(promoCode, event, subtotalKobo) {
   const code = promoCode.trim().toUpperCase();
   const promo = await PromoCodeModel.findOne({
     code,
-    eventId: new import_mongoose4.default.Types.ObjectId(String(event._id))
+    eventId: new import_mongoose5.default.Types.ObjectId(String(event._id))
   }).lean();
   if (!promo) return { ok: false, message: `Code ${code} is not valid for this event`, discountKobo: 0 };
   if (!promo.active) return { ok: false, message: `Code ${code} is no longer active`, discountKobo: 0 };
   if (promo.expiresAt && new Date(promo.expiresAt).getTime() < Date.now()) {
-    return { ok: false, message: `Code ${code} expired on ${new Date(promo.expiresAt).toLocaleDateString("en-NG")}`, discountKobo: 0 };
+    return { ok: false, message: `Code ${code} expired on ${new Date(promo.expiresAt).toLocaleDateString("en-NG", { timeZone: "Africa/Lagos" })}`, discountKobo: 0 };
   }
   if (promo.maxUses != null && promo.usedCount >= promo.maxUses) {
     return { ok: false, message: `Code ${code} has reached its usage limit`, discountKobo: 0 };
@@ -152461,10 +154709,10 @@ async function quoteBooking(input) {
   const tier = tiers.find((t) => t.name === input.tierName);
   if (!tier) return { ok: false, message: "Choose a ticket tier" };
   if (tier.saleClose && new Date(tier.saleClose).getTime() < Date.now()) {
-    return { ok: false, message: `Sales for ${tier.name} closed on ${new Date(tier.saleClose).toLocaleDateString("en-NG")}` };
+    return { ok: false, message: `Sales for ${tier.name} closed on ${new Date(tier.saleClose).toLocaleDateString("en-NG", { timeZone: "Africa/Lagos" })}` };
   }
   if (tier.saleOpen && new Date(tier.saleOpen).getTime() > Date.now()) {
-    return { ok: false, message: `Sales for ${tier.name} open on ${new Date(tier.saleOpen).toLocaleDateString("en-NG")}` };
+    return { ok: false, message: `Sales for ${tier.name} open on ${new Date(tier.saleOpen).toLocaleDateString("en-NG", { timeZone: "Africa/Lagos" })}` };
   }
   const available = Math.max(0, Number(tier.capacity || 0) - Number(tier.sold || 0));
   if (input.quantity > available) {
@@ -152483,6 +154731,8 @@ async function quoteBooking(input) {
     promoMessage = promo.message;
     promoId = promo.promoId;
   }
+  const ticketsKobo = subtotal - discount;
+  const serviceFeeKobo = event.buyerPaysFee && ticketsKobo > 0 ? await previewPlatformFee(event.organizerId, input.quantity, ticketsKobo) : 0;
   return {
     ok: true,
     quote: {
@@ -152490,7 +154740,8 @@ async function quoteBooking(input) {
       quantity: input.quantity,
       subtotalKobo: subtotal,
       discountKobo: discount,
-      totalKobo: subtotal - discount,
+      totalKobo: ticketsKobo + serviceFeeKobo,
+      serviceFeeKobo,
       available,
       promoApplied,
       promoMessage,
@@ -152545,7 +154796,7 @@ async function createGateSale(input) {
       // ever mailed by accident.
       email: input.buyerEmail || "walk-in+no-email@blackhevents.com",
       name: input.buyerName,
-      eventId: new import_mongoose4.default.Types.ObjectId(input.eventId),
+      eventId: new import_mongoose5.default.Types.ObjectId(input.eventId),
       ticketType: input.tierName,
       quantity: input.quantity,
       totalAmount: totalKobo,
@@ -152590,12 +154841,12 @@ async function createGateSale(input) {
 // server/seed.ts
 var import_fs2 = __toESM(require("fs"), 1);
 var import_path2 = __toESM(require("path"), 1);
-var import_mongoose5 = __toESM(require_mongoose2(), 1);
+var import_mongoose6 = __toESM(require_mongoose2(), 1);
 init_bcryptjs();
 init_models();
 async function seedPlatform() {
-  if (import_mongoose5.default.connection.readyState !== 1) return;
-  const dbName = import_mongoose5.default.connection.name || "";
+  if (import_mongoose6.default.connection.readyState !== 1) return;
+  const dbName = import_mongoose6.default.connection.name || "";
   const isDevOrVerifyDb = dbName.endsWith("_dev") || dbName.endsWith("_verify");
   if (!isDevOrVerifyDb) {
     console.warn(`[seed guard] Refusing to run seed: database "${dbName}" does not end in _dev or _verify. Live production database is protected from fake/sample data.`);
@@ -152672,7 +154923,19 @@ async function seedPlatform() {
       linkUrl: "",
       active: true
     },
-    followersCount: 1420
+    followersCount: 1420,
+    isVerified: true,
+    verificationStatus: "verified",
+    verifiedAt: /* @__PURE__ */ new Date(),
+    bankDetails: {
+      accountNumber: "0123456789",
+      bankCode: "058",
+      bankName: "Guaranty Trust Bank (GTBank)",
+      accountName: "Tunde Live Concepts",
+      subaccountCode: "ACCT_DEMO_TUNDE_SUB",
+      recipientCode: "RCP_DEMO_TUNDE",
+      updatedAt: /* @__PURE__ */ new Date()
+    }
   });
   if (!organizer.organizerSlug || organizer.organizerSlug !== "tunde-live") {
     organizer.organizerSlug = "tunde-live";
@@ -152699,6 +154962,18 @@ async function seedPlatform() {
       active: true
     };
     organizer.followersCount = 1420;
+    organizer.isVerified = true;
+    organizer.verificationStatus = "verified";
+    organizer.verifiedAt = /* @__PURE__ */ new Date();
+    organizer.bankDetails = {
+      accountNumber: "0123456789",
+      bankCode: "058",
+      bankName: "Guaranty Trust Bank (GTBank)",
+      accountName: "Tunde Live Concepts",
+      subaccountCode: "ACCT_DEMO_TUNDE_SUB",
+      recipientCode: "RCP_DEMO_TUNDE",
+      updatedAt: /* @__PURE__ */ new Date()
+    };
     await organizer.save();
   }
   const mainlandOrg = await ensureUser("mainlandblockparty", "tickets@blackhevents.com", "organizer", {
@@ -152896,7 +155171,8 @@ async function seedPlatform() {
         logoUrl: "/events/mainland-block-party.jpg",
         accentHex: "#E3B23C",
         slug: "lagos-street-sound"
-      }
+      },
+      whatsappGroupUrl: "https://chat.whatsapp.com/invite/lagosstreetsound"
     },
     {
       title: "Lagos Alt\xE9 & Indie Sound Gathering 2026",
@@ -153108,7 +155384,8 @@ async function seedPlatform() {
         showAttendeeCount: true,
         waitlistEnabled: true,
         guestCheckout: true,
-        promoCodesPublic: true
+        promoCodesPublic: true,
+        whatsappGroupUrl: item.whatsappGroupUrl || null
       });
       console.log(`Seed: canonical event created: "${item.title}"`);
     } else {
@@ -153161,6 +155438,10 @@ async function seedPlatform() {
       }
       if (item.slugAliases && JSON.stringify(existing.slugAliases) !== JSON.stringify(item.slugAliases)) {
         existing.slugAliases = item.slugAliases;
+        touched = true;
+      }
+      if (item.whatsappGroupUrl && existing.whatsappGroupUrl !== item.whatsappGroupUrl) {
+        existing.whatsappGroupUrl = item.whatsappGroupUrl;
         touched = true;
       }
       if (new Date(existing.date).getTime() < Date.now()) {
@@ -153703,21 +155984,21 @@ async function seedPlatform() {
   }
   if (showcase && attendee && vendorOwner?._id && showcase.ownerId === vendorOwner._id.toString()) {
     const { MessageModel: MessageModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
-    const hasDemoConvo = await MessageModel2.countDocuments({ conversationId: "seed-vendor-demo" });
+    const hasDemoConvo = await MessageModel2.countDocuments({ conversationId: [attendee._id.toString(), vendorOwner._id.toString()].sort().join("::") });
     if (hasDemoConvo === 0) {
       const clientAsk = new Date(Date.now() - 26 * 60 * 60 * 1e3);
       const ownerReply = new Date(clientAsk.getTime() + 12 * 60 * 1e3);
       await MessageModel2.create([
         {
-          conversationId: "seed-vendor-demo",
+          conversationId: [attendee._id.toString(), vendorOwner._id.toString()].sort().join("::"),
           senderId: attendee._id.toString(),
           recipientId: vendorOwner._id.toString(),
           vendorId: showcase._id.toString(),
-          body: "Hi, are you available for Abuja Sunset Gala on 17 October 2026? Roughly 500 guests.",
+          body: "Hi, are you available for Abuja Sunset Gala on Saturday 28 November? Roughly 500 guests.",
           createdAt: clientAsk
         },
         {
-          conversationId: "seed-vendor-demo",
+          conversationId: [attendee._id.toString(), vendorOwner._id.toString()].sort().join("::"),
           senderId: vendorOwner._id.toString(),
           recipientId: attendee._id.toString(),
           vendorId: showcase._id.toString(),
@@ -153728,7 +156009,7 @@ async function seedPlatform() {
       console.log("Seed: vendor trust demo conversation created");
     }
   }
-  if (showcase && import_mongoose5.default.connection.readyState === 1) {
+  if (showcase && import_mongoose6.default.connection.readyState === 1) {
     const { VendorRatingModel: VendorRatingModel2, User: UserModel } = await Promise.resolve().then(() => (init_models(), models_exports));
     if (vendorOwner?._id) {
       const ownedIds = (await VendorModel.find({ ownerId: vendorOwner._id.toString() }).select("_id").lean()).map((v) => String(v._id));
@@ -154005,7 +156286,7 @@ async function suggestEventCopy(req) {
       const text2 = json2.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
       if (!text2.trim()) {
         const reason = json2.candidates?.[0]?.finishReason || json2.promptFeedback?.blockReason || "no candidates";
-        console.error("AI copy empty text for", req.kind, "\u2014 reason:", reason);
+        console.error("AI copy empty text for", req.kind, "- reason:", reason);
         lastError = new Error("The writing helper came back empty. Try again in a moment.");
         continue;
       }
@@ -154047,7 +156328,7 @@ async function suggestEventCopy(req) {
 // server/media-storage.ts
 var import_fs3 = __toESM(require("fs"), 1);
 var import_path3 = __toESM(require("path"), 1);
-var import_crypto4 = require("crypto");
+var import_crypto5 = require("crypto");
 
 // node_modules/aws4fetch/dist/aws4fetch.esm.mjs
 var encoder2 = new TextEncoder();
@@ -154361,7 +156642,7 @@ function mediaKey(originalName, mime) {
   const fromMime = EXT_BY_MIME[mime.toLowerCase()];
   const fromName = import_path3.default.extname(originalName || "").toLowerCase();
   const ext = fromMime || (/^\.[a-z0-9]{2,5}$/.test(fromName) ? fromName : ".bin");
-  return `portfolio/${Date.now()}-${(0, import_crypto4.randomBytes)(4).toString("hex")}${ext}`;
+  return `portfolio/${Date.now()}-${(0, import_crypto5.randomBytes)(4).toString("hex")}${ext}`;
 }
 async function putToR2(key, body, mime) {
   const res = await client.fetch(
@@ -154447,7 +156728,7 @@ function publishToUser(userId, type, payload = {}) {
 // server/routes.ts
 init_playbook();
 init_emails();
-var import_crypto5 = __toESM(require("crypto"), 1);
+var import_crypto6 = __toESM(require("crypto"), 1);
 var uploadRoot = process.cwd();
 function slugify(title) {
   return String(title || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
@@ -154471,7 +156752,7 @@ async function resolveOrganizerBySlug(rawSlug) {
     $or: [{ organizerSlug: slug }, { username: slug }]
   }).lean();
   if (direct) return direct;
-  if (import_mongoose6.default.Types.ObjectId.isValid(slug)) {
+  if (import_mongoose7.default.Types.ObjectId.isValid(slug)) {
     const byId = await User.findById(slug).lean();
     if (byId) return byId;
   }
@@ -154484,7 +156765,7 @@ async function resolveOrganizerBySlug(rawSlug) {
 async function withOrganizerSlug(events3) {
   const ids = Array.from(
     new Set(
-      events3.map((e) => e?.organizerId).filter((id) => !!id && import_mongoose6.default.Types.ObjectId.isValid(id))
+      events3.map((e) => e?.organizerId).filter((id) => !!id && import_mongoose7.default.Types.ObjectId.isValid(id))
     )
   );
   if (ids.length === 0) {
@@ -154520,6 +156801,18 @@ var portfolioUpload = (0, import_multer.default)({
     cb(null, true);
   }
 });
+function priceAndCapacityFromTiers(ticketTypes) {
+  let tiers = [];
+  try {
+    tiers = JSON.parse(String(ticketTypes || "[]"));
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(tiers) || tiers.length === 0) return null;
+  const paid = tiers.map((t) => Number(t.price || 0)).filter((n) => n > 0);
+  const capacity = tiers.reduce((sum, t) => sum + Math.max(0, Number(t.capacity || 0) - Number(t.sold || 0)), 0);
+  return { price: paid.length ? Math.min(...paid) : 0, capacity };
+}
 async function registerRoutes(httpServer2, app2) {
   app2.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
@@ -154570,7 +156863,7 @@ async function registerRoutes(httpServer2, app2) {
     }
     try {
       const uid = (user.teamOwnerId || user._id).toString();
-      const fresh = await User.findById(uid).select("displayName bio logoUrl accentHex socials").lean();
+      const fresh = await User.findById(uid).select("displayName bio logoUrl accentHex socials bankDetails isVerified").lean();
       const myEvents = await storage.getAllEvents();
       const own = myEvents.filter((e) => e.organizerId === uid);
       const { BookingModel: BookingModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
@@ -154581,6 +156874,8 @@ async function registerRoutes(httpServer2, app2) {
         { key: "profile", label: "Complete your profile", done: Boolean(fresh?.displayName && fresh?.bio), href: "/settings", cta: "Settings" },
         { key: "logo", label: "Upload your logo", done: Boolean(fresh?.logoUrl), href: "/settings", cta: "Settings" },
         { key: "brand", label: "Pick your brand color", done: Boolean(fresh?.accentHex), href: "/admin?tab=brand", cta: "Brand" },
+        { key: "bank", label: "Link bank for payouts", done: Boolean(fresh?.bankDetails?.accountNumber), href: "/settings#bank", cta: "Payouts" },
+        { key: "verify", label: "Verify your identity", done: Boolean(fresh?.isVerified), href: "/settings#verification", cta: "Verify" },
         { key: "event", label: "Create your first event", done: own.length > 0, href: "/admin/events/new", cta: "Create" },
         { key: "socials", label: "Add a social link", done: hasSocial, href: "/settings", cta: "Settings" },
         { key: "sold", label: "Sell your first ticket", done: sold > 0, href: "/admin/events/new", cta: "Events" }
@@ -154615,6 +156910,8 @@ async function registerRoutes(httpServer2, app2) {
       if (event && event.visibility !== "invite_only" && event.status === "published") {
         const base = process.env.PUBLIC_APP_URL || "https://blackhevents.com";
         const dateStr = new Date(event.date).toLocaleString("en-NG", {
+          timeZone: "Africa/Lagos",
+          hour12: true,
           weekday: "short",
           day: "numeric",
           month: "short",
@@ -154625,7 +156922,7 @@ async function registerRoutes(httpServer2, app2) {
         const desc2 = `${dateStr} \xB7 ${event.location || "Nigeria"}`;
         const image = /^https?:\/\//.test(event.imageUrl || "") ? event.imageUrl : `${base}${event.imageUrl || "/favicon.png"}`;
         const url = event.slug ? `${base}/e/${event.slug}` : `${base}/events/${event.id}`;
-        html = html.replace(/<meta\s[^>]*property="(?:og|twitter):[^"]*"[^>]*>/gi, "").replace(/<meta\s[^>]*name="(?:og|twitter):[^"]*"[^>]*>/gi, "").replace(/<title>[^<]*<\/title>/i, () => `<title>${escapeHtml(title)} \xB7 Black Heritage Entertainment & Events</title>`);
+        html = html.replace(/<meta\s[^>]*property="(?:og|twitter):[^"]*"[^>]*>/gi, "").replace(/<meta\s[^>]*name="(?:og|twitter):[^"]*"[^>]*>/gi, "").replace(/<meta\s[^>]*name="description"[^>]*>/gi, "").replace(/<link\s[^>]*rel="canonical"[^>]*>/gi, "").replace(/<title>[^<]*<\/title>/i, () => `<title>${escapeHtml(title)} \xB7 Black Heritage Entertainment & Events</title>`);
         let minPrice = Math.round((event.price || 0) / 100);
         try {
           const tiers = JSON.parse(event.ticketTypes || "[]");
@@ -154651,18 +156948,28 @@ async function registerRoutes(httpServer2, app2) {
           }
         };
         const ldScript = `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>`;
-        const tags = `<meta property="og:title" content="${escapeHtml(title)}" />
-<meta property="og:description" content="${escapeHtml(desc2)}" />
+        const priceLine = minPrice > 0 ? `Tickets from \u20A6${minPrice.toLocaleString("en-NG")}` : "Free entry";
+        const shareDesc = `${desc2} \xB7 ${priceLine}`;
+        const searchDesc = `${shareDesc}. ${String(event.description || "").replace(/\s+/g, " ").slice(0, 140)}`.trim();
+        const tags = `<meta name="description" content="${escapeHtml(searchDesc)}" />
+<link rel="canonical" href="${escapeHtml(url)}" />
+<meta property="og:title" content="${escapeHtml(title)}" />
+<meta property="og:description" content="${escapeHtml(shareDesc)}" />
 <meta property="og:image" content="${escapeHtml(image)}" />
 <meta property="og:url" content="${escapeHtml(url)}" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Black Heritage Entertainment & Events" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="${escapeHtml(title)}" />
-<meta name="twitter:description" content="${escapeHtml(desc2)}" />
+<meta name="twitter:description" content="${escapeHtml(shareDesc)}" />
 <meta name="twitter:image" content="${escapeHtml(image)}" />
 ` + ldScript;
+        const [withSlug] = await withOrganizerSlug([event]);
+        const bootstrap = JSON.stringify({ key: event.slug || String(event.id), event: withSlug }).replace(/</g, "\\u003c").replace(new RegExp(String.fromCharCode(8232), "g"), "\\u2028").replace(new RegExp(String.fromCharCode(8233), "g"), "\\u2029");
+        const speed = `<link rel="preload" as="image" href="${escapeHtml(image)}" fetchpriority="high" />
+<script>window.__BH_EVENT__=${bootstrap}</script>`;
         html = html.replace("</head>", () => `${tags}
+${speed}
   </head>`);
       }
       res.set("Cache-Control", "public, max-age=300");
@@ -154789,7 +157096,7 @@ async function registerRoutes(httpServer2, app2) {
       const target = upcoming[0];
       if (!target) return res.json({ eventId: null, tickets: [] });
       const tickets2 = await TicketModel.find({
-        eventId: new import_mongoose6.default.Types.ObjectId(String(target.id)),
+        eventId: new import_mongoose7.default.Types.ObjectId(String(target.id)),
         status: "valid"
       }).lean();
       res.json({
@@ -154808,27 +157115,38 @@ async function registerRoutes(httpServer2, app2) {
       const event = await EventModel2.findById(req.params.id).lean();
       if (!event) return res.status(404).json({ message: "That event no longer exists." });
       const body = req.body || {};
-      const type = body.type === "sponsor" ? "sponsor" : body.type === "vendor" ? "vendor" : null;
+      const partner = event.partnerSettings || {};
+      const allowed = Array.isArray(partner.types) ? partner.types : [];
+      if (event.businessApplicationsEnabled !== true || allowed.length === 0) {
+        return res.status(400).json({ message: "This event is not taking partner applications." });
+      }
+      if (partner.closesAt && new Date(partner.closesAt).getTime() < Date.now()) {
+        return res.status(400).json({ message: "Applications for this event have closed." });
+      }
+      const type = ["sponsor", "vendor", "talent"].includes(body.type) && allowed.includes(body.type) ? body.type : null;
       const businessName = String(body.businessName || "").trim();
       const contactPerson = String(body.contactPerson || "").trim();
       const phoneNumber = String(body.phoneNumber || "").trim();
       const email = String(body.email || "").trim();
       const description = String(body.description || "").trim();
-      const packageName = String(body.packageName || "").trim();
+      const offered = (Array.isArray(partner.packages) ? partner.packages : []).filter((pk) => pk.type === type);
+      const chosen = offered.find((pk) => pk.name === String(body.packageName || "").trim());
+      const packageName = offered.length === 0 ? "Open enquiry" : chosen ? String(chosen.name) : "";
+      const priceKobo = chosen && typeof chosen.priceKobo === "number" ? chosen.priceKobo : 0;
       const problems = [];
-      if (!type) problems.push("Choose sponsor or vendor");
+      if (!type) problems.push("Choose how you want to work with this event");
       if (businessName.length < 2) problems.push("Add your business name");
       if (contactPerson.length < 2) problems.push("Add a contact person");
       if (phoneNumber.replace(/\D/g, "").length < 7) problems.push("Add a valid phone number");
       if (description.length < 3) problems.push("Tell the organizer what you sell or promote");
-      if (!packageName) problems.push("Pick a package");
+      if (!packageName) problems.push("Pick one of the organizer's options");
       if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) problems.push("That email address looks wrong");
       if (problems.length) return res.status(400).json({ message: problems[0] });
       const doc = await BusinessBookingModel2.create({
-        eventId: new import_mongoose6.default.Types.ObjectId(String(event._id)),
+        eventId: new import_mongoose7.default.Types.ObjectId(String(event._id)),
         type,
         packageName,
-        price: Math.max(0, Math.round(Number(body.price) || 0)),
+        price: priceKobo,
         businessName,
         contactPerson,
         phoneNumber,
@@ -154847,7 +157165,7 @@ async function registerRoutes(httpServer2, app2) {
               eventTitle: event.title,
               businessType: type,
               packageName,
-              packagePriceKobo: Math.max(0, Math.round(Number(body.price) || 0)),
+              packagePriceKobo: priceKobo,
               businessName,
               contactPerson,
               phoneNumber,
@@ -154875,7 +157193,7 @@ async function registerRoutes(httpServer2, app2) {
       const own = await EventModel2.find({ organizerId }).select("_id title").lean();
       const ids = own.map((e) => String(e._id));
       if (!ids.length) return res.json([]);
-      const apps = await BusinessBookingModel2.find({ eventId: { $in: ids.map((i) => new import_mongoose6.default.Types.ObjectId(i)) } }).sort({ createdAt: -1 }).limit(200).lean();
+      const apps = await BusinessBookingModel2.find({ eventId: { $in: ids.map((i) => new import_mongoose7.default.Types.ObjectId(i)) } }).sort({ createdAt: -1 }).limit(200).lean();
       const titleOf = new Map(own.map((e) => [String(e._id), e.title]));
       res.json(apps.map((a) => ({
         id: String(a._id),
@@ -154949,7 +157267,7 @@ async function registerRoutes(httpServer2, app2) {
           return res.status(403).json({ requiresCode: true, title: doc.title });
         }
       }
-      const payload = mapEventLean(doc);
+      const [payload] = await withOrganizerSlug([mapEventLean(doc)]);
       res.json(payload);
     } catch (err) {
       console.error("Slug lookup error:", err);
@@ -154973,7 +157291,7 @@ async function registerRoutes(httpServer2, app2) {
       const errors = [];
       for (const g of guests) {
         try {
-          const token = import_crypto5.default.randomBytes(16).toString("base64url");
+          const token = import_crypto6.default.randomBytes(16).toString("base64url");
           const doc = await EventInviteModel2.create({
             eventId: ctx.event.id,
             name: g.name,
@@ -155119,6 +157437,7 @@ async function registerRoutes(httpServer2, app2) {
       }
       const event = await storage.createEvent({
         ...input,
+        ...priceAndCapacityFromTiers(input.ticketTypes) || {},
         slug,
         organizerId: req.user._id.toString(),
         // Drafts legitimately omit date; the publish gate owns completeness.
@@ -155205,7 +157524,8 @@ async function registerRoutes(httpServer2, app2) {
           }
         }
       }
-      const updated = await storage.updateEvent(event.id, input);
+      const derived = input.ticketTypes !== void 0 ? priceAndCapacityFromTiers(input.ticketTypes) : null;
+      const updated = await storage.updateEvent(event.id, derived ? { ...input, ...derived } : input);
       if (!wasPublished && updated.status === "published") {
         void notifyFollowersOfDrop(updated).catch(
           (err) => console.error("Follower drop blast failed:", err)
@@ -155407,6 +157727,8 @@ async function registerRoutes(httpServer2, app2) {
           videoLoopUrl: organizer.videoLoopUrl || null,
           spotifyPlaylistUrl: organizer.spotifyPlaylistUrl || null,
           tourCities: organizer.tourCities || [],
+          isVerified: Boolean(organizer.isVerified),
+          verificationStatus: organizer.verificationStatus || "unverified",
           isFollowing,
           isOwner
         },
@@ -155545,6 +157867,9 @@ async function registerRoutes(httpServer2, app2) {
       spotifyPlaylistUrl: organizer.spotifyPlaylistUrl || null,
       tourCities: organizer.tourCities || [],
       followersCount: organizer.followersCount || 0,
+      isVerified: Boolean(organizer.isVerified),
+      verificationStatus: organizer.verificationStatus || "unverified",
+      bankDetails: organizer.bankDetails || null,
       dnsTarget: process.env.DOMAIN_CNAME_TARGET || "cname.blackhevents.com"
     });
   });
@@ -155828,12 +158153,13 @@ async function registerRoutes(httpServer2, app2) {
         ticketTypes: JSON.stringify(freshTiers),
         capacity: Math.max(0, Number(fresh.capacity) - input.quantity)
       });
-      const reference = `BH-${Date.now().toString(36).toUpperCase()}-${import_crypto5.default.randomBytes(3).toString("hex").toUpperCase()}`;
+      const reference = `BH-${Date.now().toString(36).toUpperCase()}-${import_crypto6.default.randomBytes(3).toString("hex").toUpperCase()}`;
       const user = req.user;
       const booking = await storage.createBooking({
         eventId: String(event.id),
         quantity: input.quantity,
         totalAmount: quote.totalKobo,
+        serviceFeeKobo: quote.serviceFeeKobo,
         userId: user?._id?.toString() || "guest",
         name: input.name,
         email: input.email,
@@ -155851,24 +158177,105 @@ async function registerRoutes(httpServer2, app2) {
         const { PromoCodeModel: PromoCodeModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
         await PromoCodeModel2.updateOne({ _id: quote.promoId }, { $inc: { usedCount: 1 } });
       }
+      if (quote.totalKobo === 0) {
+        const fulfillment = await fulfillBooking(String(booking._id ?? booking.id));
+        return res.status(201).json({
+          bookingId: String(booking._id ?? booking.id),
+          reference,
+          totalKobo: 0,
+          isFree: true,
+          status: "paid",
+          tickets: fulfillment.tickets
+        });
+      }
       if (isPaystackConfigured()) {
         const gateway = activeGateway();
         try {
-          const init = await initializePayment({
-            email: input.email,
-            amountKobo: quote.totalKobo,
-            reference,
-            name: input.name,
-            phone: input.phone || void 0,
-            redirectUrl: `${process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get("host")}`}/events/${event.slug || event.id}?ref=${reference}`,
-            metadata: {
-              bookingId: String(booking._id ?? booking.id),
-              eventId: String(event.id),
-              eventTitle: event.title,
-              tier: quote.ticketType,
-              quantity: input.quantity
+          let subaccountCode = void 0;
+          if (event.organizerId) {
+            const organizerUser = await User.findById(event.organizerId).lean();
+            if (organizerUser?.isVerified && organizerUser?.bankDetails?.subaccountCode) {
+              const rawSub = organizerUser.bankDetails.subaccountCode;
+              const { isTestMode: isTestMode2 } = await Promise.resolve().then(() => (init_paystack(), paystack_exports));
+              const isSynthetic = rawSub.startsWith("ACCT_DEMO_") || rawSub.startsWith("ACCT_SIM_");
+              if (!isSynthetic || isTestMode2()) {
+                subaccountCode = rawSub;
+              }
             }
-          });
+          }
+          let init;
+          let subaccountUsed = false;
+          const splitChargeKobo = !subaccountCode ? null : event.buyerPaysFee ? quote.serviceFeeKobo : await previewPlatformFee(event.organizerId, input.quantity, quote.totalKobo);
+          if (subaccountCode) {
+            try {
+              init = await initializePayment({
+                transactionChargeKobo: splitChargeKobo ?? void 0,
+                email: input.email,
+                amountKobo: quote.totalKobo,
+                reference,
+                name: input.name,
+                phone: input.phone || void 0,
+                redirectUrl: `${process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get("host")}`}/events/${event.slug || event.id}?ref=${reference}`,
+                metadata: {
+                  bookingId: String(booking._id ?? booking.id),
+                  eventId: String(event.id),
+                  eventTitle: event.title,
+                  tier: quote.ticketType,
+                  quantity: input.quantity,
+                  subaccountUsed: true
+                },
+                subaccountCode
+              });
+              subaccountUsed = true;
+            } catch (subErr) {
+              console.warn("[checkout] Paystack split initialization with subaccount failed, retrying via platform escrow:", subErr?.message);
+              init = await initializePayment({
+                email: input.email,
+                amountKobo: quote.totalKobo,
+                reference,
+                name: input.name,
+                phone: input.phone || void 0,
+                redirectUrl: `${process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get("host")}`}/events/${event.slug || event.id}?ref=${reference}`,
+                metadata: {
+                  bookingId: String(booking._id ?? booking.id),
+                  eventId: String(event.id),
+                  eventTitle: event.title,
+                  tier: quote.ticketType,
+                  quantity: input.quantity,
+                  subaccountUsed: false
+                }
+              });
+              subaccountUsed = false;
+            }
+          } else {
+            init = await initializePayment({
+              email: input.email,
+              amountKobo: quote.totalKobo,
+              reference,
+              name: input.name,
+              phone: input.phone || void 0,
+              redirectUrl: `${process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get("host")}`}/events/${event.slug || event.id}?ref=${reference}`,
+              metadata: {
+                bookingId: String(booking._id ?? booking.id),
+                eventId: String(event.id),
+                eventTitle: event.title,
+                tier: quote.ticketType,
+                quantity: input.quantity,
+                subaccountUsed: false
+              }
+            });
+            subaccountUsed = false;
+          }
+          await BookingModel.updateOne(
+            { _id: booking._id },
+            {
+              $set: {
+                subaccountSplit: subaccountUsed,
+                subaccountCode: subaccountUsed ? subaccountCode : null,
+                splitChargeKobo: subaccountUsed ? splitChargeKobo : null
+              }
+            }
+          );
           return res.status(201).json({
             bookingId: String(booking._id ?? booking.id),
             reference,
@@ -155967,9 +158374,9 @@ async function registerRoutes(httpServer2, app2) {
           tickets: existing.map((t) => ({ code: t.code, tierName: t.tierName, attendeeName: t.attendeeName, seat: t.seat }))
         });
       }
-      if (activeGateway() !== "simulated") {
+      const expected = Number(booking.totalAmount);
+      if (expected > 0 && activeGateway() !== "simulated") {
         const verification = await verifyPayment(reference);
-        const expected = Number(booking.totalAmount);
         if (verification.status !== "success") {
           return res.status(402).json({ message: "Payment did not go through. You have not been charged for a completed order." });
         }
@@ -156247,7 +158654,7 @@ async function registerRoutes(httpServer2, app2) {
     const ctx = await requireEventScope(req, res);
     if (!ctx) return;
     const { PromoCodeModel: PromoCodeModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
-    const docs = await PromoCodeModel2.find({ eventId: new import_mongoose6.default.Types.ObjectId(String(ctx.event.id)) }).sort({ createdAt: -1 }).lean();
+    const docs = await PromoCodeModel2.find({ eventId: new import_mongoose7.default.Types.ObjectId(String(ctx.event.id)) }).sort({ createdAt: -1 }).lean();
     res.json(docs.map((d) => ({ ...d, id: String(d._id) })));
   });
   app2.get("/api/events/:id/public-promos", async (req, res) => {
@@ -156256,7 +158663,7 @@ async function registerRoutes(httpServer2, app2) {
     const { PromoCodeModel: PromoCodeModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
     const now = /* @__PURE__ */ new Date();
     const docs = await PromoCodeModel2.find({
-      eventId: new import_mongoose6.default.Types.ObjectId(String(event.id)),
+      eventId: new import_mongoose7.default.Types.ObjectId(String(event.id)),
       active: true,
       $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }]
     }).lean();
@@ -156296,7 +158703,7 @@ async function registerRoutes(httpServer2, app2) {
       }
       const input = waitlistJoinSchema.parse(req.body);
       await WaitlistModel.updateOne(
-        { eventId: new import_mongoose6.default.Types.ObjectId(String(event.id)), email: input.email.toLowerCase() },
+        { eventId: new import_mongoose7.default.Types.ObjectId(String(event.id)), email: input.email.toLowerCase() },
         { $set: { name: input.name, tierName: input.tierName || null } },
         { upsert: true }
       );
@@ -156329,7 +158736,7 @@ async function registerRoutes(httpServer2, app2) {
       const { PromoCodeModel: PromoCodeModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
       const doc = await PromoCodeModel2.create({
         code: input.code.toUpperCase(),
-        eventId: new import_mongoose6.default.Types.ObjectId(String(ctx.event.id)),
+        eventId: new import_mongoose7.default.Types.ObjectId(String(ctx.event.id)),
         kind: input.kind,
         value: input.value,
         maxUses: input.maxUses ?? null,
@@ -156407,7 +158814,7 @@ async function registerRoutes(httpServer2, app2) {
   app2.get("/api/events/:id/attendees.csv", async (req, res) => {
     const ctx = await requireEventScope(req, res);
     if (!ctx) return;
-    const tickets2 = await TicketModel.find({ eventId: new import_mongoose6.default.Types.ObjectId(String(ctx.event.id)) }).sort({ createdAt: 1 }).lean();
+    const tickets2 = await TicketModel.find({ eventId: new import_mongoose7.default.Types.ObjectId(String(ctx.event.id)) }).sort({ createdAt: 1 }).lean();
     const escape2 = (v) => {
       const s = String(v ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -156631,7 +159038,7 @@ async function registerRoutes(httpServer2, app2) {
     const ctx = await requireEventScope(req, res);
     if (!ctx) return;
     const tickets2 = await TicketModel.find({
-      eventId: new import_mongoose6.default.Types.ObjectId(String(ctx.event.id)),
+      eventId: new import_mongoose7.default.Types.ObjectId(String(ctx.event.id)),
       status: "valid"
     }).lean();
     res.json(tickets2.map((t) => ({ code: t.code, tierName: t.tierName, attendeeName: t.attendeeName })));
@@ -156640,7 +159047,7 @@ async function registerRoutes(httpServer2, app2) {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
     const ctx = await requireEventScope(req, res);
     if (!ctx) return;
-    const eventId = new import_mongoose6.default.Types.ObjectId(String(ctx.event.id));
+    const eventId = new import_mongoose7.default.Types.ObjectId(String(ctx.event.id));
     const [tickets2, scans] = await Promise.all([
       TicketModel.find({ eventId }).lean(),
       ScanEventModel.find({ eventId, result: { $in: ["ok", "override"] } }).sort({ syncedAt: -1 }).limit(1).lean()
@@ -156658,7 +159065,7 @@ async function registerRoutes(httpServer2, app2) {
   app2.get("/api/events/:id/scans.csv", async (req, res) => {
     const ctx = await requireEventScope(req, res);
     if (!ctx) return;
-    const scans = await ScanEventModel.find({ eventId: new import_mongoose6.default.Types.ObjectId(String(ctx.event.id)) }).sort({ syncedAt: 1 }).lean();
+    const scans = await ScanEventModel.find({ eventId: new import_mongoose7.default.Types.ObjectId(String(ctx.event.id)) }).sort({ syncedAt: 1 }).lean();
     const escape2 = (v) => {
       const s = String(v ?? "");
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -156686,14 +159093,87 @@ async function registerRoutes(httpServer2, app2) {
     const docs = await PayoutModel2.find(query).sort({ createdAt: -1 }).limit(500).lean();
     res.json(docs.map((d) => ({ ...d, id: String(d._id) })));
   });
+  app2.get("/api/payouts/summary", async (req, res) => {
+    const ctx = await requireStaffAccess(req, res);
+    if (!ctx) return;
+    const { PayoutModel: PayoutModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+    const rows = await PayoutModel2.aggregate([
+      { $match: { organizerId: String(ctx.organizerId), kind: "organizer_payout" } },
+      { $group: { _id: "$status", total: { $sum: "$amount" }, count: { $sum: 1 } } }
+    ]);
+    const by = (s) => rows.find((r) => r._id === s)?.total || 0;
+    const organizer = await User.findById(ctx.organizerId).lean();
+    res.json({
+      heldKobo: by("pending_verification"),
+      readyKobo: by("due"),
+      paidKobo: by("settled"),
+      isVerified: Boolean(organizer?.isVerified),
+      hasBank: Boolean(organizer?.bankDetails?.accountNumber),
+      autoSplit: Boolean(organizer?.isVerified && organizer?.bankDetails?.subaccountCode),
+      lastRequestedAt: organizer?.payoutRequestedAt || null
+    });
+  });
+  app2.post("/api/payouts/request", async (req, res) => {
+    const ctx = await requireStaffAccess(req, res);
+    if (!ctx) return;
+    if (ctx.user.staffRole && ctx.user.staffRole !== "finance" && ctx.user.staffRole !== "manager") {
+      return res.status(403).json({ message: "Only the account owner or finance staff can request payouts." });
+    }
+    const { PayoutModel: PayoutModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+    const organizer = await User.findById(ctx.organizerId).lean();
+    if (!organizer?.isVerified) {
+      return res.status(400).json({ message: "Verify your identity in Settings first. Payouts are released to verified organizers only." });
+    }
+    if (!organizer?.bankDetails?.accountNumber) {
+      return res.status(400).json({ message: "Add your settlement bank account above first." });
+    }
+    const due = await PayoutModel2.find({ organizerId: String(ctx.organizerId), kind: "organizer_payout", status: "due" }).lean();
+    const totalKobo = due.reduce((s, p) => s + Number(p.amount || 0), 0);
+    if (totalKobo <= 0) return res.status(400).json({ message: "Nothing is ready to pay out yet." });
+    const last = organizer.payoutRequestedAt ? new Date(organizer.payoutRequestedAt).getTime() : 0;
+    if (Date.now() - last < 6 * 60 * 60 * 1e3) {
+      return res.status(429).json({ message: "Request received already. The team pays out within one business day." });
+    }
+    const admins = await User.find({ role: "admin" }, { email: 1 }).lean();
+    const to = [process.env.PAYOUT_NOTIFY_EMAIL, ...admins.map((a) => a.email)].filter(Boolean);
+    if (to.length === 0) {
+      console.error("[payouts] Payout request has no recipient: set PAYOUT_NOTIFY_EMAIL or create an admin.");
+      return res.status(503).json({ message: "Payout requests are not set up yet. Message the Black Heritage team on WhatsApp." });
+    }
+    try {
+      const { sendPayoutRequestEmail: sendPayoutRequestEmail2 } = await Promise.resolve().then(() => (init_emails(), emails_exports));
+      await sendPayoutRequestEmail2(Array.from(new Set(to)), {
+        organizerName: organizer.displayName || organizer.username || "Organizer",
+        organizerEmail: organizer.email || "",
+        bank: `${organizer.bankDetails.bankName || "Bank"} \xB7 ${organizer.bankDetails.accountNumber} \xB7 ${organizer.bankDetails.accountName || ""}`,
+        totalKobo,
+        count: due.length
+      });
+    } catch (err) {
+      console.error("[payouts] request email failed:", err?.message);
+      return res.status(502).json({ message: "Could not send the request. Try again in a minute." });
+    }
+    await User.updateOne({ _id: ctx.organizerId }, { $set: { payoutRequestedAt: /* @__PURE__ */ new Date() } });
+    res.json({ ok: true, totalKobo });
+  });
   app2.post("/api/payouts/:payoutId/settle", async (req, res) => {
     if (!req.isAuthenticated() || req.user.role !== "admin") {
       return res.status(403).json({ message: "Only the platform settles payouts" });
     }
-    const { PayoutModel: PayoutModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
-    const doc = await PayoutModel2.findByIdAndUpdate(req.params.payoutId, { status: "settled" }, { new: true }).lean();
-    if (!doc) return res.status(404).json({ message: "Payout not found" });
-    res.json({ ...doc, id: String(doc._id) });
+    const { PayoutModel: PayoutModel2, User: User2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+    const payout = await PayoutModel2.findById(req.params.payoutId);
+    if (!payout) return res.status(404).json({ message: "Payout not found" });
+    if (payout.kind === "organizer_payout" && payout.organizerId) {
+      const org = await User2.findById(payout.organizerId).lean();
+      if (!org?.isVerified) {
+        return res.status(400).json({
+          message: "Payout blocked: organizer identity must be verified before payouts can be settled."
+        });
+      }
+    }
+    payout.status = "settled";
+    await payout.save();
+    res.json({ ...payout.toObject(), id: String(payout._id) });
   });
   app2.get("/api/platform/settings", async (req, res) => {
     if (!req.isAuthenticated() || req.user.role !== "admin") {
@@ -156773,7 +159253,7 @@ async function registerRoutes(httpServer2, app2) {
         }
       }
       let responseHours = null;
-      if (ownerId && import_mongoose6.default.connection.readyState === 1) {
+      if (ownerId && import_mongoose7.default.connection.readyState === 1) {
         const { MessageModel: MessageModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
         const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
         const convos = await MessageModel2.find({ vendorId, createdAt: { $gte: since } }).select("conversationId senderId createdAt").limit(500).lean();
@@ -157114,6 +159594,22 @@ async function registerRoutes(httpServer2, app2) {
       return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
     try {
+      const { BookingModel: BookingModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+      const paid = await BookingModel2.find({ eventId: event.id, status: "paid" }).select("quantity totalAmount").lean();
+      if (paid.length > 0) {
+        const tickets2 = paid.reduce((n, b) => n + Number(b.quantity || 0), 0);
+        const kobo = paid.reduce((n, b) => n + Number(b.totalAmount || 0), 0);
+        if (req.user.role === "admin") {
+          await storage.updateEvent(String(event.id), { status: "unpublished", archivedAt: /* @__PURE__ */ new Date() });
+          return res.json({
+            archived: true,
+            message: `Archived instead of deleted: ${tickets2} paid ticket${tickets2 === 1 ? "" : "s"} (\u20A6${(kobo / 100).toLocaleString("en-NG")}) keep their records.`
+          });
+        }
+        return res.status(409).json({
+          message: `${tickets2} ticket${tickets2 === 1 ? " has" : "s have"} been paid for (\u20A6${(kobo / 100).toLocaleString("en-NG")}). Refund ${tickets2 === 1 ? "it" : "them"} in Bookings first, or unpublish the event to hide it.`
+        });
+      }
       await storage.deleteEvent(event.id);
       res.status(204).end();
     } catch (err) {
@@ -157155,6 +159651,263 @@ async function registerRoutes(httpServer2, app2) {
     if (!updated) return res.status(404).json({ message: "That account no longer exists." });
     res.json(safeUserShape(updated));
   });
+  const POPULAR_BANKS = ["058", "044", "057", "011", "033", "999992", "50515", "999991", "50211", "070", "214", "035", "232", "221"];
+  const FALLBACK_BANKS = [
+    { code: "058", name: "Guaranty Trust Bank (GTBank)" },
+    { code: "044", name: "Access Bank" },
+    { code: "057", name: "Zenith Bank" },
+    { code: "011", name: "First Bank of Nigeria" },
+    { code: "033", name: "United Bank for Africa (UBA)" },
+    { code: "999992", name: "OPay" },
+    { code: "50515", name: "Moniepoint MFB" },
+    { code: "999991", name: "PalmPay" },
+    { code: "50211", name: "Kuda Bank" },
+    { code: "070", name: "Fidelity Bank" },
+    { code: "214", name: "First City Monument Bank (FCMB)" },
+    { code: "035", name: "Wema Bank" },
+    { code: "232", name: "Sterling Bank" },
+    { code: "221", name: "Stanbic IBTC Bank" },
+    { code: "032", name: "Union Bank of Nigeria" },
+    { code: "101", name: "Providus Bank" },
+    { code: "082", name: "Keystone Bank" },
+    { code: "076", name: "Polaris Bank" }
+  ];
+  let bankCache = null;
+  app2.get("/api/banks", async (_req, res) => {
+    if (bankCache && Date.now() - bankCache.at < 12 * 60 * 60 * 1e3) return res.json(bankCache.banks);
+    try {
+      if (!isPaystackConfigured()) throw new Error("no gateway");
+      const { secretKey: secretKey2 } = await Promise.resolve().then(() => (init_paystack(), paystack_exports));
+      const r = await fetch("https://api.paystack.co/bank?country=nigeria&perPage=200&use_cursor=false", {
+        headers: { Authorization: `Bearer ${secretKey2()}` }
+      });
+      const body = await r.json();
+      if (!r.ok || !Array.isArray(body?.data)) throw new Error(body?.message || "bank list failed");
+      const seen = /* @__PURE__ */ new Set();
+      const all = [];
+      for (const b of body.data) {
+        const code = String(b.code || "");
+        if (!code || b.active === false || b.currency !== "NGN" || seen.has(code)) continue;
+        seen.add(code);
+        all.push({ code, name: String(b.name) });
+      }
+      const rank = (c) => {
+        const i = POPULAR_BANKS.indexOf(c);
+        return i < 0 ? 999 : i;
+      };
+      all.sort((x, y) => rank(x.code) - rank(y.code) || x.name.localeCompare(y.name));
+      bankCache = { at: Date.now(), banks: all };
+      res.json(all);
+    } catch {
+      res.json(FALLBACK_BANKS);
+    }
+  });
+  app2.get("/api/account/bank/resolve", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
+    const accountNumber = String(req.query.accountNumber || "").trim();
+    const bankCode = String(req.query.bankCode || "").trim();
+    if (!/^\d{10}$/.test(accountNumber)) {
+      return res.status(400).json({ message: "Enter a valid 10-digit Nigerian NUBAN account number." });
+    }
+    if (!bankCode) {
+      return res.status(400).json({ message: "Select a bank first." });
+    }
+    if (isPaystackConfigured()) {
+      try {
+        const { resolveAccountNumber: resolveAccountNumber2 } = await Promise.resolve().then(() => (init_paystack(), paystack_exports));
+        const resolved = await resolveAccountNumber2({ accountNumber, bankCode });
+        return res.json(resolved);
+      } catch (err) {
+        return res.status(400).json({
+          message: err.message || "Could not resolve bank account details with the provider."
+        });
+      }
+    }
+    const user = req.user;
+    const fallbackName = (user.displayName || user.username || "Organizer").toUpperCase();
+    return res.json({
+      accountNumber,
+      accountName: fallbackName,
+      simulated: true
+    });
+  });
+  app2.patch("/api/account/bank", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
+    const user = req.user;
+    const { accountNumber, bankCode, bankName, accountName } = req.body || {};
+    if (!accountNumber || typeof accountNumber !== "string" || !/^\d{10}$/.test(accountNumber.trim())) {
+      return res.status(400).json({ message: "Enter a valid 10-digit Nigerian NUBAN account number." });
+    }
+    if (!bankCode || typeof bankCode !== "string") {
+      return res.status(400).json({ message: "Select your settlement bank." });
+    }
+    if (!accountName || typeof accountName !== "string" || !accountName.trim()) {
+      return res.status(400).json({ message: "Provide the verified account holder name." });
+    }
+    const cleanAccount = accountNumber.trim();
+    const cleanCode = bankCode.trim();
+    const cleanBankName = (bankName || "Bank").trim();
+    const cleanName = accountName.trim().slice(0, 100);
+    let subaccountCode = user.bankDetails?.subaccountCode || null;
+    let recipientCode = user.bankDetails?.recipientCode || null;
+    if (isPaystackConfigured()) {
+      try {
+        const { createTransferRecipient: createTransferRecipient2, createSubaccount: createSubaccount2, updateSubaccount: updateSubaccount2 } = await Promise.resolve().then(() => (init_paystack(), paystack_exports));
+        const recip = await createTransferRecipient2({
+          name: cleanName,
+          accountNumber: cleanAccount,
+          bankCode: cleanCode
+        }).catch((err) => {
+          console.warn("Paystack transfer recipient notice:", err.message);
+          return null;
+        });
+        if (recip?.recipientCode) recipientCode = recip.recipientCode;
+        const settings = await PlatformSettingModel.findOne({ key: "platform" }).lean();
+        const feePercentage = (settings?.ticketCommissionBps ?? 600) / 100;
+        const existingSub = user.bankDetails?.subaccountCode;
+        const isRealSub = existingSub && !existingSub.startsWith("ACCT_SIM_") && !existingSub.startsWith("ACCT_DEMO_");
+        let subResult = null;
+        if (isRealSub) {
+          subResult = await updateSubaccount2(existingSub, {
+            businessName: user.displayName || user.username || cleanName,
+            settlementBank: cleanCode,
+            accountNumber: cleanAccount,
+            percentageCharge: feePercentage,
+            description: `BlackHeritage Organizer Settlement: ${cleanName}`
+          }).catch((err) => {
+            console.warn("Paystack subaccount update notice, will attempt create:", err.message);
+            return null;
+          });
+        }
+        if (!subResult?.subaccountCode) {
+          subResult = await createSubaccount2({
+            businessName: user.displayName || user.username || cleanName,
+            settlementBank: cleanCode,
+            accountNumber: cleanAccount,
+            percentageCharge: feePercentage,
+            description: `BlackHeritage Organizer Settlement: ${cleanName}`
+          }).catch((err) => {
+            console.warn("Paystack subaccount create notice:", err.message);
+            return null;
+          });
+        }
+        if (subResult?.subaccountCode) subaccountCode = subResult.subaccountCode;
+      } catch (gatewayErr) {
+        console.warn("Gateway bank integration notice:", gatewayErr?.message);
+      }
+    } else {
+      if (!subaccountCode) subaccountCode = `ACCT_SIM_${cleanCode}_${cleanAccount.slice(-4)}`;
+      if (!recipientCode) recipientCode = `RCP_SIM_${cleanCode}_${cleanAccount.slice(-4)}`;
+    }
+    const bankDetails = {
+      accountNumber: cleanAccount,
+      bankCode: cleanCode,
+      bankName: cleanBankName,
+      accountName: cleanName,
+      subaccountCode,
+      recipientCode,
+      updatedAt: /* @__PURE__ */ new Date()
+    };
+    const updated = await User.findByIdAndUpdate(
+      user._id,
+      { $set: { bankDetails } },
+      { new: true }
+    ).lean();
+    if (!updated) return res.status(404).json({ message: "Account not found." });
+    if (updated.isVerified && recipientCode) {
+      const { PayoutModel: PayoutModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+      await PayoutModel2.updateMany(
+        { organizerId: String(user._id), kind: "organizer_payout", status: "due", recipientId: null },
+        { $set: { recipientId: recipientCode } }
+      ).catch(() => {
+      });
+    }
+    res.json(safeUserShape(updated));
+  });
+  app2.post("/api/account/verification", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
+    const user = req.user;
+    const { businessName, bvnLast4, cacNumber, idType, idNumber, phone } = req.body || {};
+    if (!businessName || typeof businessName !== "string" || !businessName.trim()) {
+      return res.status(400).json({ message: "Provide your registered business or legal name." });
+    }
+    if (!phone || typeof phone !== "string" || !phone.trim()) {
+      return res.status(400).json({ message: "Provide a valid Nigerian contact phone number." });
+    }
+    if (!cacNumber && !idNumber && !bvnLast4) {
+      return res.status(400).json({
+        message: "Provide at least one verification credential (CAC RC/BN number, National ID/NIN, or last 4 digits of BVN)."
+      });
+    }
+    const verificationDetails = {
+      businessName: businessName.trim().slice(0, 120),
+      bvnLast4: bvnLast4 ? String(bvnLast4).trim().slice(-4) : void 0,
+      cacNumber: cacNumber ? String(cacNumber).trim().slice(0, 50) : void 0,
+      idType: idType ? String(idType).trim().slice(0, 30) : "NIN",
+      idNumber: idNumber ? String(idNumber).trim().slice(0, 50) : void 0,
+      phone: phone.trim().slice(0, 25),
+      submittedAt: /* @__PURE__ */ new Date()
+    };
+    const isAutoVerified = Boolean(user.isDemo || user.role === "admin");
+    const update = {
+      verificationDetails,
+      verificationStatus: isAutoVerified ? "verified" : "pending",
+      isVerified: isAutoVerified ? true : Boolean(user.isVerified)
+    };
+    if (isAutoVerified) {
+      update.verifiedAt = /* @__PURE__ */ new Date();
+    }
+    const updated = await User.findByIdAndUpdate(user._id, { $set: update }, { new: true }).lean();
+    if (!updated) return res.status(404).json({ message: "Account not found." });
+    if (!isAutoVerified) {
+      (async () => {
+        const admins = await User.find({ role: "admin" }, { email: 1 }).lean();
+        const to = Array.from(new Set([process.env.PAYOUT_NOTIFY_EMAIL, ...admins.map((a) => a.email)].filter(Boolean)));
+        if (to.length === 0) return console.warn("[verification] No PAYOUT_NOTIFY_EMAIL or admin to notify.");
+        const { sendTeamNoticeEmail: sendTeamNoticeEmail2 } = await Promise.resolve().then(() => (init_emails(), emails_exports));
+        await sendTeamNoticeEmail2(to, `Verify organizer: ${verificationDetails.businessName}`, [
+          `${user.displayName || user.username} (${user.email || "no email"}) submitted verification.`,
+          `Business: ${verificationDetails.businessName} \xB7 Phone: ${verificationDetails.phone}`,
+          `CAC: ${verificationDetails.cacNumber || "-"} \xB7 ${verificationDetails.idType}: ${verificationDetails.idNumber || "-"} \xB7 BVN last 4: ${verificationDetails.bvnLast4 || "-"}`,
+          "Approve or reject it under Verifications."
+        ]);
+      })().catch((err) => console.error("[verification] notify failed:", err?.message));
+    }
+    if (isAutoVerified) {
+      const { PayoutModel: PayoutModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+      await PayoutModel2.updateMany(
+        { organizerId: String(user._id), kind: "organizer_payout", status: "pending_verification" },
+        { $set: { status: "due", note: "Identity verified: payout ready for settlement" } }
+      ).catch(() => {
+      });
+    }
+    res.json(safeUserShape(updated));
+  });
+  app2.patch("/api/admin/organizers/:id/verify", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only platform administrators can verify organizers." });
+    }
+    const { verified, notes } = req.body || {};
+    const orgId = req.params.id;
+    const org = await User.findById(orgId);
+    if (!org) return res.status(404).json({ message: "Organizer not found." });
+    org.isVerified = Boolean(verified);
+    org.verificationStatus = verified ? "verified" : "rejected";
+    org.verifiedAt = verified ? /* @__PURE__ */ new Date() : null;
+    if (notes && org.verificationDetails) {
+      org.verificationDetails.notes = String(notes).trim();
+    }
+    await org.save();
+    if (verified) {
+      const { PayoutModel: PayoutModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+      await PayoutModel2.updateMany(
+        { organizerId: String(orgId), kind: "organizer_payout", status: "pending_verification" },
+        { $set: { status: "due", note: "Identity verified: payout ready for settlement" } }
+      ).catch(() => {
+      });
+    }
+    res.json(safeUserShape(org.toObject()));
+  });
   app2.delete("/api/account", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Sign in to continue." });
     const user = req.user;
@@ -157177,6 +159930,18 @@ async function registerRoutes(httpServer2, app2) {
           events: upcoming.map((e) => e.title)
         });
       }
+      const { PayoutModel: PayoutModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+      const owed = await PayoutModel2.find({
+        organizerId: userId,
+        kind: "organizer_payout",
+        status: { $in: ["due", "pending_verification"] }
+      }).select("amount").lean();
+      const owedKobo = owed.reduce((n, p) => n + Number(p.amount || 0), 0);
+      if (owedKobo > 0) {
+        return res.status(409).json({
+          message: `\u20A6${(owedKobo / 100).toLocaleString("en-NG")} from your ticket sales has not been paid out yet. Request your payout in Settings (or message the team) before closing the account.`
+        });
+      }
       const staff = await User.updateMany(
         { teamOwnerId: userId },
         { $set: { teamOwnerId: null } }
@@ -157192,7 +159957,7 @@ async function registerRoutes(httpServer2, app2) {
         { organizerId: userId },
         { $set: { status: "unpublished", organizerName: null, branding: null } }
       );
-      const randomPassword = await bcryptjs_default.hash(import_crypto5.default.randomUUID(), 10);
+      const randomPassword = await bcryptjs_default.hash(import_crypto6.default.randomUUID(), 10);
       await User.updateOne(
         { _id: userId },
         {
@@ -157214,6 +159979,17 @@ async function registerRoutes(httpServer2, app2) {
           }
         }
       );
+      (async () => {
+        const admins = await User.find({ role: "admin" }, { email: 1 }).lean();
+        const to = Array.from(new Set([process.env.PAYOUT_NOTIFY_EMAIL, ...admins.map((a) => a.email)].filter(Boolean)));
+        if (to.length === 0) return;
+        const { sendTeamNoticeEmail: sendTeamNoticeEmail2 } = await Promise.resolve().then(() => (init_emails(), emails_exports));
+        await sendTeamNoticeEmail2(to, `Account closed: ${user.username}`, [
+          `${user.displayName || user.username} (${user.email || "no email"}, ${user.role}) closed their account.`,
+          `Account id ${userId}. Events, tickets, bookings and payouts are kept; personal details were removed.`,
+          `Staff detached: ${staff.modifiedCount ?? 0}. Talent listings unpublished: ${vendors3.modifiedCount ?? 0}.`
+        ]);
+      })().catch((err) => console.error("[account] closure notice failed:", err?.message));
       req.logout(() => {
         res.json({
           ok: true,
@@ -157542,10 +160318,215 @@ async function registerRoutes(httpServer2, app2) {
       return res.status(500).json({ error: "Failed to load organizer leads." });
     }
   });
+  app2.get("/api/admin/organizers", async (req, res) => {
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    try {
+      const orgs = await User.find({ role: { $in: ["organizer", "admin"] } }).select("-password").sort({ createdAt: -1 }).lean();
+      return res.json(orgs.map((o) => ({ ...o, id: String(o._id) })));
+    } catch (err) {
+      console.error("Error fetching organizers:", err);
+      return res.status(500).json({ error: "Failed to load organizers." });
+    }
+  });
+  app2.get("/api/admin/financial-overview", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    try {
+      const { PayoutModel: PayoutModel2, PlatformSettingModel: PlatformSettingModel2, EventModel: EventModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+      const { isTestMode: isTestMode2 } = await Promise.resolve().then(() => (init_paystack(), paystack_exports));
+      const gmvResult = await BookingModel.aggregate([
+        { $match: { status: "paid" } },
+        { $group: { _id: null, totalKobo: { $sum: "$totalAmount" }, count: { $sum: 1 }, ticketsCount: { $sum: "$quantity" } } }
+      ]);
+      const gmv = gmvResult[0] || { totalKobo: 0, count: 0, ticketsCount: 0 };
+      const payoutAgg = await PayoutModel2.aggregate([
+        {
+          $group: {
+            _id: { kind: "$kind", status: "$status" },
+            totalAmount: { $sum: "$amount" },
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+      let platformFeesKobo = 0;
+      let pendingEscrowKobo = 0;
+      let settledPayoutsKobo = 0;
+      let duePayoutsKobo = 0;
+      for (const item of payoutAgg) {
+        if (item._id.kind === "platform_fee") {
+          platformFeesKobo += item.totalAmount;
+        } else if (item._id.kind === "organizer_payout") {
+          if (item._id.status === "pending_verification") {
+            pendingEscrowKobo += item.totalAmount;
+          } else if (item._id.status === "settled") {
+            settledPayoutsKobo += item.totalAmount;
+          } else if (item._id.status === "due") {
+            duePayoutsKobo += item.totalAmount;
+          }
+        }
+      }
+      const settings = await PlatformSettingModel2.findOne({ key: "platform" }).lean() || {
+        ticketCommissionBps: 600,
+        vendorCommissionBps: 1250
+      };
+      const totalEvents = await EventModel2.countDocuments();
+      const liveEvents = await EventModel2.countDocuments({ status: "published" });
+      const totalOrganizers = await User.countDocuments({ role: "organizer" });
+      const verifiedOrganizers = await User.countDocuments({ role: "organizer", isVerified: true });
+      const gateway = activeGateway();
+      const gatewayMode = gateway === "paystack" ? isTestMode2() ? "test" : "live" : "simulated";
+      return res.json({
+        gmvKobo: gmv.totalKobo,
+        paidOrdersCount: gmv.count,
+        ticketsMintedCount: gmv.ticketsCount,
+        platformFeesKobo,
+        pendingEscrowKobo,
+        settledPayoutsKobo,
+        duePayoutsKobo,
+        settings: {
+          ticketCommissionBps: settings.ticketCommissionBps ?? 600,
+          vendorCommissionBps: settings.vendorCommissionBps ?? 1250,
+          updatedAt: settings.updatedAt || /* @__PURE__ */ new Date()
+        },
+        counts: {
+          totalEvents,
+          liveEvents,
+          totalOrganizers,
+          verifiedOrganizers
+        },
+        gateway: {
+          provider: gateway,
+          mode: gatewayMode,
+          configured: isPaystackConfigured()
+        }
+      });
+    } catch (err) {
+      console.error("Financial overview error:", err);
+      return res.status(500).json({ error: "Failed to load financial overview." });
+    }
+  });
+  app2.get("/api/admin/bookings", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    try {
+      const { EventModel: EventModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+      const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+      const status = typeof req.query.status === "string" ? req.query.status.trim() : "";
+      const limit = Math.min(Number(req.query.limit) || 100, 300);
+      const filter = {};
+      if (status && status !== "all") {
+        filter.status = status;
+      }
+      if (q) {
+        filter.$or = [
+          { paymentReference: { $regex: q, $options: "i" } },
+          { email: { $regex: q, $options: "i" } },
+          { name: { $regex: q, $options: "i" } },
+          { ticketType: { $regex: q, $options: "i" } }
+        ];
+      }
+      const bookings3 = await BookingModel.find(filter).sort({ createdAt: -1 }).limit(limit).lean();
+      const eventIds = Array.from(new Set(bookings3.map((b) => String(b.eventId)).filter(Boolean)));
+      const events3 = await EventModel2.find({ _id: { $in: eventIds } }).select("title slug date organizerName organizerId location").lean();
+      const eventMap = new Map(events3.map((e) => [String(e._id), e]));
+      const enriched = bookings3.map((b) => ({
+        ...b,
+        id: String(b._id),
+        event: eventMap.get(String(b.eventId)) || null
+      }));
+      return res.json(enriched);
+    } catch (err) {
+      console.error("Admin bookings query error:", err);
+      return res.status(500).json({ error: "Failed to load bookings." });
+    }
+  });
+  app2.get("/api/admin/users", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    try {
+      const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+      const role = typeof req.query.role === "string" ? req.query.role.trim() : "";
+      const filter = {};
+      if (role && role !== "all") filter.role = role;
+      if (q) {
+        filter.$or = [
+          { email: { $regex: q, $options: "i" } },
+          { username: { $regex: q, $options: "i" } },
+          { displayName: { $regex: q, $options: "i" } }
+        ];
+      }
+      const users2 = await User.find(filter).select("-password").sort({ createdAt: -1 }).limit(200).lean();
+      return res.json(users2.map((u) => ({ ...u, id: String(u._id) })));
+    } catch (err) {
+      console.error("Admin users error:", err);
+      return res.status(500).json({ error: "Failed to load users." });
+    }
+  });
+  app2.patch("/api/admin/users/:id/role", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    const { role } = req.body || {};
+    if (!["admin", "organizer", "attendee", "vendor"].includes(role)) {
+      return res.status(400).json({ message: "Invalid role specified." });
+    }
+    try {
+      const updated = await User.findByIdAndUpdate(
+        req.params.id,
+        { $set: { role, isAdmin: role === "admin" } },
+        { new: true }
+      ).select("-password").lean();
+      if (!updated) return res.status(404).json({ message: "User not found." });
+      return res.json(updated);
+    } catch (err) {
+      return res.status(500).json({ message: "Failed to update user role." });
+    }
+  });
+  app2.patch("/api/admin/events/:id/featured", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    try {
+      const { EventModel: EventModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+      const event = await EventModel2.findById(req.params.id);
+      if (!event) return res.status(404).json({ message: "Event not found." });
+      event.isFeatured = typeof req.body.isFeatured === "boolean" ? req.body.isFeatured : !event.isFeatured;
+      await event.save();
+      return res.json({ id: String(event._id), isFeatured: event.isFeatured });
+    } catch (err) {
+      return res.status(500).json({ message: "Failed to update featured status." });
+    }
+  });
+  app2.patch("/api/admin/events/:id/status", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    const { status } = req.body || {};
+    if (!["published", "draft", "unpublished", "cancelled"].includes(status)) {
+      return res.status(400).json({ message: "Invalid event status." });
+    }
+    try {
+      const { EventModel: EventModel2 } = await Promise.resolve().then(() => (init_models(), models_exports));
+      const event = await EventModel2.findByIdAndUpdate(
+        req.params.id,
+        { $set: { status } },
+        { new: true }
+      ).lean();
+      if (!event) return res.status(404).json({ message: "Event not found." });
+      return res.json({ id: String(event._id), status: event.status });
+    } catch (err) {
+      return res.status(500).json({ message: "Failed to update event status." });
+    }
+  });
   return httpServer2;
 }
 function safeUserShape(user) {
-  const { password, ...rest } = user;
+  const { password, resetTokenHash, resetTokenExpires, ...rest } = user;
   return rest;
 }
 async function notifyFollowersOfDrop(event) {
@@ -157587,7 +160568,7 @@ async function notifyFollowersOfDrop(event) {
 var import_http = require("http");
 
 // server/db.ts
-var import_mongoose7 = __toESM(require_mongoose2(), 1);
+var import_mongoose8 = __toESM(require_mongoose2(), 1);
 if (!process.env.MONGODB_URI) {
   console.warn("MONGODB_URI not set. Falling back to localhost; the seed and dev-store paths handle the rest.");
 }
@@ -157596,7 +160577,7 @@ async function connectDB() {
   const attempts = 3;
   for (let i = 1; i <= attempts; i++) {
     try {
-      await import_mongoose7.default.connect(MONGODB_URI, { serverSelectionTimeoutMS: 8e3 });
+      await import_mongoose8.default.connect(MONGODB_URI, { serverSelectionTimeoutMS: 8e3 });
       console.log("Connected to MongoDB");
       return true;
     } catch (err) {
@@ -157614,7 +160595,7 @@ async function connectDB() {
   }
   return false;
 }
-var db = import_mongoose7.default.connection;
+var db = import_mongoose8.default.connection;
 
 // server/google-auth.ts
 init_bcryptjs();
@@ -157663,9 +160644,12 @@ function setupGoogleAuth(app2) {
     const state = generateState();
     const redirectUri = getRedirectUri(req);
     const returnTo = typeof req.query.returnTo === "string" ? req.query.returnTo : "";
-    const audience = typeof req.query.audience === "string" ? req.query.audience : "";
+    const rawAudience = typeof req.query.audience === "string" ? req.query.audience : typeof req.query.role === "string" ? req.query.role : "";
+    const audience = rawAudience === "organizer" || returnTo && returnTo.startsWith("/admin") ? "organizer" : rawAudience;
+    const rawVoucher = typeof req.query.founderVoucher === "string" ? req.query.founderVoucher : typeof req.query.promo === "string" ? req.query.promo : "";
+    const founderVoucher = rawVoucher.trim().toUpperCase() === "FOUNDER100" || audience === "organizer" && rawVoucher !== "NONE" ? "FOUNDER100" : void 0;
     const role = audience === "organizer" ? "organizer" : "user";
-    pendingStates.set(state, { returnTo, redirectUri, audience, timestamp: Date.now() });
+    pendingStates.set(state, { returnTo, redirectUri, audience, founderVoucher, timestamp: Date.now() });
     Array.from(pendingStates.entries()).forEach(([key, val]) => {
       if (Date.now() - val.timestamp > 10 * 60 * 1e3) {
         pendingStates.delete(key);
@@ -157729,6 +160713,14 @@ function setupGoogleAuth(app2) {
       let user = await User.findOne({ email: profile.email.toLowerCase().trim() });
       if (user && user.deletedAt) user = null;
       const isNewUser = !user;
+      if (user && pending?.audience === "organizer" && user.role === "user") {
+        user.role = "organizer";
+        if (pending?.founderVoucher && !user.founderVoucher) {
+          user.founderVoucher = pending.founderVoucher;
+          user.waivedTicketCount = 0;
+        }
+        await user.save();
+      }
       if (!user) {
         const baseUsername = (profile.name || profile.email.split("@")[0]).toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20) || "user";
         let candidateUsername = baseUsername;
@@ -157749,7 +160741,8 @@ function setupGoogleAuth(app2) {
           displayName: profile.name || void 0,
           avatarUrl: profile.picture || void 0,
           referralCode: generateReferralCode(),
-          termsAcceptedAt: /* @__PURE__ */ new Date()
+          termsAcceptedAt: /* @__PURE__ */ new Date(),
+          ...role === "organizer" && pending?.founderVoucher ? { founderVoucher: pending.founderVoucher, waivedTicketCount: 0 } : {}
         });
         await user.save();
         const emailRole = role === "organizer" ? "organizer" : pending?.audience === "vendor" ? "vendor" : "user";
@@ -157769,7 +160762,7 @@ function setupGoogleAuth(app2) {
         }
         const userRole = user.role;
         const dest = safeDestination(
-          isNewUser ? userRole === "organizer" ? "/admin" : pending?.audience === "vendor" ? "/vendor-dashboard" : "/dashboard" : returnTo || (userRole === "admin" || userRole === "organizer" ? "/admin" : "/dashboard")
+          isNewUser ? userRole === "organizer" ? returnTo && returnTo.startsWith("/admin") ? returnTo : "/admin" : pending?.audience === "vendor" ? "/vendor-dashboard" : returnTo && !returnTo.startsWith("/admin") ? returnTo : "/dashboard" : returnTo || (userRole === "admin" || userRole === "organizer" ? "/admin" : "/dashboard")
         );
         const isLocal = redirectUri.includes("localhost");
         const frontendBase = isLocal ? "http://localhost:5000" : process.env.FRONTEND_URL?.replace(/\/$/, "") || "";
