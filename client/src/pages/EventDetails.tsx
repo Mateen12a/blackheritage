@@ -275,60 +275,34 @@ export default function EventDetails() {
       {/* Flyer hero. Height follows the TEMPLATE: billboard goes full-bleed
           and tall (the ticket card docks on it), editorial ducks low so the
           story leads, poster keeps the classic 52vh banner. */}
-      <div
-        className={cn(
-          "relative w-full overflow-hidden lg:hidden",
-          isBillboard ? "h-[64vh] md:h-[70vh] md:max-h-[720px]" : isEditorial ? "h-[42vh] md:h-[48vh] md:max-h-[520px]" : "h-[52vh] sm:h-[56vh] md:h-[62vh] md:max-h-[640px] lg:h-[66vh] lg:max-h-[760px]",
-        )}
-      >
-        {/* The flyer is the hero object, shown whole: a portrait poster in a
-            wide band used to be cropped to its middle and dimmed under a
-            70% scrim. A blurred copy fills the band; the real one sits on
-            top, uncropped, clear of the navbar and the title block. */}
+      <div className="relative w-full overflow-hidden lg:hidden pt-[4.5rem] md:pt-24 pb-6">
+        {/* The flyer is the hero object, shown whole and sized by width: on a
+            phone the poster IS the ad, so it takes most of the screen instead
+            of shrinking to fit a fixed-height band. A blurred copy and the
+            event's own accent light the stage behind it. */}
         <img
           src={event.imageUrl}
           alt=""
           aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover scale-125 blur-3xl opacity-30"
         />
-        {/* A dark stage lit in the event's own colour: the accent comes from
-            the flyer (or the organizer), so every event page feels like its
-            own night instead of one template with a different picture. */}
         <div aria-hidden="true" className="absolute inset-0 bg-background/70" />
         <div
           aria-hidden="true"
           className="absolute inset-0"
-          style={{ background: `radial-gradient(45% 60% at 50% 45%, ${heroAccent}38 0%, transparent 70%)` }}
+          style={{ background: `radial-gradient(60% 50% at 50% 45%, ${heroAccent}38 0%, transparent 70%)` }}
         />
-        <div className="absolute inset-x-0 top-16 md:top-20 bottom-14 sm:bottom-16 md:bottom-20 flex items-center justify-center px-4">
-          {/* Tap to read the flyer full size: it carries details (teams,
-              dress code, line-up) the page does not repeat. */}
-          <button
-            type="button"
-            onClick={() => setIsFlyerZoomOpen(true)}
-            aria-label="View the flyer full size"
-            className="h-full max-w-full cursor-zoom-in rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold"
-          >
-            <FadeImg
-              src={event.imageUrl}
-              alt={event.title}
-              className="max-h-full max-w-full w-auto h-full object-contain rounded-md ring-1 ring-white/10"
-              style={{ boxShadow: `0 30px 90px -20px ${heroAccent}66, 0 20px 60px rgba(0,0,0,0.6)` }}
-            />
-          </button>
-        </div>
-        <div
-          aria-hidden="true"
-          className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-background to-transparent"
-        />
-        <div className="absolute top-[4.75rem] md:top-28 left-3 sm:left-4 right-3 sm:right-4 z-20 flex items-center justify-between pointer-events-none">
+        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent" />
+
+        {/* Back and share sit above the flyer, not over its edges */}
+        <div className="relative z-20 flex items-center justify-between px-3 sm:px-4">
           {cameFromApp ? (
             <Button
               variant="outline"
               size="icon"
               aria-label="Go back"
               onClick={() => window.history.back()}
-              className="press pointer-events-auto rounded-full bg-background/80 backdrop-blur-md border-hairline text-ink hover:bg-surface hover:text-gold transition-colors w-9 h-9 sm:w-10 sm:h-10"
+              className="press rounded-full bg-background/80 backdrop-blur-md border-hairline text-ink hover:bg-surface hover:text-gold transition-colors w-9 h-9 sm:w-10 sm:h-10"
             >
               <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </Button>
@@ -338,7 +312,7 @@ export default function EventDetails() {
                 variant="outline"
                 size="icon"
                 aria-label="Browse all events"
-                className="press pointer-events-auto rounded-full bg-background/80 backdrop-blur-md border-hairline text-ink hover:bg-surface hover:text-gold transition-colors w-9 h-9 sm:w-10 sm:h-10"
+                className="press rounded-full bg-background/80 backdrop-blur-md border-hairline text-ink hover:bg-surface hover:text-gold transition-colors w-9 h-9 sm:w-10 sm:h-10"
               >
                 <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
               </Button>
@@ -349,10 +323,28 @@ export default function EventDetails() {
             size="icon"
             aria-label="Share this event"
             onClick={handleShare}
-            className="press pointer-events-auto rounded-full bg-background/80 backdrop-blur-md border-hairline text-ink hover:bg-surface hover:text-gold transition-colors w-9 h-9 sm:w-10 sm:h-10"
+            className="press rounded-full bg-background/80 backdrop-blur-md border-hairline text-ink hover:bg-surface hover:text-gold transition-colors w-9 h-9 sm:w-10 sm:h-10"
           >
             <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
+        </div>
+
+        <div className="relative z-10 mt-3 flex justify-center px-4">
+          {/* Tap to read the flyer full size: it carries details (teams,
+              dress code, line-up) the page does not repeat. */}
+          <button
+            type="button"
+            onClick={() => setIsFlyerZoomOpen(true)}
+            aria-label="View the flyer full size"
+            className="w-[82vw] max-w-[440px] cursor-zoom-in rounded-md focus-visible:outline-2 focus-visible:outline-gold"
+          >
+            <FadeImg
+              src={event.imageUrl}
+              alt={event.title}
+              className="w-full h-auto max-h-[78vh] object-contain rounded-md ring-1 ring-white/10"
+              style={{ boxShadow: `0 30px 90px -20px ${heroAccent}66, 0 20px 60px rgba(0,0,0,0.6)` }}
+            />
+          </button>
         </div>
       </div>
 
@@ -364,7 +356,7 @@ export default function EventDetails() {
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-background to-transparent" />
       </div>
 
-      <div className="container mx-auto px-3.5 sm:px-4 -mt-12 sm:-mt-16 md:-mt-24 lg:mt-0 lg:pt-28 relative z-10">
+      <div className="container mx-auto px-3.5 sm:px-4 mt-1 lg:mt-0 lg:pt-28 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-8 xl:gap-10">
           {/* Wide screens: the flyer gets its own column, big whatever the
               window height, and stays in view while the details scroll. */}
