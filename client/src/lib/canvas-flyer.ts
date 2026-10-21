@@ -532,7 +532,27 @@ function renderStandardFlyer(
   // 2. Hero/flyer artwork in cover mode (preloaded by the caller)
   const imageSource = options.customImageDataUrl || options.imageUrl;
   const heroImg = (options as any).__loadedImage as HTMLImageElement | null;
-  if (imageSource && heroImg) {
+  // A portrait image is almost always a lettered flyer. Drawn sharp, its own
+  // title fights ours and the square crop chops it, so it becomes a blurred
+  // backdrop that carries its colors. Landscape photos stay sharp.
+  const heroIsFlyer = Boolean(heroImg && heroImg.width / heroImg.height < 0.95);
+  if (imageSource && heroImg && heroIsFlyer) {
+    const tiny = document.createElement("canvas");
+    tiny.width = Math.round(width / 54);
+    tiny.height = Math.round(height / 54);
+    const tctx = tiny.getContext("2d");
+    if (tctx) {
+      const cover = Math.max(tiny.width / heroImg.width, tiny.height / heroImg.height);
+      tctx.drawImage(heroImg, (tiny.width - heroImg.width * cover) / 2, (tiny.height - heroImg.height * cover) / 2, heroImg.width * cover, heroImg.height * cover);
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(tiny, 0, 0, width, height);
+      ctx.fillStyle = hexToRgba(style.bgBase, 0.55);
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
+  } else if (imageSource && heroImg) {
     ctx.save();
     const imgTargetHeight = isStory ? height * 0.72 : height * 0.85;
     const imgRatio = heroImg.width / heroImg.height;
@@ -605,8 +625,13 @@ function renderStandardFlyer(
     : "BLACK HERITAGE • LAGOS";
 
   ctx.font = "600 24px 'DM Sans', sans-serif";
-  const textWidth = ctx.measureText(presenterText).width;
+  // Measure with the same letter spacing the label is drawn with, and cap it
+  // inside the frame, so a long presenter name never spills past the pill.
+  ctx.letterSpacing = "2px";
   const logoImg = (options as any).__loadedLogo;
+  const headerMax = width - frameInset * 2 - 80 - (logoImg ? 28 + 56 : 48);
+  const headerLabel = truncateToWidth(ctx, presenterText, headerMax);
+  const textWidth = ctx.measureText(headerLabel).width;
   const logoSize = 28;
   const presWidth = textWidth + (logoImg ? logoSize + 56 : 48);
   const pillHeight = 44;
@@ -635,12 +660,12 @@ function renderStandardFlyer(
     ctx.fillStyle = accent;
     ctx.letterSpacing = "2px";
     ctx.textAlign = "left";
-    ctx.fillText(presenterText, logoX + logoSize + 12, headerY);
+    ctx.fillText(headerLabel, logoX + logoSize + 12, headerY);
   } else {
     ctx.textAlign = "center";
     ctx.fillStyle = accent;
     ctx.letterSpacing = "2px";
-    ctx.fillText(presenterText, width / 2, headerY);
+    ctx.fillText(headerLabel, width / 2, headerY);
   }
   ctx.restore();
 
@@ -678,7 +703,8 @@ function renderStandardFlyer(
 
   const eyebrowText = truncateToWidth(
     ctx,
-    options.organizerName ? options.organizerName.toUpperCase() : "LIVE EVENT",
+    // The presenter already heads the card; the eyebrow says what this is.
+    options.isAttendeePass ? "I'M GOING" : "TICKETS ON SALE",
     contentWidth
   );
 
@@ -699,7 +725,7 @@ function renderStandardFlyer(
   // Eyebrow baseline → first title baseline: the title's ascent (~0.72×size)
   // must clear the eyebrow's descender zone with room to spare.
   const gapEyebrowTitle = Math.round(18 + fitted.size * 0.85);
-  const gapTitleRule = 12; // last title baseline → gold rule top
+  const gapTitleRule = Math.round(fitted.size * 0.3); // clears descenders (g, y, p)
   const ruleH = 4;
   const gapRuleDate = 30; // rule bottom → date baseline
   const gapDateLoc = 38; // date baseline → location baseline
@@ -973,12 +999,14 @@ function renderTeaserFlyer(
   // Gold rule
   ctx.fillStyle = accent;
   const ruleW = isStory ? 140 : 110;
-  ctx.fillRect(width / 2 - ruleW / 2, titleEnd + (isStory ? 26 : 18), ruleW, 5);
+  // Below the descenders (g, y, p) of the last title line.
+  const ruleY = titleEnd + Math.round(fitted.size * 0.3);
+  ctx.fillRect(width / 2 - ruleW / 2, ruleY, ruleW, 5);
   ctx.restore();
 
   // Teaser line: what is known, stated plainly
   const teaserText = (options.teaserLine || "").trim();
-  let belowRule = titleEnd + (isStory ? 78 : 62);
+  let belowRule = ruleY + (isStory ? 56 : 46);
   if (teaserText) {
     ctx.save();
     ctx.textAlign = "center";
@@ -1024,7 +1052,7 @@ function renderTeaserFlyer(
   const footerY = height - frameInset - (isStory ? 150 : 110);
   if (options.showQr && options.qrUrl) {
     const qrSize = isStory ? 130 : 100;
-    const qrY = height - frameInset - (isStory ? 195 : 155);
+    const qrY = height - frameInset - (isStory ? 210 : 190);
     ctx.save();
     ctx.fillStyle = "#FFFFFF";
     ctx.beginPath();
@@ -1110,7 +1138,7 @@ function renderPrivatePassFlyer(
     ctx.textBaseline = "middle";
     ctx.font = "800 34px 'Playfair Display', serif";
     ctx.fillStyle = accent;
-    ctx.fillText(initialsOf(options.hostLine || options.organizerName || options.title), width / 2, monogramY + 2);
+    ctx.fillText(initialsOf((options.hostLine || options.organizerName || options.title).replace(/^hosted by\s+/i, "")), width / 2, monogramY + 2);
   }
   ctx.restore();
 
@@ -1122,12 +1150,12 @@ function renderPrivatePassFlyer(
   ctx.fillStyle = style.textMuted;
   ctx.letterSpacing = "4px";
   const hostText = (options.hostLine || options.organizerName || "PRIVATE COLLECTION").toUpperCase();
-  ctx.fillText(hostText, width / 2, monogramY + r + (isStory ? 56 : 46));
+  ctx.fillText(truncateToWidth(ctx, hostText, contentWidth), width / 2, monogramY + r + (isStory ? 56 : 46));
   ctx.letterSpacing = "0px";
   ctx.restore();
 
   // Strictly by invitation pill
-  const pillY = monogramY + r + (isStory ? 108 : 90);
+  const pillY = monogramY + r + (isStory ? 124 : 104);
   drawPill(
     ctx,
     "STRICTLY BY INVITATION",
@@ -1140,7 +1168,7 @@ function renderPrivatePassFlyer(
 
   // Title: fitted like every other preset, so a long name shrinks instead
   // of running over the invitation pill above or the dress-code chip below.
-  const titleY = pillY + (isStory ? 92 : 76);
+  const titleY = pillY + (isStory ? 104 : 88);
   const titleFit = fitTitle(ctx, options.title || "A Private Gathering", contentWidth, 2, isStory ? 76 : 58, isStory ? 40 : 34);
   ctx.save();
   ctx.textAlign = "center";
