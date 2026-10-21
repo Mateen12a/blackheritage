@@ -24,8 +24,11 @@ import {
   Music2,
   Video,
   Star,
+  Image as ImageIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { VendorPromoModal } from "@/components/VendorPromoModal";
 import {
   parseGallery,
   parseSocials,
@@ -62,6 +65,8 @@ export default function VendorDetails() {
   const { data: allVendors } = useVendors();
   const { user } = useAuth();
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [cardOpen, setCardOpen] = useState(false);
+  const { toast } = useToast();
 
   // Trust signals load while the page is still resolving; the hook stays
   // above the early returns so hook order never changes between renders.
@@ -426,16 +431,39 @@ export default function VendorDetails() {
                 )}
               </div>
 
-              <div className="mt-6 pt-5 border-t border-hairline">
+              <div className="mt-6 pt-5 border-t border-hairline grid grid-cols-2 gap-2">
                 <Button
                   variant="ghost"
-                  className="w-full text-muted-ink hover:text-gold hover:bg-surface-2"
-                  onClick={() => {
-                    navigator.clipboard?.writeText(window.location.href);
+                  className="text-muted-ink hover:text-gold hover:bg-surface-2"
+                  onClick={async () => {
+                    // The short /t/ link, never whatever route got us here.
+                    const url = `${window.location.origin}${vendor.slug ? `/t/${vendor.slug}` : `/talent/${vendor.id}`}`;
+                    if (navigator.share) {
+                      try {
+                        await navigator.share({ title: vendor.businessName, text: `Book ${vendor.businessName} on Black Heritage`, url });
+                      } catch {
+                        // dismissed
+                      }
+                      return;
+                    }
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      toast({ title: "Link copied", description: url });
+                    } catch {
+                      toast({ title: "Could not copy link", description: url, variant: "destructive" });
+                    }
                   }}
                 >
                   <Share2 className="w-4 h-4 mr-2" />
-                  Share this profile
+                  Share link
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="text-muted-ink hover:text-gold hover:bg-surface-2"
+                  onClick={() => setCardOpen(true)}
+                >
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  Story card
                 </Button>
               </div>
             </div>
@@ -554,6 +582,8 @@ export default function VendorDetails() {
           )}
         </DialogContent>
       </Dialog>
+
+      <VendorPromoModal open={cardOpen} onClose={() => setCardOpen(false)} vendor={vendor} guestMode />
     </div>
   );
 }

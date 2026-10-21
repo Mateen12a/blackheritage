@@ -32,9 +32,16 @@ interface VendorPromoModalProps {
   open: boolean;
   onClose: () => void;
   vendor: any;
+  // "organizer" reuses the card for an organizer hub: the vendor prop then
+  // carries the organizer, and the wording points at their events.
+  kind?: "vendor" | "organizer";
+  // Visitors sharing someone else's profile get share wording, not "your".
+  guestMode?: boolean;
+  upcomingCount?: number;
 }
 
-export function VendorPromoModal({ open, onClose, vendor }: VendorPromoModalProps) {
+export function VendorPromoModal({ open, onClose, vendor, kind = "vendor", guestMode = false, upcomingCount = 0 }: VendorPromoModalProps) {
+  const isOrganizer = kind === "organizer";
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -44,15 +51,20 @@ export function VendorPromoModal({ open, onClose, vendor }: VendorPromoModalProp
   const [isRendering, setIsRendering] = useState(false);
   const [copiedImage, setCopiedImage] = useState(false);
 
-  const ratings = useVendorRatings(open ? String(vendor?.id || "") : "");
+  const ratings = useVendorRatings(open && !isOrganizer ? String(vendor?.id || "") : "");
 
-  const gallery: string[] = (() => {
-    try { return JSON.parse(vendor?.gallery || "[]"); } catch { return []; }
-  })();
+  const gallery: string[] = isOrganizer
+    ? [vendor?.coverUrl, vendor?.logoUrl].filter(Boolean)
+    : (() => {
+        try { return JSON.parse(vendor?.gallery || "[]"); } catch { return []; }
+      })();
+  const displayName = (isOrganizer ? vendor?.displayName : vendor?.businessName) || (isOrganizer ? "Event organizer" : "My Business");
   const profileUrl = typeof window !== "undefined"
-    ? vendor?.slug
-      ? `${window.location.origin}/v/${vendor.slug}`
-      : `${window.location.origin}/vendors/${vendor?.id || ""}`
+    ? isOrganizer
+      ? `${window.location.origin}/o/${vendor?.slug || ""}`
+      : vendor?.slug
+      ? `${window.location.origin}/t/${vendor.slug}`
+      : `${window.location.origin}/talent/${vendor?.id || ""}`
     : "";
   const area = vendor?.city || vendor?.serviceArea || "Lagos";
   const ratingValue = ratings.data && ratings.data.count > 0 && ratings.data.average != null
@@ -73,7 +85,7 @@ export function VendorPromoModal({ open, onClose, vendor }: VendorPromoModalProp
         format,
         theme,
         presetType: "vendor_card",
-        title: vendor.businessName || "My Business",
+        title: displayName,
         date: new Date(),
         location: "",
         imageUrl: gallery[0] || null,
@@ -83,8 +95,14 @@ export function VendorPromoModal({ open, onClose, vendor }: VendorPromoModalProp
         // themes render their canonical look, untouched by brand colors.
         brandTheme: theme === "brand" ? brand : null,
         accentColor: theme === "brand" ? vendor.branding?.accentHex || undefined : undefined,
-        vendorCategory: vendor.categoryLabel || vendor.category || "",
-        vendorRating: ratingValue,
+        vendorCategory: isOrganizer
+          ? upcomingCount > 0 ? `${upcomingCount} upcoming event${upcomingCount === 1 ? "" : "s"}` : "Event organizer"
+          : vendor.categoryLabel || vendor.category || "",
+        vendorRating: isOrganizer ? undefined : ratingValue,
+        profileHeader: isOrganizer ? `${String(area).toUpperCase()} ORGANIZER` : undefined,
+        profileCta: isOrganizer ? "SEE UPCOMING EVENTS" : undefined,
+        profileScan: isOrganizer ? "SCAN FOR EVENTS" : undefined,
+        profileLink: profileUrl.replace(/^https?:\/\//, ""),
         vendorArea: area,
         vendorSlug: vendor.slug || null,
         vendorWhatsapp: vendor.whatsapp || null,
@@ -94,7 +112,7 @@ export function VendorPromoModal({ open, onClose, vendor }: VendorPromoModalProp
     } finally {
       setIsRendering(false);
     }
-  }, [vendor, format, theme, showQr, profileUrl, area, ratingValue, gallery]);
+  }, [vendor, format, theme, showQr, profileUrl, area, ratingValue, gallery, isOrganizer, displayName, upcomingCount]);
 
   useEffect(() => {
     if (open) {
@@ -105,7 +123,7 @@ export function VendorPromoModal({ open, onClose, vendor }: VendorPromoModalProp
 
   const handleDownload = () => {
     if (!canvasRef.current || !vendor) return;
-    const safeName = (vendor.businessName || "vendor")
+    const safeName = (displayName || "profile")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
@@ -115,7 +133,11 @@ export function VendorPromoModal({ open, onClose, vendor }: VendorPromoModalProp
 
   const handleWhatsApp = () => {
     handleDownload();
-    const text = `Book ${vendor?.businessName || "us"} for your events on Black Heritage: ${profileUrl}`;
+    const text = isOrganizer
+      ? `See upcoming events from ${displayName} on Black Heritage: ${profileUrl}`
+      : guestMode
+        ? `Book ${displayName} for your next event on Black Heritage: ${profileUrl}`
+        : `Book ${displayName} for your events on Black Heritage: ${profileUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
@@ -147,10 +169,16 @@ export function VendorPromoModal({ open, onClose, vendor }: VendorPromoModalProp
               </span>
               <div>
                 <DialogTitle className="font-display text-xl md:text-2xl font-bold text-ink">
-                  Promo Card Studio
+                  {guestMode ? `Share ${displayName}` : "Promo Card Studio"}
                 </DialogTitle>
                 <DialogDescription className="text-xs md:text-sm text-muted-ink mt-0.5">
-                  A booking card for your business. Post it where your clients are.
+                  {isOrganizer
+                    ? guestMode
+                      ? "A card for this organizer's page, sized for WhatsApp status and Instagram."
+                      : "A card for your organizer page. Post it so people find all your events."
+                    : guestMode
+                      ? "A booking card for this business, sized for WhatsApp status and Instagram."
+                      : "A booking card for your business. Post it where your clients are."}
                 </DialogDescription>
               </div>
             </div>
@@ -261,14 +289,14 @@ export function VendorPromoModal({ open, onClose, vendor }: VendorPromoModalProp
                 <div className="flex items-center gap-2">
                   <QrCode className="w-4 h-4 text-gold" />
                   <div>
-                    <p className="text-xs font-medium text-ink">Booking QR</p>
-                    <p className="text-[11px] text-muted-ink truncate max-w-[220px]">Scans to your profile</p>
+                    <p className="text-xs font-medium text-ink">{isOrganizer ? "Profile QR" : "Booking QR"}</p>
+                    <p className="text-[11px] text-muted-ink truncate max-w-[220px]">Scans to {guestMode ? "this" : "your"} profile</p>
                   </div>
                 </div>
                 <Switch checked={showQr} onCheckedChange={setShowQr} />
               </div>
 
-              {ratings.data && ratings.data.count > 0 ? (
+              {isOrganizer || guestMode ? null : ratings.data && ratings.data.count > 0 ? (
                 <p className="text-[11px] text-muted-ink">
                   Your {ratings.data.count} review{ratings.data.count === 1 ? "" : "s"} ({ratings.data.average} stars) show on the card.
                 </p>

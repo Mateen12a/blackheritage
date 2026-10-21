@@ -193,6 +193,9 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
 
   const current = events[index % events.length];
   const [failed, setFailed] = useState(false);
+  // The frame takes the flyer's own shape (within portrait limits), so a 3:4
+  // flyer is not boxed into 4:5 with dark bars down both sides.
+  const [ratio, setRatio] = useState(0.8);
 
   return (
     <div
@@ -223,7 +226,7 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
         </div>
       )}
       {/* The whole poster opens the event: on phones it is the obvious thing to tap. */}
-      <Link href={eventPath(current as any)} aria-label={"Open " + current.title} className="block relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/15 shadow-[0_30px_80px_rgba(0,0,0,0.55)] outline outline-1 outline-white/10">
+      <Link href={eventPath(current as any)} aria-label={"Open " + current.title} style={{ aspectRatio: String(ratio) }} className="block relative rounded-2xl overflow-hidden border border-white/15 shadow-[0_30px_80px_rgba(0,0,0,0.55)] transition-[aspect-ratio] duration-500">
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={current.id}
@@ -252,7 +255,9 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
                   // as a thin strip, so it fills the frame instead.
                   onLoad={(e) => {
                     const img = e.currentTarget;
-                    img.style.objectFit = img.naturalWidth > img.naturalHeight * 1.05 ? "cover" : "contain";
+                    const r = img.naturalWidth / img.naturalHeight;
+                    img.style.objectFit = r > 1.05 ? "cover" : "contain";
+                    setRatio(Math.min(1, Math.max(0.7, r)));
                   }}
                   className="relative w-full h-full object-contain animate-slow-zoom"
                 />
@@ -267,20 +272,23 @@ function HeroPosterDeck({ events }: { events: Event[] }) {
             Selling Fast, Last Few Spots. */}
         <ScarcityBadge event={current} slideKey={current.id} />
       </Link>
-        <div className="mt-3 flex items-center justify-between gap-2 sm:gap-3">
-          <div className="min-w-0 pr-1">
-            <p className="eyebrow text-[10px] sm:text-[11px] truncate">{format(new Date(current.date), "EEE d MMM · ha")}</p>
-            <p className="mt-0.5 sm:mt-1 font-display text-base sm:text-lg font-bold text-ink truncate">
-              {current.title}
-            </p>
-            <p className="mt-0.5 text-xs sm:text-[13px] font-medium text-gold/90">{priceLabelFor(current)}</p>
+        <div className="mt-4 px-1">
+          <p className="font-display text-xl sm:text-2xl font-bold text-ink leading-tight line-clamp-2">
+            {current.title}
+          </p>
+          <p className="mt-1 text-[13px] text-muted-ink truncate">
+            {format(new Date(current.date), "EEE d MMM · h:mmaaa")}
+            {current.location ? ` · ${String(current.location).split(",").pop()?.trim()}` : ""}
+          </p>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="text-base font-semibold text-gold tabular-nums">{priceLabelFor(current)}</p>
+            <Link href={eventPath(current as any)} className="shrink-0">
+              <span className="press inline-flex items-center gap-1.5 h-10 px-5 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-gold-soft transition-colors cursor-pointer whitespace-nowrap">
+                Get tickets
+                <ArrowUpRight className="w-4 h-4 shrink-0" strokeWidth={2} />
+              </span>
+            </Link>
           </div>
-          <Link href={eventPath(current as any)} className="shrink-0">
-            <span className="press inline-flex items-center gap-1 h-8 sm:h-9 px-3 sm:px-4 rounded-full bg-primary text-primary-foreground text-xs sm:text-[13px] font-medium hover:bg-gold-soft transition-colors cursor-pointer whitespace-nowrap">
-              Get tickets
-              <ArrowUpRight className="w-3.5 h-3.5 shrink-0" strokeWidth={2} />
-            </span>
-          </Link>
         </div>
       {/* Poster thumbs: pick what's on the marquee.
           Each control is a 24×24 hit area with the visible 2px bar centred

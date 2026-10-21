@@ -286,6 +286,7 @@ export function ShareFlyerModal({
     try {
       const blob = await recordFlyerClip(canvasRef.current, {
         seconds: 6,
+        width: 1080,
         onProgress: setClipProgress,
       });
       const extension = blob.type.includes("mp4") ? "mp4" : "webm";
@@ -491,7 +492,7 @@ export function ShareFlyerModal({
                     ref={canvasRef}
                     className={`max-h-[56vh] w-auto h-auto rounded-lg shadow-xl border border-white/10 object-contain transition-opacity duration-300 ${
                       isRendering ? "opacity-40" : "opacity-100"
-                    } ${useOriginal ? "" : format === "story" ? "aspect-[9/16]" : "aspect-square"}`}
+                    } ${useOriginal ? (format === "story" ? "aspect-[9/16]" : "") : format === "story" ? "aspect-[9/16]" : "aspect-square"}`}
                   />
                   {isRendering && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-xs rounded-lg">
@@ -504,7 +505,7 @@ export function ShareFlyerModal({
                 <div className="mt-3 flex items-center justify-between w-full px-2 text-xs text-muted-ink">
                   <span className="font-mono text-[11px] text-gold">
                     {useOriginal
-                      ? "Your flyer + booking QR"
+                      ? format === "story" ? "1080 × 1920 · your flyer + QR" : "Your flyer + booking QR"
                       : format === "story" ? "1080 × 1920 (9:16 Story)" : "1080 × 1080 (1:1 Feed)"}
                   </span>
                   <span className="text-[11px]">PNG export</span>
@@ -689,8 +690,8 @@ export function ShareFlyerModal({
                 </div>
               )}
 
-              {/* Format Selection */}
-              {showCardControls && (
+              {/* Format Selection: the original flyer offers story or its own shape */}
+              {(showCardControls || useOriginal) && (
               <div className="space-y-2">
                 <Label className="text-xs font-medium uppercase tracking-wider text-muted-ink">
                   Canvas Format
@@ -723,8 +724,8 @@ export function ShareFlyerModal({
                   >
                     <SquareIcon className={`w-5 h-5 ${format === "square" ? "text-gold" : "text-muted-ink"}`} />
                     <div>
-                      <p className="text-xs font-semibold text-ink">Square (1:1)</p>
-                      <p className="text-[11px] text-muted-ink">Feed, Twitter/X, Group Chat</p>
+                      <p className="text-xs font-semibold text-ink">{useOriginal ? "Post" : "Square (1:1)"}</p>
+                      <p className="text-[11px] text-muted-ink">{useOriginal ? "Flyer's own shape, for feed and chats" : "Feed, Twitter/X, Group Chat"}</p>
                     </div>
                   </button>
                 </div>

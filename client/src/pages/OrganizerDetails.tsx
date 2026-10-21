@@ -11,7 +11,7 @@ import { getPreset, accentOverrides } from "@shared/themes";
 import type { CSSProperties } from "react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { ShareFlyerModal } from "@/components/ShareFlyerModal";
+import { VendorPromoModal } from "@/components/VendorPromoModal";
 import {
   Calendar,
   MapPin,
@@ -83,25 +83,6 @@ export default function OrganizerDetails() {
   const shareUrl = useMemo(() => {
     return `${window.location.origin}/o/${slug}`;
   }, [slug]);
-
-  const hubFlyerEvent = useMemo(() => {
-    return {
-      id: organizer?.id || slug,
-      title: organizer?.displayName || "Event Producer",
-      date: new Date(),
-      location: "Lagos, Nigeria",
-      price: upcomingEvents[0]?.price || 0,
-      imageUrl: organizer?.coverUrl || organizer?.logoUrl || "",
-      organizerLogo: organizer?.logoUrl || organizer?.coverUrl || "",
-      branding: {
-        displayName: organizer?.displayName,
-        logoUrl: organizer?.logoUrl,
-        accentHex: organizer?.accentHex || "#E3B23C",
-      },
-      slug: `o/${organizer?.slug || slug}`,
-      description: organizer?.bio || "Official Event Hub on Black Heritage",
-    };
-  }, [organizer, slug, upcomingEvents]);
 
   const handleCopyLink = async () => {
     try {
@@ -797,11 +778,13 @@ export default function OrganizerDetails() {
       </Dialog>
 
       {/* Organizer Hub Story Flyer Modal */}
-      <ShareFlyerModal
+      <VendorPromoModal
         open={isStoryFlyerOpen}
         onClose={() => setIsStoryFlyerOpen(false)}
-        event={hubFlyerEvent}
+        vendor={{ ...organizer, slug: organizer?.slug || slug }}
+        kind="organizer"
         guestMode={!organizer?.isOwner}
+        upcomingCount={upcomingEvents.length}
       />
     </div>
   );

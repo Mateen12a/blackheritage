@@ -47,6 +47,11 @@ export interface CreativeStudioOptions extends FlyerOptions {
   vendorArea?: string;
   vendorSlug?: string | null;
   vendorWhatsapp?: string | null;
+  // Profile card wording, so the same card serves organizers too.
+  profileHeader?: string; // "LAGOS VENDOR"
+  profileCta?: string; // "BOOK ME ON BLACK HERITAGE"
+  profileScan?: string; // "SCAN TO BOOK"
+  profileLink?: string; // "blackhevents.com/v/slug"
   // Brand colors from the event/organizer profile. When absent, callers can
   // let renderFlyerToCanvas derive them via brandThemeFromEvent.
   brandTheme?: FlyerBrandTheme | null;
@@ -1257,22 +1262,23 @@ function renderVendorCardFlyer(
   const contentWidth = width - paddingX * 2;
 
   // Header: where they operate
-  const headerText = (options.vendorArea || "LAGOS").toUpperCase() + " VENDOR";
+  const headerText = options.profileHeader || (options.vendorArea || "LAGOS").toUpperCase() + " TALENT";
   drawPill(ctx, headerText, width / 2, frameInset + (isStory ? 70 : 56), style, accent);
 
   // Portrait: photo in a rounded window, or a monogram seal. The photo
   // shrinks when the rows below it are tall, so the stack always clears the
   // CTA zone instead of colliding with it.
-  const photoTopPad = isStory ? 130 : 104;
+  // Clears the header pill (drawn at frameInset + 70/56).
+  const photoTopPad = frameInset + (isStory ? 124 : 96);
   const nameGap = isStory ? 92 : 84;
   const chipH = 46;
   const nameFit0 = fitTitle(ctx, options.title || "My Business", contentWidth, 2, isStory ? 68 : 60, isStory ? 40 : 34);
   const chipAdvance = options.vendorCategory ? 92 : 0;
   const ratingAdvance = options.vendorRating ? (isStory ? 76 : 66) : 0;
   const ctaY = height - frameInset - (options.showQr && options.qrUrl ? (isStory ? 330 : 250) : (isStory ? 150 : 120));
-  const stackEndLimit = ctaY - 56 / 2 - (isStory ? 60 : 50);
+  const stackEndLimit = ctaY - 56 / 2 - (isStory ? 90 : 50);
   const fixedBelowPhoto = nameGap + (nameFit0.lines.length - 1) * nameFit0.lineHeight + chipAdvance + ratingAdvance;
-  const photoHMax = isStory ? height * 0.34 : height * 0.36;
+  const photoHMax = isStory ? height * 0.42 : height * 0.36;
   const photoHMin = isStory ? Math.round(height * 0.2) : Math.round(height * 0.22);
   const photoH = Math.max(photoHMin, Math.min(photoHMax, stackEndLimit - photoTopPad - fixedBelowPhoto - 8));
   const photoY = photoTopPad;
@@ -1383,7 +1389,7 @@ function renderVendorCardFlyer(
   // CTA pill + link (ctaY computed above with the photo sizing)
   drawPill(
     ctx,
-    "BOOK ME ON BLACK HERITAGE",
+    options.profileCta || "BOOK ME ON BLACK HERITAGE",
     width / 2,
     ctaY,
     style,
@@ -1391,9 +1397,9 @@ function renderVendorCardFlyer(
     { fill: accent, borderColor: accent, textColor: "#0B0B0E", font: "800 24px 'DM Sans', sans-serif", height: 56, padX: 36, maxWidth: contentWidth }
   );
 
-  const profileLine = options.vendorSlug
+  const profileLine = options.profileLink || (options.vendorSlug
     ? `blackhevents.com/v/${options.vendorSlug}`
-    : "blackhevents.com/v";
+    : "blackhevents.com/v");
   ctx.save();
   ctx.textAlign = "center";
   ctx.font = "500 22px 'DM Sans', sans-serif";
@@ -1419,7 +1425,7 @@ function renderVendorCardFlyer(
     ctx.textAlign = "center";
     ctx.font = "600 20px 'DM Sans', sans-serif";
     ctx.fillStyle = style.textMuted;
-    ctx.fillText("SCAN TO BOOK", width / 2, qrY + qrSize + 38);
+    ctx.fillText(options.profileScan || "SCAN TO BOOK", width / 2, qrY + qrSize + 38);
     ctx.restore();
   }
 }
@@ -1455,6 +1461,18 @@ export async function renderFlyerToCanvas(
 ): Promise<void> {
   if (typeof document !== "undefined" && document.fonts) {
     try {
+      // fonts.ready only waits for faces the page already asked for. The
+      // canvas uses weights the DOM may never render (Playfair 800), so
+      // request each one, or the first draw falls back to Times.
+      await Promise.all(
+        [
+          "800 40px 'Playfair Display'",
+          "700 40px 'Playfair Display'",
+          "400 20px 'DM Sans'",
+          "500 20px 'DM Sans'",
+          "700 20px 'DM Sans'",
+        ].map((f) => document.fonts.load(f).catch(() => [])),
+      );
       await document.fonts.ready;
     } catch {
       // Font loading failure fallback to system serif/sans
@@ -1469,7 +1487,11 @@ export async function renderFlyerToCanvas(
   if (preset === "original") {
     const source = options.customImageDataUrl || options.imageUrl;
     const art = source ? await loadImage(source) : null;
-    if (art) return renderOriginalFlyer(canvas, art, options);
+    if (art) {
+      return options.format === "story"
+        ? renderOriginalStory(canvas, art, options)
+        : renderOriginalFlyer(canvas, art, options);
+    }
   }
 
   const isStory = options.format === "story";
@@ -1585,6 +1607,122 @@ function renderOriginalFlyer(canvas: HTMLCanvasElement, art: HTMLImageElement, o
     ctx.font = `600 ${Math.round(32 * scale)}px 'DM Sans', sans-serif`;
     ctx.fillStyle = accent;
     ctx.fillText(truncateToWidth(ctx, `Tickets: ${displayUrl}`, width - pad * 2), width / 2, artHeight + stripHeight / 2 + Math.round(11 * scale));
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Original, story size: the same untouched flyer, whole, centered on a 9:16
+// canvas over a blurred copy of itself, with the scan card below. Nothing is
+// re-lettered: the flyer already carries the title, date, and venue.
+// ─────────────────────────────────────────────────────────────────────────────
+function renderOriginalStory(canvas: HTMLCanvasElement, art: HTMLImageElement, options: FlyerOptions): void {
+  const width = 1080;
+  const height = 1920;
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  const aw = art.naturalWidth || art.width;
+  const ah = art.naturalHeight || art.height;
+
+  // Backdrop: downscale then upscale is a blur every browser supports
+  // (canvas filter is missing on older iOS Safari).
+  const tiny = document.createElement("canvas");
+  tiny.width = 36;
+  tiny.height = 64;
+  const tctx = tiny.getContext("2d");
+  if (tctx) {
+    const cover = Math.max(tiny.width / aw, tiny.height / ah);
+    tctx.drawImage(art, (tiny.width - aw * cover) / 2, (tiny.height - ah * cover) / 2, aw * cover, ah * cover);
+    ctx.drawImage(tiny, 0, 0, width, height);
+  }
+  ctx.fillStyle = "rgba(8,8,12,0.62)";
+  ctx.fillRect(0, 0, width, height);
+
+  const accent = options.accentColor || "#E3B23C";
+  const showQr = Boolean(options.showQr !== false && options.qrUrl);
+  const pad = 64;
+  const cardH = showQr ? 260 : 132;
+  const cardY = height - pad - cardH;
+
+  // The flyer, fit whole into the space above the card.
+  const areaTop = 110;
+  const areaBottom = cardY - 48;
+  const fit = Math.min((width - pad * 2) / aw, (areaBottom - areaTop) / ah);
+  const fw = Math.round(aw * fit);
+  const fh = Math.round(ah * fit);
+  const fx = Math.round((width - fw) / 2);
+  const fy = Math.round(areaTop + (areaBottom - areaTop - fh) / 2);
+  const radius = 28;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.55)";
+  ctx.shadowBlur = 60;
+  ctx.shadowOffsetY = 24;
+  ctx.fillStyle = "#000";
+  ctx.beginPath();
+  ctx.roundRect(fx, fy, fw, fh, radius);
+  ctx.fill();
+  ctx.restore();
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(fx, fy, fw, fh, radius);
+  ctx.clip();
+  ctx.drawImage(art, fx, fy, fw, fh);
+  ctx.restore();
+
+  // Scan card.
+  ctx.fillStyle = "rgba(11,11,15,0.88)";
+  ctx.beginPath();
+  ctx.roundRect(pad, cardY, width - pad * 2, cardH, 28);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.10)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  const displayUrl = (options.qrUrl || "blackhevents.com").replace(/^https?:\/\//, "").replace(/\/$/, "");
+  ctx.textBaseline = "alphabetic";
+  if (showQr) {
+    const qrSize = 196;
+    const tile = 12;
+    const qrX = pad + 32 + tile;
+    const qrY = cardY + (cardH - qrSize) / 2;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath();
+    ctx.roundRect(qrX - tile, qrY - tile, qrSize + tile * 2, qrSize + tile * 2, 16);
+    ctx.fill();
+    drawQRCode(ctx, options.qrUrl!, qrX, qrY, qrSize, {
+      darkColor: "#0B0B0F",
+      lightColor: "#FFFFFF",
+      margin: 1,
+      rounded: false,
+    });
+    const textX = qrX + qrSize + tile + 36;
+    const textW = width - pad - 32 - textX;
+    const mid = cardY + cardH / 2;
+    ctx.textAlign = "left";
+    ctx.font = "700 42px 'DM Sans', sans-serif";
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillText(truncateToWidth(ctx, options.isAttendeePass ? "Scan to verify pass" : "Scan to get tickets", textW), textX, mid - 18);
+    // Shrink the link to fit before truncating: a cut-off URL is useless.
+    let urlSize = 28;
+    ctx.font = `500 ${urlSize}px 'DM Sans', sans-serif`;
+    while (urlSize > 21 && ctx.measureText(displayUrl).width > textW) {
+      urlSize -= 1;
+      ctx.font = `500 ${urlSize}px 'DM Sans', sans-serif`;
+    }
+    ctx.fillStyle = accent;
+    ctx.fillText(truncateToWidth(ctx, displayUrl, textW), textX, mid + 26);
+    ctx.font = "400 24px 'DM Sans', sans-serif";
+    ctx.fillStyle = "#A3A3B2";
+    ctx.fillText(truncateToWidth(ctx, "Instant e-ticket · Card, transfer or USSD", textW), textX, mid + 66);
+  } else {
+    ctx.textAlign = "center";
+    ctx.font = "500 34px 'DM Sans', sans-serif";
+    ctx.fillStyle = accent;
+    ctx.fillText(truncateToWidth(ctx, `Tickets: ${displayUrl}`, width - pad * 2 - 64), width / 2, cardY + cardH / 2 + 12);
   }
 }
 
@@ -1709,7 +1847,7 @@ export async function recordFlyerClip(
   }
 
   const chunks: BlobPart[] = [];
-  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 4_500_000 });
+  const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
 
   const finished = new Promise<Blob>((resolve, reject) => {
     recorder.ondataavailable = (e) => {
