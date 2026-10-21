@@ -79,6 +79,10 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
       waitlistEnabled: false,
       guestCheckout: true,
       buyerPaysFee: false,
+      ageLimit: null,
+      endsText: null,
+      dressCode: null,
+      refundPolicy: null,
       promoCodesPublic: false,
       checkoutFields: { phone: false, tableNote: true, dietaryNote: false },
       branding: null,
@@ -613,6 +617,82 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                 </Card>
               );
             })}
+          </div>
+        </div>
+
+        {/* Good to know: the facts guests ask before they buy. All optional;
+            anything left empty simply does not show on the event page. */}
+        <div className="rounded-md border border-hairline p-4 sm:p-5 space-y-4">
+          <div>
+            <p className="text-white font-bold uppercase tracking-wider text-xs">Good to know (optional)</p>
+            <p className="text-xs text-muted-foreground mt-1">Shown on your event page so guests are not left guessing.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name={"ageLimit" as any}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs text-muted-foreground">Age limit</FormLabel>
+                  <Select value={(field.value as string) || "none"} onValueChange={(v) => field.onChange(v === "none" ? null : v)}>
+                    <FormControl>
+                      <SelectTrigger className="h-11 bg-white/5 border-white/10 text-white"><SelectValue /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">Not stated</SelectItem>
+                      <SelectItem value="All ages">All ages</SelectItem>
+                      <SelectItem value="16+">16+</SelectItem>
+                      <SelectItem value="18+">18+</SelectItem>
+                      <SelectItem value="21+">21+</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={"endsText" as any}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs text-muted-foreground">Ends</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={(field.value as string) || ""} maxLength={40} placeholder="e.g. Till dawn, 2am" className="h-11 bg-white/5 border-white/10 text-white" />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={"dressCode" as any}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs text-muted-foreground">Dress code</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={(field.value as string) || ""} maxLength={60} placeholder="e.g. All white, Smart casual" className="h-11 bg-white/5 border-white/10 text-white" />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name={"refundPolicy" as any}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs text-muted-foreground">Refunds</FormLabel>
+                  <Select value={(field.value as string) || "unset"} onValueChange={(v) => field.onChange(v === "unset" ? null : v)}>
+                    <FormControl>
+                      <SelectTrigger className="h-11 bg-white/5 border-white/10 text-white"><SelectValue /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="unset">Not stated</SelectItem>
+                      <SelectItem value="none">No refunds</SelectItem>
+                      <SelectItem value="7_days">Refunds up to 7 days before</SelectItem>
+                      <SelectItem value="contact">Contact the organizer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
           </div>
         </div>
 

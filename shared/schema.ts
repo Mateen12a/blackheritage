@@ -39,6 +39,11 @@ export const events = pgTable("events", {
   checkoutFields: jsonb("checkout_fields"), // which extra fields checkout collects: phone, tableNote, dietaryNote
   businessApplicationsEnabled: boolean("business_applications_enabled").default(false), // show the partner card
   partnerSettings: jsonb("partner_settings"), // PartnerSettings: types, packages, contact
+  // Good to know: optional facts guests ask before buying.
+  ageLimit: text("age_limit"), // "18+", "16+", "21+"; empty = not stated
+  endsText: text("ends_text"), // free text, e.g. "Till dawn", "2am"
+  dressCode: text("dress_code"),
+  refundPolicy: text("refund_policy"), // "none" | "7_days" | "contact"
 
   // ── Organizer branding lite: their identity on their event surfaces ──
   branding: jsonb("branding"), // { logoUrl, accentHex, displayName }

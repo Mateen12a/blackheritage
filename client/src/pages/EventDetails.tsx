@@ -57,6 +57,12 @@ function useEventThemeVars(event: any): React.CSSProperties {
   } as React.CSSProperties;
 }
 
+const REFUND_COPY: Record<string, string> = {
+  none: "No refunds",
+  "7_days": "Refunds up to 7 days before the event",
+  contact: "Contact the organizer about refunds",
+};
+
 export default function EventDetails() {
   const [, params] = useRoute("/events/:id");
   const [, slugParams] = useRoute("/e/:slug");
@@ -271,7 +277,7 @@ export default function EventDetails() {
           story leads, poster keeps the classic 52vh banner. */}
       <div
         className={cn(
-          "relative w-full overflow-hidden",
+          "relative w-full overflow-hidden lg:hidden",
           isBillboard ? "h-[64vh] md:h-[70vh] md:max-h-[720px]" : isEditorial ? "h-[42vh] md:h-[48vh] md:max-h-[520px]" : "h-[52vh] sm:h-[56vh] md:h-[62vh] md:max-h-[640px] lg:h-[66vh] lg:max-h-[760px]",
         )}
       >
@@ -350,15 +356,44 @@ export default function EventDetails() {
         </div>
       </div>
 
-      <div className="container mx-auto px-3.5 sm:px-4 -mt-12 sm:-mt-16 md:-mt-24 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-10">
+      {/* Wide screens: the same lit stage, behind the whole top of the page */}
+      <div aria-hidden="true" className="hidden lg:block absolute inset-x-0 top-0 h-[820px] overflow-hidden pointer-events-none">
+        <img src={event.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover scale-125 blur-3xl opacity-25" />
+        <div className="absolute inset-0 bg-background/75" />
+        <div className="absolute inset-0" style={{ background: `radial-gradient(40% 55% at 22% 38%, ${heroAccent}33 0%, transparent 70%)` }} />
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-background to-transparent" />
+      </div>
+
+      <div className="container mx-auto px-3.5 sm:px-4 -mt-12 sm:-mt-16 md:-mt-24 lg:mt-0 lg:pt-28 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-8 xl:gap-10">
+          {/* Wide screens: the flyer gets its own column, big whatever the
+              window height, and stays in view while the details scroll. */}
+          <div className="hidden lg:block lg:col-span-4">
+            <div className="sticky top-28">
+              <button
+                type="button"
+                onClick={() => setIsFlyerZoomOpen(true)}
+                aria-label="View the flyer full size"
+                className="block w-full cursor-zoom-in rounded-md focus-visible:outline-2 focus-visible:outline-gold"
+              >
+                <img
+                  src={event.imageUrl}
+                  alt={event.title}
+                  className="w-full max-h-[calc(100vh-9rem)] object-contain rounded-md ring-1 ring-white/10"
+                  style={{ boxShadow: `0 30px 90px -20px ${heroAccent}66, 0 20px 60px rgba(0,0,0,0.6)` }}
+                />
+              </button>
+              <p className="mt-2 text-center text-[11px] text-muted-ink">Click the flyer to view it full size</p>
+            </div>
+          </div>
+
           {/* Main column: editorial, no card box */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-5">
             <Reveal variant={motionVariant}>
               <p className="eyebrow text-gold">
                 {(event as any).eventTypeLabel || EVENT_TYPE_LABELS[(event as any).eventType] || "Upcoming event"}
               </p>
-              <h1 className="mt-2 font-display text-2xl min-[360px]:text-3xl md:text-5xl font-bold text-ink leading-[1.15] tracking-tight">
+              <h1 className="mt-2 font-display text-2xl min-[360px]:text-3xl md:text-5xl lg:text-4xl xl:text-5xl font-bold text-ink leading-[1.15] tracking-tight">
                 {event.title}
               </h1>
               <div className="mt-3 sm:mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
@@ -470,6 +505,16 @@ export default function EventDetails() {
                   <div>
                     <dt className="eyebrow">Location</dt>
                     <dd className="mt-1.5 text-ink">{event.location}</dd>
+                    <dd className="mt-1.5">
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.location || "")}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-gold hover:underline underline-offset-4"
+                      >
+                        Get directions
+                      </a>
+                    </dd>
                   </div>
                 </div>
 
@@ -539,11 +584,55 @@ export default function EventDetails() {
               </p>
             </Reveal>
 
+            {/* Good to know: only what the organizer filled in, plus how entry works */}
+            <Reveal className="mt-8" variant={motionVariant}>
+              <p className="eyebrow">Good to know</p>
+              <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-px rounded-md overflow-hidden border border-hairline bg-hairline">
+                {[
+                  (event as any).ageLimit && ["Age", (event as any).ageLimit === "All ages" ? "All ages welcome" : `${(event as any).ageLimit} only. Bring ID.`],
+                  ["Starts", format(new Date(event.date), "EEE d MMM, h:mm a")],
+                  (event as any).endsText && ["Ends", (event as any).endsText],
+                  (event as any).dressCode && ["Dress code", (event as any).dressCode],
+                  (event as any).refundPolicy && ["Refunds", REFUND_COPY[(event as any).refundPolicy] || "Contact the organizer"],
+                  ["Entry", "E-ticket with QR code, scanned at the gate. Arrives by email the moment you pay."],
+                ].filter(Boolean).map((row: any) => (
+                  <div key={row[0]} className="bg-surface px-4 py-3">
+                    <dt className="text-[11px] uppercase tracking-wider text-muted-ink">{row[0]}</dt>
+                    <dd className="mt-1 text-sm text-ink">{row[1]}</dd>
+                  </div>
+                ))}
+              </dl>
+            </Reveal>
+
+            {/* Organizer: who is behind the night, one tap to their page */}
+            {brand?.displayName && (
+              <Reveal className="mt-8" variant={motionVariant}>
+                <p className="eyebrow">Organizer</p>
+                <Link
+                  href={`/o/${(event as any).organizerSlug || brand.displayName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`}
+                  className="mt-3 flex items-center gap-4 rounded-md border border-hairline bg-surface p-4 hover:border-gold/40 transition-colors group"
+                >
+                  {brand.logoUrl ? (
+                    <img src={brand.logoUrl} alt="" className="w-12 h-12 rounded-md object-cover ring-1 ring-white/10 shrink-0" />
+                  ) : (
+                    <span className="w-12 h-12 rounded-md border border-gold/50 flex items-center justify-center font-display text-gold shrink-0">
+                      {brand.displayName.slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-display font-bold text-ink truncate group-hover:text-gold">{brand.displayName}</span>
+                    <span className="block text-xs text-muted-ink">See their page and upcoming events</span>
+                  </span>
+                  <ArrowLeft className="w-4 h-4 text-muted-ink rotate-180 shrink-0" aria-hidden="true" />
+                </Link>
+              </Reveal>
+            )}
+
             <PastEventProof event={event} />
           </div>
 
           {/* Sidebar: the primary action surface on the page. */}
-          <aside className="lg:col-span-1 mt-8 lg:mt-0">
+          <aside className="lg:col-span-3 mt-8 lg:mt-0">
             <div className={cn("space-y-4", !isBillboard && "sticky top-28")}>
               <div className="bg-surface border border-hairline rounded-md p-5 sm:p-7">
                 <p className="eyebrow">Tickets from</p>

@@ -222,6 +222,10 @@ const EventSchema: Schema = new Schema({
   businessApplicationsEnabled: { type: Boolean, default: false },
   partnerSettings: { type: Schema.Types.Mixed, default: null },
   archivedAt: { type: Date, default: null }, // admin-archived: hidden, records kept
+  ageLimit: { type: String, default: null },
+  endsText: { type: String, default: null },
+  dressCode: { type: String, default: null },
+  refundPolicy: { type: String, default: null },
   promoCodesPublic: { type: Boolean, default: false },
   checkoutFields: { type: { phone: Boolean, tableNote: Boolean, dietaryNote: Boolean }, default: null },
   branding: { type: { displayName: String, logoUrl: String, accentHex: String }, default: null },
