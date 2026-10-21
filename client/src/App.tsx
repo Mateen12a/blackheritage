@@ -25,6 +25,7 @@ import VendorAccount from "@/pages/VendorAccount";
 import CalendarPage from "@/pages/Calendar";
 import MyTickets from "@/pages/MyTickets";
 import AuthPage from "@/pages/Auth";
+import PasswordReset from "@/pages/PasswordReset";
 import AdminDashboard from "@/pages/AdminDashboard";
 import AttendeeDashboard from "@/pages/AttendeeDashboard";
 import VendorDashboard from "@/pages/VendorDashboard";
@@ -410,6 +411,10 @@ function Router() {
           </Route>
         </>
       )}
+
+      {/* Password reset: request a link, then set a new password from it */}
+      <Route path="/forgot-password" component={PasswordReset} />
+      <Route path="/reset-password" component={PasswordReset} />
 
       {/* Auth Page */}
       <Route path="/auth">

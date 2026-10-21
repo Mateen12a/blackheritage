@@ -36,14 +36,14 @@ function absUrl(url: string | undefined | null): string {
 function shell(title: string, bodyHtml: string, branding?: Branding | null, heroUrl?: string | null): string {
   const accent = safeHex(branding?.accentHex);
   const hasBrand = Boolean(branding?.displayName || branding?.logoUrl);
-  const brandLabel = hasBrand ? esc((branding?.displayName || "").toUpperCase()) : "BLACKHERITAGE";
+  const brandLabel = hasBrand ? esc((branding?.displayName || "").toUpperCase()) : "BLACK HERITAGE";
   const brandLogo = branding?.logoUrl
     ? `<img src="${escAttr(absUrl(branding.logoUrl))}" alt="" width="40" height="40" style="display:block;border-radius:8px;object-fit:cover;" />`
     : "";
   const subLabel = hasBrand ? "TICKETS BY BLACK HERITAGE" : "ENTERTAINMENT & EVENTS";
   const footer = hasBrand
     ? `Tickets for ${esc(branding?.displayName || "this event")} by <a href="https://blackhevents.com" style="color:#777;"><strong>Black Heritage</strong></a>. Questions about this ticket? Reply to this email or contact the organizer.`
-    : `Sent by <a href="https://blackhevents.com" style="color:#777;"><strong>Black Heritage</strong></a>. Questions about this ticket? Reply to this email or message the event organizer from your dashboard.`;
+    : `Sent by <a href="https://blackhevents.com" style="color:#777;"><strong>Black Heritage</strong></a>. Questions? Reply to this email and the team will help.`;
   const hero = heroUrl
     ? `<img src="${escAttr(absUrl(heroUrl))}" alt="" width="560" style="display:block;width:100%;max-height:420px;object-fit:cover;border-left:1px solid #e5e2dc;border-right:1px solid #e5e2dc;" />`
     : "";
@@ -504,6 +504,28 @@ export async function sendEventInvite(
  * Organizer notification: a real money sale on one of their events. One
  * concise email per paid booking, and the dashboard has the full ledger.
  */
+/** Password reset: single-use link valid for an hour, plus the username they sign in with. */
+export async function sendPasswordResetEmail(to: EmailAddress, data: { username: string; link: string }): Promise<void> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  await resend.emails.send({
+    from: FROM,
+    to: [to.email],
+    subject: "Reset your Black Heritage password",
+    html: shell(
+      "Reset your password",
+      `
+      <p style="margin:0 0 12px;font-size:14px;">Hi ${esc(to.name)},</p>
+      <p style="margin:0 0 16px;font-size:14px;color:#444;">Someone asked to reset the password for your Black Heritage account. Your username is <strong>${esc(data.username)}</strong>.</p>
+      <p style="margin:0 0 20px;">
+        <a href="${escAttr(data.link)}" style="display:inline-block;background:#111114;color:#ffffff;font-weight:bold;font-size:14px;padding:12px 24px;border-radius:8px;text-decoration:none;">Set a new password</a>
+      </p>
+      <p style="margin:0 0 8px;font-size:13px;color:#666;">This link works once and expires in 1 hour.</p>
+      <p style="margin:0;font-size:13px;color:#666;">If you did not ask for this, ignore this email. Your password stays the same.</p>
+      `,
+    ),
+  });
+}
+
 /** Internal: something needs a platform admin (a verification to review). */
 export async function sendTeamNoticeEmail(to: string[], subject: string, lines: string[], actionPath = "/admin"): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY);

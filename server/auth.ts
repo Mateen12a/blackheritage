@@ -3,6 +3,7 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import mongoose from "mongoose";
 import { User, IUser } from "./models";
 import MongoStore from "connect-mongo";
@@ -46,7 +47,8 @@ export async function findUserById(id: string): Promise<any> {
 function safeUser(user: any) {
   const obj = typeof user?.toObject === "function" ? user.toObject() : user;
   if (!obj) return obj;
-  const { password, ...rest } = obj;
+  // Credentials and reset tokens never leave the server.
+  const { password, resetTokenHash, resetTokenExpires, ...rest } = obj;
   return rest;
 }
 
@@ -303,6 +305,54 @@ export function setupAuth(app: Express) {
         res.json(safeUser(user));
       });
     })(req, res, next);
+  });
+
+  // ── Forgot password ──
+  // Always answers the same way so the form cannot be used to find out who
+  // has an account. A real account gets an email with a single-use link
+  // (1 hour) and a reminder of its username, since sign-in is by username.
+  app.post("/api/auth/forgot-password", rateLimit(8, 15 * 60 * 1000), async (req, res) => {
+    const generic = { ok: true, message: "If an account matches, a reset link is on its way. Check your inbox and spam folder." };
+    const raw = typeof req.body?.identifier === "string" ? req.body.identifier.trim() : "";
+    if (!raw) return res.status(400).json({ message: "Enter your email or username." });
+    try {
+      const email = normalizeEmail(raw);
+      const user: any = await User.findOne(
+        isValidEmail(email) ? { email: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } : { username: raw },
+      );
+      if (!user || user.deletedAt || !user.email) return res.json(generic);
+      const token = crypto.randomBytes(32).toString("base64url");
+      user.resetTokenHash = crypto.createHash("sha256").update(token).digest("hex");
+      user.resetTokenExpires = new Date(Date.now() + 60 * 60 * 1000);
+      await user.save();
+      const base = (process.env.PUBLIC_APP_URL || `${req.protocol}://${req.get("host")}`).replace(/\/+$/, "");
+      const { sendPasswordResetEmail } = await import("./emails");
+      await sendPasswordResetEmail(
+        { name: user.displayName || user.username, email: user.email },
+        { username: user.username, link: `${base}/reset-password?token=${token}` },
+      );
+      res.json(generic);
+    } catch (err: any) {
+      console.error("[auth] forgot-password failed:", err?.message);
+      res.json(generic);
+    }
+  });
+
+  app.post("/api/auth/reset-password", rateLimit(10, 15 * 60 * 1000), async (req, res) => {
+    const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    if (!token) return res.status(400).json({ message: "This reset link is incomplete. Request a new one." });
+    if (password.length < 8) return res.status(400).json({ message: "Use at least 8 characters for your new password." });
+    const hash = crypto.createHash("sha256").update(token).digest("hex");
+    const user: any = await User.findOne({ resetTokenHash: hash, resetTokenExpires: { $gt: new Date() } });
+    if (!user || user.deletedAt) {
+      return res.status(400).json({ message: "This reset link has expired or was already used. Request a new one." });
+    }
+    user.password = await bcrypt.hash(password, 10);
+    user.resetTokenHash = null;
+    user.resetTokenExpires = null;
+    await user.save();
+    res.json({ ok: true, username: user.username, message: "Password updated. Sign in with your new password." });
   });
 
   app.post("/api/auth/logout", (req, res, next) => {

@@ -63,6 +63,10 @@ const UserSchema: Schema = new Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  // Password reset: only a SHA-256 hash of the emailed token is stored, so a
+  // database leak cannot be replayed into a reset. Single use, 1 hour.
+  resetTokenHash: { type: String, default: null },
+  resetTokenExpires: { type: Date, default: null },
   role: { type: String, enum: ['user', 'organizer', 'admin'], default: 'organizer' },
   teamOwnerId: { type: String, default: null },
   staffRole: { type: String, enum: ['manager', 'finance', 'entry', null], default: null },

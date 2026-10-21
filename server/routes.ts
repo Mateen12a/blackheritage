@@ -4533,7 +4533,7 @@ export async function registerRoutes(
 // Small shape shared by /api/auth/user and the account PATCH so the client
 // cache stays consistent whichever endpoint answered last.
 function safeUserShape(user: any) {
-  const { password, ...rest } = user;
+  const { password, resetTokenHash, resetTokenExpires, ...rest } = user;
   return rest;
 }
 
