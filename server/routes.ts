@@ -321,6 +321,8 @@ export async function registerRoutes(
         html = html
           .replace(/<meta\s[^>]*property="(?:og|twitter):[^"]*"[^>]*>/gi, "")
           .replace(/<meta\s[^>]*name="(?:og|twitter):[^"]*"[^>]*>/gi, "")
+          .replace(/<meta\s[^>]*name="description"[^>]*>/gi, "")
+          .replace(/<link\s[^>]*rel="canonical"[^>]*>/gi, "")
           .replace(/<title>[^<]*<\/title>/i, () => `<title>${escapeHtml(title)} · Black Heritage Entertainment & Events</title>`);
 
         // Cheapest live tier in naira for the search-engine offer block;
@@ -353,16 +355,24 @@ export async function registerRoutes(
         };
         const ldScript = `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>`;
 
+        // Previews and search results carry the price; the search snippet adds
+        // the organizer's own summary after the date and venue.
+        const priceLine = minPrice > 0 ? `Tickets from ₦${minPrice.toLocaleString("en-NG")}` : "Free entry";
+        const shareDesc = `${desc} · ${priceLine}`;
+        const searchDesc = `${shareDesc}. ${String(event.description || "").replace(/\s+/g, " ").slice(0, 140)}`.trim();
+
         const tags =
+          `<meta name="description" content="${escapeHtml(searchDesc)}" />\n` +
+          `<link rel="canonical" href="${escapeHtml(url)}" />\n` +
           `<meta property="og:title" content="${escapeHtml(title)}" />\n` +
-          `<meta property="og:description" content="${escapeHtml(desc)}" />\n` +
+          `<meta property="og:description" content="${escapeHtml(shareDesc)}" />\n` +
           `<meta property="og:image" content="${escapeHtml(image)}" />\n` +
           `<meta property="og:url" content="${escapeHtml(url)}" />\n` +
           `<meta property="og:type" content="website" />\n` +
           `<meta property="og:site_name" content="Black Heritage Entertainment & Events" />\n` +
           `<meta name="twitter:card" content="summary_large_image" />\n` +
           `<meta name="twitter:title" content="${escapeHtml(title)}" />\n` +
-          `<meta name="twitter:description" content="${escapeHtml(desc)}" />\n` +
+          `<meta name="twitter:description" content="${escapeHtml(shareDesc)}" />\n` +
           `<meta name="twitter:image" content="${escapeHtml(image)}" />\n` +
           ldScript;
         html = html.replace("</head>", () => `${tags}\n  </head>`);
