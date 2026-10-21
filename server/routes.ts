@@ -396,6 +396,123 @@ export async function registerRoutes(
       return res.status(500).send("Server error");
     }
   };
+  // ── Social preview cards for organizer hubs and talent profiles ──
+  // Same idea as events: the shell's generic tags are swapped for the
+  // profile's name, summary, and image, so a shared /o/ or /t/ link previews
+  // as that organizer or that talent instead of the homepage.
+  const sendProfilePageWithMeta = async (
+    res: any,
+    load: () => Promise<{ title: string; desc: string; image: string | null; url: string; ld: Record<string, any> } | null>,
+  ) => {
+    try {
+      const indexPath = path.resolve(process.cwd(), "client", "dist", "index.html");
+      const devPath = path.resolve(process.cwd(), "client", "index.html");
+      const filePath = fs.existsSync(indexPath) ? indexPath : devPath;
+      if (!fs.existsSync(filePath)) return res.status(404).send("Not found");
+      let html = fs.readFileSync(filePath, "utf8");
+
+      const meta = await load();
+      if (meta) {
+        const base = process.env.PUBLIC_APP_URL || "https://blackhevents.com";
+        const image = meta.image
+          ? /^https?:\/\//.test(meta.image) ? meta.image : `${base}${meta.image}`
+          : `${base}/og-home.png`;
+        html = html
+          .replace(/<meta\s[^>]*property="(?:og|twitter):[^"]*"[^>]*>/gi, "")
+          .replace(/<meta\s[^>]*name="(?:og|twitter):[^"]*"[^>]*>/gi, "")
+          .replace(/<meta\s[^>]*name="description"[^>]*>/gi, "")
+          .replace(/<link\s[^>]*rel="canonical"[^>]*>/gi, "")
+          .replace(/<title>[^<]*<\/title>/i, () => `<title>${escapeHtml(meta.title)} · Black Heritage Entertainment & Events</title>`);
+        const ldScript = `<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", ...meta.ld, image: [image], url: meta.url }).replace(/</g, "\\u003c")}</script>`;
+        const tags =
+          `<meta name="description" content="${escapeHtml(meta.desc)}" />\n` +
+          `<link rel="canonical" href="${escapeHtml(meta.url)}" />\n` +
+          `<meta property="og:title" content="${escapeHtml(meta.title)}" />\n` +
+          `<meta property="og:description" content="${escapeHtml(meta.desc)}" />\n` +
+          `<meta property="og:image" content="${escapeHtml(image)}" />\n` +
+          `<meta property="og:url" content="${escapeHtml(meta.url)}" />\n` +
+          `<meta property="og:type" content="profile" />\n` +
+          `<meta property="og:site_name" content="Black Heritage Entertainment & Events" />\n` +
+          `<meta name="twitter:card" content="summary_large_image" />\n` +
+          `<meta name="twitter:title" content="${escapeHtml(meta.title)}" />\n` +
+          `<meta name="twitter:description" content="${escapeHtml(meta.desc)}" />\n` +
+          `<meta name="twitter:image" content="${escapeHtml(image)}" />\n` +
+          ldScript;
+        html = html.replace("</head>", () => `${tags}\n  </head>`);
+      }
+      res.set("Cache-Control", "public, max-age=300");
+      return res.send(html);
+    } catch (err) {
+      console.error("Profile page meta error:", err);
+      return res.status(500).send("Server error");
+    }
+  };
+
+  const oneLine = (s: unknown, max: number) => {
+    const t = String(s || "").replace(/\s+/g, " ").trim();
+    return t.length > max ? t.slice(0, max - 1).trimEnd() + "…" : t;
+  };
+
+  const organizerMeta = async (slug: string) => {
+    const org = await resolveOrganizerBySlug(slug);
+    if (!org) return null;
+    const base = process.env.PUBLIC_APP_URL || "https://blackhevents.com";
+    const name = org.displayName || org.username;
+    const orgId = String(org._id);
+    const { EventModel } = await import("./models");
+    const upcoming = await EventModel.countDocuments({
+      organizerId: orgId,
+      status: "published",
+      visibility: { $ne: "invite_only" },
+      date: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    });
+    const lead = upcoming > 0
+      ? `${upcoming} upcoming event${upcoming === 1 ? "" : "s"} · Tickets on Black Heritage`
+      : "Events and tickets on Black Heritage";
+    const bio = oneLine(org.bio, 140);
+    const url = `${base}/o/${org.organizerSlug || org.username}`;
+    return {
+      title: name,
+      desc: bio ? `${lead}. ${bio}` : lead,
+      image: org.coverUrl || org.logoUrl || null,
+      url,
+      ld: { "@type": "Organization", name, description: bio || lead, ...(org.logoUrl ? { logo: org.logoUrl } : {}) },
+    };
+  };
+
+  const talentMeta = async (key: string) => {
+    const { VendorModel } = await import("./models");
+    const k = String(key).toLowerCase();
+    const doc: any = mongoose.Types.ObjectId.isValid(k)
+      ? await VendorModel.findById(k).lean()
+      : await VendorModel.findOne({ slug: k }).lean() || await VendorModel.findOne({ slugAliases: k }).lean();
+    if (!doc || doc.status !== "published") return null;
+    const base = process.env.PUBLIC_APP_URL || "https://blackhevents.com";
+    const name = doc.businessName || "Talent on Black Heritage";
+    const category = doc.category === "Other" && doc.categoryLabel ? doc.categoryLabel : doc.category;
+    const area = doc.city || doc.serviceArea || "Nigeria";
+    let cover: string | null = null;
+    try {
+      const g = JSON.parse(doc.gallery || "[]");
+      cover = (Array.isArray(g) && g.find((u: any) => typeof u === "string" && !/\.(mp4|webm|mov)(\?|$)/i.test(u))) || null;
+    } catch { /* no gallery */ }
+    const lead = [category, area].filter(Boolean).join(" · ") + " · Book on Black Heritage";
+    const about = oneLine(doc.description, 140);
+    const url = doc.slug ? `${base}/t/${doc.slug}` : `${base}/talent/${doc._id}`;
+    return {
+      title: name,
+      desc: about ? `${lead}. ${about}` : lead,
+      image: cover || doc.branding?.logoUrl || null,
+      url,
+      ld: { "@type": "LocalBusiness", name, description: about || lead, areaServed: area },
+    };
+  };
+
+  app.get("/o/:slug", (req, res) => { void sendProfilePageWithMeta(res, () => organizerMeta(String(req.params.slug))); });
+  for (const p of ["/t/:key", "/v/:key", "/talent/:key", "/vendors/:key"]) {
+    app.get(p, (req, res) => { void sendProfilePageWithMeta(res, () => talentMeta(String(req.params.key))); });
+  }
+
   app.get("/e/:slug", (req, res) => { void sendEventPageWithMeta(String(req.params.slug), res); });
   app.get("/events/:id", (req, res) => { void sendEventPageWithMeta(String(req.params.id), res); });
 
@@ -3004,12 +3121,12 @@ export async function registerRoutes(
         return res.status(404).json({ message: "That vendor listing no longer exists." });
       }
       // Same pretty-link contract as events: a real address-bar navigation
-      // (Sec-Fetch-Mode absent or "navigate") 301s to /v/:slug when the
+      // (Sec-Fetch-Mode absent or "navigate") 301s to /t/:slug when the
       // profile has one. Fetch clients always get JSON.
       const fetchMode = req.headers["sec-fetch-mode"] as string | undefined;
       const isNavigation = fetchMode === "navigate" || fetchMode === undefined;
       if (isNavigation && (vendor as any).slug) {
-        return res.redirect(301, `/v/${(vendor as any).slug}`);
+        return res.redirect(301, `/t/${(vendor as any).slug}`);
       }
       res.json(vendor);
     } catch (err) {
@@ -4208,7 +4325,7 @@ export async function registerRoutes(
 
       // Dynamic Vendors
       for (const v of vendors as any[]) {
-        const path = v.slug ? `/v/${v.slug}` : `/vendors/${v._id}`;
+        const path = v.slug ? `/t/${v.slug}` : `/talent/${v._id}`;
         addUrl(path, "0.7", "weekly", v.updatedAt || v.createdAt);
       }
 
