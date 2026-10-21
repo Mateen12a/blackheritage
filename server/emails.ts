@@ -125,7 +125,7 @@ export interface TicketEmailData {
 
 export async function sendTicketEmail(to: EmailAddress, data: TicketEmailData): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const dateStr = data.eventDate.toLocaleString("en-NG", {
+  const dateStr = data.eventDate.toLocaleString("en-NG", { timeZone: "Africa/Lagos", hour12: true,
     weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit",
   });
   const appUrl = process.env.PUBLIC_APP_URL || "http://localhost:5000";
@@ -181,7 +181,7 @@ export async function sendManualTicketEmail(
   data: TicketEmailData & { eventTitle: string },
 ): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const dateStr = data.eventDate.toLocaleString("en-NG", {
+  const dateStr = data.eventDate.toLocaleString("en-NG", { timeZone: "Africa/Lagos", hour12: true,
     weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit",
   });
 
@@ -307,7 +307,7 @@ export async function sendFollowerDropEmail(
   },
 ): Promise<string | undefined> {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const dateStr = data.eventDate.toLocaleString("en-NG", {
+  const dateStr = data.eventDate.toLocaleString("en-NG", { timeZone: "Africa/Lagos", hour12: true,
     weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit",
   });
   const result = await resend.emails.send({
@@ -383,7 +383,7 @@ export async function sendEventReminderEmail(
 ): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const copy = REMINDER_COPY[data.kind];
-  const dateStr = data.eventDate.toLocaleString("en-NG", {
+  const dateStr = data.eventDate.toLocaleString("en-NG", { timeZone: "Africa/Lagos", hour12: true,
     weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit",
   });
   const appUrl = process.env.PUBLIC_APP_URL || "http://localhost:5000";
@@ -474,7 +474,7 @@ export async function sendEventInvite(
 ): Promise<string | undefined> {
   const resend = new Resend(process.env.RESEND_API_KEY);
   const accent = safeHex(data.branding?.accentHex);
-  const dateStr = data.eventDate.toLocaleString("en-NG", {
+  const dateStr = data.eventDate.toLocaleString("en-NG", { timeZone: "Africa/Lagos", hour12: true,
     weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit",
   });
   const result = await resend.emails.send({
@@ -583,7 +583,7 @@ export async function sendOrganizerSaleEmail(
 ): Promise<void> {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to.email)) return;
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const dateStr = data.eventDate.toLocaleString("en-NG", {
+  const dateStr = data.eventDate.toLocaleString("en-NG", { timeZone: "Africa/Lagos", hour12: true,
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
   await resend.emails.send({

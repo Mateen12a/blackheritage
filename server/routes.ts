@@ -306,7 +306,7 @@ export async function registerRoutes(
 
       if (event && (event as any).visibility !== "invite_only" && (event as any).status === "published") {
         const base = process.env.PUBLIC_APP_URL || "https://blackhevents.com";
-        const dateStr = new Date(event.date).toLocaleString("en-NG", {
+        const dateStr = new Date(event.date).toLocaleString("en-NG", { timeZone: "Africa/Lagos", hour12: true,
           weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit",
         });
         const title = event.title || "Black Heritage Entertainment & Events";

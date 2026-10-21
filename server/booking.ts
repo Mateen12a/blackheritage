@@ -336,7 +336,7 @@ export async function validatePromo(
   if (!promo) return { ok: false, message: `Code ${code} is not valid for this event`, discountKobo: 0 };
   if (!promo.active) return { ok: false, message: `Code ${code} is no longer active`, discountKobo: 0 };
   if (promo.expiresAt && new Date(promo.expiresAt).getTime() < Date.now()) {
-    return { ok: false, message: `Code ${code} expired on ${new Date(promo.expiresAt).toLocaleDateString("en-NG")}`, discountKobo: 0 };
+    return { ok: false, message: `Code ${code} expired on ${new Date(promo.expiresAt).toLocaleDateString("en-NG", { timeZone: "Africa/Lagos" })}`, discountKobo: 0 };
   }
   if (promo.maxUses != null && promo.usedCount >= promo.maxUses) {
     return { ok: false, message: `Code ${code} has reached its usage limit`, discountKobo: 0 };
@@ -388,10 +388,10 @@ export async function quoteBooking(input: {
   const tier = tiers.find((t) => t.name === input.tierName);
   if (!tier) return { ok: false, message: "Choose a ticket tier" };
   if (tier.saleClose && new Date(tier.saleClose).getTime() < Date.now()) {
-    return { ok: false, message: `Sales for ${tier.name} closed on ${new Date(tier.saleClose).toLocaleDateString("en-NG")}` };
+    return { ok: false, message: `Sales for ${tier.name} closed on ${new Date(tier.saleClose).toLocaleDateString("en-NG", { timeZone: "Africa/Lagos" })}` };
   }
   if (tier.saleOpen && new Date(tier.saleOpen).getTime() > Date.now()) {
-    return { ok: false, message: `Sales for ${tier.name} open on ${new Date(tier.saleOpen).toLocaleDateString("en-NG")}` };
+    return { ok: false, message: `Sales for ${tier.name} open on ${new Date(tier.saleOpen).toLocaleDateString("en-NG", { timeZone: "Africa/Lagos" })}` };
   }
 
   const available = Math.max(0, Number(tier.capacity || 0) - Number(tier.sold || 0));

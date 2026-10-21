@@ -49,14 +49,17 @@ const INK = rgb(0.06, 0.06, 0.07);
 const MUTED = rgb(0.45, 0.45, 0.48);
 const PAPER = rgb(1, 1, 1);
 
+// Always Lagos time, whatever timezone the server runs in: the VM is UTC and
+// getHours() printed a 6pm show as 5pm on the PDF.
 function formatEventDate(date: Date): string {
-  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const h = date.getHours();
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  const ampm = h < 12 ? "AM" : "PM";
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${days[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()} - ${hour12}:${minutes} ${ampm}`;
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "Africa/Lagos",
+      weekday: "long", month: "short", day: "numeric", year: "numeric",
+      hour: "numeric", minute: "2-digit", hour12: true,
+    }).formatToParts(date).map((p) => [p.type, p.value]),
+  );
+  return `${parts.weekday}, ${parts.month} ${parts.day}, ${parts.year} - ${parts.hour}:${parts.minute} ${String(parts.dayPeriod).toUpperCase()}`;
 }
 
 /**
