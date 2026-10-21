@@ -726,7 +726,10 @@ export async function registerRoutes(
           return res.status(403).json({ requiresCode: true, title: doc.title });
         }
       }
-      const payload = mapEventLean(doc);
+      // Attach the organizer's real hub slug, as the id route does. Without
+      // it the page guessed one from the event's brand name, so an event
+      // branded "AfterDark x Tranquil" linked to a second, look-alike hub.
+      const [payload] = await withOrganizerSlug([mapEventLean(doc) as any]);
       res.json(payload);
     } catch (err) {
       console.error("Slug lookup error:", err);

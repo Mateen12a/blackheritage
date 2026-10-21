@@ -270,7 +270,7 @@ export default function EventDetails() {
       <div
         className={cn(
           "relative w-full overflow-hidden",
-          isBillboard ? "h-[78vh] md:h-[88vh]" : isEditorial ? "h-[46vh] md:h-[56vh]" : "h-[58vh] sm:h-[64vh] md:h-[74vh]",
+          isBillboard ? "h-[64vh] md:h-[70vh] md:max-h-[720px]" : isEditorial ? "h-[42vh] md:h-[48vh] md:max-h-[520px]" : "h-[52vh] sm:h-[56vh] md:h-[60vh] md:max-h-[620px]",
         )}
       >
         {/* The flyer is the hero object, shown whole: a portrait poster in a
