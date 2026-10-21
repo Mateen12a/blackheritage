@@ -119,7 +119,7 @@ async function renderTicketEmail() {
   };
   const eventObj = {
     title: 'Abuja Sunset Gala',
-    date: new Date('2026-10-17T18:00:00.000Z'),
+    date: new Date('2026-11-28T18:00:00.000Z'),
     location: 'Abuja Continental Hotel, Maitama, Abuja',
     branding: null
   };
@@ -140,11 +140,11 @@ async function renderTicketEmail() {
 
   const demoData = {
     eventTitle: 'Abuja Sunset Gala',
-    eventDate: new Date('2026-10-17T18:00:00.000Z'),
+    eventDate: new Date('2026-11-28T18:00:00.000Z'),
     eventLocation: 'Abuja Continental Hotel, Maitama, Abuja',
     tickets: [ticketObj],
     totalPaidKobo: 1500000,
-    bookingRef: 'BH-BK-SAMPLE-01',
+    bookingRef: 'BH-MVH4K9QA',
     pdfBase64: pdfBase64,
     branding: null
   };
@@ -238,7 +238,7 @@ async function renderTicketEmail() {
   await page.waitForTimeout(300);
 
   // Overlay sample tag if needed
-  await page.evaluate(() => {
+  if (!process.env.NO_SAMPLE_TAG) await page.evaluate(() => {
     const tag = document.createElement('div');
     tag.textContent = 'Sample';
     tag.style.cssText = 'position:fixed;top:12px;right:12px;font-size:10px;font-weight:bold;text-transform:uppercase;padding:3px 8px;border-radius:9999px;background:rgba(227,178,60,0.15);color:#8a6a1f;border:1px solid #E3B23C;';

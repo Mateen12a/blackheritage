@@ -1224,21 +1224,21 @@ export async function seedPlatform(): Promise<void> {
   // showcase profile so the reply-time signal has honest data.
   if (showcase && attendee && vendorOwner?._id && showcase.ownerId === vendorOwner._id.toString()) {
     const { MessageModel } = await import("./models");
-    const hasDemoConvo = await MessageModel.countDocuments({ conversationId: "seed-vendor-demo" });
+    const hasDemoConvo = await MessageModel.countDocuments({ conversationId: [attendee._id.toString(), vendorOwner._id.toString()].sort().join("::") });
     if (hasDemoConvo === 0) {
       const clientAsk = new Date(Date.now() - 26 * 60 * 60 * 1000);
       const ownerReply = new Date(clientAsk.getTime() + 12 * 60 * 1000);
       await MessageModel.create([
         {
-          conversationId: "seed-vendor-demo",
+          conversationId: [attendee._id.toString(), vendorOwner._id.toString()].sort().join("::"),
           senderId: attendee._id.toString(),
           recipientId: vendorOwner._id.toString(),
           vendorId: showcase._id.toString(),
-          body: "Hi, are you available for Abuja Sunset Gala on 17 October 2026? Roughly 500 guests.",
+          body: "Hi, are you available for Abuja Sunset Gala on Saturday 28 November? Roughly 500 guests.",
           createdAt: clientAsk,
         },
         {
-          conversationId: "seed-vendor-demo",
+          conversationId: [attendee._id.toString(), vendorOwner._id.toString()].sort().join("::"),
           senderId: vendorOwner._id.toString(),
           recipientId: attendee._id.toString(),
           vendorId: showcase._id.toString(),

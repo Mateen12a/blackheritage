@@ -789,7 +789,7 @@ function ScenePayout({ lt }: { lt: number }) {
             marginTop: 16,
           }}
         >
-          Organizer Share · Sample
+          Your share
         </div>
       </div>
 
@@ -825,6 +825,36 @@ function ScenePayout({ lt }: { lt: number }) {
           <span style={{ ...font.display, fontSize: 56, fontWeight: 800, color: GOLD }}>
             {naira(settledAmount)}
           </span>
+        </div>
+      </div>
+
+      {/* Founder Hundred: the launch offer, landing once the sum has settled */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: 1300,
+          display: "flex",
+          justifyContent: "center",
+          zIndex: 16,
+          opacity: seg(lt, 1.7, 0.4),
+          transform: `translate3d(0, ${(1 - seg(lt, 1.7, 0.4)) * 18}px, 0)`,
+        }}
+      >
+        <div
+          style={{
+            ...font.body,
+            fontSize: 34,
+            fontWeight: 700,
+            color: INK,
+            padding: "20px 36px",
+            borderRadius: 9999,
+            border: `2px solid ${GOLD}88`,
+            background: `${GOLD}14`,
+          }}
+        >
+          <span style={{ color: GOLD }}>0%</span> platform fee on your first 100 tickets
         </div>
       </div>
     </div>

@@ -63,6 +63,8 @@ async function capture() {
   });
 
   const page = await context.newPage();
+  // In-page templates read this flag; process.env does not exist in the browser.
+  await context.addInitScript((v) => { window.__NO_SAMPLE = v; }, Boolean(process.env.NO_SAMPLE_TAG));
 
   // Helper to wait for fonts and idle
   async function settle() {
@@ -80,6 +82,8 @@ async function capture() {
 
   // Ensure Sample tag overlay
   async function ensureSampleTag() {
+    // NO_SAMPLE_TAG=1 renders clean screens for the public film.
+    if (process.env.NO_SAMPLE_TAG) return;
     await page.evaluate(() => {
       if (!document.getElementById('bh-sample-tag')) {
         const tag = document.createElement('div');
@@ -182,7 +186,7 @@ async function capture() {
       <div class="relative w-full max-w-sm rounded-xl border border-hairline bg-surface p-6 shadow-2xl">
         <div class="flex items-center justify-between border-b border-hairline pb-4">
           <div>
-            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-gold/40 text-gold bg-gold/10">Sample</span>
+${window.__NO_SAMPLE ? '' : `<span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-gold/40 text-gold bg-gold/10">Sample</span>`}
             <h2 class="font-display text-xl font-bold text-ink mt-2">Payment Confirmed</h2>
           </div>
           <div class="w-8 h-8 rounded-full bg-primary/20 text-gold flex items-center justify-center font-bold text-sm">✓</div>
@@ -195,11 +199,11 @@ async function capture() {
           </div>
           <div class="flex justify-between text-muted-ink">
             <span>Date</span>
-            <span class="text-ink font-medium">17 October 2026</span>
+            <span class="text-ink font-medium">28 November 2026</span>
           </div>
           <div class="flex justify-between text-muted-ink">
             <span>Reference</span>
-            <span class="font-mono text-gold font-bold">BH-BK-SAMPLE-01</span>
+            <span class="font-mono text-gold font-bold">BH-7KQ2M4XA</span>
           </div>
           <div class="flex justify-between text-muted-ink">
             <span>Amount</span>
@@ -293,6 +297,8 @@ async function capture() {
     });
   });
   await page.goto(`${BASE_URL}/verify`, { waitUntil: 'networkidle' });
+  // The gate opens on the camera; the film shows the typed-code path (no camera in headless).
+  await page.getByRole('tab', { name: /Type code/ }).click().catch(() => {});
   await settle();
 
   // Wait for ticket cache to fill in browser localStorage / DOM
@@ -407,7 +413,7 @@ async function capture() {
           <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between">
               <h3 class="font-display text-base font-bold text-ink truncate">DJ Soundcraft</h3>
-              <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-gold/40 text-gold bg-gold/10">Sample</span>
+${window.__NO_SAMPLE ? '' : `<span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-gold/40 text-gold bg-gold/10">Sample</span>`}
             </div>
             <p class="text-xs text-muted-ink mt-0.5">DJ · Lagos, Nigeria</p>
             <p class="text-xs text-gold mt-1 font-medium">₦800,000 / event</p>
@@ -421,7 +427,7 @@ async function capture() {
           <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between">
               <h3 class="font-display text-base font-bold text-ink truncate">MC Smooth Voice</h3>
-              <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-gold/40 text-gold bg-gold/10">Sample</span>
+${window.__NO_SAMPLE ? '' : `<span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-gold/40 text-gold bg-gold/10">Sample</span>`}
             </div>
             <p class="text-xs text-muted-ink mt-0.5">MC · Abuja, Nigeria</p>
             <p class="text-xs text-gold mt-1 font-medium">₦450,000 / event</p>
@@ -435,7 +441,7 @@ async function capture() {
           <div class="flex-1 min-w-0">
             <div class="flex items-center justify-between">
               <h3 class="font-display text-base font-bold text-ink truncate">Ayo Visuals & Drone</h3>
-              <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-gold/40 text-gold bg-gold/10">Sample</span>
+${window.__NO_SAMPLE ? '' : `<span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border border-gold/40 text-gold bg-gold/10">Sample</span>`}
             </div>
             <p class="text-xs text-muted-ink mt-0.5">Photographer · Lagos, Nigeria</p>
             <p class="text-xs text-gold mt-1 font-medium">₦600,000 / event</p>
@@ -458,14 +464,26 @@ async function capture() {
   });
 
   console.log('9. Capturing S09: Message action sent state...');
-  await page.goto(`${BASE_URL}/messages/6aabe8b180ed35110c8491cd`, { waitUntil: 'networkidle' });
+  // The demo chat belongs to the demo attendee, not the gate account used above.
+  await page.evaluate(async () => {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+    await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'ayo_attendee', password: 'demo1234' }), credentials: 'include' });
+  });
+  // Open the attendee's demo chat by its partner, looked up live (ids change on reseed).
+  const partnerId = await page.evaluate(async () => {
+    const r = await fetch('/api/messages/conversations', { credentials: 'include' });
+    const list = r.ok ? await r.json() : [];
+    const pick = Array.isArray(list) ? (list.find((c) => /package|venue|available/i.test(c.lastMessage || '')) || list[0]) : null;
+    return pick ? pick.otherUserId : '';
+  });
+  await page.goto(`${BASE_URL}/messages/${partnerId}`, { waitUntil: 'networkidle' });
   await settle();
-  // Capture-time safeguard: Ensure message matches S01 event date (17 October 2026)
+  // Capture-time safeguard: Ensure message matches S01 event date (28 November 2026)
   await page.evaluate(() => {
     const bubbles = Array.from(document.querySelectorAll('div, p, span'));
     for (const b of bubbles) {
       if (b.innerText && (b.innerText.includes('Oct 23') || b.innerText.includes('October 23') || b.innerText.includes('Oct'))) {
-        b.innerText = b.innerText.replace(/Available for Abuja Sunset Gala on Oct(ober)? \d+/gi, 'Available for Abuja Sunset Gala on 17 October 2026?');
+        b.innerText = b.innerText.replace(/Available for Abuja Sunset Gala on Oct(ober)? \d+/gi, 'Available for Abuja Sunset Gala on 28 November 2026?');
       }
     }
   });
@@ -507,7 +525,7 @@ async function capture() {
               <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gold">Payout & Fees</p>
               <h2 class="font-display text-xl font-bold text-ink mt-0.5">Clear ticket fees</h2>
             </div>
-            <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-gold/40 text-gold bg-gold/10">Sample</span>
+${window.__NO_SAMPLE ? '' : `<span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border border-gold/40 text-gold bg-gold/10">Sample</span>`}
           </div>
           
           <div class="text-center py-4 my-2 border-y border-hairline/60 bg-surface-2/30 rounded-lg">
