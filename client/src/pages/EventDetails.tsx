@@ -1,6 +1,7 @@
 import { useEvent } from "@/hooks/use-events";
 import { BookingModal } from "@/components/BookingModal";
 import { ShareFlyerModal } from "@/components/ShareFlyerModal";
+import { FlyerLightbox } from "@/components/FlyerLightbox";
 import { Button } from "@/components/ui/button";
 import { useRoute } from "wouter";
 import { Loader2, Calendar, MapPin, Users, Share2, ArrowLeft, Tag, Clock, MessageCircle, Copy } from "lucide-react";
@@ -69,6 +70,7 @@ export default function EventDetails() {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
   const [isFlyerModalOpen, setIsFlyerModalOpen] = useState(false);
+  const [isFlyerZoomOpen, setIsFlyerZoomOpen] = useState(false);
   const [publicPromos, setPublicPromos] = useState<PublicPromo[]>([]);
   const { toast } = useToast();
 
@@ -270,7 +272,7 @@ export default function EventDetails() {
       <div
         className={cn(
           "relative w-full overflow-hidden",
-          isBillboard ? "h-[64vh] md:h-[70vh] md:max-h-[720px]" : isEditorial ? "h-[42vh] md:h-[48vh] md:max-h-[520px]" : "h-[52vh] sm:h-[56vh] md:h-[60vh] md:max-h-[620px]",
+          isBillboard ? "h-[64vh] md:h-[70vh] md:max-h-[720px]" : isEditorial ? "h-[42vh] md:h-[48vh] md:max-h-[520px]" : "h-[52vh] sm:h-[56vh] md:h-[62vh] md:max-h-[640px] lg:h-[66vh] lg:max-h-[760px]",
         )}
       >
         {/* The flyer is the hero object, shown whole: a portrait poster in a
@@ -292,13 +294,22 @@ export default function EventDetails() {
           className="absolute inset-0"
           style={{ background: `radial-gradient(45% 60% at 50% 45%, ${heroAccent}38 0%, transparent 70%)` }}
         />
-        <div className="absolute inset-x-0 top-16 md:top-24 bottom-14 sm:bottom-20 md:bottom-28 flex items-center justify-center px-4">
-          <FadeImg
-            src={event.imageUrl}
-            alt={event.title}
-            className="max-h-full max-w-full w-auto h-full object-contain rounded-md ring-1 ring-white/10"
-            style={{ boxShadow: `0 30px 90px -20px ${heroAccent}66, 0 20px 60px rgba(0,0,0,0.6)` }}
-          />
+        <div className="absolute inset-x-0 top-16 md:top-20 bottom-14 sm:bottom-16 md:bottom-20 flex items-center justify-center px-4">
+          {/* Tap to read the flyer full size: it carries details (teams,
+              dress code, line-up) the page does not repeat. */}
+          <button
+            type="button"
+            onClick={() => setIsFlyerZoomOpen(true)}
+            aria-label="View the flyer full size"
+            className="h-full max-w-full cursor-zoom-in rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold"
+          >
+            <FadeImg
+              src={event.imageUrl}
+              alt={event.title}
+              className="max-h-full max-w-full w-auto h-full object-contain rounded-md ring-1 ring-white/10"
+              style={{ boxShadow: `0 30px 90px -20px ${heroAccent}66, 0 20px 60px rgba(0,0,0,0.6)` }}
+            />
+          </button>
         </div>
         <div
           aria-hidden="true"
@@ -678,6 +689,9 @@ export default function EventDetails() {
         onClose={() => setIsBusinessModalOpen(false)}
       />
 
+      {isFlyerZoomOpen && event.imageUrl && (
+        <FlyerLightbox src={event.imageUrl} alt={event.title} onClose={() => setIsFlyerZoomOpen(false)} />
+      )}
       <ShareFlyerModal
         open={isFlyerModalOpen}
         onClose={() => setIsFlyerModalOpen(false)}
