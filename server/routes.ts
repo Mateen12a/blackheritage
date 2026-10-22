@@ -464,6 +464,7 @@ export async function registerRoutes(
       organizerId: orgId,
       status: "published",
       visibility: { $ne: "invite_only" },
+      archivedAt: null,
       date: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
     });
     const lead = upcoming > 0
@@ -636,6 +637,13 @@ export async function registerRoutes(
           events = await (storage as any).getAllEvents();
           events = events.filter((e: any) => e.organizerId === user._id.toString());
         }
+        // Archived means "deleted, records kept": it leaves every list, the
+        // owner's and admin's included. Bookings and payouts still find it.
+        const { EventModel } = await import("./models");
+        const archived = new Set(
+          (await EventModel.find({ archivedAt: { $ne: null } }).select("_id").lean()).map((d: any) => String(d._id)),
+        );
+        events = events.filter((e: any) => !archived.has(String(e.id)));
       } else {
         events = await storage.getEvents();
       }
@@ -1327,14 +1335,24 @@ export async function registerRoutes(
 
       const orgId = (organizer as any)._id.toString();
 
-      // Find published events by this organizer
+      // Published, public events owned by this organizer. The name match only
+      // adopts legacy events that never had an owner: matching every event
+      // that shares a display name pulled other accounts' events (and
+      // archived ones) onto this hub.
       const { EventModel } = await import("./models");
       const events = await EventModel.find({
         $or: [
           { organizerId: orgId },
-          { organizerName: (organizer as any).displayName || (organizer as any).username },
+          {
+            organizerName: (organizer as any).displayName || (organizer as any).username,
+            $or: [{ organizerId: null }, { organizerId: "" }, { organizerId: { $exists: false } }],
+          },
         ],
-        status: { $ne: "draft" },
+        status: "published",
+        archivedAt: null,
+        visibility: { $ne: "invite_only" },
+        // Same demo rule as the public directory.
+        ...(process.env.DEMO_MODE === "true" ? {} : { isDemo: { $ne: true } }),
       }).lean();
 
       const now = Date.now();
