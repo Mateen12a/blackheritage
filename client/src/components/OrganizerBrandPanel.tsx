@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { themePresetList } from "@/components/ThemePicker";
-import { ShareFlyerModal } from "@/components/ShareFlyerModal";
+import { VendorPromoModal } from "@/components/VendorPromoModal";
+import { useQuery } from "@tanstack/react-query";
 import { CopySuggest } from "@/components/CopySuggest";
 import {
   Globe,
@@ -198,20 +199,16 @@ export function OrganizerBrandPanel() {
     });
   };
 
-  const hubFlyerEvent = {
-    title: displayName || "Organizer Hub",
-    date: new Date(),
-    location: "Lagos, Nigeria",
-    imageUrl: coverUrl || logoUrl || "",
-    organizerLogo: logoUrl || coverUrl || "",
-    branding: {
-      displayName: displayName || "Organizer Hub",
-      logoUrl: logoUrl,
-      accentHex: accentHex || "#E3B23C",
+  // The hub's live upcoming count for the profile card; fetched only while
+  // the card studio is open.
+  const { data: hubData } = useQuery<any>({
+    queryKey: ["/api/organizers", slug, "card"],
+    queryFn: async () => {
+      const res = await fetch(`/api/organizers/${encodeURIComponent(slug)}`);
+      return res.ok ? res.json() : null;
     },
-    slug: `o/${slug || "your-brand"}`,
-    description: bio || "Official Event Hub on Black Heritage",
-  };
+    enabled: isStoryFlyerOpen && Boolean(slug),
+  });
 
   if (isLoading) {
     return (
@@ -1045,10 +1042,13 @@ export function OrganizerBrandPanel() {
         </Button>
       </div>
 
-      <ShareFlyerModal
+      {/* The hub's own card: name, cover, upcoming count, and a QR to /o/. */}
+      <VendorPromoModal
         open={isStoryFlyerOpen}
         onClose={() => setIsStoryFlyerOpen(false)}
-        event={hubFlyerEvent}
+        vendor={{ displayName, slug, logoUrl, coverUrl, theme, branding: { accentHex: accentHex || null, logoUrl }, city: tourCities[0] }}
+        kind="organizer"
+        upcomingCount={hubData?.upcomingEvents?.length ?? 0}
       />
     </form>
   );
