@@ -37,6 +37,7 @@ import {
   type FlyerTheme,
   type FlyerPresetType,
 } from "@/lib/canvas-flyer";
+import { qrPngBlob, qrSvg } from "@/lib/qr";
 
 interface ShareFlyerModalProps {
   open: boolean;
@@ -245,6 +246,28 @@ export function ShareFlyerModal({
   const handleClearCustomImage = () => {
     setCustomImage(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  // The QR alone: a 2048px PNG, or an SVG that prints sharp at any size.
+  const downloadQr = async (kind: "png" | "svg") => {
+    if (!canonicalUrl) return;
+    const safeTitle = (event?.title || "event").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    try {
+      const blob = kind === "svg"
+        ? new Blob([qrSvg(canonicalUrl)], { type: "image/svg+xml" })
+        : await qrPngBlob(canonicalUrl);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `qr-${safeTitle}.${kind}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast({ title: "QR code saved", description: `Scans to ${canonicalUrl.replace(/^https?:\/\//, "")}` });
+    } catch {
+      toast({ title: "Could not save the QR code", description: "Try again, or use Save PNG for the full flyer.", variant: "destructive" });
+    }
   };
 
   // Export: Download HD PNG
@@ -631,6 +654,36 @@ export function ShareFlyerModal({
                   </Button>
                 )}
               </div>
+
+              {/* The QR alone, for organizers whose designer places it on
+                  their own artwork. Never for attendee passes. */}
+              {!guestMode && !isAttendeePass && canonicalUrl && (
+                <div className="w-full mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-hairline bg-surface-2/40 px-3 py-2.5">
+                  <p className="text-xs text-muted-ink">
+                    <span className="text-ink font-medium">QR code only</span> · for your designer's own flyer
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => downloadQr("png")}
+                      className="press border-hairline text-ink hover:text-gold h-8 px-3 text-xs"
+                    >
+                      <Download className="w-3.5 h-3.5 mr-1" />
+                      PNG
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => downloadQr("svg")}
+                      className="press border-hairline text-ink hover:text-gold h-8 px-3 text-xs"
+                    >
+                      <Download className="w-3.5 h-3.5 mr-1" />
+                      SVG (print)
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right Column: Customization Controls */}
