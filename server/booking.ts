@@ -115,7 +115,12 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
   // Calculate platform fee with prorated waiver if partially covered. On a
   // split booking Paystack already kept the flat charge sent at initiate, so
   // the ledger records that figure rather than recomputing it.
-  let platformFeeKobo = serviceFee > 0 ? serviceFee : platformFeeFor(total, qty, waivedForThisBooking, feeBps);
+  // A buyer-paid service fee also covers Paystack's processing; only the
+  // platform part (stored at initiate) is the platform's fee.
+  const buyerPlatformFee = (booking as any).buyerPlatformFeeKobo;
+  let platformFeeKobo = serviceFee > 0
+    ? (typeof buyerPlatformFee === "number" ? buyerPlatformFee : serviceFee)
+    : platformFeeFor(total, qty, waivedForThisBooking, feeBps);
   if ((booking as any).subaccountSplit && typeof (booking as any).splitChargeKobo === "number") {
     platformFeeKobo = (booking as any).splitChargeKobo;
   }
@@ -298,6 +303,29 @@ export function platformFeeFor(totalKobo: number, qty: number, waivedQty: number
   return Math.round((totalKobo * chargeableRatio * feeBps) / 10000);
 }
 
+/**
+ * Paystack's local card fee on a charge of `amountKobo`: 1.5% plus ₦100, the
+ * ₦100 waived under ₦2,500, the whole fee capped at ₦2,000.
+ */
+export function paystackFeeKobo(amountKobo: number): number {
+  const flat = amountKobo >= 250000 ? 10000 : 0;
+  return Math.min(200000, Math.ceil(amountKobo * 0.015) + flat);
+}
+
+/**
+ * The smallest charge, rounded up to a whole naira, that leaves `netKobo`
+ * after Paystack's fee. Used when the buyer covers processing, so the
+ * organizer receives exactly the ticket price.
+ */
+export function grossUpForPaystack(netKobo: number): number {
+  if (netKobo <= 0) return 0;
+  let gross = Math.ceil((netKobo / 0.985) / 100) * 100;
+  for (let i = 0; i < 400 && gross - paystackFeeKobo(gross) < netKobo; i++) gross += 100;
+  // Above the cap the fee is flat; walk back down to the smallest gross that still covers it.
+  while (gross - 100 - paystackFeeKobo(gross - 100) >= netKobo) gross -= 100;
+  return gross;
+}
+
 /** Read-only preview used at checkout to set Paystack's transaction_charge. */
 export async function previewPlatformFee(organizerId: string | null | undefined, qty: number, totalKobo: number): Promise<number> {
   const settings = await PlatformSettingModel.findOne({ key: "platform" }).lean();
@@ -358,8 +386,14 @@ export interface BookingQuote {
   subtotalKobo: number;
   discountKobo: number;
   totalKobo: number;
-  /** Platform fee added on top when the organizer passes it to the buyer. */
+  /**
+   * Added on top when the organizer passes fees to the buyer: the platform
+   * fee plus Paystack's processing fee, so the organizer receives exactly
+   * the ticket price.
+   */
   serviceFeeKobo: number;
+  /** The platform's part of serviceFeeKobo (0 under the Founder perk). */
+  platformFeeKobo: number;
   available: number;
   promoApplied: boolean;
   promoMessage: string;
@@ -414,13 +448,15 @@ export async function quoteBooking(input: {
     promoId = promo.promoId;
   }
 
-  // Organizer passes the fee to the buyer: the same fee they would have
-  // absorbed (Founder waiver included) is added on top, shown as its own line.
+  // Organizer passes fees to the buyer: the platform fee they would have
+  // absorbed (Founder waiver included) plus Paystack's processing fee, grossed
+  // up so the organizer nets exactly the ticket price. One "Service fee" line.
   const ticketsKobo = subtotal - discount;
-  const serviceFeeKobo =
-    (event as any).buyerPaysFee && ticketsKobo > 0
-      ? await previewPlatformFee((event as any).organizerId, input.quantity, ticketsKobo)
-      : 0;
+  const buyerPays = Boolean((event as any).buyerPaysFee) && ticketsKobo > 0;
+  const platformFeeKobo = buyerPays
+    ? await previewPlatformFee((event as any).organizerId, input.quantity, ticketsKobo)
+    : 0;
+  const serviceFeeKobo = buyerPays ? grossUpForPaystack(ticketsKobo + platformFeeKobo) - ticketsKobo : 0;
 
   return {
     ok: true,
@@ -431,6 +467,7 @@ export async function quoteBooking(input: {
       discountKobo: discount,
       totalKobo: ticketsKobo + serviceFeeKobo,
       serviceFeeKobo,
+      platformFeeKobo,
       available,
       promoApplied,
       promoMessage,

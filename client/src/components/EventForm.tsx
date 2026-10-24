@@ -984,8 +984,8 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
             render={({ field }) => (
               <ToggleRow
                 id="pref-fee"
-                label="Buyers pay the platform fee"
-                hint={"On adds the fee to checkout as a \"Service fee\" line, so you keep 100% of your ticket price. Off takes it from your sales. Founder tickets have no fee either way."}
+                label="Buyers pay all fees"
+                hint={"On: the platform fee and the card processing fee are added at checkout as one \"Service fee\" line, so you receive your full ticket price. Off: both come out of your sales (processing is 1.5% + ₦100, capped at ₦2,000; the platform fee is 0% on your Founder tickets)."}
                 checked={field.value === true}
                 onChange={field.onChange}
               />

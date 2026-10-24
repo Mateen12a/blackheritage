@@ -305,6 +305,7 @@ const BookingSchema: Schema = new Schema({
   splitChargeKobo: { type: Number, default: null },
   // Platform fee the buyer paid on top of the tickets (buyerPaysFee events).
   serviceFeeKobo: { type: Number, default: 0 },
+  buyerPlatformFeeKobo: { type: Number, default: null }, // platform part of a buyer-paid service fee
   isVerified: { type: Boolean, default: false }, // Added isVerified
   verifiedAt: { type: Date }, // Added verifiedAt
   remindersDisabled: { type: Boolean, default: false }, // guest opt-out for event reminder emails

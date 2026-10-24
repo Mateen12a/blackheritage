@@ -1947,6 +1947,7 @@ export async function registerRoutes(
         quantity: input.quantity,
         totalAmount: quote.totalKobo,
         serviceFeeKobo: quote.serviceFeeKobo,
+        buyerPlatformFeeKobo: event.buyerPaysFee ? quote.platformFeeKobo : null,
         userId: user?._id?.toString() || "guest",
         name: input.name,
         email: input.email,
@@ -2009,13 +2010,16 @@ export async function registerRoutes(
           const splitChargeKobo = !subaccountCode
             ? null
             : event.buyerPaysFee
-              ? quote.serviceFeeKobo
+              ? quote.platformFeeKobo
               : await previewPlatformFee(event.organizerId, input.quantity, quote.totalKobo);
 
           if (subaccountCode) {
             try {
               init = await initializePayment({
                 transactionChargeKobo: splitChargeKobo ?? undefined,
+                // Buyer covered processing: the subaccount bears Paystack's fee
+                // out of that extra and lands on exactly the ticket price.
+                bearer: event.buyerPaysFee ? "subaccount" : undefined,
                 email: input.email,
                 amountKobo: quote.totalKobo,
                 reference,

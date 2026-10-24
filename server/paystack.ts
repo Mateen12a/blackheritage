@@ -78,6 +78,7 @@ export async function initializeTransaction(params: {
   metadata: Record<string, unknown>;
   subaccount?: string;
   transactionChargeKobo?: number;
+  bearer?: "account" | "subaccount";
   callbackUrl?: string;
 }): Promise<PaystackInitResult> {
   const payload: Record<string, any> = {
@@ -97,6 +98,7 @@ export async function initializeTransaction(params: {
     if (params.transactionChargeKobo !== undefined) {
       payload.transaction_charge = params.transactionChargeKobo;
     }
+    if (params.bearer) payload.bearer = params.bearer;
   }
 
   const res = await fetch(`${PAYSTACK_BASE}/transaction/initialize`, {

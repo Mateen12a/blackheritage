@@ -40,6 +40,7 @@ export interface InitPaymentInput {
   metadata: Record<string, unknown>;
   subaccountCode?: string;
   transactionChargeKobo?: number;
+  bearer?: "account" | "subaccount";
   splitCode?: string;
 }
 
@@ -74,6 +75,7 @@ export async function paystackInitialize(params: InitPaymentInput): Promise<Init
     metadata: params.metadata,
     subaccount: params.subaccountCode,
     transactionChargeKobo: params.transactionChargeKobo,
+    bearer: params.bearer,
     callbackUrl: params.redirectUrl,
   });
 
