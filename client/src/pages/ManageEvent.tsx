@@ -315,15 +315,15 @@ export default function ManageEvent() {
   const verifyMutation = useMutation({
     mutationFn: async (bookingId: string) => {
       const res = await fetch(`/api/bookings/${bookingId}/verify`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed to verify ticket");
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || "Could not check this guest in.");
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [buildUrl(api.bookings.listByEvent.path, { id: id as string })] });
-      toast({ title: "Ticket Verified", description: "Attendee checked in successfully." });
+      toast({ title: "Checked in", description: "Guest admitted. Their QR can no longer be scanned in again." });
     },
     onError: (err: any) => {
-      toast({ title: "Verification Failed", description: err.message, variant: "destructive" });
+      toast({ title: "Not checked in", description: err.message, variant: "destructive" });
     }
   });
 
@@ -334,30 +334,25 @@ export default function ManageEvent() {
   const [attendeeStatus, setAttendeeStatus] = useState("paid");
   const [attendeeLimit, setAttendeeLimit] = useState(25);
 
-  // Buyers and non-buyers never share a view: "Paid" is the guest list,
-  // "Unfinished" groups checkouts that were started but never paid (pending,
-  // abandoned, failed) for follow-up. Refunds and cancellations get their own.
-  const groupOf = (status: unknown) => {
-    const st = String(status || "unknown");
-    return ["pending", "abandoned", "failed", "unknown"].includes(st) ? "unfinished" : st;
+  // The door's view of the guest list: everyone who paid, and who of them is
+  // already inside. Checkouts that were never paid are not guests and never
+  // appear here. Refunds get their own chip only when there are any.
+  const groupOf = (b: any): string[] => {
+    const st = String(b.status || "unknown");
+    if (st === "paid") return b.isVerified ? ["paid", "checked_in"] : ["paid"];
+    return st === "refunded" ? ["refunded"] : [];
   };
   const attendeeStatuses = useMemo(() => {
-    const counts = new Map<string, number>([["paid", 0]]);
-    (bookings || []).forEach((b: any) => {
-      const g = groupOf(b.status);
-      counts.set(g, (counts.get(g) || 0) + 1);
-    });
-    const order = ["paid", "unfinished", "refunded", "cancelled"];
-    return Array.from(counts.entries()).sort((a, b) => {
-      const ia = order.indexOf(a[0]), ib = order.indexOf(b[0]);
-      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-    });
+    const counts = new Map<string, number>([["paid", 0], ["checked_in", 0]]);
+    (bookings || []).forEach((b: any) => groupOf(b).forEach((g) => counts.set(g, (counts.get(g) || 0) + 1)));
+    return Array.from(counts.entries());
   }, [bookings]);
+  const chipLabel: Record<string, string> = { paid: "Paid", checked_in: "Checked in", refunded: "Refunded" };
 
   const filteredBookings = useMemo(() => {
     const term = attendeeSearch.trim().toLowerCase();
     return (bookings || []).filter((b: any) => {
-      if (groupOf(b.status) !== attendeeStatus) return false;
+      if (!groupOf(b).includes(attendeeStatus)) return false;
       if (!term) return true;
       return (
         String(b.name || "Guest").toLowerCase().includes(term) ||
@@ -609,9 +604,11 @@ export default function ManageEvent() {
               <div>
                 <CardTitle className="text-ink">Attendee List</CardTitle>
                 <CardDescription>
-                  {attendeeStatus === "unfinished"
-                    ? "Started checkout but never paid. No ticket was issued and no seat is held. Useful for a follow-up message."
-                    : "Everyone holding a paid ticket."}
+                  {attendeeStatus === "checked_in"
+                    ? "Guests already admitted, by QR scan or by Verify here."
+                    : attendeeStatus === "refunded"
+                      ? "Refunded orders. Their tickets no longer admit anyone."
+                      : "Everyone holding a paid ticket. Verify admits them and uses up their QR."}
                 </CardDescription>
               </div>
               <Button 
@@ -644,7 +641,7 @@ export default function ManageEvent() {
                       aria-pressed={attendeeStatus === s}
                       onClick={() => { setAttendeeStatus(s); setAttendeeLimit(25); }}
                     >
-                      {s.charAt(0).toUpperCase() + s.slice(1)} ({n})
+                      {chipLabel[s] || s} ({n})
                     </button>
                   ))}
                 </div>
@@ -671,9 +668,15 @@ export default function ManageEvent() {
                         <td className="px-6 py-4 text-xs text-gold font-medium">{booking.ticketType}</td>
                         <td className="px-6 py-4 text-sm text-ink">₦{(booking.totalAmount / 100).toLocaleString()}</td>
                         <td className="px-6 py-4">
-                          {booking.isVerified ? (
+                          {booking.status !== "paid" ? (
+                            <span className="text-xs text-muted-ink capitalize">{booking.status}</span>
+                          ) : booking.isVerified ? (
                             <span className="flex items-center gap-1.5 text-xs text-gold font-medium">
-                              <CheckCircle className="w-3 h-3" /> Verified
+                              <CheckCircle className="w-3 h-3" /> Checked in
+                            </span>
+                          ) : (booking as any).checkedIn > 0 ? (
+                            <span className="text-xs text-gold font-medium">
+                              {(booking as any).checkedIn} of {(booking as any).ticketsTotal} in
                             </span>
                           ) : (
                             <Button 
@@ -704,7 +707,9 @@ export default function ManageEvent() {
                               ? "Nobody here matches that name or email."
                               : attendeeStatus === "paid"
                                 ? "No paid tickets yet. Share the event link. The first sale is the hardest."
-                                : "Nothing in this group."}
+                                : attendeeStatus === "checked_in"
+                                  ? "Nobody checked in yet. Scan tickets from Verify, or tap Verify on a guest."
+                                  : "Nothing in this group."}
                           </p>
                           {attendeeSearch.trim() && (
                             <button

@@ -97,7 +97,6 @@ function pdfOverlaps(buf) {
 
 // Load .env so webhook signing matches the server's gateway config. Mirrors
 // the server's own loader (server/env.ts) for .env only; real env wins.
-const fs = require("fs");
 const envPath = require("path").join(__dirname, "..", ".env");
 if (fs.existsSync(envPath)) {
   for (const line of fs.readFileSync(envPath, "utf8").split(/\r?\n/)) {
@@ -573,7 +572,7 @@ async function api(method, path, body, useCookie = true) {
       });
       req.on("error", () => resolve("0"));
     });
-    ok("vendor id visit 301s to /v/slug", vendorRedirect === "301 /v/" + djVendor.slug, vendorRedirect);
+    ok("vendor id visit 301s to /t/slug", vendorRedirect === "301 /t/" + djVendor.slug, vendorRedirect);
     const vendorSpa = await fetch(BASE + "/api/vendors/" + djVendor.id, { headers: { Accept: "*/*" } });
     ok("vendor spa fetch gets json", vendorSpa.status === 200, "status=" + vendorSpa.status);
   }

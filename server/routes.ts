@@ -1838,8 +1838,21 @@ export async function registerRoutes(
       return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
 
-    const bookings = await storage.getBookingsByEvent(event.id);
-    res.json(bookings);
+    const bookings = (await storage.getBookingsByEvent(event.id)) as any[];
+    // Door scans mark tickets, the list's Verify marks bookings. Merge them so
+    // a guest scanned at the gate shows as checked in here too.
+    const { TicketModel } = await import("./models");
+    const perBooking = await TicketModel.aggregate([
+      { $match: { eventId: new mongoose.Types.ObjectId(String(event.id)), bookingId: { $ne: null } } },
+      { $group: { _id: "$bookingId", total: { $sum: 1 }, used: { $sum: { $cond: [{ $eq: ["$status", "used"] }, 1, 0] } } } },
+    ]);
+    const byId = new Map(perBooking.map((r: any) => [String(r._id), r]));
+    res.json(bookings.map((b) => {
+      const t: any = byId.get(String(b.id));
+      const checkedIn = t ? t.used : (b.isVerified ? Number(b.quantity || 1) : 0);
+      const total = t ? t.total : Number(b.quantity || 1);
+      return { ...b, checkedIn, ticketsTotal: total, isVerified: Boolean(b.isVerified) || (total > 0 && checkedIn >= total) };
+    }));
   });
 
   // Ticket lookup. For signed-in users the session is the query: every
@@ -2350,6 +2363,25 @@ export async function registerRoutes(
       return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
     }
     try {
+      // Only the event's organizer (or an admin) can admit a guest, and only
+      // a paid booking can be admitted.
+      const { BookingModel, TicketModel } = await import("./models");
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(404).json({ message: "We could not find that booking." });
+      const doc: any = await BookingModel.findById(req.params.id).select("eventId status").lean();
+      if (!doc) return res.status(404).json({ message: "We could not find that booking." });
+      const event = await storage.getEvent(String(doc.eventId));
+      const me = req.user as any;
+      const ownerId = me.teamOwnerId || me._id.toString();
+      if (!event || (me.role !== "admin" && event.organizerId !== ownerId)) {
+        return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
+      }
+      if (doc.status !== "paid") return res.status(409).json({ message: "This checkout was never paid, so there is no ticket to admit." });
+      // Checking in from the list uses up the QR codes too, so the same
+      // ticket cannot be scanned in again at the gate.
+      await TicketModel.updateMany(
+        { bookingId: doc._id, status: "valid" },
+        { $set: { status: "used", usedAt: new Date(), usedBy: me._id.toString() } },
+      );
       const booking = await storage.verifyBooking(req.params.id);
       res.json(booking);
     } catch (err) {
