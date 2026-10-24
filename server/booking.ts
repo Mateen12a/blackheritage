@@ -85,7 +85,13 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
   const serviceFee = Number((booking as any).serviceFeeKobo || 0);
   const total = Math.max(0, ((booking as any).totalAmount || 0) - serviceFee);
   const organizerId = (event as any)?.organizerId;
-  const feeBps = settings?.ticketCommissionBps ?? 600;
+  let feeBps = settings?.ticketCommissionBps ?? 600;
+  // An admin-set rate for this organizer replaces the platform rate.
+  if (organizerId) {
+    const { User } = await import("./models");
+    const o: any = await User.findById(organizerId).select("commissionBps").lean();
+    if (typeof o?.commissionBps === "number") feeBps = o.commissionBps;
+  }
   let isFounderPerkApplied = false;
   let waivedForThisBooking = 0;
   let totalWaivedCount = 0;
@@ -335,11 +341,12 @@ export function grossUpForPaystack(netKobo: number): number {
 /** Read-only preview used at checkout to set Paystack's transaction_charge. */
 export async function previewPlatformFee(organizerId: string | null | undefined, qty: number, totalKobo: number): Promise<number> {
   const settings = await PlatformSettingModel.findOne({ key: "platform" }).lean();
-  const feeBps = settings?.ticketCommissionBps ?? 600;
+  let feeBps = settings?.ticketCommissionBps ?? 600;
   let waivedQty = 0;
   if (organizerId) {
     const { User } = await import("./models");
     const organizer = await User.findById(organizerId).lean();
+    if (typeof (organizer as any)?.commissionBps === "number") feeBps = (organizer as any).commissionBps;
     if ((organizer as any)?.founderVoucher === "FOUNDER100") {
       waivedQty = Math.min(qty, Math.max(0, 100 - Number((organizer as any).waivedTicketCount || 0)));
     }

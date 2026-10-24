@@ -19,6 +19,36 @@ import {
  * back to 'due', so money can never vanish between the ledger and the bank.
  */
 
+/**
+ * When Paystack has settled a sale into the balance: the next weekday after
+ * the sale (Lagos time), from midday. Paystack does not settle at weekends,
+ * so a Friday sale becomes withdrawable on Monday. Withdrawals only ever
+ * draw on settled money, so they never fail for want of balance.
+ */
+export function settledAt(saleAt: Date): Date {
+  const LAGOS_MS = 60 * 60 * 1000; // UTC+1, no daylight saving
+  const local = new Date(new Date(saleAt).getTime() + LAGOS_MS);
+  const d = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), 12, 0, 0));
+  do {
+    d.setUTCDate(d.getUTCDate() + 1);
+  } while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+  return new Date(d.getTime() - LAGOS_MS);
+}
+
+async function dueRows(organizerId: string) {
+  const rows = await PayoutModel.find({ organizerId: String(organizerId), kind: "organizer_payout", status: "due" })
+    .select("amount createdAt")
+    .lean();
+  const now = Date.now();
+  const ready = (rows as any[]).filter((r) => settledAt(r.createdAt).getTime() <= now);
+  const settling = (rows as any[]).filter((r) => settledAt(r.createdAt).getTime() > now);
+  const sum = (xs: any[]) => xs.reduce((n, r) => n + Number(r.amount || 0), 0);
+  const nextAt = settling.length
+    ? new Date(Math.min(...settling.map((r) => settledAt(r.createdAt).getTime())))
+    : null;
+  return { ready, readyKobo: sum(ready), settlingKobo: sum(settling), nextAt };
+}
+
 /** Smallest amount worth a transfer: ₦100 must land after the fee. */
 const MIN_NET_KOBO = 10000;
 
@@ -94,13 +124,16 @@ export async function walletSummary(organizerId: string) {
     { $group: { _id: "$status", total: { $sum: "$amount" } } },
   ]);
   const by = (s: string) => rows.find((r: any) => r._id === s)?.total || 0;
+  const due = await dueRows(organizerId);
   const recent = await WithdrawalModel.find({ organizerId: String(organizerId) })
     .sort({ createdAt: -1 })
     .limit(8)
     .lean();
-  const available = by("due");
+  const available = due.readyKobo;
   return {
     availableKobo: available,
+    settlingKobo: due.settlingKobo,
+    settlesAt: due.nextAt,
     processingKobo: by("processing"),
     heldKobo: by("pending_verification"),
     paidKobo: by("settled"),
@@ -156,8 +189,12 @@ export async function withdraw(organizerId: string, requestedBy: string) {
   // Claim every available row in one step. Two taps at once each claim a
   // disjoint set (or nothing), so the same naira can never leave twice.
   const withdrawalId = new mongoose.Types.ObjectId();
+  const { ready, settlingKobo } = await dueRows(organizerId);
+  if (ready.length === 0 && settlingKobo > 0) {
+    throw new WalletError(400, "Today's sales are still settling. They become available to withdraw from the next working day.");
+  }
   await PayoutModel.updateMany(
-    { organizerId: String(organizerId), kind: "organizer_payout", status: "due" },
+    { _id: { $in: ready.map((r: any) => r._id) }, status: "due" },
     { $set: { status: "processing", withdrawalId } },
   );
   const claimed = await PayoutModel.find({ withdrawalId, status: "processing" }).select("amount").lean();

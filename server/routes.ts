@@ -3066,6 +3066,8 @@ export async function registerRoutes(
       lastRequestedAt: (organizer as any)?.payoutRequestedAt || null,
       instant,
       processingKobo: wallet?.processingKobo ?? 0,
+      settlingKobo: wallet?.settlingKobo ?? 0,
+      settlesAt: wallet?.settlesAt ?? null,
       withdrawFeeKobo: wallet?.withdrawFeeKobo ?? 0,
       withdrawals: wallet?.withdrawals ?? [],
       canWithdraw: Boolean(!ctx.user.staffRole || ctx.user.staffRole === "finance" || ctx.user.staffRole === "manager"),
@@ -4730,6 +4732,29 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("Admin users error:", err);
       return res.status(500).json({ error: "Failed to load users." });
+    }
+  });
+
+  // Per-organizer commission: a percent (0-15) or null for the platform rate.
+  app.patch("/api/admin/users/:id/commission", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    const raw = req.body?.percent;
+    const percent = raw === null || raw === "" || raw === undefined ? null : Number(raw);
+    if (percent !== null && (!Number.isFinite(percent) || percent < 0 || percent > 15)) {
+      return res.status(400).json({ message: "Use a rate between 0% and 15%, or the platform default." });
+    }
+    try {
+      const updated = await User.findByIdAndUpdate(
+        req.params.id,
+        { $set: { commissionBps: percent === null ? null : Math.round(percent * 100) } },
+        { new: true },
+      ).select("-password").lean();
+      if (!updated) return res.status(404).json({ message: "User not found." });
+      return res.json({ ...updated, id: String((updated as any)._id) });
+    } catch {
+      return res.status(500).json({ message: "Could not update the rate." });
     }
   });
 

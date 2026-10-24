@@ -35,6 +35,8 @@ interface PayoutSummary {
   lastRequestedAt: string | null;
   instant?: boolean;
   processingKobo?: number;
+  settlingKobo?: number;
+  settlesAt?: string | null;
   withdrawFeeKobo?: number;
   withdrawals?: Withdrawal[];
   canWithdraw?: boolean;
@@ -112,14 +114,25 @@ export function PayoutBalance() {
       : !data.hasBank
         ? "Link your bank account below to withdraw."
         : available <= 0
-          ? "Sales land here as they happen. Withdraw any time."
+          ? (data.settlingKobo || 0) > 0
+            ? "Today's sales are settling. You can withdraw them from the next working day."
+            : "Sales land here as they happen. Withdraw any time."
           : available - fee < 10000
             ? "The minimum withdrawal is ₦100 after the transfer fee."
             : null;
+    const settlesOn = data.settlesAt
+      ? new Date(data.settlesAt).toLocaleDateString("en-NG", { weekday: "long", timeZone: "Africa/Lagos" })
+      : null;
     const cells = [
       { label: "Available", value: available, hint: "Yours to withdraw now" },
-      { label: "On its way", value: data.processingKobo || 0, hint: "Transfers in progress" },
-      { label: "Withdrawn", value: data.paidKobo, hint: "Sent to your bank" },
+      {
+        label: "Settling",
+        value: data.settlingKobo || 0,
+        hint: settlesOn ? `Available from ${settlesOn}` : "Recent sales, available next working day",
+      },
+      (data.processingKobo || 0) > 0
+        ? { label: "On its way", value: data.processingKobo || 0, hint: "Transfers in progress" }
+        : { label: "Withdrawn", value: data.paidKobo, hint: "Sent to your bank" },
     ];
     return (
       <div className="rounded-md border border-hairline bg-surface-2 p-4 space-y-4">

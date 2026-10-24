@@ -55,6 +55,7 @@ export interface IUser extends Document {
   } | null;
   verifiedAt?: Date | null;
   founderVoucher?: string | null;
+  commissionBps?: number | null; // per-organizer rate set by an admin; null = platform rate
   waivedTicketCount?: number;
   createdAt: Date;
 }
@@ -146,6 +147,7 @@ const UserSchema: Schema = new Schema({
   },
   verifiedAt: { type: Date, default: null },
   founderVoucher: { type: String, default: null },
+  commissionBps: { type: Number, default: null },
   payoutRequestedAt: { type: Date, default: null }, // throttles payout request emails
   waivedTicketCount: { type: Number, default: 0 },
   isDemo: { type: Boolean, default: false, index: true },

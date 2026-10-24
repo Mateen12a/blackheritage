@@ -49,6 +49,25 @@ export function AdminUsersManager() {
     },
   });
 
+  // Per-organizer commission: "default" follows the platform rate.
+  const updateFeeMutation = useMutation({
+    mutationFn: async ({ id, percent }: { id: string; percent: number | null }) => {
+      const res = await fetch(`/api/admin/users/${id}/commission`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ percent }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || "Failed to update the rate");
+      return res.json();
+    },
+    onSuccess: (_d, v) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: v.percent === null ? "Platform rate restored" : `Fee set to ${v.percent}%`, description: "Applies to this organizer's next sales." });
+    },
+    onError: (err: any) => toast({ variant: "destructive", title: "Rate not changed", description: err.message }),
+  });
+
   return (
     <Card className="border-hairline bg-surface">
       <CardHeader>
@@ -115,6 +134,7 @@ export function AdminUsersManager() {
                   <th className="py-3 px-4">Registered</th>
                   <th className="py-3 px-4">Verification</th>
                   <th className="py-3 px-4">Role</th>
+                  <th className="py-3 px-4">Fee</th>
                   <th className="py-3 px-6 text-right">Assign Role</th>
                 </tr>
               </thead>
@@ -160,6 +180,29 @@ export function AdminUsersManager() {
                           {isUserAdmin && <Shield className="w-2.5 h-2.5 mr-0.5" />}
                           {u.role || "attendee"}
                         </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {u.role === "organizer" ? (
+                          <div className="w-28">
+                            <Select
+                              value={typeof u.commissionBps === "number" ? String(u.commissionBps / 100) : "default"}
+                              onValueChange={(v) => updateFeeMutation.mutate({ id: u.id, percent: v === "default" ? null : Number(v) })}
+                              disabled={updateFeeMutation.isPending}
+                            >
+                              <SelectTrigger className="h-7 text-xs bg-surface-2 border-hairline text-ink">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-surface border-hairline text-ink">
+                                <SelectItem value="default">Platform rate</SelectItem>
+                                {["0", "2", "2.5", "3", "3.5", "4", "5", "6"].map((p) => (
+                                  <SelectItem key={p} value={p}>{p}%</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-muted-ink">-</span>
+                        )}
                       </td>
                       <td className="py-3 px-6 text-right">
                         <div className="inline-block w-32">
