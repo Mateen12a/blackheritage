@@ -334,16 +334,30 @@ export default function ManageEvent() {
   const [attendeeStatus, setAttendeeStatus] = useState("paid");
   const [attendeeLimit, setAttendeeLimit] = useState(25);
 
+  // Buyers and non-buyers never share a view: "Paid" is the guest list,
+  // "Unfinished" groups checkouts that were started but never paid (pending,
+  // abandoned, failed) for follow-up. Refunds and cancellations get their own.
+  const groupOf = (status: unknown) => {
+    const st = String(status || "unknown");
+    return ["pending", "abandoned", "failed", "unknown"].includes(st) ? "unfinished" : st;
+  };
   const attendeeStatuses = useMemo(() => {
-    const found = new Set<string>(["paid"]); // the default view, present before the first sale
-    (bookings || []).forEach((b: any) => found.add(String(b.status || "unknown")));
-    return Array.from(found).sort();
+    const counts = new Map<string, number>([["paid", 0]]);
+    (bookings || []).forEach((b: any) => {
+      const g = groupOf(b.status);
+      counts.set(g, (counts.get(g) || 0) + 1);
+    });
+    const order = ["paid", "unfinished", "refunded", "cancelled"];
+    return Array.from(counts.entries()).sort((a, b) => {
+      const ia = order.indexOf(a[0]), ib = order.indexOf(b[0]);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
   }, [bookings]);
 
   const filteredBookings = useMemo(() => {
     const term = attendeeSearch.trim().toLowerCase();
     return (bookings || []).filter((b: any) => {
-      if (attendeeStatus !== "all" && String(b.status || "unknown") !== attendeeStatus) return false;
+      if (groupOf(b.status) !== attendeeStatus) return false;
       if (!term) return true;
       return (
         String(b.name || "Guest").toLowerCase().includes(term) ||
@@ -594,7 +608,11 @@ export default function ManageEvent() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-ink">Attendee List</CardTitle>
-                <CardDescription>Confirmed buyers are under Paid. Pending means checkout was started but not paid.</CardDescription>
+                <CardDescription>
+                  {attendeeStatus === "unfinished"
+                    ? "Started checkout but never paid. No ticket was issued and no seat is held. Useful for a follow-up message."
+                    : "Everyone holding a paid ticket."}
+                </CardDescription>
               </div>
               <Button 
                 variant="outline" 
@@ -618,15 +636,7 @@ export default function ManageEvent() {
                   />
                 </div>
                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar" role="group" aria-label="Booking status filter">
-                  <button
-                    type="button"
-                    className={attendeeChip(attendeeStatus === "all")}
-                    aria-pressed={attendeeStatus === "all"}
-                    onClick={() => { setAttendeeStatus("all"); setAttendeeLimit(25); }}
-                  >
-                    All
-                  </button>
-                  {attendeeStatuses.map((s) => (
+                  {attendeeStatuses.map(([s, n]) => (
                     <button
                       key={s}
                       type="button"
@@ -634,7 +644,7 @@ export default function ManageEvent() {
                       aria-pressed={attendeeStatus === s}
                       onClick={() => { setAttendeeStatus(s); setAttendeeLimit(25); }}
                     >
-                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                      {s.charAt(0).toUpperCase() + s.slice(1)} ({n})
                     </button>
                   ))}
                 </div>
@@ -689,14 +699,22 @@ export default function ManageEvent() {
                     {bookings && bookings.length > 0 && filteredBookings.length === 0 && (
                       <tr>
                         <td colSpan={5} className="px-6 py-12 text-center">
-                          <p className="text-muted-ink">No attendees match that search or filter.</p>
-                          <button
-                            type="button"
-                            className="text-xs text-gold underline underline-offset-4 mt-2"
-                            onClick={() => { setAttendeeSearch(""); setAttendeeStatus("all"); setAttendeeLimit(25); }}
-                          >
-                            Clear filters
-                          </button>
+                          <p className="text-muted-ink">
+                            {attendeeSearch.trim()
+                              ? "Nobody here matches that name or email."
+                              : attendeeStatus === "paid"
+                                ? "No paid tickets yet. Share the event link. The first sale is the hardest."
+                                : "Nothing in this group."}
+                          </p>
+                          {attendeeSearch.trim() && (
+                            <button
+                              type="button"
+                              className="text-xs text-gold underline underline-offset-4 mt-2"
+                              onClick={() => { setAttendeeSearch(""); setAttendeeLimit(25); }}
+                            >
+                              Clear search
+                            </button>
+                          )}
                         </td>
                       </tr>
                     )}
@@ -707,7 +725,7 @@ export default function ManageEvent() {
                 <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-t border-hairline">
                   <p className="text-xs text-muted-ink">
                     Showing {visibleBookings.length} of {filteredBookings.length}
-                    {(attendeeSearch || attendeeStatus !== "all") && (bookings || []).length !== filteredBookings.length
+                    {attendeeSearch.trim() && (bookings || []).length !== filteredBookings.length
                       ? ` (filtered from ${(bookings || []).length})`
                       : ""}
                   </p>
