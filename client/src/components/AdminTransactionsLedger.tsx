@@ -10,7 +10,8 @@ import { Link } from "wouter";
 
 export function AdminTransactionsLedger() {
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  // Open on money that actually landed; unfinished checkouts are one tap away.
+  const [statusFilter, setStatusFilter] = useState("paid");
 
   const { data: bookings, isLoading, refetch, isFetching } = useQuery<any[]>({
     queryKey: ["/api/admin/bookings", search, statusFilter],
@@ -93,7 +94,7 @@ export function AdminTransactionsLedger() {
           </div>
 
           <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-            {["all", "paid", "pending", "abandoned"].map((s) => (
+            {["paid", "pending", "abandoned", "all"].map((s) => (
               <button
                 key={s}
                 type="button"
