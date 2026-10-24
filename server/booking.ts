@@ -161,7 +161,13 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
 
     // Organizer net share tracking with verification protection
     // The buyer covered the fee on top, so the organizer keeps the full ticket revenue.
-    const orgNetKobo = Math.max(0, total - (serviceFee > 0 ? 0 : platformFeeKobo) - promoterCommissionKobo);
+    // Money collected in the platform balance (no split) paid Paystack's fee
+    // there. When the buyer did not cover it, it comes out of the organizer's
+    // share, exactly as a split would have taken it. Cash and POS sales at
+    // the gate never touched Paystack.
+    const collectedOnline = !(booking as any).subaccountSplit && (booking as any).paymentGateway === "paystack";
+    const processingKobo = collectedOnline && serviceFee === 0 && total > 0 ? paystackFeeKobo(total) : 0;
+    const orgNetKobo = Math.max(0, total - (serviceFee > 0 ? 0 : platformFeeKobo) - promoterCommissionKobo - processingKobo);
     if (orgNetKobo > 0 && organizerId) {
       try {
         const { User } = await import("./models");

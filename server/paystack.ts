@@ -393,6 +393,39 @@ export async function initiateTransfer(params: {
 }
 
 /**
+ * Paystack's NGN transfer fee: ₦10 up to ₦5,000, ₦25 up to ₦50,000, ₦50 above.
+ */
+export function transferFeeKobo(amountKobo: number): number {
+  if (amountKobo <= 500000) return 1000;
+  if (amountKobo <= 5000000) return 2500;
+  return 5000;
+}
+
+/** The platform's available NGN balance on Paystack, in kobo. */
+export async function getBalanceKobo(): Promise<number> {
+  const res = await fetch(`${PAYSTACK_BASE}/balance`, {
+    headers: { Authorization: `Bearer ${secretKey()}` },
+  });
+  const body = (await res.json()) as { status: boolean; message?: string; data?: { currency: string; balance: number }[] };
+  if (!res.ok || !body.status || !Array.isArray(body.data)) {
+    throw new Error(body.message || `Paystack balance check failed (${res.status})`);
+  }
+  return Number(body.data.find((b) => b.currency === "NGN")?.balance || 0);
+}
+
+/** Current state of a transfer, by our reference. */
+export async function verifyTransfer(reference: string): Promise<{ status: string; reason?: string; transferCode?: string }> {
+  const res = await fetch(`${PAYSTACK_BASE}/transfer/verify/${encodeURIComponent(reference)}`, {
+    headers: { Authorization: `Bearer ${secretKey()}` },
+  });
+  const body = (await res.json()) as { status: boolean; message?: string; data?: { status: string; reason?: string; transfer_code?: string } };
+  if (!res.ok || !body.status || !body.data) {
+    throw new Error(body.message || `Paystack transfer lookup failed (${res.status})`);
+  }
+  return { status: body.data.status, reason: body.data.reason, transferCode: body.data.transfer_code };
+}
+
+/**
  * Resolve a Nigerian NUBAN account number against a bank code via Paystack.
  * Used for live verification before linking settlement bank accounts.
  */

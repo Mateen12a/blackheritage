@@ -541,6 +541,9 @@ export interface IPlatformSetting extends Document {
   key: string; // always 'platform'
   ticketCommissionBps: number; // basis points of ticket revenue (e.g. 600 = 6%)
   vendorCommissionBps: number; // basis points of vendor booking value (e.g. 1250 = 12.5%)
+  // Instant payouts: ticket money collects in the platform's Paystack balance
+  // and organizers withdraw it on demand by transfer. Off: subaccount split.
+  instantPayouts: boolean;
   updatedAt: Date;
 }
 
@@ -548,6 +551,7 @@ const PlatformSettingSchema: Schema = new Schema({
   key: { type: String, required: true, unique: true },
   ticketCommissionBps: { type: Number, required: true, default: 600 },
   vendorCommissionBps: { type: Number, required: true, default: 1250 },
+  instantPayouts: { type: Boolean, default: false },
   updatedAt: { type: Date, default: Date.now },
 });
 
@@ -565,7 +569,8 @@ export interface IPayout extends Document {
   recipientId?: string | null;
   amount: number;
   sourceBookingId?: mongoose.Types.ObjectId | null;
-  status: 'due' | 'settled' | 'pending_verification';
+  status: 'due' | 'settled' | 'pending_verification' | 'processing';
+  withdrawalId?: mongoose.Types.ObjectId | null;
   note?: string;
   createdAt: Date;
 }
@@ -578,13 +583,54 @@ const PayoutSchema: Schema = new Schema({
   recipientId: { type: String, default: null },
   amount: { type: Number, required: true },
   sourceBookingId: { type: Schema.Types.ObjectId, ref: 'Booking', default: null },
-  status: { type: String, enum: ['due', 'settled', 'pending_verification'], default: 'due' },
+  status: { type: String, enum: ['due', 'settled', 'pending_verification', 'processing'], default: 'due' },
+  // Set while a withdrawal carries this row ('processing'), kept once settled.
+  withdrawalId: { type: Schema.Types.ObjectId, ref: 'Withdrawal', default: null, index: true },
   note: { type: String },
   createdAt: { type: Date, default: Date.now },
 });
 
 export const PayoutModel = mongoose.models.Payout || model<IPayout>("Payout", PayoutSchema);
 PayoutSchema.index({ sourceBookingId: 1, kind: 1 }, { unique: true, partialFilterExpression: { sourceBookingId: { $type: "objectId" } } });
+
+// An organizer's withdrawal: one Paystack transfer carrying a batch of 'due'
+// payout rows. The rows stay 'processing' until Paystack confirms, then
+// settle; a failed or reversed transfer returns them to 'due'.
+export interface IWithdrawal extends Document {
+  organizerId: string;
+  amountKobo: number; // sum of the payout rows carried
+  feeKobo: number; // Paystack transfer fee, deducted
+  netKobo: number; // what lands in the bank
+  reference: string;
+  transferCode?: string | null;
+  status: 'processing' | 'success' | 'failed' | 'reversed';
+  failureReason?: string | null;
+  bank: { bankName?: string; accountNumber?: string; accountName?: string };
+  requestedBy?: string;
+  completedAt?: Date | null;
+  createdAt: Date;
+}
+
+const WithdrawalSchema: Schema = new Schema({
+  organizerId: { type: String, required: true, index: true },
+  amountKobo: { type: Number, required: true },
+  feeKobo: { type: Number, required: true, default: 0 },
+  netKobo: { type: Number, required: true },
+  reference: { type: String, required: true, unique: true },
+  transferCode: { type: String, default: null },
+  status: { type: String, enum: ['processing', 'success', 'failed', 'reversed'], default: 'processing' },
+  failureReason: { type: String, default: null },
+  bank: {
+    bankName: { type: String },
+    accountNumber: { type: String },
+    accountName: { type: String },
+  },
+  requestedBy: { type: String },
+  completedAt: { type: Date, default: null },
+  createdAt: { type: Date, default: Date.now },
+});
+
+export const WithdrawalModel = mongoose.models.Withdrawal || model<IWithdrawal>("Withdrawal", WithdrawalSchema);
 
 // Waitlist
 // Sold-out tiers collect emails instead of dead-ending when the organizer

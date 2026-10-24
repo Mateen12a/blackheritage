@@ -62,6 +62,29 @@ export function AdminFinancialOverview({ onNavigateToLedger }: { onNavigateToLed
 
   const money = (kobo: number) => `₦${(Number(kobo || 0) / 100).toLocaleString("en-NG")}`;
 
+  const instantMutation = useMutation({
+    mutationFn: async (on: boolean) => {
+      const res = await fetch("/api/platform/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ instantPayouts: on }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || "Could not change payouts");
+      return res.json();
+    },
+    onSuccess: (_d, on) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/financial-overview"] });
+      toast({
+        title: on ? "Instant payouts on" : "Instant payouts off",
+        description: on
+          ? "New sales collect in your Paystack balance; organizers withdraw from their wallet."
+          : "New sales split to organizers' banks on Paystack's next-day schedule.",
+      });
+    },
+    onError: (err: any) => toast({ variant: "destructive", title: "Not changed", description: err.message }),
+  });
+
   if (isLoading) {
     return (
       <div className="py-16 text-center text-muted-ink">
@@ -312,6 +335,55 @@ export function AdminFinancialOverview({ onNavigateToLedger }: { onNavigateToLed
                   <span className="text-[10px] text-muted-ink font-mono">{data.settings?.vendorCommissionBps} bps</span>
                 </div>
               </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Instant payouts: the payout model switch, with the balance it draws on */}
+        <Card className="bg-surface border-hairline">
+          <CardHeader>
+            <CardTitle className="text-base text-ink">Instant payouts</CardTitle>
+            <CardDescription className="text-xs">
+              On: ticket money collects in your Paystack balance and organizers withdraw it to their bank in about a minute.
+              Off: each sale splits to the organizer's bank on Paystack's next-day schedule.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-xs">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-ink font-medium">{data.settings?.instantPayouts ? "On" : "Off"}</span>
+              <Button
+                type="button"
+                size="sm"
+                variant={data.settings?.instantPayouts ? "outline" : "default"}
+                disabled={instantMutation.isPending}
+                onClick={() => {
+                  const next = !data.settings?.instantPayouts;
+                  if (next && !window.confirm("Before turning this on: Transfers must be enabled on your Paystack account and transfer OTP turned off. Continue?")) return;
+                  instantMutation.mutate(next);
+                }}
+                className="h-8 text-xs"
+              >
+                {instantMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />}
+                {data.settings?.instantPayouts ? "Turn off" : "Turn on"}
+              </Button>
+            </div>
+            <div className="flex items-center justify-between border-t border-hairline pt-3">
+              <span className="text-muted-ink">Paystack balance (pays withdrawals):</span>
+              <span className="font-mono font-bold text-ink">
+                {data.paystackBalanceKobo == null ? "Unavailable" : money(data.paystackBalanceKobo)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-ink">Organizers can withdraw now:</span>
+              <span className="font-mono font-bold text-emerald-400">{money(data.duePayoutsKobo)}</span>
+            </div>
+            {data.paystackBalanceKobo != null && data.settings?.instantPayouts && data.paystackBalanceKobo < data.duePayoutsKobo && (
+              <p className="text-amber-300">
+                Your Paystack balance is below what organizers can withdraw. Recent sales may still be settling; top up if withdrawals are blocked.
+              </p>
+            )}
+            {data.withdrawalsProcessing > 0 && (
+              <p className="text-muted-ink">{data.withdrawalsProcessing} withdrawal(s) in progress.</p>
             )}
           </CardContent>
         </Card>

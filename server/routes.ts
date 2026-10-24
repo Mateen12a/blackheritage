@@ -1988,7 +1988,11 @@ export async function registerRoutes(
           // Automatic split payouts: pass organizer's Paystack subaccount ONLY IF organizer is verified.
           // Unverified organizers require verification before payouts can be disbursed.
           let subaccountCode: string | undefined = undefined;
-          if (event.organizerId) {
+          // Instant payouts: every sale collects in the platform balance and
+          // the organizer withdraws from their wallet, so no split.
+          const { instantPayoutsOn } = await import("./wallet");
+          const instant = await instantPayoutsOn();
+          if (event.organizerId && !instant) {
             const organizerUser = await User.findById(event.organizerId).lean();
             if (organizerUser?.isVerified && organizerUser?.bankDetails?.subaccountCode) {
               const rawSub = organizerUser.bankDetails.subaccountCode;
@@ -2274,6 +2278,14 @@ export async function registerRoutes(
             console.error(`Webhook amount mismatch for ${reference}: expected ${expected} kobo, got ${event.data.amount}`);
             return res.status(400).json({ message: "Amount mismatch" });
           }
+        }
+      } else if (event.event === "transfer.success" || event.event === "transfer.failed" || event.event === "transfer.reversed") {
+        // Wallet withdrawals: Paystack's final word on the transfer.
+        const ref = String(event.data?.reference || "");
+        if (ref.startsWith("bhwd_")) {
+          const { applyTransferOutcome } = await import("./wallet");
+          const outcome = event.event === "transfer.success" ? "success" : event.event === "transfer.failed" ? "failed" : "reversed";
+          await applyTransferOutcome(ref, outcome, event.data?.reason || event.data?.gateway_response);
         }
       } else if ((event.event === "charge.failed" || event.data?.status === "failed" || event.data?.status === "abandoned") && reference) {
         // Handle failed or abandoned payment: release held inventory
@@ -3041,15 +3053,47 @@ export async function registerRoutes(
     ]);
     const by = (s: string) => rows.find((r: any) => r._id === s)?.total || 0;
     const organizer = await User.findById(ctx.organizerId).lean();
+    const { instantPayoutsOn, walletSummary } = await import("./wallet");
+    const instant = await instantPayoutsOn();
+    const wallet = instant ? await walletSummary(String(ctx.organizerId)) : null;
     res.json({
-      heldKobo: by("pending_verification"),
-      readyKobo: by("due"),
-      paidKobo: by("settled"),
+      heldKobo: wallet ? wallet.heldKobo : by("pending_verification"),
+      readyKobo: wallet ? wallet.availableKobo : by("due"),
+      paidKobo: wallet ? wallet.paidKobo : by("settled"),
       isVerified: Boolean((organizer as any)?.isVerified),
       hasBank: Boolean((organizer as any)?.bankDetails?.accountNumber),
-      autoSplit: Boolean((organizer as any)?.isVerified && (organizer as any)?.bankDetails?.subaccountCode),
+      autoSplit: !instant && Boolean((organizer as any)?.isVerified && (organizer as any)?.bankDetails?.subaccountCode),
       lastRequestedAt: (organizer as any)?.payoutRequestedAt || null,
+      instant,
+      processingKobo: wallet?.processingKobo ?? 0,
+      withdrawFeeKobo: wallet?.withdrawFeeKobo ?? 0,
+      withdrawals: wallet?.withdrawals ?? [],
+      canWithdraw: Boolean(!ctx.user.staffRole || ctx.user.staffRole === "finance" || ctx.user.staffRole === "manager"),
     });
+  });
+
+  // ── Instant withdrawal: the whole available balance to the linked bank ──
+  app.post("/api/wallet/withdraw", async (req, res) => {
+    const ctx = await requireStaffAccess(req, res);
+    if (!ctx) return;
+    if (ctx.user.staffRole && ctx.user.staffRole !== "finance" && ctx.user.staffRole !== "manager") {
+      return res.status(403).json({ message: "Only the account owner or finance staff can withdraw." });
+    }
+    const { withdraw, WalletError } = await import("./wallet");
+    try {
+      const w: any = await withdraw(String(ctx.organizerId), String(ctx.user._id));
+      res.json({
+        id: String(w._id),
+        status: w.status,
+        netKobo: w.netKobo,
+        feeKobo: w.feeKobo,
+        amountKobo: w.amountKobo,
+      });
+    } catch (err: any) {
+      if (err instanceof WalletError) return res.status(err.status).json({ message: err.message });
+      console.error("[wallet] withdraw error:", err);
+      res.status(500).json({ message: "The withdrawal could not start. Your balance is safe; try again." });
+    }
   });
 
   // Ask the platform to send what is ready. Emails the admins; the transfer
@@ -4563,6 +4607,18 @@ export async function registerRoutes(
       const gateway = activeGateway();
       const gatewayMode = gateway === "paystack" ? (isTestMode() ? "test" : "live") : "simulated";
 
+      // Instant payouts can only send what the Paystack balance holds, so
+      // the admin sees that balance beside everything organizers can withdraw.
+      let paystackBalanceKobo: number | null = null;
+      if (isPaystackConfigured()) {
+        try {
+          const { getBalanceKobo } = await import("./paystack");
+          paystackBalanceKobo = await getBalanceKobo();
+        } catch { /* shown as unavailable */ }
+      }
+      const { WithdrawalModel } = await import("./models");
+      const withdrawalsProcessing = await WithdrawalModel.countDocuments({ status: "processing" });
+
       return res.json({
         gmvKobo: gmv.totalKobo,
         paidOrdersCount: gmv.count,
@@ -4574,8 +4630,11 @@ export async function registerRoutes(
         settings: {
           ticketCommissionBps: settings.ticketCommissionBps ?? 600,
           vendorCommissionBps: settings.vendorCommissionBps ?? 1250,
+          instantPayouts: Boolean((settings as any).instantPayouts),
           updatedAt: (settings as any).updatedAt || new Date(),
         },
+        paystackBalanceKobo,
+        withdrawalsProcessing,
         counts: {
           totalEvents,
           liveEvents,

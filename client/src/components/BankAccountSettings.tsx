@@ -132,7 +132,7 @@ export function BankAccountSettings() {
               Settlement Bank Account
             </CardTitle>
             <CardDescription className="mt-1">
-              Link your Nigerian bank account for automated ticket revenue payouts.
+              Link your Nigerian bank account to receive your ticket earnings.
             </CardDescription>
           </div>
           {hasLinkedBank && (
@@ -146,7 +146,7 @@ export function BankAccountSettings() {
               {isVerified ? (
                 <>
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Split Payouts Active
+                  Payouts Active
                 </>
               ) : (
                 <>
@@ -192,8 +192,8 @@ export function BankAccountSettings() {
               <div className="flex items-start gap-2.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">
                 <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-semibold text-emerald-300">Automatic payouts active. </span>
-                  Ticket revenues settle directly into this account on a T+1 schedule after each sale, with the 6% platform commission retained.
+                  <span className="font-semibold text-emerald-300">Payouts active. </span>
+                  Your ticket earnings are paid into this account. Your balance above shows what is available and what has been sent.
                 </div>
               </div>
             )}
@@ -276,7 +276,7 @@ export function BankAccountSettings() {
 
           <div className="pt-2 flex items-center justify-between gap-4 flex-wrap">
             <p className="text-xs text-muted-ink">
-              Paid to your bank automatically &middot; next business day
+              Earnings are paid only to the account you link here
             </p>
             <Button
               type="submit"
