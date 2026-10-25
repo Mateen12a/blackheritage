@@ -185,7 +185,7 @@ export async function withdraw(organizerId: string, requestedBy: string) {
       recipientCode = r.recipientCode;
       await User.updateOne({ _id: organizer._id }, { $set: { "bankDetails.recipientCode": recipientCode } });
     } catch (err: any) {
-      throw new WalletError(502, "We could not set up transfers to your bank. Re-save your bank account in Settings and try again.");
+      throw new WalletError(409, "We could not set up transfers to your bank. Re-save your bank account in Settings and try again.");
     }
   }
 
@@ -224,7 +224,7 @@ export async function withdraw(organizerId: string, requestedBy: string) {
     balance = await getBalanceKobo();
   } catch {
     await release("Balance check failed");
-    throw new WalletError(503, "Withdrawals are briefly unavailable. Your balance is safe; try again in a few minutes.");
+    throw new WalletError(409, "Withdrawals are briefly unavailable. Your balance is safe; try again in a few minutes.");
   }
   if (balance < netKobo) {
     await release("Platform balance settling");
@@ -268,9 +268,22 @@ export async function withdraw(organizerId: string, requestedBy: string) {
     }
   } catch (err: any) {
     if (err instanceof WalletError) throw err;
-    await applyTransferOutcome(reference, "failed", String(err?.message || "Transfer failed").slice(0, 200));
-    notifyTeam(`Withdrawal transfer failed for ${organizer.displayName || organizer.username}: ${err?.message}`);
-    throw new WalletError(502, "The transfer did not go through. Your balance is back in your wallet; try again in a few minutes.");
+    const reason = String(err?.message || "Transfer failed").slice(0, 200);
+    // Before handing the money back, ask Paystack whether the transfer
+    // exists after all (a timeout can hide an accepted transfer). Only a
+    // transfer Paystack has no record of, or one it failed, is returned.
+    let exists = false;
+    try {
+      const t = await verifyTransfer(reference);
+      exists = !["failed", "reversed", "abandoned"].includes(t.status);
+      if (t.status === "success") await applyTransferOutcome(reference, "success");
+    } catch { /* not found: it never started */ }
+    if (exists) {
+      return WithdrawalModel.findById(withdrawalId).lean();
+    }
+    await applyTransferOutcome(reference, "failed", reason);
+    notifyTeam(`Withdrawal transfer failed for ${organizer.displayName || organizer.username}: ${reason}`);
+    throw new WalletError(409, "The transfer did not go through. Your balance is back in your wallet, and our team has been told why.");
   }
 
   return WithdrawalModel.findById(withdrawalId).lean();

@@ -172,7 +172,11 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
     // share, exactly as a split would have taken it. Cash and POS sales at
     // the gate never touched Paystack.
     const collectedOnline = !(booking as any).subaccountSplit && (booking as any).paymentGateway === "paystack";
-    const processingKobo = collectedOnline && serviceFee === 0 && total > 0 ? paystackFeeKobo(total) : 0;
+    // A split with a zero platform charge makes the subaccount bear Paystack's
+    // fee (Founder tickets), so the organizer's real payout is the price less
+    // that fee; record what actually lands in their bank.
+    const splitBoreFee = Boolean((booking as any).subaccountSplit) && Number((booking as any).splitChargeKobo || 0) === 0;
+    const processingKobo = (collectedOnline || splitBoreFee) && serviceFee === 0 && total > 0 ? paystackFeeKobo(total) : 0;
     const orgNetKobo = Math.max(0, total - (serviceFee > 0 ? 0 : platformFeeKobo) - promoterCommissionKobo - processingKobo);
     if (orgNetKobo > 0 && organizerId) {
       try {

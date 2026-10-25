@@ -414,6 +414,21 @@ export function AdminFinancialOverview({ onNavigateToLedger }: { onNavigateToLed
             {data.withdrawalsProcessing > 0 && (
               <p className="text-muted-ink">{data.withdrawalsProcessing} withdrawal(s) in progress.</p>
             )}
+            {Array.isArray(data.recentFailedWithdrawals) && data.recentFailedWithdrawals.length > 0 && (
+              <div className="border-t border-hairline pt-3 space-y-2">
+                <p className="text-ink font-medium">Withdrawals that did not go through</p>
+                {data.recentFailedWithdrawals.map((w: any) => (
+                  <div key={w.id} className="rounded-md border border-red-500/30 bg-red-500/5 p-2.5">
+                    <div className="flex justify-between gap-2">
+                      <span className="text-ink">{w.organizer} · {money(w.netKobo)}</span>
+                      <span className="text-muted-ink">{new Date(w.createdAt).toLocaleString("en-NG", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</span>
+                    </div>
+                    <p className="text-red-300 mt-1 break-words">Paystack: {w.reason}</p>
+                  </div>
+                ))}
+                <p className="text-muted-ink">The money went back to each organizer's wallet.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

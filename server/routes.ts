@@ -4620,6 +4620,21 @@ export async function registerRoutes(
       }
       const { WithdrawalModel } = await import("./models");
       const withdrawalsProcessing = await WithdrawalModel.countDocuments({ status: "processing" });
+      // The last few withdrawals that did not go through, with Paystack's own
+      // reason, so a refusal is diagnosable without server logs.
+      const failedDocs = await WithdrawalModel.find({ status: { $in: ["failed", "reversed"] } })
+        .sort({ createdAt: -1 }).limit(5).lean();
+      const failedOrgs = await User.find({ _id: { $in: failedDocs.map((w: any) => w.organizerId).filter((id: any) => mongoose.Types.ObjectId.isValid(id)) } })
+        .select("displayName username").lean();
+      const orgName = new Map(failedOrgs.map((u: any) => [String(u._id), u.displayName || u.username]));
+      const recentFailedWithdrawals = failedDocs.map((w: any) => ({
+        id: String(w._id),
+        organizer: orgName.get(String(w.organizerId)) || "Organizer",
+        netKobo: w.netKobo,
+        status: w.status,
+        reason: w.failureReason || "No reason given",
+        createdAt: w.createdAt,
+      }));
 
       return res.json({
         gmvKobo: gmv.totalKobo,
@@ -4638,6 +4653,7 @@ export async function registerRoutes(
         },
         paystackBalanceKobo,
         withdrawalsProcessing,
+        recentFailedWithdrawals,
         counts: {
           totalEvents,
           liveEvents,
