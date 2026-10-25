@@ -299,6 +299,7 @@ const BookingSchema: Schema = new Schema({
   tableNote: { type: String, default: null }, // group size / seating preference for tables
   phone: { type: String, default: null }, // optional checkout fields, organizer-toggled
   dietaryNote: { type: String, default: null },
+  source: { type: String, default: null, index: true }, // ?via= attribution: who sold it
   paidAt: { type: Date },
   subaccountSplit: { type: Boolean, default: false },
   subaccountCode: { type: String, default: null },

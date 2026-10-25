@@ -1958,6 +1958,7 @@ export async function registerRoutes(
         tableNote: input.tableNote || null,
         phone: input.phone || null,
         dietaryNote: input.dietaryNote || null,
+        source: input.via ? String(input.via).toLowerCase().replace(/[^a-z0-9_.-]/g, "").slice(0, 40) || null : null,
         paymentGateway: activeGateway(),
         paymentProvider: activeGateway(),
       });

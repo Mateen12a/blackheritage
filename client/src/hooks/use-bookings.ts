@@ -118,6 +118,7 @@ export function useInitiateBooking() {
       phone?: string;
       dietaryNote?: string;
       guest?: boolean;
+      via?: string;
     }): Promise<BookingInitResult> => {
       const res = await fetch("/api/bookings/initiate", {
         method: "POST",

@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { TicketReveal, type RevealTicket } from "@/components/TicketReveal";
 import { loadPaystack } from "@/lib/paystack";
+import { currentVia } from "@/lib/via";
 
 declare global {
   interface Window {
@@ -166,6 +167,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
         name: name.trim(),
         email: email.trim(),
         promoCode: debouncedPromo.trim().toUpperCase() || undefined,
+        via: currentVia() || undefined,
         tableNote: wantsTable && tableNote.trim() ? tableNote.trim() : undefined,
         phone: wantsPhone && phone.trim() ? phone.trim() : undefined,
         dietaryNote: wantsDietary && dietaryNote.trim() ? dietaryNote.trim() : undefined,

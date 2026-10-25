@@ -18,6 +18,7 @@ import { EventMediaPanel } from "@/components/EventMediaPanel";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { SalesBySource } from "@/components/SalesBySource";
 import {
   usePromos, useCreatePromo, useDeletePromo, useIssueManualTickets,
   useRefundBooking, useLiveStats, useCreateGateSale,
@@ -599,6 +600,7 @@ export default function ManageEvent() {
               }
             })()}
           </div>
+          <div className="mb-6"><SalesBySource event={event} bookings={bookings} /></div>
           <Card className="bg-surface border-hairline">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>

@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
+import { captureVia } from "@/lib/via";
 import { Loader2, Sparkles, ArrowRight } from "lucide-react";
 import NotFound from "@/pages/not-found";
 
@@ -544,6 +545,9 @@ function Router() {
     </Suspense>
   );
 }
+
+// Remember a promoter's ?via= link before any route renders.
+if (typeof window !== "undefined") captureVia();
 
 function App() {
   return (
