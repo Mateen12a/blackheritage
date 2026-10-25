@@ -115,7 +115,7 @@ declare module "http" {
 // Payment webhooks must arrive as raw bytes for signature verification.
 // Mount express.raw explicitly before any express.json middleware.
 app.use(
-  ["/api/paystack/webhook", "/api/payments/webhook"],
+  ["/api/paystack/webhook", "/api/payments/webhook", "/api/monnify/webhook"],
   express.raw({ type: "*/*", limit: "5mb" })
 );
 
@@ -123,6 +123,7 @@ app.use((req, res, next) => {
   if (
     req.path === "/api/paystack/webhook" ||
     req.path === "/api/payments/webhook" ||
+    req.path === "/api/monnify/webhook" ||
     req.path.startsWith("/api/export-launch-")
   )
     return next();

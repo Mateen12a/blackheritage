@@ -63,7 +63,7 @@ export function AdminFinancialOverview({ onNavigateToLedger }: { onNavigateToLed
   const money = (kobo: number) => `₦${(Number(kobo || 0) / 100).toLocaleString("en-NG")}`;
 
   const instantMutation = useMutation({
-    mutationFn: async (on: boolean | { sameDayWithdrawals: boolean }) => {
+    mutationFn: async (on: boolean | { sameDayWithdrawals: boolean } | { payoutProvider: "paystack" | "monnify" }) => {
       const res = await fetch("/api/platform/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -75,6 +75,10 @@ export function AdminFinancialOverview({ onNavigateToLedger }: { onNavigateToLed
     },
     onSuccess: (_d, on) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/financial-overview"] });
+      if (typeof on !== "boolean" && "payoutProvider" in on) {
+        toast({ title: `Withdrawals now sent by ${on.payoutProvider === "monnify" ? "Monnify" : "Paystack"}` });
+        return;
+      }
       if (typeof on !== "boolean") {
         toast({
           title: on.sameDayWithdrawals ? "Same-day withdrawals on" : "Same-day withdrawals off",
@@ -396,8 +400,41 @@ export function AdminFinancialOverview({ onNavigateToLedger }: { onNavigateToLed
                 </Button>
               </div>
             )}
+            <div className="flex items-center justify-between gap-3 border-t border-hairline pt-3">
+              <div>
+                <span className="text-ink font-medium">Withdrawals sent by</span>
+                <p className="text-muted-ink mt-0.5">
+                  {data.monnify?.configured
+                    ? `Monnify is connected (${data.monnify.mode}).`
+                    : "Add Monnify keys to the server to use Monnify."}
+                </p>
+              </div>
+              <div className="flex rounded-md border border-hairline overflow-hidden shrink-0">
+                {(["paystack", "monnify"] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    disabled={instantMutation.isPending || (p === "monnify" && !data.monnify?.configured)}
+                    onClick={() => instantMutation.mutate({ payoutProvider: p })}
+                    className={`px-3 h-8 text-xs capitalize disabled:opacity-40 ${
+                      (data.settings?.payoutProvider || "paystack") === p ? "bg-primary text-primary-foreground font-semibold" : "text-muted-ink hover:text-ink"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {data.monnify?.configured && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-ink">Monnify wallet balance:</span>
+                <span className="font-mono font-bold text-ink">
+                  {data.monnify.balanceKobo == null ? "Unavailable" : money(data.monnify.balanceKobo)}
+                </span>
+              </div>
+            )}
             <div className="flex items-center justify-between border-t border-hairline pt-3">
-              <span className="text-muted-ink">Paystack balance (pays withdrawals):</span>
+              <span className="text-muted-ink">Paystack balance:</span>
               <span className="font-mono font-bold text-ink">
                 {data.paystackBalanceKobo == null ? "Unavailable" : money(data.paystackBalanceKobo)}
               </span>

@@ -550,6 +550,7 @@ export interface IPlatformSetting extends Document {
   // (Payout on Demand, settle-to-balance, or a top-up). Every withdrawal is
   // still checked against the live Paystack balance.
   sameDayWithdrawals: boolean;
+  payoutProvider: 'paystack' | 'monnify'; // who sends withdrawals
   updatedAt: Date;
 }
 
@@ -559,6 +560,7 @@ const PlatformSettingSchema: Schema = new Schema({
   vendorCommissionBps: { type: Number, required: true, default: 1250 },
   instantPayouts: { type: Boolean, default: false },
   sameDayWithdrawals: { type: Boolean, default: false },
+  payoutProvider: { type: String, enum: ['paystack', 'monnify'], default: 'paystack' },
   updatedAt: { type: Date, default: Date.now },
 });
 
@@ -609,6 +611,7 @@ export interface IWithdrawal extends Document {
   feeKobo: number; // Paystack transfer fee, deducted
   netKobo: number; // what lands in the bank
   reference: string;
+  provider?: 'paystack' | 'monnify';
   transferCode?: string | null;
   status: 'processing' | 'success' | 'failed' | 'reversed';
   failureReason?: string | null;
@@ -624,6 +627,7 @@ const WithdrawalSchema: Schema = new Schema({
   feeKobo: { type: Number, required: true, default: 0 },
   netKobo: { type: Number, required: true },
   reference: { type: String, required: true, unique: true },
+  provider: { type: String, enum: ['paystack', 'monnify'], default: 'paystack' },
   transferCode: { type: String, default: null },
   status: { type: String, enum: ['processing', 'success', 'failed', 'reversed'], default: 'processing' },
   failureReason: { type: String, default: null },

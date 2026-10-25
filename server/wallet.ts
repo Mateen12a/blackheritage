@@ -7,6 +7,81 @@ import {
   transferFeeKobo,
   verifyTransfer,
 } from "./paystack";
+import { isMonnifyConfigured, monnifyBalanceKobo, monnifyTransfer, monnifyTransferStatus } from "./monnify";
+
+// ── Payout providers ─────────────────────────────────────────────────────────
+// The wallet is provider-agnostic: an admin picks who sends withdrawals.
+// Paystack pays from the Paystack balance via a transfer recipient; Monnify
+// pays from the Monnify wallet straight to the bank details.
+
+type SendResult = { status: "success" | "processing" | "failed" | "reversed"; otp?: boolean; code?: string | null };
+
+interface PayoutProvider {
+  name: "paystack" | "monnify";
+  label: string;
+  balance(): Promise<number>;
+  send(p: { organizer: any; bank: any; netKobo: number; reference: string }): Promise<SendResult>;
+  /** Throws an error whose message contains "not found" when the transfer never existed. */
+  status(reference: string): Promise<{ status: string; reason?: string }>;
+}
+
+const paystackProvider: PayoutProvider = {
+  name: "paystack",
+  label: "Paystack",
+  balance: getBalanceKobo,
+  async send({ organizer, bank, netKobo, reference }) {
+    // Older bank links predate transfer recipients: create one on the spot.
+    let recipientCode: string | null = bank.recipientCode || null;
+    if (!recipientCode) {
+      const r = await createTransferRecipient({
+        name: bank.accountName || organizer.displayName || organizer.username,
+        accountNumber: bank.accountNumber,
+        bankCode: bank.bankCode,
+      });
+      recipientCode = r.recipientCode;
+      await User.updateOne({ _id: organizer._id }, { $set: { "bankDetails.recipientCode": recipientCode } });
+    }
+    const t = await initiateTransfer({
+      amountKobo: netKobo,
+      recipientCode,
+      reason: `Black Heritage payout · ${organizer.displayName || organizer.username}`,
+      reference,
+    });
+    return {
+      status: t.status === "success" ? "success" : t.status === "failed" ? "failed" : "processing",
+      otp: t.status === "otp",
+      code: t.transferCode,
+    };
+  },
+  status: verifyTransfer,
+};
+
+const monnifyProvider: PayoutProvider = {
+  name: "monnify",
+  label: "Monnify",
+  balance: monnifyBalanceKobo,
+  async send({ organizer, bank, netKobo, reference }) {
+    const t = await monnifyTransfer({
+      amountKobo: netKobo,
+      reference,
+      narration: `Black Heritage payout ${organizer.displayName || organizer.username}`,
+      bankCode: bank.bankCode,
+      bankName: bank.bankName,
+      accountNumber: bank.accountNumber,
+      accountName: bank.accountName || organizer.displayName || organizer.username,
+    });
+    return { status: t.status, otp: /AUTHORIZATION|OTP/i.test(t.raw) };
+  },
+  async status(reference) {
+    const t = await monnifyTransferStatus(reference);
+    return { status: t.status, reason: t.raw };
+  },
+};
+
+export async function payoutProvider(name?: string | null): Promise<PayoutProvider> {
+  const pick = name || ((await PlatformSettingModel.findOne({ key: "platform" }).lean()) as any)?.payoutProvider;
+  return pick === "monnify" && isMonnifyConfigured() ? monnifyProvider : paystackProvider;
+}
 
 /**
  * Organizer wallet: instant payouts.
@@ -106,7 +181,8 @@ export async function reconcileWithdrawals(organizerId: string): Promise<void> {
   }).lean();
   for (const w of stale as any[]) {
     try {
-      const t = await verifyTransfer(w.reference);
+      const provider = await payoutProvider(w.provider || "paystack");
+      const t = await provider.status(w.reference);
       if (t.status === "success") await applyTransferOutcome(w.reference, "success");
       else if (t.status === "failed" || t.status === "reversed" || t.status === "abandoned") {
         await applyTransferOutcome(w.reference, t.status === "reversed" ? "reversed" : "failed", t.reason);
@@ -173,21 +249,7 @@ export async function withdraw(organizerId: string, requestedBy: string) {
     throw new WalletError(400, "Link your bank account in Settings first.");
   }
 
-  // Older bank links predate transfer recipients: create one on the spot.
-  let recipientCode: string | null = bank.recipientCode || null;
-  if (!recipientCode) {
-    try {
-      const r = await createTransferRecipient({
-        name: bank.accountName || organizer.displayName || organizer.username,
-        accountNumber: bank.accountNumber,
-        bankCode: bank.bankCode,
-      });
-      recipientCode = r.recipientCode;
-      await User.updateOne({ _id: organizer._id }, { $set: { "bankDetails.recipientCode": recipientCode } });
-    } catch (err: any) {
-      throw new WalletError(409, "We could not set up transfers to your bank. Re-save your bank account in Settings and try again.");
-    }
-  }
+  const provider = await payoutProvider();
 
   // Claim every available row in one step. Two taps at once each claim a
   // disjoint set (or nothing), so the same naira can never leave twice.
@@ -217,11 +279,11 @@ export async function withdraw(organizerId: string, requestedBy: string) {
     throw new WalletError(400, "The minimum withdrawal is ₦100 after the transfer fee.");
   }
 
-  // The platform can only send what Paystack holds. Short balance means
-  // recent sales have not settled into it yet: say so, keep the money safe.
+  // The platform can only send what the provider's balance holds. A short
+  // balance means it needs a top-up: say so, keep the money safe.
   let balance = 0;
   try {
-    balance = await getBalanceKobo();
+    balance = await provider.balance();
   } catch {
     await release("Balance check failed");
     throw new WalletError(409, "Withdrawals are briefly unavailable. Your balance is safe; try again in a few minutes.");
@@ -229,7 +291,7 @@ export async function withdraw(organizerId: string, requestedBy: string) {
   if (balance < netKobo) {
     await release("Platform balance settling");
     notifyTeam(
-      `Withdrawal blocked: Paystack balance ₦${(balance / 100).toLocaleString("en-NG")} is below ₦${(netKobo / 100).toLocaleString("en-NG")} requested by ${organizer.displayName || organizer.username}. Top up the Paystack balance.`,
+      `Withdrawal blocked: ${provider.label} balance ₦${(balance / 100).toLocaleString("en-NG")} is below ₦${(netKobo / 100).toLocaleString("en-NG")} requested by ${organizer.displayName || organizer.username}. Top up the ${provider.label} balance.`,
     );
     throw new WalletError(409, "Your money is safe, but today's sales are still settling. Try again in a few hours; we've been notified.");
   }
@@ -243,27 +305,25 @@ export async function withdraw(organizerId: string, requestedBy: string) {
     netKobo,
     reference,
     status: "processing",
+    provider: provider.name,
     bank: { bankName: bank.bankName, accountNumber: bank.accountNumber, accountName: bank.accountName },
     requestedBy,
   });
 
   try {
-    const t = await initiateTransfer({
-      amountKobo: netKobo,
-      recipientCode,
-      reason: `Black Heritage payout · ${organizer.displayName || organizer.username}`,
-      reference,
-    });
-    await WithdrawalModel.updateOne({ _id: withdrawalId }, { $set: { transferCode: t.transferCode } });
+    const t = await provider.send({ organizer, bank, netKobo, reference });
+    if (t.code) await WithdrawalModel.updateOne({ _id: withdrawalId }, { $set: { transferCode: t.code } });
     if (t.status === "success") {
       await applyTransferOutcome(reference, "success");
-    } else if (t.status === "otp") {
+    } else if (t.status === "failed" || t.status === "reversed") {
+      throw new Error(`${provider.label} rejected the transfer`);
+    } else if (t.otp) {
       // Transfer OTP on: Paystack holds the transfer until someone approves it
       // with the OTP in the dashboard. That is manual approval. The rows stay
       // 'processing' (never handed back, or an approval later would pay
       // twice) and the transfer.success webhook settles them.
       notifyTeam(
-        `Approve a withdrawal: ₦${(netKobo / 100).toLocaleString("en-NG")} to ${organizer.displayName || organizer.username} (${bank.bankName} ${bank.accountNumber}). Paystack → Transfers → finalize with the OTP. To make withdrawals instant, turn off transfer OTP in Paystack → Settings → Preferences.`,
+        `Approve a withdrawal: ₦${(netKobo / 100).toLocaleString("en-NG")} to ${organizer.displayName || organizer.username} (${bank.bankName} ${bank.accountNumber}) in ${provider.label} with the OTP. To make withdrawals instant, ask ${provider.label} to turn off transfer OTP.`,
       );
     }
   } catch (err: any) {
@@ -274,7 +334,7 @@ export async function withdraw(organizerId: string, requestedBy: string) {
     // transfer Paystack has no record of, or one it failed, is returned.
     let exists = false;
     try {
-      const t = await verifyTransfer(reference);
+      const t = await provider.status(reference);
       exists = !["failed", "reversed", "abandoned"].includes(t.status);
       if (t.status === "success") await applyTransferOutcome(reference, "success");
     } catch { /* not found: it never started */ }

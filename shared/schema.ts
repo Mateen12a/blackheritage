@@ -564,6 +564,7 @@ export const platformSettingsSchema = z.object({
   vendorCommissionBps: z.number().int().min(0).max(1500),
   instantPayouts: z.boolean(),
   sameDayWithdrawals: z.boolean(),
+  payoutProvider: z.enum(["paystack", "monnify"]),
 }).partial();
 
 

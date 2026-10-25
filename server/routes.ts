@@ -2305,6 +2305,29 @@ export async function registerRoutes(
   };
 
   app.post("/api/payments/webhook", paymentWebhookHandler);
+
+  // ── Monnify webhook: final word on wallet withdrawals sent via Monnify ──
+  // Signed with HMAC-SHA512 of the raw body (monnify-signature header).
+  app.post("/api/monnify/webhook", async (req, res) => {
+    const raw = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : JSON.stringify(req.body || {});
+    const { isMonnifySignatureValid } = await import("./monnify");
+    if (!isMonnifySignatureValid(raw, req.headers["monnify-signature"] as string | undefined)) {
+      return res.status(401).json({ message: "Invalid signature" });
+    }
+    try {
+      const evt = JSON.parse(raw);
+      const ref = String(evt?.eventData?.reference || "");
+      const kind = String(evt?.eventType || "");
+      if (ref.startsWith("bhwd_") && /DISBURSEMENT/.test(kind)) {
+        const { applyTransferOutcome } = await import("./wallet");
+        const outcome = kind === "SUCCESSFUL_DISBURSEMENT" ? "success" : kind === "REVERSED_DISBURSEMENT" ? "reversed" : "failed";
+        await applyTransferOutcome(ref, outcome, evt?.eventData?.transactionDescription || kind);
+      }
+    } catch (err) {
+      console.error("Monnify webhook error:", err);
+    }
+    res.json({ received: true });
+  });
   app.post("/api/paystack/webhook", paymentWebhookHandler);
 
   // ── Ticket codes for a booking (buyer reaches this only via their booking) ──
@@ -4618,6 +4641,12 @@ export async function registerRoutes(
           paystackBalanceKobo = await getBalanceKobo();
         } catch { /* shown as unavailable */ }
       }
+      const { isMonnifyConfigured, monnifyBalanceKobo } = await import("./monnify");
+      const monnifyConfigured = isMonnifyConfigured();
+      let monnifyBalance: number | null = null;
+      if (monnifyConfigured) {
+        try { monnifyBalance = await monnifyBalanceKobo(); } catch { /* shown as unavailable */ }
+      }
       const { WithdrawalModel } = await import("./models");
       const withdrawalsProcessing = await WithdrawalModel.countDocuments({ status: "processing" });
       // The last few withdrawals that did not go through, with Paystack's own
@@ -4649,9 +4678,11 @@ export async function registerRoutes(
           vendorCommissionBps: settings.vendorCommissionBps ?? 1250,
           instantPayouts: Boolean((settings as any).instantPayouts),
           sameDayWithdrawals: Boolean((settings as any).sameDayWithdrawals),
+          payoutProvider: (settings as any).payoutProvider === "monnify" ? "monnify" : "paystack",
           updatedAt: (settings as any).updatedAt || new Date(),
         },
         paystackBalanceKobo,
+        monnify: { configured: monnifyConfigured, balanceKobo: monnifyBalance, mode: process.env.MONNIFY_MODE === "live" ? "live" : "sandbox" },
         withdrawalsProcessing,
         recentFailedWithdrawals,
         counts: {
