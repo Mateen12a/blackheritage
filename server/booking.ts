@@ -249,6 +249,7 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
             seat: t.seat,
           })),
           totalPaidKobo: total,
+          serviceFeeKobo: serviceFee,
           bookingRef: (booking as any).paymentReference || String(booking._id ?? booking.id).slice(-8).toUpperCase(),
           pdfBase64: Buffer.from(pdf).toString("base64"),
           icsBase64: Buffer.from(

@@ -2006,6 +2006,16 @@ export async function registerRoutes(
 
           let init: any;
           let subaccountUsed = false;
+          // Paystack shows only the total; these labelled lines appear on its
+          // receipt and dashboard so a buyer sees what the extra was for.
+          const nairaStr = (k: number) => `₦${(k / 100).toLocaleString("en-NG")}`;
+          const priceBreakdown = [
+            { display_name: "Ticket price", variable_name: "ticket_price", value: nairaStr(quote.totalKobo - quote.serviceFeeKobo) },
+            ...(quote.serviceFeeKobo > 0
+              ? [{ display_name: "Service & processing fee", variable_name: "service_fee", value: nairaStr(quote.serviceFeeKobo) }]
+              : []),
+            { display_name: "Event", variable_name: "event", value: String(event.title || "") },
+          ];
 
           // A flat transaction_charge overrides the subaccount's stored 6%, so
           // Founder-waived tickets really keep 0% and admin rate changes apply.
@@ -2037,6 +2047,7 @@ export async function registerRoutes(
                   tier: quote.ticketType,
                   quantity: input.quantity,
                   subaccountUsed: true,
+                  custom_fields: priceBreakdown,
                 },
                 subaccountCode,
               });
@@ -2058,6 +2069,7 @@ export async function registerRoutes(
                   tier: quote.ticketType,
                   quantity: input.quantity,
                   subaccountUsed: false,
+                  custom_fields: priceBreakdown,
                 },
               });
               subaccountUsed = false;
@@ -2077,6 +2089,7 @@ export async function registerRoutes(
                 tier: quote.ticketType,
                 quantity: input.quantity,
                 subaccountUsed: false,
+                custom_fields: priceBreakdown,
               },
             });
             subaccountUsed = false;

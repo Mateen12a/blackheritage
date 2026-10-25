@@ -116,6 +116,8 @@ export interface TicketEmailData {
   eventLocation: string;
   tickets: { code: string; tierName: string; attendeeName: string; seat: number }[];
   totalPaidKobo: number;
+  /** Buyer-paid service & processing fee, shown beside the ticket price. */
+  serviceFeeKobo?: number;
   bookingRef: string;
   pdfBase64?: string; // omitted for refund-only sends
   icsBase64?: string; // calendar file, attached when provided
@@ -144,7 +146,11 @@ export async function sendTicketEmail(to: EmailAddress, data: TicketEmailData): 
         <div style="font-size:16px;font-weight:bold;">${esc(data.eventTitle)}</div>
         <div style="font-size:13px;color:#666;margin-top:4px;">${dateStr}</div>
         <div style="font-size:13px;color:#666;">${esc(data.eventLocation)}</div>
-        <div style="margin-top:10px;font-size:13px;">Paid: <strong>${formatNaira(data.totalPaidKobo)}</strong> · Ref ${esc(data.bookingRef)}</div>
+        <div style="margin-top:10px;font-size:13px;">${
+          data.serviceFeeKobo
+            ? `Ticket ${formatNaira(data.totalPaidKobo)} + service &amp; processing fee ${formatNaira(data.serviceFeeKobo)} · Paid: <strong>${formatNaira(data.totalPaidKobo + data.serviceFeeKobo)}</strong>`
+            : `Paid: <strong>${formatNaira(data.totalPaidKobo)}</strong>`
+        } · Ref ${esc(data.bookingRef)}</div>
       </div>
 
       <table style="width:100%;border-collapse:collapse;">

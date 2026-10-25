@@ -507,7 +507,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
               )}
               {pricing && (pricing.serviceFeeKobo ?? 0) > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-muted-ink">Service fee</span>
+                  <span className="text-muted-ink">Service &amp; processing fee</span>
                   <span className="text-ink tabular-nums">{naira(pricing.serviceFeeKobo!)}</span>
                 </div>
               )}
@@ -540,7 +540,9 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
               <p className="text-xs text-center text-muted-ink">
                 {pricing && pricing.totalKobo === 0
                   ? "No payment needed. Your QR ticket is issued instantly."
-                  : "Card, bank transfer or USSD. Your QR ticket and PDF arrive by email."}
+                  : pricing && (pricing.serviceFeeKobo ?? 0) > 0
+                    ? `${totalLabel} = ${naira(pricing.subtotalKobo - pricing.discountKobo)} ticket + ${naira(pricing.serviceFeeKobo!)} service & processing fee. Card, bank transfer or USSD.`
+                    : "Card, bank transfer or USSD. Your QR ticket and PDF arrive by email."}
               </p>
             </div>
           </div>
