@@ -39,7 +39,10 @@ async function dueRows(organizerId: string) {
   const rows = await PayoutModel.find({ organizerId: String(organizerId), kind: "organizer_payout", status: "due" })
     .select("amount createdAt")
     .lean();
-  const now = Date.now();
+  const settings: any = await PlatformSettingModel.findOne({ key: "platform" }).lean();
+  // Same-day on: nothing waits for settlement; the balance check in
+  // withdraw() is what keeps a payout from going out unfunded.
+  const now = settings?.sameDayWithdrawals ? Infinity : Date.now();
   const ready = (rows as any[]).filter((r) => settledAt(r.createdAt).getTime() <= now);
   const settling = (rows as any[]).filter((r) => settledAt(r.createdAt).getTime() > now);
   const sum = (xs: any[]) => xs.reduce((n, r) => n + Number(r.amount || 0), 0);

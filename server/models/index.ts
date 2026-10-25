@@ -546,6 +546,10 @@ export interface IPlatformSetting extends Document {
   // Instant payouts: ticket money collects in the platform's Paystack balance
   // and organizers withdraw it on demand by transfer. Off: subaccount split.
   instantPayouts: boolean;
+  // Same-day: today's sales are withdrawable at once, funded by the balance
+  // (Payout on Demand, settle-to-balance, or a top-up). Every withdrawal is
+  // still checked against the live Paystack balance.
+  sameDayWithdrawals: boolean;
   updatedAt: Date;
 }
 
@@ -554,6 +558,7 @@ const PlatformSettingSchema: Schema = new Schema({
   ticketCommissionBps: { type: Number, required: true, default: 600 },
   vendorCommissionBps: { type: Number, required: true, default: 1250 },
   instantPayouts: { type: Boolean, default: false },
+  sameDayWithdrawals: { type: Boolean, default: false },
   updatedAt: { type: Date, default: Date.now },
 });
 

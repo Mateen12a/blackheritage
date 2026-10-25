@@ -4633,6 +4633,7 @@ export async function registerRoutes(
           ticketCommissionBps: settings.ticketCommissionBps ?? 600,
           vendorCommissionBps: settings.vendorCommissionBps ?? 1250,
           instantPayouts: Boolean((settings as any).instantPayouts),
+          sameDayWithdrawals: Boolean((settings as any).sameDayWithdrawals),
           updatedAt: (settings as any).updatedAt || new Date(),
         },
         paystackBalanceKobo,

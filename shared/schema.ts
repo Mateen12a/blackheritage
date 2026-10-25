@@ -563,6 +563,7 @@ export const platformSettingsSchema = z.object({
   ticketCommissionBps: z.number().int().min(0).max(1500), // 0-15%
   vendorCommissionBps: z.number().int().min(0).max(1500),
   instantPayouts: z.boolean(),
+  sameDayWithdrawals: z.boolean(),
 }).partial();
 
 

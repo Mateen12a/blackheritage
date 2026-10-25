@@ -63,18 +63,27 @@ export function AdminFinancialOverview({ onNavigateToLedger }: { onNavigateToLed
   const money = (kobo: number) => `₦${(Number(kobo || 0) / 100).toLocaleString("en-NG")}`;
 
   const instantMutation = useMutation({
-    mutationFn: async (on: boolean) => {
+    mutationFn: async (on: boolean | { sameDayWithdrawals: boolean }) => {
       const res = await fetch("/api/platform/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ instantPayouts: on }),
+        body: JSON.stringify(typeof on === "boolean" ? { instantPayouts: on } : on),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || "Could not change payouts");
       return res.json();
     },
     onSuccess: (_d, on) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/financial-overview"] });
+      if (typeof on !== "boolean") {
+        toast({
+          title: on.sameDayWithdrawals ? "Same-day withdrawals on" : "Same-day withdrawals off",
+          description: on.sameDayWithdrawals
+            ? "Today's sales can be withdrawn at once, as long as your Paystack balance covers it."
+            : "Sales become withdrawable from the next working day.",
+        });
+        return;
+      }
       toast({
         title: on ? "Instant payouts on" : "Instant payouts off",
         description: on
@@ -367,6 +376,26 @@ export function AdminFinancialOverview({ onNavigateToLedger }: { onNavigateToLed
                 {data.settings?.instantPayouts ? "Turn off" : "Turn on"}
               </Button>
             </div>
+            {data.settings?.instantPayouts && (
+              <div className="flex items-center justify-between gap-3 border-t border-hairline pt-3">
+                <div>
+                  <span className="text-ink font-medium">Same-day withdrawals: {data.settings?.sameDayWithdrawals ? "On" : "Off"}</span>
+                  <p className="text-muted-ink mt-0.5">
+                    On: tonight's sales can be withdrawn tonight, paid from your Paystack balance. Off: from the next working day.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={instantMutation.isPending}
+                  onClick={() => instantMutation.mutate({ sameDayWithdrawals: !data.settings?.sameDayWithdrawals })}
+                  className="h-8 text-xs shrink-0"
+                >
+                  {data.settings?.sameDayWithdrawals ? "Turn off" : "Turn on"}
+                </Button>
+              </div>
+            )}
             <div className="flex items-center justify-between border-t border-hairline pt-3">
               <span className="text-muted-ink">Paystack balance (pays withdrawals):</span>
               <span className="font-mono font-bold text-ink">
