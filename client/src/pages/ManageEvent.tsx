@@ -600,7 +600,10 @@ export default function ManageEvent() {
               }
             })()}
           </div>
-          <div className="mb-6"><SalesBySource event={event} bookings={bookings} /></div>
+          {/* Promotion sources are Black Heritage's own data: admins only. */}
+          {((user as any)?.role === "admin" || (user as any)?.isAdmin) && (
+            <div className="mb-6"><SalesBySource event={event} bookings={bookings} /></div>
+          )}
           <Card className="bg-surface border-hairline">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
