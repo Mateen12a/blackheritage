@@ -9,6 +9,7 @@ import { setupGoogleAuth } from "./google-auth";
 import { startReminderScheduler } from "./reminders";
 import https from "https";
 import cors from "cors";
+import { serveFrontend } from "./static";
 
 const app = express();
 // nginx terminates TLS and forwards X-Forwarded-Proto; without this Express
@@ -183,6 +184,10 @@ app.use((req, res, next) => {
   setupAuth(app);
   setupGoogleAuth(app);
   await registerRoutes(httpServer, app);
+
+  // A single Render web service can serve Vite's build and the API together.
+  // Oracle's existing Nginx deployment keeps its current behaviour by default.
+  if (process.env.SERVE_FRONTEND === "true") serveFrontend(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
