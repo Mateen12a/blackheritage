@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useMemo, useState, useEffect } from "react";
 import { api, buildUrl } from "@shared/routes";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Search, Trash2, Edit, ChevronLeft, Tag, UserPlus, MailPlus, Undo2, Activity, TrendingUp, Image as ImageIcon, Banknote, AlertCircle, MessageCircle } from "lucide-react";
+import { Loader2, Calendar, MapPin, Users, Package, Briefcase, FileText, Download, CheckCircle, Clock, Search, Trash2, Edit, ChevronLeft, Tag, UserPlus, MailPlus, Undo2, Activity, TrendingUp, Image as ImageIcon, Banknote, AlertCircle, MessageCircle, Copy } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { SalesBySource } from "@/components/SalesBySource";
+import { DuplicateEventDialog } from "@/components/DuplicateEventDialog";
 import {
   usePromos, useCreatePromo, useDeletePromo, useIssueManualTickets,
   useRefundBooking, useLiveStats, useCreateGateSale,
@@ -218,6 +219,7 @@ export default function ManageEvent() {
   // straight off the path. Both URLs land on the ticket buyer list.
   const id = location.match(/^\/admin\/events\/([^/?#]+)/)?.[1];
   const [isFlyerModalOpen, setIsFlyerModalOpen] = useState(false);
+  const [isDuplicateOpen, setIsDuplicateOpen] = useState(false);
 
   const { data: event, isLoading: eventLoading } = useQuery<any>({
     queryKey: [buildUrl(api.events.get.path, { id: id as string })],
@@ -444,6 +446,13 @@ export default function ManageEvent() {
             onClick={() => setIsFlyerModalOpen(true)}
           >
             <ImageIcon className="w-4 h-4 mr-2 text-gold" /> Flyer with QR
+          </Button>
+          <Button
+            variant="outline"
+            className="flex-1 md:flex-none border-hairline h-10 px-4"
+            onClick={() => setIsDuplicateOpen(true)}
+          >
+            <Copy className="w-4 h-4 mr-2" /> Run it again
           </Button>
           <Button 
             variant={event.status === 'published' ? 'outline' : 'default'}
@@ -805,6 +814,7 @@ export default function ManageEvent() {
         </TabsContent>
       </Tabs>
 
+      <DuplicateEventDialog event={event} open={isDuplicateOpen} onClose={() => setIsDuplicateOpen(false)} />
       <ShareFlyerModal
         open={isFlyerModalOpen}
         onClose={() => setIsFlyerModalOpen(false)}

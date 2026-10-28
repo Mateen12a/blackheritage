@@ -32,6 +32,7 @@ import { publishToUser, subscribeToStream } from "./realtime";
 import { playbookPdf, PLAYBOOK_FILENAME, PLAYBOOK_PROMO_CODE } from "./playbook";
 import { isEmailConfigured, sendPlaybookEmail } from "./emails";
 import crypto from "crypto";
+import { format } from "date-fns";
 
 const uploadRoot = process.cwd();
 
@@ -1098,6 +1099,86 @@ export async function registerRoutes(
       if (respondMongooseValidation(err, res)) return;
       throw err;
     }
+  });
+
+  // Duplicate: re-launch an event on new dates (one, or a weekly/monthly run
+  // of up to 12). Copies the listing, tiers and settings; never sales, scans,
+  // featured placement or the slug. Copies land as drafts unless the organizer
+  // asks to publish and the source passes the publish gate.
+  app.post("/api/events/:id/duplicate", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role === 'user') {
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
+    }
+    const { EventModel } = await import("./models");
+    const source: any = await EventModel.findById(req.params.id).lean().catch(() => null);
+    if (!source) return res.status(404).json({ message: "We could not find that." });
+    const me = req.user as any;
+    if (me.role !== 'admin' && source.organizerId !== me._id.toString()) {
+      return res.status(403).json({ message: "You do not have access to this. Sign in with the right account, or ask the organizer to add you." });
+    }
+
+    const raw: unknown[] = Array.isArray(req.body?.dates) ? req.body.dates : [];
+    const dates = raw.map((d) => new Date(String(d))).filter((d) => !isNaN(d.getTime()));
+    if (dates.length === 0) return res.status(400).json({ message: "Pick at least one new date.", field: "dates" });
+    if (dates.length > 12) return res.status(400).json({ message: "Up to 12 dates at a time.", field: "dates" });
+    if (dates.some((d) => d.getTime() < Date.now() - 60 * 60 * 1000)) {
+      return res.status(400).json({ message: "New dates need to be in the future.", field: "dates" });
+    }
+    dates.sort((a, b) => a.getTime() - b.getTime());
+
+    let tiers: any[] = [];
+    try { tiers = JSON.parse(String(source.ticketTypes || "[]")); } catch { tiers = []; }
+    // Tier sale windows move with the event, or a copy would inherit a
+    // close date that has already passed. Sold counts start from zero.
+    const srcTime = source.date ? new Date(source.date).getTime() : null;
+    const tiersFor = (date: Date) => {
+      const delta = srcTime == null ? 0 : date.getTime() - srcTime;
+      const shift = (v: any) => (v && srcTime != null ? new Date(new Date(v).getTime() + delta).toISOString() : v ?? null);
+      return JSON.stringify(Array.isArray(tiers)
+        ? tiers.map((t) => ({ ...t, sold: 0, saleOpen: shift(t.saleOpen), saleClose: shift(t.saleClose) }))
+        : []);
+    };
+
+    const publish = req.body?.publish === true;
+    if (publish) {
+      const missing = missingEventPublishFields({ ...source, date: dates[0] } as Partial<InsertEvent>);
+      if (missing.length > 0) {
+        return res.status(400).json({ message: `Complete these on the original before publishing copies: ${missing.join(", ")}`, missing });
+      }
+    }
+
+    const {
+      _id, __v, slug: _s, slugAliases: _a, archivedAt: _ar, isFeatured: _f, isDemo: _d,
+      createdAt: _c, updatedAt: _u, date: _dt, ...rest
+    } = source;
+
+    const created: any[] = [];
+    for (const date of dates) {
+      const base = slugify(`${source.title} ${format(date, "d MMM yyyy")}`);
+      let slug = base;
+      for (let n = 2; n < 50; n++) {
+        if (!(await EventModel.findOne({ slug }).lean())) break;
+        slug = `${base}-${n}`;
+      }
+      const freshTiers = tiersFor(date);
+      const event = await storage.createEvent({
+        ...rest,
+        ticketTypes: freshTiers,
+        ...(priceAndCapacityFromTiers(freshTiers) || {}),
+        date,
+        slug,
+        status: publish ? "published" : "draft",
+        isFeatured: false,
+        organizerId: source.organizerId,
+      } as Parameters<typeof storage.createEvent>[0]);
+      created.push(event);
+    }
+
+    // One drop email for the run, about the soonest date, not one per copy.
+    if (publish && created[0]) {
+      void notifyFollowersOfDrop(created[0]).catch((err) => console.error("Follower drop blast failed:", err));
+    }
+    res.status(201).json({ events: created });
   });
 
   app.patch(api.events.update.path, async (req, res) => {
