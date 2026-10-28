@@ -160,7 +160,7 @@ export async function sendTicketEmail(to: EmailAddress, data: TicketEmailData): 
       <p style="margin:20px 0 0;font-size:13px;color:#444;">Your PDF ticket is attached. Show its QR at the gate, on your phone or printed. Each ticket scans once.</p>
       <p style="margin:8px 0 0;font-size:13px;color:#444;">A calendar file is attached too, one tap adds the date to your phone's calendar.</p>
       <p style="margin:8px 0 0;font-size:13px;">
-        <a href="${appUrl}/my-tickets" style="color:#111;font-weight:bold;">Re-download your tickets any time</a>
+        <a href="${escAttr(`${appUrl}/my-tickets?ref=${encodeURIComponent(data.bookingRef)}`)}" style="color:#111;font-weight:bold;">Open or re-download your tickets any time</a>
       </p>
       <p style="margin:8px 0 0;font-size:13px;color:#444;">
         Find your next night out: <a href="${COMMUNITY_URL}" style="color:#111;">join the Black Heritage WhatsApp community</a>.
@@ -414,7 +414,7 @@ export async function sendEventReminderEmail(
       </p>
       <p style="margin:16px 0 0;font-size:12px;color:#777;">
         Your calendar file is attached, one tap adds the event to your phone.
-        <a href="${escAttr(`${appUrl}/my-tickets`)}" style="color:#111;">Your tickets live here any time.</a>
+        <a href="${escAttr(data.ticketsUrl || `${appUrl}/my-tickets`)}" style="color:#111;">Your tickets live here any time.</a>
       </p>
       <p style="margin:12px 0 0;font-size:11px;color:#999;">
         <a href="${escAttr(`${appUrl}/api/bookings/${data.bookingId}/reminders/unsubscribe`)}" style="color:#999;">Stop reminder emails for this event</a>.

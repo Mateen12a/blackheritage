@@ -41,6 +41,21 @@ export default function MyTickets() {
   const [searchEmail, setSearchEmail] = useState("");
   const [activeTicket, setActiveTicket] = useState<any>(null);
 
+  // Ticket and reminder emails link here with ?ref=<booking reference>: look
+  // that booking up straight away and open its tickets, no sign-in needed.
+  const [linkedRef] = useState(() => {
+    try {
+      return (new URLSearchParams(window.location.search).get("ref") || "").trim().toUpperCase();
+    } catch {
+      return "";
+    }
+  });
+  useEffect(() => {
+    if (!linkedRef) return;
+    setCode(linkedRef);
+    setSubmittedCode(linkedRef);
+  }, [linkedRef]);
+
   const {
     data: bookings,
     isLoading,
@@ -75,6 +90,14 @@ export default function MyTickets() {
   // the tickets to that inbox instead, so only its owner can see them.
   const emailed = !!bookings && !Array.isArray(bookings) && bookings.emailed;
   const list = Array.isArray(bookings) ? bookings : [];
+  const [autoOpened, setAutoOpened] = useState(false);
+  useEffect(() => {
+    if (autoOpened || !linkedRef || submittedCode !== linkedRef) return;
+    if (list.length === 1 && list[0].paymentReference?.toUpperCase() === linkedRef) {
+      setActiveTicket(list[0]);
+      setAutoOpened(true);
+    }
+  }, [list, linkedRef, submittedCode, autoOpened]);
   const hasSearched = isMember || searchEmail !== "" || submittedCode !== "";
   const showResults = hasSearched && !isLoading;
 

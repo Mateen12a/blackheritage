@@ -80,7 +80,8 @@ export async function runReminderSweepOnce(): Promise<{ sent: number; skipped: n
             eventTitle: event.title,
             eventDate: new Date(event.date),
             eventLocation: event.location,
-            ticketsUrl: `${appUrl()}/tickets`,
+            // The reference lets a guest open their tickets without an account.
+            ticketsUrl: `${appUrl()}/my-tickets${booking.paymentReference ? `?ref=${encodeURIComponent(booking.paymentReference)}` : ""}`,
             bookingId: String(booking._id),
             icsBase64: Buffer.from(ics, "utf8").toString("base64"),
             branding: (event as any).branding || null,

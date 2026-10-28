@@ -253,6 +253,32 @@ function RootRoute() {
 }
 
 /**
+ * Tickets work signed in or not: guests arrive from their ticket email with
+ * the booking reference, and an account must never be required to get in.
+ */
+function TicketsRoute() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-gold" />
+      </div>
+    );
+  }
+  return user ? (
+    <DashboardLayout>
+      <MyTickets />
+    </DashboardLayout>
+  ) : (
+    <PublicLayout>
+      <div className="container mx-auto px-4 pt-6 pb-24">
+        <MyTickets />
+      </div>
+    </PublicLayout>
+  );
+}
+
+/**
  * wouter keeps the window's scroll position across route changes, so opening
  * a new page landed you halfway down it. Send every navigation to the top.
  *
@@ -457,9 +483,9 @@ function Router() {
       <Route path="/dashboard">
         {() => <ProtectedRoute component={AttendeeDashboard} />}
       </Route>
-      <Route path="/my-tickets">
-        {() => <ProtectedRoute component={MyTickets} />}
-      </Route>
+      <Route path="/my-tickets" component={TicketsRoute} />
+      {/* Older reminder emails linked here */}
+      <Route path="/tickets" component={TicketsRoute} />
 
       {/* Account Settings */}
       <Route path="/settings">
