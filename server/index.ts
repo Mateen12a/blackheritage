@@ -181,6 +181,14 @@ app.use((req, res, next) => {
     console.error("Cannot start production without MongoDB. Set MONGODB_URI and restart.");
     process.exit(1);
   }
+  // Marketing contacts gained phone-only rows, so the email index became
+  // sparse. syncIndexes swaps an older strict index for the current one.
+  if (dbReady) {
+    const { MarketingContactModel } = await import("./models");
+    await MarketingContactModel.syncIndexes().catch((err: any) =>
+      console.error("Marketing contact index sync failed:", err?.message),
+    );
+  }
   setupAuth(app);
   setupGoogleAuth(app);
   await registerRoutes(httpServer, app);

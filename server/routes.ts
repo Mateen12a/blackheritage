@@ -7,7 +7,7 @@ import multer from "multer";
 import { storage, mapEventLean, mapVendor } from "./storage";
 import { buildEventIcs } from "./calendar";
 import { api } from "@shared/routes";
-import { EMAIL_HINT, isValidEmail } from "@shared/email";
+import { EMAIL_HINT, EMAIL_PATTERN, isValidEmail } from "@shared/email";
 import {
   insertDraftEventSchema, missingEventPublishFields, insertMessageSchema, bookingInitiateSchema, bookingFinalizeSchema,
   promoCreateSchema, manualTicketSchema, gateSaleSchema, scanRequestSchema, scanOverrideSchema,
@@ -2050,7 +2050,7 @@ export async function registerRoutes(
         const { MarketingContactModel } = await import("./models");
         MarketingContactModel.updateOne(
           { email: input.email.trim().toLowerCase() },
-          { $set: { name: input.name, source: "checkout", eventId: String(event.id), consentAt: new Date(), unsubscribed: false, unsubscribedAt: null } },
+          { $set: { name: input.name, source: "checkout", eventId: String(event.id), consentAt: new Date(), unsubscribed: false, unsubscribedAt: null }, $addToSet: { topics: "drops" } },
           { upsert: true },
         ).catch((err: any) => console.error("Marketing opt-in save failed:", err?.message));
       }
@@ -4377,6 +4377,42 @@ export async function registerRoutes(
     res.redirect(302, `${base}/unsubscribed`);
   });
 
+  // Challenges / open-call alerts. Takes an email or a WhatsApp number, plus
+  // what the person does, so a talent call can go to exactly the right people.
+  app.post("/api/challenges/notify", async (req, res) => {
+    const { MarketingContactModel } = await import("./models");
+    const contact = String(req.body?.contact || "").trim();
+    const allowed = ["music", "visuals", "stage"];
+    const disciplines = (Array.isArray(req.body?.disciplines) ? req.body.disciplines : [])
+      .map((d: unknown) => String(d)).filter((d: string) => allowed.includes(d));
+    let key: Record<string, string>;
+    if (contact.includes("@")) {
+      if (!EMAIL_PATTERN.test(contact)) return res.status(400).json({ message: "Check that email address.", field: "contact" });
+      key = { email: contact.toLowerCase() };
+    } else {
+      const digits = contact.replace(/[^\d+]/g, "");
+      if (digits.replace(/\D/g, "").length < 10) {
+        return res.status(400).json({ message: "Enter an email or a WhatsApp number with at least 10 digits.", field: "contact" });
+      }
+      key = { phone: digits };
+    }
+    try {
+      await MarketingContactModel.updateOne(
+        key,
+        {
+          $set: { unsubscribed: false, unsubscribedAt: null, consentAt: new Date() },
+          $setOnInsert: { source: "challenges", name: (req.user as any)?.username || null },
+          $addToSet: { topics: "challenges", disciplines: { $each: disciplines } },
+        },
+        { upsert: true },
+      );
+      res.json({ ok: true });
+    } catch (err: any) {
+      console.error("Challenges notify failed:", err?.message);
+      res.status(500).json({ message: "We couldn't save that just now. Try again in a moment." });
+    }
+  });
+
   // Admin: the opted-in list as CSV, ready for a campaign tool. Each row
   // carries its own unsubscribe link.
   app.get("/api/admin/marketing/contacts.csv", async (req, res) => {
@@ -4386,8 +4422,11 @@ export async function registerRoutes(
     const { MarketingContactModel } = await import("./models");
     const rows: any[] = await MarketingContactModel.find({ unsubscribed: { $ne: true } }).sort({ consentAt: -1 }).lean();
     const cell = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const lines = ["email,name,opted_in_at,event_id,unsubscribe_url"].concat(
-      rows.map((r) => [r.email, r.name, new Date(r.consentAt).toISOString(), r.eventId, marketingUnsubscribeUrl(r.email)].map(cell).join(",")),
+    const lines = ["email,phone,name,topics,disciplines,opted_in_at,event_id,unsubscribe_url"].concat(
+      rows.map((r) => [
+        r.email, r.phone, r.name, (r.topics || []).join(" "), (r.disciplines || []).join(" "),
+        new Date(r.consentAt).toISOString(), r.eventId, r.email ? marketingUnsubscribeUrl(r.email) : "",
+      ].map(cell).join(",")),
     );
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="blackheritage-subscribers.csv"`);
@@ -4399,11 +4438,13 @@ export async function registerRoutes(
       return res.status(403).json({ error: "Admin access required." });
     }
     const { MarketingContactModel } = await import("./models");
-    const [subscribed, unsubscribed] = await Promise.all([
+    const [subscribed, unsubscribed, drops, challenges] = await Promise.all([
       MarketingContactModel.countDocuments({ unsubscribed: { $ne: true } }),
       MarketingContactModel.countDocuments({ unsubscribed: true }),
+      MarketingContactModel.countDocuments({ unsubscribed: { $ne: true }, topics: "drops" }),
+      MarketingContactModel.countDocuments({ unsubscribed: { $ne: true }, topics: "challenges" }),
     ]);
-    res.json({ subscribed, unsubscribed });
+    res.json({ subscribed, unsubscribed, drops, challenges });
   });
 
   // ── Vendor ratings: sign-in required, one review per user per vendor ──

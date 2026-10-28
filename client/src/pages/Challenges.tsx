@@ -4,6 +4,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { apiRequest } from "@/lib/queryClient";
+import { cn } from "@/lib/utils";
 import { Reveal } from "@/components/motion";
 import { whatsappLink, WHATSAPP_DISPLAY } from "@/lib/contact";
 import {
@@ -18,7 +20,14 @@ import {
   Mic,
   Send,
   Megaphone,
+  Loader2,
 } from "lucide-react";
+
+const DISCIPLINES = [
+  { value: "music", label: "Music & sound", Icon: Music },
+  { value: "visuals", label: "Visuals & design", Icon: Palette },
+  { value: "stage", label: "Stage & hosting", Icon: Mic },
+] as const;
 
 export default function ChallengesPage() {
   const { user } = useAuth();
@@ -33,27 +42,44 @@ export default function ChallengesPage() {
     }
   });
 
-  const handleNotifySubmit = (e: React.FormEvent) => {
+  const [disciplines, setDisciplines] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const toggleDiscipline = (d: string) =>
+    setDisciplines((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]));
+
+  // Saved on the server so the team can actually reach this person when a
+  // call opens. The local flag only remembers the confirmation on this device.
+  const handleNotifySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!contactInput.trim()) {
       toast({
-        title: "Please enter your email or phone",
-        description: "We will use this to send you open call announcements.",
+        title: "Add your email or WhatsApp number",
+        description: "That's where the open call alert goes.",
         variant: "destructive",
       });
       return;
     }
-
+    setSaving(true);
     try {
-      localStorage.setItem("bh_challenges_notified", "true");
-    } catch {
-      // storage fallback
+      await apiRequest("POST", "/api/challenges/notify", { contact: contactInput.trim(), disciplines });
+      try {
+        localStorage.setItem("bh_challenges_notified", "true");
+      } catch {
+        // storage blocked: the server copy is what counts
+      }
+      setSubscribed(true);
+      toast({
+        title: "You're on the list",
+        description: "You'll hear the moment the next open call or showcase opens.",
+      });
+    } catch (err: any) {
+      const raw = String(err?.message || "").replace(/^\d+:\s*/, "");
+      let text = raw;
+      try { text = JSON.parse(raw).message || raw; } catch { /* plain text */ }
+      toast({ title: "That didn't save", description: text || "Try again in a moment.", variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-    setSubscribed(true);
-    toast({
-      title: "You're on the list",
-      description: "We'll notify you as soon as the next open call or showcase brief drops.",
-    });
   };
 
   return (
@@ -206,34 +232,61 @@ export default function ChallengesPage() {
           <div className="mt-8 rounded-md border border-hairline bg-surface-2 p-6 sm:p-8">
             <div className="max-w-xl">
               <h3 className="font-display font-bold text-lg text-ink">
-                Get notified when the next open call launches
+                Be first in line for the next open call
               </h3>
               <p className="mt-1 text-xs sm:text-sm text-muted-ink">
-                Leave your email or WhatsApp number. We send one alert when a new brief opens, with no promotional spam.
+                Tell us what you do and where to reach you. When a call opens in your lane, you hear before it goes public.
               </p>
 
               {subscribed ? (
                 <div className="mt-4 flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-md">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>You are registered for open call notifications.</span>
+                  <span>You're on the list. We'll reach you when the next call opens.</span>
                 </div>
               ) : (
-                <form onSubmit={handleNotifySubmit} className="mt-4 flex flex-col sm:flex-row gap-2.5">
-                  <Input
-                    type="text"
-                    value={contactInput}
-                    onChange={(e) => setContactInput(e.target.value)}
-                    placeholder="Enter email or WhatsApp number"
-                    className="border-hairline bg-background text-ink text-xs sm:text-sm h-10"
-                    required
-                  />
-                  <Button
-                    type="submit"
-                    className="press bg-primary text-primary-foreground hover:bg-gold-soft text-xs sm:text-sm font-medium h-10 px-5 shrink-0"
-                  >
-                    <Send className="w-3.5 h-3.5 mr-1.5" />
-                    Notify Me
-                  </Button>
+                <form onSubmit={handleNotifySubmit} className="mt-4 space-y-3">
+                  <div className="flex flex-wrap gap-2" role="group" aria-label="What you do">
+                    {DISCIPLINES.map(({ value, label, Icon }) => {
+                      const on = disciplines.includes(value);
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => toggleDiscipline(value)}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs sm:text-sm transition-colors",
+                            on ? "border-gold/60 bg-gold/10 text-gold" : "border-hairline text-muted-ink hover:text-ink",
+                          )}
+                        >
+                          <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2.5">
+                    <Input
+                      type="text"
+                      value={contactInput}
+                      onChange={(e) => setContactInput(e.target.value)}
+                      placeholder="Enter email or WhatsApp number"
+                      className="border-hairline bg-background text-ink text-xs sm:text-sm h-10"
+                      required
+                    />
+                    <Button
+                      type="submit"
+                      disabled={saving}
+                      className="press bg-primary text-primary-foreground hover:bg-gold-soft text-xs sm:text-sm font-medium h-10 px-5 shrink-0"
+                    >
+                      {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                        <>
+                          <Send className="w-3.5 h-3.5 mr-1.5" />
+                          Put me on the list
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </form>
               )}
             </div>

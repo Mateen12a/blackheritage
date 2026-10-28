@@ -699,8 +699,11 @@ export const OrganizerFollowerModel =
 // future drops. Booking emails alone are transactional consent only (NDPA), so
 // promotional sends go to this list and nowhere else.
 export interface IMarketingContact extends Document {
-  email: string;
+  email?: string | null;
+  phone?: string | null; // WhatsApp number, for people who'd rather not give an email
   name?: string | null;
+  topics: string[]; // what they asked to hear about: "drops", "challenges"
+  disciplines: string[]; // talent sign-ups: "music", "visuals", "stage"
   source: string; // where consent was given, e.g. "checkout"
   eventId?: string | null; // the event they were buying when they opted in
   consentAt: Date;
@@ -709,8 +712,11 @@ export interface IMarketingContact extends Document {
 }
 
 const MarketingContactSchema: Schema = new Schema({
-  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  email: { type: String, unique: true, sparse: true, lowercase: true, trim: true },
+  phone: { type: String, unique: true, sparse: true, trim: true },
   name: { type: String, default: null },
+  topics: { type: [String], default: [], index: true },
+  disciplines: { type: [String], default: [] },
   source: { type: String, default: "checkout" },
   eventId: { type: String, default: null },
   consentAt: { type: Date, default: Date.now },
