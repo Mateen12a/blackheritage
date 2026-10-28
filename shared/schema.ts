@@ -490,6 +490,7 @@ export const bookingInitiateSchema = z.object({
   dietaryNote: z.string().trim().max(300).optional(),
   guest: z.boolean().optional(), // true when buying without an account
   via: z.string().trim().max(40).optional(), // promoter or page the buyer arrived through (?via=)
+  marketingOptIn: z.boolean().optional(), // buyer ticked "first word on the next drops"
 });
 
 export const bookingFinalizeSchema = z.object({

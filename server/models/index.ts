@@ -695,6 +695,33 @@ export const OrganizerFollowerModel =
   mongoose.models.OrganizerFollower ||
   model<IOrganizerFollower>("OrganizerFollower", OrganizerFollowerSchema);
 
+// Marketing contact: a buyer who explicitly opted in at checkout to hear about
+// future drops. Booking emails alone are transactional consent only (NDPA), so
+// promotional sends go to this list and nowhere else.
+export interface IMarketingContact extends Document {
+  email: string;
+  name?: string | null;
+  source: string; // where consent was given, e.g. "checkout"
+  eventId?: string | null; // the event they were buying when they opted in
+  consentAt: Date;
+  unsubscribed: boolean;
+  unsubscribedAt?: Date | null;
+}
+
+const MarketingContactSchema: Schema = new Schema({
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  name: { type: String, default: null },
+  source: { type: String, default: "checkout" },
+  eventId: { type: String, default: null },
+  consentAt: { type: Date, default: Date.now },
+  unsubscribed: { type: Boolean, default: false, index: true },
+  unsubscribedAt: { type: Date, default: null },
+});
+
+export const MarketingContactModel =
+  mongoose.models.MarketingContact ||
+  model<IMarketingContact>("MarketingContact", MarketingContactSchema);
+
 // VendorRating: one review per user per vendor
 // Vendors close deals over chat and WhatsApp today, so the gate is a signed-in
 // account rather than a paid transaction. When vendor bookings become

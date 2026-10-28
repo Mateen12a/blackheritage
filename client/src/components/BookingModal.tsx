@@ -16,7 +16,7 @@ import {
   useFinalizeBooking,
 } from "@/hooks/use-bookings";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, CreditCard, Tag, Check, AlertTriangle, Ticket, Minus, Plus } from "lucide-react";
+import { Loader2, CreditCard, Tag, Check, AlertTriangle, Ticket, Minus, Plus, BellRing } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
@@ -50,6 +50,8 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
   const [promoTouched, setPromoTouched] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("");
   const [tableNote, setTableNote] = useState("");
+  // Marketing consent must be an active choice, so this starts off.
+  const [optIn, setOptIn] = useState(false);
   const { mutateAsync: initiate, isPending: isInitiating } = useInitiateBooking();
   const { mutateAsync: finalize, isPending: isFinalizing } = useFinalizeBooking();
   const { toast } = useToast();
@@ -172,6 +174,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
         phone: wantsPhone && phone.trim() ? phone.trim() : undefined,
         dietaryNote: wantsDietary && dietaryNote.trim() ? dietaryNote.trim() : undefined,
         guest: !user,
+        marketingOptIn: optIn || undefined,
       });
 
       // Free tickets (₦0) or dev simulated gateway: confirmed immediately without opening payment gateway
@@ -493,6 +496,45 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
                 )
               )}
             </section>
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={optIn}
+              onClick={() => setOptIn((v) => !v)}
+              className={`w-full text-left flex items-start gap-3 rounded-md border px-3.5 py-3 transition-colors ${
+                optIn ? "border-gold/50 bg-gold/5" : "border-hairline bg-surface-2 hover:border-muted-ink/50"
+              }`}
+            >
+              <span
+                className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors ${
+                  optIn ? "bg-gold text-background" : "bg-surface text-muted-ink"
+                }`}
+                aria-hidden="true"
+              >
+                {optIn ? <Check className="h-4 w-4" /> : <BellRing className="h-4 w-4" />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-ink">
+                  {optIn ? "You're on the list" : "Get first word on the next drop"}
+                </span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-muted-ink">
+                  {optIn
+                    ? "New shows and early-bird prices land in your inbox first. Leave any time in one tap."
+                    : "New Lagos shows and early-bird prices, straight to your inbox before the timeline catches on."}
+                </span>
+              </span>
+              <span
+                className={`mt-1 inline-flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+                  optIn ? "bg-gold" : "bg-hairline"
+                }`}
+                aria-hidden="true"
+              >
+                <span
+                  className={`h-4 w-4 rounded-full bg-ink transition-transform ${optIn ? "translate-x-4" : "translate-x-0"}`}
+                />
+              </span>
+            </button>
 
             <section className="space-y-2 border-t border-hairline pt-4 text-sm" aria-label="Order summary">
               <div className="flex justify-between">

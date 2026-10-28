@@ -1963,6 +1963,17 @@ export async function registerRoutes(
         paymentProvider: activeGateway(),
       });
 
+      // Opt-in is explicit and per email. Ticking it again after unsubscribing
+      // is fresh consent, so it resubscribes. Never blocks the purchase.
+      if (input.marketingOptIn) {
+        const { MarketingContactModel } = await import("./models");
+        MarketingContactModel.updateOne(
+          { email: input.email.trim().toLowerCase() },
+          { $set: { name: input.name, source: "checkout", eventId: String(event.id), consentAt: new Date(), unsubscribed: false, unsubscribedAt: null } },
+          { upsert: true },
+        ).catch((err: any) => console.error("Marketing opt-in save failed:", err?.message));
+      }
+
       // Increment promo usage only when it actually applied
       if (quote.promoApplied && quote.promoId) {
         const { PromoCodeModel } = await import("./models");
@@ -4267,6 +4278,53 @@ export async function registerRoutes(
     res.redirect(302, `${base}/unsubscribed`);
   });
 
+  // Marketing unsubscribe: the token is an HMAC of the email, so a link can
+  // only ever unsubscribe the address it was sent to. Build links with
+  // marketingUnsubscribeUrl() in every promotional email.
+  app.get("/api/marketing/unsubscribe/:token", async (req, res) => {
+    const { MarketingContactModel } = await import("./models");
+    try {
+      const [b64, sig] = String(req.params.token).split(".");
+      const email = Buffer.from(b64, "base64url").toString("utf8");
+      if (sig && sig === marketingSig(email)) {
+        await MarketingContactModel.updateOne({ email }, { $set: { unsubscribed: true, unsubscribedAt: new Date() } });
+      }
+    } catch {
+      // Bad token: still show the calm page.
+    }
+    const base = process.env.PUBLIC_APP_URL || "http://localhost:5000";
+    res.redirect(302, `${base}/unsubscribed`);
+  });
+
+  // Admin: the opted-in list as CSV, ready for a campaign tool. Each row
+  // carries its own unsubscribe link.
+  app.get("/api/admin/marketing/contacts.csv", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    const { MarketingContactModel } = await import("./models");
+    const rows: any[] = await MarketingContactModel.find({ unsubscribed: { $ne: true } }).sort({ consentAt: -1 }).lean();
+    const cell = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = ["email,name,opted_in_at,event_id,unsubscribe_url"].concat(
+      rows.map((r) => [r.email, r.name, new Date(r.consentAt).toISOString(), r.eventId, marketingUnsubscribeUrl(r.email)].map(cell).join(",")),
+    );
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="blackheritage-subscribers.csv"`);
+    res.send(lines.join("\n"));
+  });
+
+  app.get("/api/admin/marketing/summary", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    const { MarketingContactModel } = await import("./models");
+    const [subscribed, unsubscribed] = await Promise.all([
+      MarketingContactModel.countDocuments({ unsubscribed: { $ne: true } }),
+      MarketingContactModel.countDocuments({ unsubscribed: true }),
+    ]);
+    res.json({ subscribed, unsubscribed });
+  });
+
   // ── Vendor ratings: sign-in required, one review per user per vendor ──
   app.get("/api/vendors/:id/ratings", async (req, res) => {
     const { VendorRatingModel } = await import("./models");
@@ -4932,4 +4990,16 @@ async function notifyFollowersOfDrop(event: any): Promise<void> {
     }
   }
   console.log(`Follower drop blast for "${event.title}": ${sent}/${followers.length} sent`);
+}
+
+// Signs marketing unsubscribe links so they can't be forged for other emails.
+function marketingSig(email: string): string {
+  const secret = process.env.SESSION_SECRET || "dev-marketing-secret";
+  return crypto.createHmac("sha256", secret).update(`marketing:${email.toLowerCase()}`).digest("base64url").slice(0, 32);
+}
+
+export function marketingUnsubscribeUrl(email: string): string {
+  const e = email.toLowerCase();
+  const base = process.env.PUBLIC_APP_URL || "http://localhost:5000";
+  return `${base}/api/marketing/unsubscribe/${Buffer.from(e).toString("base64url")}.${marketingSig(e)}`;
 }
