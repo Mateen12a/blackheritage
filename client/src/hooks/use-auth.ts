@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
 import { errorFromResponse } from "@/lib/errors";
+import { startSession, endSession } from "@/lib/session";
 
 // Same-origin API in dev/preview (vite proxies /api → localhost:3001);
 // production can override with VITE_API_URL.
@@ -39,9 +40,8 @@ export function useAuth() {
       }
       return res.json();
     },
-    onSuccess: (user) => {
-      queryClient.setQueryData([`${BASE_URL}/api/auth/user`], user);
-    }
+    // A new identity: nothing cached for the previous account may survive.
+    onSuccess: (user) => startSession(user)
   });
 
   const registerMutation = useMutation({
@@ -57,9 +57,8 @@ export function useAuth() {
       }
       return res.json();
     },
-    onSuccess: (user) => {
-      queryClient.setQueryData([`${BASE_URL}/api/auth/user`], user);
-    }
+    // A new identity: nothing cached for the previous account may survive.
+    onSuccess: (user) => startSession(user)
   });
 
   const logoutMutation = useMutation({
@@ -69,9 +68,7 @@ export function useAuth() {
         credentials: "include"
       });
     },
-    onSuccess: () => {
-      queryClient.setQueryData([`${BASE_URL}/api/auth/user`], null);
-    }
+    onSuccess: () => endSession()
   });
 
   const becomeOrganizerMutation = useMutation({

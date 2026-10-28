@@ -1,4 +1,4 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { MutationCache, QueryCache, QueryClient, QueryFunction } from "@tanstack/react-query";
 import { ApiError, SESSION_EXPIRED_MESSAGE, errorFromResponse } from "./errors";
 
 async function throwIfResNotOk(res: Response) {
@@ -18,6 +18,14 @@ fetch(`${BASE_URL}/api/health`).catch(() => {
   // Silent fail: this is only a warm-up ping, nothing to report to the user.
 });
 
+// Set by lib/session: what to do when a request comes back 401 (the session
+// ended). Kept as a hook so this file doesn't import the session module.
+let onUnauthorized: () => void = () => {};
+export function setUnauthorizedHandler(fn: () => void) {
+  onUnauthorized = fn;
+}
+const isUnauthorized = (err: unknown) => err instanceof ApiError && err.status === 401;
+
 export async function apiRequest(
   method: string,
   url: string,
@@ -35,8 +43,12 @@ export async function apiRequest(
     credentials: "include",
   });
 
+  // A 401 used to come back as a normal response, so callers carried on as
+  // if it worked. It now fails loudly and the session handler takes over.
   if (res.status === 401) {
-    return res;
+    const err = await errorFromResponse(res);
+    onUnauthorized();
+    throw err;
   }
 
   await throwIfResNotOk(res);
@@ -69,6 +81,16 @@ export const getQueryFn: <T>(options: {
   };
 
 export const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (err) => {
+      if (isUnauthorized(err)) onUnauthorized();
+    },
+  }),
+  mutationCache: new MutationCache({
+    onError: (err) => {
+      if (isUnauthorized(err)) onUnauthorized();
+    },
+  }),
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),

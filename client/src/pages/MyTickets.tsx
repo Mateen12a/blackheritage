@@ -12,6 +12,7 @@ import {
   Download,
   ArrowRight,
   MessageCircle,
+  Mail,
 } from "lucide-react";
 import { blackHeritageCommunityWhatsAppLink } from "@/lib/contact";
 import { format } from "date-fns";
@@ -45,7 +46,7 @@ export default function MyTickets() {
     isLoading,
     isError,
     refetch,
-  } = useQuery<any[]>({
+  } = useQuery<any[] | { emailed: true }>({
     queryKey: ["/api/bookings/search", isMember ? "session" : searchEmail, submittedCode],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -70,6 +71,10 @@ export default function MyTickets() {
     }
   };
 
+  // A guest email lookup never lists bookings on screen: the server emails
+  // the tickets to that inbox instead, so only its owner can see them.
+  const emailed = !!bookings && !Array.isArray(bookings) && bookings.emailed;
+  const list = Array.isArray(bookings) ? bookings : [];
   const hasSearched = isMember || searchEmail !== "" || submittedCode !== "";
   const showResults = hasSearched && !isLoading;
 
@@ -127,9 +132,20 @@ export default function MyTickets() {
             message="Check the email address and your connection, then try again."
             onRetry={() => refetch()}
           />
-        ) : showResults && bookings && bookings.length > 0 ? (
+        ) : showResults && emailed ? (
+          <div className="text-center py-16 border border-hairline rounded-md bg-surface">
+            <Mail className="w-10 h-10 text-gold mx-auto mb-3" />
+            <h3 className="font-display text-lg font-bold text-ink mb-2">
+              Check your inbox
+            </h3>
+            <p className="text-muted-ink text-sm max-w-sm mx-auto">
+              If {searchEmail} has tickets for upcoming events, we've just emailed them there, PDF included.
+              Nothing after a few minutes? Check spam, or paste the reference from your ticket email above.
+            </p>
+          </div>
+        ) : showResults && list.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {bookings.map((booking) => (
+            {list.map((booking: any) => (
               <article
                 key={booking.id}
                 className="border border-hairline rounded-md bg-surface overflow-hidden hover:border-white/20 transition-colors"
@@ -290,7 +306,7 @@ export default function MyTickets() {
                   </div>
                 </div>
 
-                <TicketCodes bookingId={activeTicket.id} />
+                <TicketCodes bookingId={activeTicket.id} bookingRef={activeTicket.paymentReference} />
 
                 <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-muted-ink">
                   <ShieldCheck className="w-3.5 h-3.5 text-gold" aria-hidden="true" />
@@ -298,7 +314,7 @@ export default function MyTickets() {
                 </p>
 
                 <a
-                  href={bookingPdfUrl(activeTicket.id)}
+                  href={bookingPdfUrl(activeTicket.id, activeTicket.paymentReference)}
                   className="press mt-4 flex items-center justify-center gap-2 h-12 rounded-md bg-primary text-primary-foreground hover:bg-gold-soft font-medium"
                 >
                   <Download className="w-4.5 h-4.5" aria-hidden="true" />
@@ -337,8 +353,8 @@ export default function MyTickets() {
   );
 }
 
-function TicketCodes({ bookingId }: { bookingId: string }) {
-  const { data: tickets, isLoading, isError } = useBookingTickets(bookingId);
+function TicketCodes({ bookingId, bookingRef }: { bookingId: string; bookingRef?: string | null }) {
+  const { data: tickets, isLoading, isError } = useBookingTickets(bookingId, bookingRef);
 
   if (isLoading) {
     return (

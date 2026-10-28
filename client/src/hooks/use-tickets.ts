@@ -10,11 +10,15 @@ export interface TicketView {
   status: "valid" | "used" | "void";
 }
 
-export function useBookingTickets(bookingId: string | null) {
+// `ref` is the booking reference from the ticket email. Signed-in owners don't
+// need it; a guest who found their booking by reference proves it with it.
+const refQuery = (ref?: string | null) => (ref ? `?ref=${encodeURIComponent(ref)}` : "");
+
+export function useBookingTickets(bookingId: string | null, ref?: string | null) {
   return useQuery<TicketView[]>({
     queryKey: ["/api/bookings", bookingId, "tickets"],
     queryFn: async () => {
-      const res = await fetch(`/api/bookings/${bookingId}/tickets`, {
+      const res = await fetch(`/api/bookings/${bookingId}/tickets${refQuery(ref)}`, {
         credentials: "include",
       });
       if (!res.ok) throw new Error("Could not load tickets");
@@ -24,6 +28,6 @@ export function useBookingTickets(bookingId: string | null) {
   });
 }
 
-export function bookingPdfUrl(bookingId: string): string {
-  return `/api/bookings/${bookingId}/pdf`;
+export function bookingPdfUrl(bookingId: string, ref?: string | null): string {
+  return `/api/bookings/${bookingId}/pdf${refQuery(ref)}`;
 }

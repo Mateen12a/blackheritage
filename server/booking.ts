@@ -218,57 +218,7 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
   // Branded confirmation email with the PDF attached. Never blocks the
   // response; failures are logged, not thrown.
   try {
-    if (activeGateway() !== "simulated" || process.env.RESEND_API_KEY) {
-      const { sendTicketEmail } = await import("./emails");
-      const pdf = await buildTicketPdf(
-        tickets.map((t: any) => ({
-          code: t.code,
-          tierName: t.tierName,
-          attendeeName: t.attendeeName,
-          seat: t.seat,
-        })),
-        {
-          title: eventTitle,
-          date: new Date((event as any).date),
-          location: (event as any)?.location || "To be announced",
-          branding: (event as any)?.branding || null,
-        },
-      );
-      await sendTicketEmail(
-        { name: (booking as any).name, email: (booking as any).email },
-        {
-          eventTitle,
-          eventDate: new Date((event as any).date),
-          eventLocation: (event as any)?.location || "To be announced",
-          branding: (event as any)?.branding || null,
-          imageUrl: (event as any)?.imageUrl || null,
-          tickets: tickets.map((t: any) => ({
-            code: t.code,
-            tierName: t.tierName,
-            attendeeName: t.attendeeName,
-            seat: t.seat,
-          })),
-          totalPaidKobo: total,
-          serviceFeeKobo: serviceFee,
-          bookingRef: (booking as any).paymentReference || String(booking._id ?? booking.id).slice(-8).toUpperCase(),
-          pdfBase64: Buffer.from(pdf).toString("base64"),
-          icsBase64: Buffer.from(
-            buildEventIcs(
-              {
-                id: String((event as any)._id ?? (event as any).id),
-                title: eventTitle,
-                date: (event as any).date,
-                location: (event as any)?.location || "To be announced",
-                description: (event as any)?.description || "",
-                slug: (event as any)?.slug,
-              },
-              process.env.PUBLIC_APP_URL || "https://blackhevents.com",
-            ),
-            "utf8",
-          ).toString("base64"),
-        },
-      );
-    }
+    await sendBookingTicketsEmail(booking, event, tickets);
   } catch (emailErr) {
     console.error("Ticket email failed:", emailErr);
   }
@@ -617,5 +567,66 @@ export async function createGateSale(input: GateSaleInput): Promise<{ ok: boolea
     }
     console.error("Gate sale failed:", err);
     return { ok: false, message: "Could not record that sale. The seats were released; try again." };
+  }
+}
+
+/**
+ * The buyer's ticket email: branded body, PDF and calendar invite. Used at
+ * fulfilment and again when a buyer asks for their tickets by email.
+ */
+export async function sendBookingTicketsEmail(booking: any, event: any, tickets: any[]): Promise<void> {
+  const eventTitle = (event as any)?.title || "Event";
+  const serviceFee = Number((booking as any).serviceFeeKobo || 0);
+  const total = Math.max(0, ((booking as any).totalAmount || 0) - serviceFee);
+  if (activeGateway() !== "simulated" || process.env.RESEND_API_KEY) {
+    const { sendTicketEmail } = await import("./emails");
+    const pdf = await buildTicketPdf(
+      tickets.map((t: any) => ({
+        code: t.code,
+        tierName: t.tierName,
+        attendeeName: t.attendeeName,
+        seat: t.seat,
+      })),
+      {
+        title: eventTitle,
+        date: new Date((event as any).date),
+        location: (event as any)?.location || "To be announced",
+        branding: (event as any)?.branding || null,
+      },
+    );
+    await sendTicketEmail(
+      { name: (booking as any).name, email: (booking as any).email },
+      {
+        eventTitle,
+        eventDate: new Date((event as any).date),
+        eventLocation: (event as any)?.location || "To be announced",
+        branding: (event as any)?.branding || null,
+        imageUrl: (event as any)?.imageUrl || null,
+        tickets: tickets.map((t: any) => ({
+          code: t.code,
+          tierName: t.tierName,
+          attendeeName: t.attendeeName,
+          seat: t.seat,
+        })),
+        totalPaidKobo: total,
+        serviceFeeKobo: serviceFee,
+        bookingRef: (booking as any).paymentReference || String(booking._id ?? booking.id).slice(-8).toUpperCase(),
+        pdfBase64: Buffer.from(pdf).toString("base64"),
+        icsBase64: Buffer.from(
+          buildEventIcs(
+            {
+              id: String((event as any)._id ?? (event as any).id),
+              title: eventTitle,
+              date: (event as any).date,
+              location: (event as any)?.location || "To be announced",
+              description: (event as any)?.description || "",
+              slug: (event as any)?.slug,
+            },
+            process.env.PUBLIC_APP_URL || "https://blackhevents.com",
+          ),
+          "utf8",
+        ).toString("base64"),
+      },
+    );
   }
 }

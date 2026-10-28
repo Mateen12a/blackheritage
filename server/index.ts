@@ -138,6 +138,15 @@ app.use((req, res, next) => {
 
 app.use(express.urlencoded({ extended: false }));
 
+// API answers depend on who is asking, so no browser, proxy or Cloudflare
+// cache may keep one and hand it to the next person. The few public
+// endpoints that want caching set their own header, which overrides this.
+app.use("/api", (_req, res, next) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  res.setHeader("Vary", "Cookie");
+  next();
+});
+
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
     hour: "numeric",

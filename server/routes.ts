@@ -1939,7 +1939,18 @@ export async function registerRoutes(
   // Ticket lookup. For signed-in users the session is the query: every
   // booking made with their account email, no email field needed. Guests keep
   // the email path, and anyone can paste a ticket reference straight in.
-  app.get("/api/bookings/search", async (req, res) => {
+  //
+  // A guest typing an email used to get that inbox's bookings straight back,
+  // so anyone could read anyone's orders. Guests now get their tickets sent
+  // TO that inbox: the owner receives them, a stranger learns nothing. The
+  // limiter stops reference guessing and inbox flooding.
+  const bookingLookupLimit = rateLimit(20, 15 * 60 * 1000);
+  const ticketResendAt = new Map<string, number>();
+  // Only anonymous lookups are limited: signed-in dashboards call this on
+  // several screens and must never be throttled.
+  const limitAnonymous = (req: any, res: any, next: any) =>
+    req.isAuthenticated() ? next() : bookingLookupLimit(req, res, next);
+  app.get("/api/bookings/search", limitAnonymous, async (req, res) => {
     try {
       const code = typeof req.query.code === "string" ? req.query.code.trim() : "";
       if (code) {
@@ -1955,12 +1966,39 @@ export async function registerRoutes(
         return res.json(bookings);
       }
 
-      const email = req.query.email as string;
+      const email = String(req.query.email || "").trim().toLowerCase();
       if (!email) return res.status(400).json({ message: "Sign in, or enter the email or ticket code you booked with" });
-      const bookings = await storage.getBookingsByEmail(email);
-      res.json(bookings);
+      if (!EMAIL_PATTERN.test(email)) return res.status(400).json({ message: "Check that email address." });
+
+      // Same answer whether or not the inbox has bookings, so the lookup can't
+      // be used to find out who bought what.
+      res.json({ emailed: true });
+
+      const last = ticketResendAt.get(email) || 0;
+      if (Date.now() - last < 10 * 60 * 1000) return; // one resend per inbox per 10 minutes
+      ticketResendAt.set(email, Date.now());
+      if (ticketResendAt.size > 5000) ticketResendAt.clear();
+
+      const { sendBookingTicketsEmail } = await import("./booking");
+      const { EventModel } = await import("./models");
+      // Case-insensitive exact match: buyers type their email however they like.
+      const paid: any[] = await BookingModel.find({ email, status: "paid" })
+        .collation({ locale: "en", strength: 2 })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean();
+      for (const b of paid) {
+        const event: any = await EventModel.findById(b.eventId).lean();
+        if (!event || (event.date && new Date(event.date).getTime() < Date.now() - 2 * 864e5)) continue;
+        const tickets = await TicketModel.find({ bookingId: b._id }).sort({ seat: 1 }).lean();
+        if (tickets.length === 0) continue;
+        await sendBookingTicketsEmail(b, event, tickets).catch((err: any) =>
+          console.error("Ticket resend failed:", err?.message),
+        );
+      }
     } catch (err) {
-      res.status(500).json({ message: "Failed to search bookings" });
+      if (!res.headersSent) res.status(500).json({ message: "Failed to search bookings" });
+      else console.error("Ticket resend error:", err);
     }
   });
 
@@ -2436,8 +2474,34 @@ export async function registerRoutes(
   });
   app.post("/api/paystack/webhook", paymentWebhookHandler);
 
-  // ── Ticket codes for a booking (buyer reaches this only via their booking) ──
+  // Who may open a booking's tickets: the buyer (by account or by the email
+  // it was booked with), the event's organizer team, an admin, or a guest
+  // holding the booking reference from their email. Anyone else gets the
+  // same 404 as a booking that doesn't exist.
+  const canOpenBooking = async (req: any, bookingId: string): Promise<boolean> => {
+    if (!mongoose.Types.ObjectId.isValid(bookingId)) return false;
+    const booking: any = await BookingModel.findById(bookingId).lean();
+    if (!booking) return false;
+    const ref = typeof req.query.ref === "string" ? req.query.ref.trim() : "";
+    if (ref && booking.paymentReference) {
+      const a = Buffer.from(ref.toUpperCase()), b = Buffer.from(String(booking.paymentReference).toUpperCase());
+      if (a.length === b.length && crypto.timingSafeEqual(a, b)) return true;
+    }
+    if (!req.isAuthenticated()) return false;
+    const me = req.user as any;
+    if (me.role === "admin") return true;
+    if (booking.userId && booking.userId === String(me._id)) return true;
+    if (booking.email && me.email && String(booking.email).toLowerCase() === String(me.email).toLowerCase()) return true;
+    const event: any = await storage.getEvent(String(booking.eventId));
+    const orgId = me.teamOwnerId ? String(me.teamOwnerId) : String(me._id);
+    return !!event && me.role !== "user" && event.organizerId === orgId;
+  };
+
+  // ── Ticket codes for a booking (owner, organizer team or reference holder) ──
   app.get("/api/bookings/:id/tickets", async (req, res) => {
+    if (!(await canOpenBooking(req, req.params.id))) {
+      return res.status(404).json({ message: "We could not find that booking." });
+    }
     try {
       const tickets = await TicketModel.find({ bookingId: req.params.id }).sort({ seat: 1 }).lean();
       res.json(
@@ -2459,6 +2523,9 @@ export async function registerRoutes(
 
   // ── Branded PDF download for a booking's tickets ──
   app.get("/api/bookings/:id/pdf", async (req, res) => {
+    if (!(await canOpenBooking(req, req.params.id))) {
+      return res.status(404).json({ message: "We could not find that booking." });
+    }
     try {
       const { TicketModel } = await import("./models");
       const tickets = await TicketModel.find({ bookingId: req.params.id }).lean();
@@ -2483,8 +2550,6 @@ export async function registerRoutes(
         }
       }
 
-      // Guests and signed-in users can download; ticket codes are unguessable
-      // and the booking id is only revealed to the buyer after payment.
       const pdf = await buildTicketPdf(
         tickets.map((t: any) => ({
           code: t.code,
