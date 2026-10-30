@@ -47,6 +47,24 @@ const EVENT_TYPES: { value: string; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
+/** Returns `day` with its clock set to "HH:mm". */
+function withTime(day: Date, hhmm: string): Date {
+  const [h, m] = hhmm.split(":").map((n) => parseInt(n, 10) || 0);
+  const d = new Date(day);
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+/** 6pm by default; for a same-day event already past 6pm, the next full hour. */
+function defaultStartTime(day: Date): string {
+  const now = new Date();
+  if (day.toDateString() === now.toDateString() && now.getHours() >= 18) {
+    const next = Math.min(now.getHours() + 1, 23);
+    return `${String(next).padStart(2, "0")}:00`;
+  }
+  return "18:00";
+}
+
 const VISIBILITY_OPTIONS: { value: string; label: string; hint: string }[] = [
   { value: "public", label: "Public", hint: "Listed on the platform. Anyone can find it and buy tickets." },
   { value: "unlisted", label: "Unlisted", hint: "Off the listing. Only people with the link can open it." },
@@ -217,6 +235,17 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
   const watchedDate = form.watch("date");
   const watchedLocation = form.watch("location");
   const watchedImageUrl = form.watch("imageUrl");
+  const watchedEventType = form.watch("eventType");
+
+  // Date and start time live in one Date value. The calendar used to save
+  // midnight, so an event created today for 8pm stopped selling at 6am.
+  const [dateOpen, setDateOpen] = useState(false);
+  const parsedDate = watchedDate ? new Date(watchedDate) : null;
+  const hasDate = !!parsedDate && !isNaN(parsedDate.getTime());
+  const timeValue = hasDate ? format(parsedDate!, "HH:mm") : "";
+  const startsToday = hasDate && parsedDate!.toDateString() === new Date().toDateString();
+  // A minute of slack so "now" does not flag while the organizer is typing.
+  const startsInPast = hasDate && parsedDate!.getTime() < Date.now() - 60_000;
 
   const checklistItems = [
     {
@@ -228,8 +257,8 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
     {
       id: "date",
       label: "Date & Time",
-      done: !!watchedDate && !isNaN(new Date(watchedDate).getTime()),
-      desc: "Scheduled event date",
+      done: hasDate && !startsInPast,
+      desc: startsInPast ? "Start time has passed" : "Pick a date and start time",
     },
     {
       id: "location",
@@ -256,6 +285,15 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
   const isPublishReady = remainingItems.length === 0;
 
   const handleFormSubmit = (data: InsertEvent) => {
+    // Only new events are blocked: editing one that already ran must still save.
+    if (!initialData && startsInPast) {
+      form.setError("date", { message: "That start time has passed. Pick a later time." });
+      return;
+    }
+    if (data.eventType === "other" && !String(data.eventTypeLabel || "").trim()) {
+      form.setError("eventTypeLabel", { message: "Say what kind of event it is" });
+      return;
+    }
     onSubmit({
       ...data,
       ticketTypes: JSON.stringify(ticketTypes),
@@ -369,13 +407,34 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
               </FormItem>
             )}
           />
+
+          {/* Sits right beside the type picker so it is seen the moment
+              "Other" is chosen, not below the fold. */}
+          {watchedEventType === "other" ? (
+            <FormField
+              control={form.control}
+              name="eventTypeLabel"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">What kind of event?</FormLabel>
+                  <FormControl>
+                    <Input {...field} value={field.value || ""} autoFocus className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-base" placeholder="e.g. Album Listening Party" maxLength={40} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : (
+            <div className="hidden md:block" aria-hidden="true" />
+          )}
+
           <FormField
             control={form.control}
             name="date"
             render={({ field }) => (
               <FormItem className="flex flex-col">
                 <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">Date</FormLabel>
-                <Popover>
+                <Popover open={dateOpen} onOpenChange={setDateOpen}>
                   <PopoverTrigger asChild>
                     <FormControl>
                       <Button
@@ -386,7 +445,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                         )}
                       >
                         {field.value ? (
-                          format(field.value, "PPP")
+                          format(new Date(field.value), "EEE, d MMM yyyy")
                         ) : (
                           <span>Pick a date</span>
                         )}
@@ -397,8 +456,12 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
+                      selected={field.value ? new Date(field.value) : undefined}
+                      onSelect={(day) => {
+                        if (!day) return;
+                        field.onChange(withTime(day, timeValue || defaultStartTime(day)));
+                        setDateOpen(false);
+                      }}
                       disabled={(date) =>
                         date < new Date(new Date().setHours(0, 0, 0, 0))
                       }
@@ -411,36 +474,44 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
             )}
           />
 
+          <FormItem className="flex flex-col">
+            <FormLabel htmlFor="event-start-time" className="text-white font-bold uppercase tracking-wider text-xs">Start time</FormLabel>
+            <Input
+              id="event-start-time"
+              type="time"
+              step={300}
+              value={timeValue}
+              onChange={(e) => {
+                const t = e.target.value;
+                if (!t) return;
+                const base = watchedDate ? new Date(watchedDate) : new Date();
+                form.setValue("date", withTime(base, t), { shouldDirty: true, shouldValidate: true });
+              }}
+              className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-base [color-scheme:dark]"
+            />
+            {startsInPast ? (
+              <p className="text-xs text-red-400">That time has already passed today. Pick a later time.</p>
+            ) : startsToday ? (
+              <p className="text-xs text-gold">Happening today. Tickets sell until the event starts, and up to 6 hours after.</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">When doors open. Guests see this on their ticket.</p>
+            )}
+          </FormItem>
+
           <FormField
             control={form.control}
             name="location"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="md:col-span-2">
                 <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">Location</FormLabel>
                 <FormControl>
-                  <Input {...field} className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-base" placeholder="Event location" />
+                  <Input {...field} className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-base" placeholder="Venue name and area, e.g. Eko Hotel, Victoria Island" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
-
-        {form.watch("eventType") === "other" && (
-          <FormField
-            control={form.control}
-            name="eventTypeLabel"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">Describe the event type</FormLabel>
-                <FormControl>
-                  <Input {...field} value={field.value || ""} className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary" placeholder="e.g. Album Listening Party" maxLength={40} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
 
         {/* Visibility: who can find and open this event. */}
         <FormField

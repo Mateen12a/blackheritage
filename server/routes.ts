@@ -1060,6 +1060,11 @@ export async function registerRoutes(
             missing,
           });
         }
+        // Same-day events are fine; a start time that already passed is not
+        // (an hour of slack, matching the duplicate route).
+        if (input.date && new Date(input.date as any).getTime() < Date.now() - 60 * 60 * 1000) {
+          return res.status(400).json({ message: "That start time has passed. Pick a later time.", field: "date" });
+        }
       }
       // Slug: organizer-provided wins; otherwise derived from the title.
       // Collisions get a numeric suffix; the unique index is the backstop.

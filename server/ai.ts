@@ -65,6 +65,8 @@ async function callGemini(parts: GeminiPart[], tool: "reader" | "writer" = "read
   const what = tool === "reader" ? "flyer reader" : "writing helper";
   const friendly = (status: number) => {
     if (status === 429) return new Error(`The ${what} has reached its limit for now. Try again a bit later.`);
+    // 402: the AI account is out of credit; retrying will not help.
+    if (status === 402 || status === 403) return new Error(`The ${what} is paused right now. Fill in the details below; your flyer is still used as the cover.`);
     if (status >= 500) return new Error(`The ${what} is unavailable right now. Try again in a few minutes.`);
     return new Error(`The ${what} could not finish that request. Try again in a moment.`);
   };
@@ -204,6 +206,7 @@ export async function suggestEventCopy(req: CopyRequest): Promise<CopyResult> {
   const what = "writing helper";
   const friendly = (status: number) => {
     if (status === 429) return new Error("The writing helper has reached its limit for now. Try again a bit later.");
+    if (status === 402 || status === 403) return new Error("The writing helper is paused right now. Write it yourself for now.");
     if (status >= 500) return new Error("The writing helper is unavailable right now. Try again in a few minutes.");
     return new Error("The writing helper could not finish that request. Try again in a moment.");
   };
