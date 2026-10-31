@@ -55,6 +55,13 @@ function withTime(day: Date, hhmm: string): Date {
   return d;
 }
 
+/** End clock time on the start's day; earlier than the start means the next morning. */
+function endAfterStart(start: Date, hhmm: string): Date {
+  const d = withTime(start, hhmm);
+  if (d.getTime() <= start.getTime()) d.setDate(d.getDate() + 1);
+  return d;
+}
+
 /** 6pm by default; for a same-day event already past 6pm, the next full hour. */
 function defaultStartTime(day: Date): string {
   const now = new Date();
@@ -246,7 +253,21 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
   const timeValue = hasDate ? format(parsedDate!, "HH:mm") : "";
   const startsToday = hasDate && parsedDate!.toDateString() === new Date().toDateString();
   // A minute of slack so "now" does not flag while the organizer is typing.
-  const startsInPast = hasDate && parsedDate!.getTime() < Date.now() - 60_000;
+  // Editing a running event is normal (push the end time, fix the start), so
+  // a passed start only counts as a problem on a brand-new event.
+  const isEditing = !!initialData;
+  const startsInPast = !isEditing && hasDate && parsedDate!.getTime() < Date.now() - 60_000;
+  const isRunning = isEditing && hasDate && parsedDate!.getTime() <= Date.now();
+
+  // Moving the start keeps the chosen end clock time, re-rolled past the new start.
+  const setStart = (next: Date) => {
+    form.setValue("date", next, { shouldDirty: true, shouldValidate: true });
+    const prevEnds = (form.getValues() as any).endsAt;
+    const prev = prevEnds ? new Date(prevEnds) : null;
+    if (prev && !isNaN(prev.getTime())) {
+      form.setValue("endsAt" as any, endAfterStart(next, format(prev, "HH:mm")) as any, { shouldDirty: true });
+    }
+  };
 
   const checklistItems = [
     {
@@ -287,7 +308,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
 
   const handleFormSubmit = (data: InsertEvent) => {
     // Only new events are blocked: editing one that already ran must still save.
-    if (!initialData && startsInPast) {
+    if (startsInPast) {
       form.setError("date", { message: "That start time has passed. Pick a later time." });
       return;
     }
@@ -465,11 +486,11 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                       selected={field.value ? new Date(field.value) : undefined}
                       onSelect={(day) => {
                         if (!day) return;
-                        field.onChange(withTime(day, timeValue || defaultStartTime(day)));
+                        setStart(withTime(day, timeValue || defaultStartTime(day)));
                         setDateOpen(false);
                       }}
                       disabled={(date) =>
-                        date < new Date(new Date().setHours(0, 0, 0, 0))
+                        !isEditing && date < new Date(new Date().setHours(0, 0, 0, 0))
                       }
                       initialFocus
                     />
@@ -491,11 +512,13 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                 const t = e.target.value;
                 if (!t) return;
                 const base = watchedDate ? new Date(watchedDate) : new Date();
-                form.setValue("date", withTime(base, t), { shouldDirty: true, shouldValidate: true });
+                setStart(withTime(base, t));
               }}
               className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-base [color-scheme:dark]"
             />
-            {startsInPast ? (
+            {isRunning ? (
+              <p className="text-xs text-gold">This event has started. You can still change its times and save.</p>
+            ) : startsInPast ? (
               <p className="text-xs text-red-400">That time has already passed today. Pick a later time.</p>
             ) : startsToday ? (
               <p className="text-xs text-gold">Happening today. Tickets sell until the event starts, and up to 6 hours after.</p>
@@ -510,17 +533,23 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
             render={({ field }) => {
               const ends = field.value ? new Date(field.value as any) : null;
               const validEnds = !!ends && !isNaN(ends.getTime());
-              const endsBeforeStart = validEnds && hasDate && ends!.getTime() <= parsedDate!.getTime();
+              const nextDay = validEnds && hasDate && ends!.toDateString() !== parsedDate!.toDateString();
               return (
                 <FormItem className="md:col-span-2">
-                  <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">Ends at (optional)</FormLabel>
+                  <FormLabel htmlFor="event-end-time" className="text-white font-bold uppercase tracking-wider text-xs">Ends at (optional)</FormLabel>
                   <div className="flex gap-2">
                     <FormControl>
                       <Input
-                        type="datetime-local"
+                        id="event-end-time"
+                        type="time"
                         step={300}
-                        value={validEnds ? format(ends!, "yyyy-MM-dd'T'HH:mm") : ""}
-                        onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
+                        disabled={!hasDate}
+                        value={validEnds ? format(ends!, "HH:mm") : ""}
+                        onChange={(e) => {
+                          const t = e.target.value;
+                          if (!t || !hasDate) return;
+                          field.onChange(endAfterStart(parsedDate!, t));
+                        }}
                         className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-base [color-scheme:dark]"
                       />
                     </FormControl>
@@ -530,12 +559,16 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                       </Button>
                     )}
                   </div>
-                  {endsBeforeStart ? (
-                    <p className="text-xs text-red-400">The end time must be after the start time.</p>
+                  {!hasDate ? (
+                    <p className="text-xs text-muted-foreground">Pick the date and start time first.</p>
+                  ) : validEnds ? (
+                    <p className="text-xs text-gold">
+                      Ends {format(ends!, "EEE d MMM, h:mm a")}{nextDay ? " (next morning)" : ""}. Tickets sell until then, including at the door.
+                    </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
                       Tickets sell until this time. Left empty, sales close 6 hours after the start.
-                      You can push it later while the event is running, e.g. a party that goes till dawn.
+                      For a party that goes till dawn, enter e.g. 6:00 AM and it rolls to the next morning.
                     </p>
                   )}
                   <FormMessage />
