@@ -1,4 +1,5 @@
 import { EventModel, BookingModel, BusinessBookingModel, VendorModel, MessageModel, User, type IEvent, type IBooking, type IBusinessBooking, type IVendor, type IMessage } from "./models";
+import { salesCloseAt } from "@shared/schema";
 import type { InsertEvent, InsertBooking, Event, Booking, BusinessBooking, Vendor, InsertVendor, Message } from "@shared/schema";
 import mongoose from "mongoose";
 import { findUserById } from "./auth";
@@ -282,6 +283,7 @@ const mockEvents: Event[] = [
     partnerSettings: null,
     ageLimit: null,
     endsText: null,
+    endsAt: null,
     dressCode: null,
     refundPolicy: null,
     promoCodesPublic: false,
@@ -329,6 +331,7 @@ const mockEvents: Event[] = [
     partnerSettings: null,
     ageLimit: null,
     endsText: null,
+    endsAt: null,
     dressCode: null,
     refundPolicy: null,
     promoCodesPublic: false,
@@ -375,6 +378,7 @@ const mockEvents: Event[] = [
     partnerSettings: null,
     ageLimit: null,
     endsText: null,
+    endsAt: null,
     dressCode: null,
     refundPolicy: null,
     promoCodesPublic: false,
@@ -407,12 +411,12 @@ export class MongoStorage implements IStorage {
       const mapped = docs.map(mapEvent);
       // Finished events leave the directory. The page itself survives as a
       // recap for anyone holding the link, but a last-month show must never
-      // sit in Explore or the homepage pretending to be bookable. Same 6-hour
-      // grace the booking gate uses, so a party running past midnight is not
-      // pulled out from under the people still inside.
-      const gate = Date.now() - 6 * 60 * 60 * 1000;
+      // sit in Explore or the homepage pretending to be bookable. Same close
+      // time the booking gate uses (end time, else start + 6h), so a party
+      // running till dawn is not pulled out from under the people inside.
+      const now = Date.now();
       return mapped.filter(
-        e => e.visibility !== 'unlisted' && new Date(e.date).getTime() >= gate,
+        e => e.visibility !== 'unlisted' && (salesCloseAt(e) ?? now) >= now,
       );
     } catch (e) {
       return process.env.DEMO_MODE === 'true' ? mockEvents : [];

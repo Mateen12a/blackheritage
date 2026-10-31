@@ -3,6 +3,7 @@ import { TicketModel, BookingModel, PromoCodeModel, PayoutModel, PlatformSetting
 import { generateTicketCode, buildTicketPdf } from "./tickets";
 import { activeGateway } from "./payments";
 import { buildEventIcs } from "./calendar";
+import { salesCloseAt } from "@shared/schema";
 
 
 
@@ -380,9 +381,10 @@ export async function quoteBooking(input: {
   if ((event as any).status === "draft" || (event as any).status === "unpublished") {
     return { ok: false, message: "Ticket sales are closed for this event" };
   }
-  // A past-dated event is over, whatever its publish status says. No charging
-  // cards for a show that already happened.
-  if ((event as any).date && new Date((event as any).date).getTime() < Date.now() - 6 * 60 * 60 * 1000) {
+  // A finished event is over, whatever its publish status says. No charging
+  // cards for a show that already happened. The organizer's end time wins.
+  const closesAt = salesCloseAt(event as any);
+  if (closesAt !== null && closesAt < Date.now()) {
     return { ok: false, message: "This event has ended. Tickets are no longer on sale." };
   }
 

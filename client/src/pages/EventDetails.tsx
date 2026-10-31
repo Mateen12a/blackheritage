@@ -1,4 +1,5 @@
 import { useEvent } from "@/hooks/use-events";
+import { salesCloseAt } from "@shared/schema";
 import { lazy, Suspense } from "react";
 // Checkout, the share studio and the partner form load on first use, not with the page.
 const BookingModal = lazy(() => import("@/components/BookingModal").then((m) => ({ default: m.BookingModal })));
@@ -102,9 +103,10 @@ export default function EventDetails() {
     .filter((ms) => ms > Date.now())
     .sort((a: number, b: number) => a - b)[0] ?? null;
   const countdown = useCountdown(earlyClose);
-  // The show is over: date passed more than six hours ago matches the
-  // server's sales cutoff, so the page and the checkout agree.
-  const eventEnded = !!event?.date && new Date(event.date).getTime() < Date.now() - 6 * 60 * 60 * 1000;
+  // Same close time the server's checkout uses, so the page and the
+  // checkout agree: the organizer's end time, else six hours after start.
+  const closesAt = event ? salesCloseAt(event as any) : null;
+  const eventEnded = closesAt !== null && closesAt < Date.now();
 
   // Public promo codes: fetched only when the organizer advertises them.
   // Keyed on the resolved event id, not the route param: on /e/:slug the

@@ -230,6 +230,7 @@ const EventSchema: Schema = new Schema({
   archivedAt: { type: Date, default: null }, // admin-archived: hidden, records kept
   ageLimit: { type: String, default: null },
   endsText: { type: String, default: null },
+  endsAt: { type: Date, default: null },
   dressCode: { type: String, default: null },
   refundPolicy: { type: String, default: null },
   promoCodesPublic: { type: Boolean, default: false },

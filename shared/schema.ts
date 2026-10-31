@@ -42,6 +42,7 @@ export const events = pgTable("events", {
   // Good to know: optional facts guests ask before buying.
   ageLimit: text("age_limit"), // "18+", "16+", "21+"; empty = not stated
   endsText: text("ends_text"), // free text, e.g. "Till dawn", "2am"
+  endsAt: timestamp("ends_at"), // when the night ends; ticket sales close here
   dressCode: text("dress_code"),
   refundPolicy: text("refund_policy"), // "none" | "7_days" | "contact"
 
@@ -241,6 +242,7 @@ export const insertEventSchema = createInsertSchema(events).omit({ id: true }).e
     .nullable(),
   theme: z.enum(["midnight-gold", "ivory-editorial", "sunset-poster"]).optional().nullable(),
   date: dateInput,
+  endsAt: dateInput.optional().nullable(),
   whatsappGroupUrl: z
     .string()
     .trim()
@@ -274,6 +276,21 @@ export const insertDraftEventSchema = insertEventSchema.extend({
   location: z.string().optional().default(""),
   imageUrl: z.string().optional().default(""),
 });
+
+/** No end time set: sales run until six hours after the start. */
+export const DEFAULT_SALES_GRACE_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * When ticket sales close: the organizer's end time if they set one,
+ * otherwise six hours after the start. Checkout, the event page and the
+ * listing all use this one rule so they agree.
+ */
+export function salesCloseAt(event: { date?: unknown; endsAt?: unknown }): number | null {
+  const ends = event.endsAt ? new Date(event.endsAt as any).getTime() : NaN;
+  if (!isNaN(ends)) return ends;
+  const start = event.date ? new Date(event.date as any).getTime() : NaN;
+  return isNaN(start) ? null : start + DEFAULT_SALES_GRACE_MS;
+}
 
 /** Fields an event must have before it can be published. */
 export function missingEventPublishFields(input: Partial<InsertEvent>): string[] {

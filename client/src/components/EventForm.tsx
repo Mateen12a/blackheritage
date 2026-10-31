@@ -99,6 +99,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
       buyerPaysFee: false,
       ageLimit: null,
       endsText: null,
+      endsAt: null,
       dressCode: null,
       refundPolicy: null,
       promoCodesPublic: false,
@@ -288,6 +289,11 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
     // Only new events are blocked: editing one that already ran must still save.
     if (!initialData && startsInPast) {
       form.setError("date", { message: "That start time has passed. Pick a later time." });
+      return;
+    }
+    const endsMs = (data as any).endsAt ? new Date((data as any).endsAt).getTime() : NaN;
+    if (!isNaN(endsMs) && hasDate && endsMs <= parsedDate!.getTime()) {
+      form.setError("endsAt" as any, { message: "The end time must be after the start time." });
       return;
     }
     if (data.eventType === "other" && !String(data.eventTypeLabel || "").trim()) {
@@ -497,6 +503,46 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
               <p className="text-xs text-muted-foreground">When doors open. Guests see this on their ticket.</p>
             )}
           </FormItem>
+
+          <FormField
+            control={form.control}
+            name={"endsAt" as any}
+            render={({ field }) => {
+              const ends = field.value ? new Date(field.value as any) : null;
+              const validEnds = !!ends && !isNaN(ends.getTime());
+              const endsBeforeStart = validEnds && hasDate && ends!.getTime() <= parsedDate!.getTime();
+              return (
+                <FormItem className="md:col-span-2">
+                  <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">Ends at (optional)</FormLabel>
+                  <div className="flex gap-2">
+                    <FormControl>
+                      <Input
+                        type="datetime-local"
+                        step={300}
+                        value={validEnds ? format(ends!, "yyyy-MM-dd'T'HH:mm") : ""}
+                        onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
+                        className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-base [color-scheme:dark]"
+                      />
+                    </FormControl>
+                    {validEnds && (
+                      <Button type="button" variant="outline" className="h-12 border-white/15 text-white hover:bg-white/10" onClick={() => field.onChange(null)}>
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  {endsBeforeStart ? (
+                    <p className="text-xs text-red-400">The end time must be after the start time.</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Tickets sell until this time. Left empty, sales close 6 hours after the start.
+                      You can push it later while the event is running, e.g. a party that goes till dawn.
+                    </p>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
+          />
 
           <FormField
             control={form.control}

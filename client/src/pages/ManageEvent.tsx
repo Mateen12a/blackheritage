@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link, useLocation } from "wouter";
 import { format, isPast } from "date-fns";
+import { salesCloseAt } from "@shared/schema";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RowListSkeleton } from "@/components/AsyncStates";
 import { InviteGuestsPanel } from "@/components/InviteGuestsPanel";
@@ -388,7 +389,10 @@ export default function ManageEvent() {
 
   const eventDate = event.date ? new Date(event.date) : null;
   const hasValidDate = !!eventDate && !isNaN(eventDate.getTime());
-  const isExpired = hasValidDate ? isPast(eventDate as Date) : false;
+  // Running events are not expired: sales stay open until the end time
+  // (or six hours after the start), the same rule checkout uses.
+  const closesAt = salesCloseAt(event as any);
+  const isExpired = closesAt !== null && closesAt < Date.now();
 
   return (
     <div className="pb-20">
