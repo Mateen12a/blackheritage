@@ -243,6 +243,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
   const watchedDate = form.watch("date");
   const watchedLocation = form.watch("location");
   const watchedImageUrl = form.watch("imageUrl");
+  const watchedDescription = form.watch("description");
   const watchedEventType = form.watch("eventType");
 
   // Date and start time live in one Date value. The calendar used to save
@@ -287,6 +288,13 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
       label: "Venue / Location",
       done: !!watchedLocation && String(watchedLocation).trim().length >= 3,
       desc: "City or physical address",
+    },
+    {
+      // The server refuses to publish without one, so the checklist says so too.
+      id: "description",
+      label: "Description",
+      done: !!watchedDescription && String(watchedDescription).trim().length > 0,
+      desc: "A line or two about the night",
     },
     {
       id: "imageUrl",
@@ -704,7 +712,8 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <label className="text-xs text-muted-foreground uppercase font-bold">Tier Name</label>
-                        {isFreeTier && (
+                        {/* A blank new tier is not "free" yet, just unpriced. */}
+                        {isFreeTier && (type.name?.trim() || Number(type.capacity) > 0) && (
                           <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 border border-green-500/20">
                             Free Entry
                           </span>
@@ -735,8 +744,11 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                         min="0"
                         inputMode="numeric"
                         // Stored in kobo like every money figure; typed and shown in naira.
-                        value={type.price === 0 ? "0" : type.price ? Math.round(Number(type.price) / 100) : ""}
+                        // 0 shows as an empty box (the Free Entry badge says it is free), so a
+                        // stuck "0" never ends up in front of what the organizer types.
+                        value={type.price ? Math.round(Number(type.price) / 100) : ""}
                         placeholder="e.g. 6000"
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => {
                           const naira = e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
                           updateTicketType(index, 'price', naira * 100);
@@ -749,8 +761,9 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                       <Input 
                         type="number"
                         min="0"
-                        value={type.capacity === 0 ? "0" : type.capacity || ""} 
-                        placeholder="Seats / passes"
+                        value={type.capacity || ""}
+                        placeholder="e.g. 100"
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) => {
                           const val = e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
                           updateTicketType(index, 'capacity', val);
@@ -1585,7 +1598,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                 isPublishReady ? "bg-green-500 animate-pulse" : "bg-gold"
               )} />
               <span className="text-xs font-bold uppercase tracking-wider text-ink">
-                Publishing Readiness: {completedCount} of 5 required details completed
+                Publishing Readiness: {completedCount} of {checklistItems.length} required details completed
               </span>
             </div>
             <span className={cn(
