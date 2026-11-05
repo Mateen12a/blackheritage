@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { Suspense, lazy, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { insertEventSchema, insertDraftEventSchema, type InsertEvent } from "@shared/schema";
@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FlyerExtractPanel } from "@/components/FlyerExtractPanel";
 import { CopySuggest } from "@/components/CopySuggest";
-import { ShareFlyerModal } from "@/components/ShareFlyerModal";
+// The studio pulls in Konva and the flyer fonts: load it only when an organizer opens it.
+const FlyerStudio = lazy(() => import("@/components/FlyerStudio").then((m) => ({ default: m.FlyerStudio })));
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -1035,23 +1036,28 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
           )}
         />
 
-        <ShareFlyerModal
-          open={studioOpen}
-          onClose={() => setStudioOpen(false)}
-          event={{
-            title: form.watch("title") || "Untitled Event",
-            date: form.watch("date") || new Date(),
-            location: form.watch("location") || "",
-            price: form.watch("price") || 0,
-            imageUrl: form.watch("imageUrl") || null,
-            slug: null,
-            visibility: form.watch("visibility"),
-            accessCode: form.watch("accessCode") || "",
-            branding: form.watch("branding") || null,
-          }}
-          enableStudio
-          onApplyCover={(url) => form.setValue("imageUrl", url, { shouldDirty: true })}
-        />
+        {studioOpen && (
+          <Suspense fallback={null}>
+          <FlyerStudio
+            open={studioOpen}
+            onClose={() => setStudioOpen(false)}
+            event={{
+              title: form.watch("title") || "",
+              date: form.watch("date") || null,
+              location: form.watch("location") || "",
+              imageUrl: form.watch("imageUrl") || null,
+              branding: form.watch("branding") || null,
+            }}
+            priceLabel={(() => {
+              // The flyer states the cheapest buyable ticket, like every card does.
+              const paid = ticketTypes.map((t: any) => Number(t.price) || 0).filter((k: number) => k > 0);
+              if (paid.length) return `From ₦${Math.round(Math.min(...paid) / 100).toLocaleString("en-NG")}`;
+              return ticketTypes.length ? "Free entry" : "";
+            })()}
+            onApplyCover={(url) => form.setValue("imageUrl", url, { shouldDirty: true })}
+          />
+          </Suspense>
+        )}
 
         <FormField
           control={form.control}

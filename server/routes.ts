@@ -25,7 +25,7 @@ import { initializePayment, verifyPayment, refundPayment, activeGateway, isPayst
 import { buildTicketPdf, generateTicketCode } from "./tickets";
 import { seedPlatform } from "./seed";
 import { sendManualTicketEmail, sendRefundEmail, sendFollowerDropEmail } from "./emails";
-import { extractEventFromFile, isAIConfigured, aiUploadLimiter, suggestEventCopy } from "./ai";
+import { extractEventFromFile, isAIConfigured, aiUploadLimiter, suggestEventCopy, generateFlyerArt, FLYER_ART_STYLES } from "./ai";
 import { rateLimit } from "./auth";
 import { saveUpload, MAX_UPLOAD_BYTES } from "./media-storage";
 import { publishToUser, subscribeToStream } from "./realtime";
@@ -618,6 +618,30 @@ export async function registerRoutes(
         .catch((e: any) => {
           console.error("AI copy failed:", e.message);
           res.status(422).json({ message: e.message || "The writing helper hit a snag. Try again in a moment." });
+        });
+    });
+  });
+
+  // Flyer Studio artwork: background art only (no words, no faces); the
+  // studio typesets the real details on top. Images cost more than text, so
+  // this has its own, tighter budget.
+  const aiArtRateLimit = rateLimit(8, 10 * 60 * 1000);
+  app.post("/api/ai/flyer-art", (req: any, res: any) => {
+    if (!req.isAuthenticated() || (req.user as any).role === "user") {
+      return res.status(403).json({ message: "Only organizer accounts can make flyer artwork" });
+    }
+    if (!isAIConfigured()) {
+      return res.status(503).json({ message: "The artwork maker is switched off right now. Use your event photo or a colour background." });
+    }
+    aiArtRateLimit(req, res, () => {
+      const { vibe, style, format, calm, colours } = req.body || {};
+      if (!(style in FLYER_ART_STYLES)) return res.status(400).json({ message: "Pick an art style" });
+      if (!["post", "story", "square"].includes(format)) return res.status(400).json({ message: "Unknown flyer size" });
+      generateFlyerArt({ vibe: String(vibe || ""), style, format, calm, colours: Array.isArray(colours) ? colours : [] })
+        .then((img) => res.json({ image: `data:${img.mimeType};base64,${img.data}` }))
+        .catch((e: any) => {
+          console.error("AI art failed:", e.message);
+          res.status(422).json({ message: e.message || "The artwork maker hit a snag. Try again in a moment." });
         });
     });
   });

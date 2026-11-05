@@ -47,6 +47,18 @@ else away first.
   metadata only: dates, categories, section labels. Not for headings,
   not for buttons, not scattered on every element.
 
+### Exception: Flyer Studio artwork
+
+Flyers are the organizer's artwork, not our UI, so the Flyer Studio
+(`client/src/components/FlyerStudio.tsx`, engine in `client/src/lib/studio.ts`)
+may use a curated set of display faces (Anton, Bebas Neue, Syne, Archivo
+Black, Instrument Serif; self-hosted in `client/public/fonts/flyer/`) and its
+own palettes. They are loaded by the studio only (`loadStudioFonts`), never in
+`index.html`, and never used for app chrome. The studio's own panels follow
+the tokens above. AI (Gemini) paints background art only, never words or
+faces: every word on a flyer is typeset by a template so it is spelled right
+and laid out by design. Add a face or palette here deliberately, not by drift.
+
 ## Layout grammar
 
 - **Photo-forward cards:** event flyers and vendor portfolio shots are the

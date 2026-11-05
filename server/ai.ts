@@ -287,3 +287,84 @@ export async function suggestEventCopy(req: CopyRequest): Promise<CopyResult> {
   }
   throw lastError;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Flyer Studio artwork. The model paints BACKGROUND ART only: no words, no
+// faces. The studio typesets the real title/date/venue on top, so text is
+// always spelled right and the layout is always a designed template. Art
+// direction is ours (curated styles below), not "make it look cool", which is
+// what keeps the result from reading as generic AI output.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
+
+export const FLYER_ART_STYLES = {
+  film: "A real 35mm film photograph, shot on Portra 800 at night, heavy natural grain, slight motion blur, practical light sources only, shallow depth of field, honest and unretouched.",
+  texture: "A tactile close-up still life: real materials (fabric, metal, glass, paper, smoke), macro lens, hard directional light, deep shadows, rich texture you could touch. No illustration.",
+  ankara: "A bold flat composition inspired by West African wax-print textiles: large confident geometric and organic shapes, limited palette of 3 colours, crisp edges, printed-paper texture, like a screen-printed poster background.",
+  abstract: "Abstract light and colour: soft out-of-focus bokeh shapes, long-exposure light trails and haze photographed in camera, no hard objects, like a background plate from a music video.",
+  collage: "A hand-made paper collage background: torn paper edges, risograph print texture, halftone dots, misregistered colour layers, scanned on a flatbed, intentionally imperfect.",
+  minimal: "A minimal architectural photograph: a single strong shape of light and shadow on a plain wall or floor, lots of empty negative space, calm and expensive-looking.",
+} as const;
+export type FlyerArtStyle = keyof typeof FLYER_ART_STYLES;
+
+const ART_ASPECT: Record<string, string> = { post: "4:5", story: "9:16", square: "1:1" };
+
+export async function generateFlyerArt(input: {
+  vibe: string; style: FlyerArtStyle; format: "post" | "story" | "square"; calm?: "top" | "bottom" | "center"; colours?: string[];
+}): Promise<{ mimeType: string; data: string }> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("AI is not configured");
+
+  const vibe = String(input.vibe || "").replace(/\s+/g, " ").trim().slice(0, 240);
+  const calm = input.calm === "bottom" ? "the lower half" : input.calm === "center" ? "the centre" : "the upper half";
+  const colours = (input.colours || []).filter((c) => /^#[0-9a-f]{6}$/i.test(c)).slice(0, 3);
+  const prompt = [
+    `Background artwork for a Nigerian event poster. The night: ${vibe || "a night out in Lagos"}.`,
+    `Art direction: ${FLYER_ART_STYLES[input.style] || FLYER_ART_STYLES.film}`,
+    colours.length ? `Colour palette built around ${colours.join(", ")}.` : "",
+    `Composition: keep ${calm} quiet, dark and uncluttered, because the poster's title will be typeset there later.`,
+    "Hard rules: absolutely no text, letters, numbers, logos, watermarks, signage or writing of any kind.",
+    "No human faces or close-up people; silhouettes far in the distance at most.",
+    "Avoid clichés: no neon city skyline, no lens flares, no glowing particles or sparkles, no fantasy, no 3D render look, no oversaturated HDR.",
+  ].filter(Boolean).join("\n");
+
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: ART_ASPECT[input.format] || "4:5" } },
+  });
+
+  let lastError = new Error("The artwork maker came back empty. Try again in a moment.");
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let res: Awaited<ReturnType<typeof fetch>>;
+    try {
+      res = await fetch(`${BASE}/models/${IMAGE_MODEL}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body,
+      });
+    } catch (e: any) {
+      console.error("AI art network error:", e?.message);
+      lastError = new Error("Could not reach the artwork maker. Check the connection and try again.");
+      continue;
+    }
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      console.error(`AI art request failed (${res.status}):`, errBody.slice(0, 300));
+      if (res.status === 429) lastError = new Error("The artwork maker has reached its limit for now. Try again a bit later.");
+      else if (res.status === 400 || res.status === 402 || res.status === 403) lastError = new Error("The artwork maker is paused right now. Use your event photo or a colour background for now.");
+      else lastError = new Error("The artwork maker is unavailable right now. Try again in a few minutes.");
+      if (res.status < 500 && res.status !== 429) break;
+      continue;
+    }
+    const json: any = await res.json();
+    const parts: any[] = json.candidates?.[0]?.content?.parts || [];
+    const img = parts.find((p) => p.inlineData?.data || p.inline_data?.data);
+    const inline = img?.inlineData || img?.inline_data;
+    if (inline?.data) return { mimeType: inline.mimeType || inline.mime_type || "image/png", data: inline.data };
+    const reason = json.candidates?.[0]?.finishReason || json.promptFeedback?.blockReason || "no image";
+    console.error("AI art empty - reason:", reason);
+    lastError = new Error("That idea did not come out. Try describing the night differently.");
+  }
+  throw lastError;
+}
