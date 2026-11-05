@@ -1764,8 +1764,13 @@ export async function registerRoutes(
       if (socials !== undefined) updateData.socials = socials;
       if (theme !== undefined) updateData.theme = theme;
       if (accentHex !== undefined) updateData.accentHex = accentHex;
+      // No domain = REMOVE the field, never store null: the unique index is
+      // sparse, which skips missing fields but still counts nulls, so a second
+      // organizer saving "no domain" as null hit E11000 on customDomain_1.
+      const unsetData: Record<string, ""> = {};
       if (cleanDomain !== undefined) {
-        updateData.customDomain = cleanDomain || null;
+        if (cleanDomain) updateData.customDomain = cleanDomain;
+        else unsetData.customDomain = "";
         // A domain only becomes "active" through the DNS verify endpoint;
         // saving it alone proves nothing. Re-saving an unchanged domain keeps
         // its existing status so verify results survive profile edits.
@@ -1784,7 +1789,7 @@ export async function registerRoutes(
 
       const updated = await User.findByIdAndUpdate(
         orgId,
-        { $set: updateData },
+        Object.keys(unsetData).length ? { $set: updateData, $unset: unsetData } : { $set: updateData },
         { new: true }
       ).lean();
 
