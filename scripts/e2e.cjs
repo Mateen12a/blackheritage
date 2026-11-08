@@ -906,7 +906,7 @@ async function api(method, path, body, useCookie = true) {
     const text = pdfText(buf);
     ok(
       "playbook pdf carries the gate checklist and voucher",
-      text.includes("12-point gate checklist") && text.includes("FOUNDER100"),
+      text.includes("12-point gate checklist") && text.includes("FOUNDER50"),
       "bytes=" + buf.length + " text=" + text.length,
     );
     // The cover header used to overlap: a fixed 16pt step put a 26pt title's

@@ -227,7 +227,7 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
                   Sign In
                 </span>
               </Link>
-              {!onEventPage && <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100">
+              {!onEventPage && <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER50">
                 <span className="press inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-semibold hover:bg-gold-soft transition-colors cursor-pointer shadow-sm">
                   <Plus className="w-3.5 h-3.5" />
                   <span>List Event</span>
@@ -346,14 +346,14 @@ export function Navbar({ eventBrand, overMedia }: { eventBrand?: EventBrand | nu
             ) : (
               <div className="flex flex-col gap-2 px-1">
                 {!onEventPage && (
-                <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100">
+                <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER50">
                   <Button
                     size="sm"
                     className="w-full bg-gold text-[#0F0F14] hover:bg-gold-soft font-bold text-sm h-11 rounded-xl shadow-[0_4px_20px_rgba(227,178,60,0.25)] flex items-center justify-center gap-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <Plus className="w-4 h-4" />
-                    <span>List an Event · 0% on First 100</span>
+                    <span>List an Event · 0% on First 50</span>
                   </Button>
                 </Link>
                 )}

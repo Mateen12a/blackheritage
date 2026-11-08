@@ -254,8 +254,8 @@ export default function Events() {
           <ProductionEmptyState
             title="No upcoming events yet"
             message="New events and cultural experiences will appear here once organizers publish tickets."
-            actionLabel="List an event · 0% on First 100"
-            actionHref={user ? "/admin/events/new" : "/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100"}
+            actionLabel="List an event · 0% on First 50"
+            actionHref={user ? "/admin/events/new" : "/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER50"}
           />
         ) : !isLoading && filteredEvents?.length === 0 ? (
           <div className="text-center py-24 border border-hairline rounded-md bg-surface">

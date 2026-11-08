@@ -1,3 +1,4 @@
+import { FOUNDER_CODE } from "@shared/founder";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
@@ -76,7 +77,7 @@ export function useAuth() {
       const res = await fetch(`${BASE_URL}/api/user/become-organizer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ founderVoucher: "FOUNDER100" }),
+        body: JSON.stringify({ founderVoucher: FOUNDER_CODE }),
         credentials: "include"
       });
       if (!res.ok) throw await errorFromResponse(res);

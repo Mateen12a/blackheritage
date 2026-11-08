@@ -26,7 +26,7 @@ const PAGE_H = 841.89;
 const MARGIN = 56;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 
-const PROMO_CODE = "FOUNDER100";
+const PROMO_CODE = "FOUNDER50";
 
 function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const lines: string[] = [];
@@ -440,7 +440,7 @@ async function build(): Promise<Uint8Array> {
   L.callout(
     "Founder voucher",
     PROMO_CODE,
-    "Waives the Black Heritage platform fee on your first 100 paid tickets. Enter it when you create your organizer account.",
+    "Waives the Black Heritage platform fee on your first 50 paid tickets. Enter it when you create your organizer account.",
   );
   L.body(
     "Your payment processor's own charge still applies, and the code covers paid tickets only. Comps, sponsor bands and guest lists already carry no platform fee.",

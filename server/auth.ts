@@ -1,3 +1,4 @@
+import { FOUNDER_CODE, isFounderCode } from "@shared/founder";
 import { Express } from "express";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
@@ -232,14 +233,13 @@ export function setupAuth(app: Express) {
           // A bad referral code never blocks a signup.
         }
       }
-      // Every new organizer gets the Founder Hundred perk. It used to depend
+      // Every new organizer gets the Founder perk. It used to depend
       // on the sign-up form sending the code, so any path that did not
       // (an older form, a direct link) silently missed it.
       const founderVoucher =
         role === "organizer" ||
-        (typeof req.body.founderVoucher === "string" &&
-          req.body.founderVoucher.trim().toUpperCase() === "FOUNDER100")
-          ? "FOUNDER100"
+        isFounderCode(req.body.founderVoucher)
+          ? FOUNDER_CODE
           : undefined;
 
       const user = new User({
@@ -398,9 +398,9 @@ export function setupAuth(app: Express) {
 
     if (user.role === "user") {
       user.role = "organizer";
-      // Auto-apply Founder Hundred perk on activation if not already present
+      // Auto-apply the Founder perk on activation if not already present
       if (!user.founderVoucher) {
-        user.founderVoucher = "FOUNDER100";
+        user.founderVoucher = FOUNDER_CODE;
         user.waivedTicketCount = 0;
       }
       await user.save();

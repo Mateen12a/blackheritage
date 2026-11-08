@@ -104,18 +104,18 @@ function ActivateOrganizerScreen() {
           You are currently signed in as an attendee. Turn on organizer capabilities to publish events, scan tickets at the door, and receive direct payouts to your Nigerian bank account.
         </p>
 
-        {/* Founder Hundred Perk Box */}
+        {/* Founder Perk Box */}
         <div className="mt-6 p-4 rounded-xl border border-gold/30 bg-gold/5 text-left flex items-start gap-3">
           <div className="w-7 h-7 rounded-lg bg-gold/20 flex items-center justify-center shrink-0 mt-0.5 text-gold">
             <Sparkles className="w-3.5 h-3.5" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-gold tracking-wider uppercase">Founder Hundred Perk</span>
+              <span className="text-xs font-bold text-gold tracking-wider uppercase">Founder Perk</span>
               <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-gold/20 text-gold">Ready</span>
             </div>
             <p className="text-xs text-ink/80 mt-1 leading-relaxed">
-              0% platform fee on your first 100 paid tickets. Code <span className="font-mono text-gold font-bold">FOUNDER100</span> applied automatically.
+              0% platform fee on your first 50 paid tickets. Code <span className="font-mono text-gold font-bold">FOUNDER50</span> applied automatically.
             </p>
           </div>
         </div>

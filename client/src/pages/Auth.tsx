@@ -1,3 +1,4 @@
+import { FOUNDER_CODE, isFounderCode } from "@shared/founder";
 import { useState, useEffect, FormEvent } from "react";
 import { useLocation, useSearch, Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -67,7 +68,7 @@ const AUDIENCES: {
     key: "organizer",
     icon: CalendarDays,
     label: "I run events",
-    benefit: "Sell tickets with 0% platform fee on your first 100 paid tickets. Real-time payouts to your Nigerian bank.",
+    benefit: "Sell tickets with 0% platform fee on your first 50 paid tickets. Real-time payouts to your Nigerian bank.",
     cta: "Start Selling Tickets",
     success: "Welcome! Your dashboard is ready.",
   },
@@ -127,8 +128,8 @@ export default function AuthPage() {
     .toUpperCase()
     .trim();
   const initialVoucher =
-    rawPromo === "FOUNDER100" || (initialAudience === "organizer" && rawPromo !== "NONE")
-      ? "FOUNDER100"
+    isFounderCode(rawPromo) || (initialAudience === "organizer" && rawPromo !== "NONE")
+      ? FOUNDER_CODE
       : rawPromo;
 
   const [modeOverride, setModeOverride] = useState<Mode | null>(null);
@@ -150,7 +151,7 @@ export default function AuthPage() {
   const handleAudienceChange = (nextAudience: Audience) => {
     setAudience(nextAudience);
     if (nextAudience === "organizer" && !founderVoucher) {
-      setFounderVoucher("FOUNDER100");
+      setFounderVoucher(FOUNDER_CODE);
     }
   };
   const [username, setUsername] = useState("");
@@ -304,7 +305,7 @@ export default function AuthPage() {
     try {
       // Google OAuth flow: redirect to the backend OAuth endpoint. The
       // audience and voucher ride along so an organizer-card signup lands with the
-      // organizer role and Founder Hundred voucher, and a pending destination survives.
+      // organizer role and Founder voucher, and a pending destination survives.
       const params = new URLSearchParams({ audience });
       if (returnTo) params.set("returnTo", returnTo);
       if (audience === "organizer" && founderVoucher) {
@@ -470,10 +471,10 @@ export default function AuthPage() {
                 })}
               </div>
 
-              {/* Founder Hundred Perk Badge for Organizers */}
+              {/* Founder Perk Badge for Organizers */}
               {audience === "organizer" && (
                 <p className="text-xs text-muted-ink leading-relaxed border-l-2 border-gold pl-3">
-                  <span className="text-ink font-medium">Founder perk applied.</span> No platform fee on your first 100 paid tickets.
+                  <span className="text-ink font-medium">Founder perk applied.</span> No platform fee on your first 50 paid tickets.
                 </p>
               )}
             </div>

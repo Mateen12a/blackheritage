@@ -448,7 +448,7 @@ export async function sendPlaybookEmail(
       <div style="background:#faf9f7;border:1px solid #e5e2dc;border-radius:8px;padding:16px;margin-bottom:20px;">
         <div style="font-size:11px;letter-spacing:1px;color:#666;text-transform:uppercase;">Voucher code</div>
         <div style="font-size:22px;font-weight:bold;letter-spacing:2px;margin-top:6px;">${esc(data.promoCode)}</div>
-        <div style="font-size:13px;color:#666;margin-top:6px;">Waives the platform fee on your first 100 paid tickets. Enter it when you create your organizer account.</div>
+        <div style="font-size:13px;color:#666;margin-top:6px;">Waives the platform fee on your first 50 paid tickets. Enter it when you create your organizer account.</div>
       </div>
 
       <p style="margin:0 0 8px;font-size:14px;"><strong>Inside the playbook.</strong> The 12-point gate checklist, the six fraud plays you will actually see, the sponsor pitch outline, and the numbers worth writing down after every show.</p>

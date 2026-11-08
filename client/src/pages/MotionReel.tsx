@@ -828,7 +828,7 @@ function ScenePayout({ lt }: { lt: number }) {
         </div>
       </div>
 
-      {/* Founder Hundred: the launch offer, landing once the sum has settled */}
+      {/* Founder perk: the launch offer, landing once the sum has settled */}
       <div
         style={{
           position: "absolute",
@@ -854,7 +854,7 @@ function ScenePayout({ lt }: { lt: number }) {
             background: `${GOLD}14`,
           }}
         >
-          <span style={{ color: GOLD }}>0%</span> platform fee on your first 100 tickets
+          <span style={{ color: GOLD }}>0%</span> platform fee on your first 50 tickets
         </div>
       </div>
     </div>

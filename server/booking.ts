@@ -1,3 +1,4 @@
+import { founderAllowance } from "@shared/founder";
 import mongoose from "mongoose";
 import { TicketModel, BookingModel, PromoCodeModel, PayoutModel, PlatformSettingModel, EventModel } from "./models";
 import { generateTicketCode, buildTicketPdf } from "./tickets";
@@ -96,15 +97,17 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
   let isFounderPerkApplied = false;
   let waivedForThisBooking = 0;
   let totalWaivedCount = 0;
+  let founderLimit = 0;
 
   if (organizerId && total > 0) {
     try {
       const { User } = await import("./models");
       const organizer = await User.findById(organizerId);
-      if (organizer && organizer.founderVoucher === "FOUNDER100") {
+      founderLimit = organizer ? founderAllowance(organizer.founderVoucher) : 0;
+      if (organizer && founderLimit > 0) {
         const used = Number(organizer.waivedTicketCount || 0);
-        if (used < 100) {
-          const remainingWaiver = 100 - used;
+        if (used < founderLimit) {
+          const remainingWaiver = founderLimit - used;
           waivedForThisBooking = Math.min(qty, remainingWaiver);
           totalWaivedCount = used + waivedForThisBooking;
           await User.updateOne(
@@ -134,8 +137,8 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
 
   const feeNote = isFounderPerkApplied
     ? waivedForThisBooking >= qty
-      ? `0% platform fee · Founder Hundred perk (${totalWaivedCount}/100 tickets used)`
-      : `${feeBps / 100}% platform fee on remaining ${qty - waivedForThisBooking} tickets · Founder Hundred (${totalWaivedCount}/100 tickets used)`
+      ? `0% platform fee · Founder perk (${totalWaivedCount}/${founderLimit} tickets used)`
+      : `${feeBps / 100}% platform fee on remaining ${qty - waivedForThisBooking} tickets · Founder perk (${totalWaivedCount}/${founderLimit} tickets used)`
     : `${feeBps / 100}% platform commission`;
 
   await PayoutModel.create({
@@ -262,8 +265,8 @@ export async function fulfillBooking(bookingId: string): Promise<FulfillmentResu
 }
 
 // ── Platform fee ─────────────────────────────────────────────────────────────
-// Founder Hundred waives the fee on an organizer's first 100 paid tickets;
-// a booking that straddles the 100th ticket pays on the remainder only.
+// The Founder perk waives the fee on an organizer's first paid tickets (see
+// shared/founder.ts); a booking that straddles the limit pays on the remainder.
 
 export function platformFeeFor(totalKobo: number, qty: number, waivedQty: number, feeBps: number): number {
   const chargeableQty = Math.max(0, qty - waivedQty);
@@ -303,8 +306,9 @@ export async function previewPlatformFee(organizerId: string | null | undefined,
     const { User } = await import("./models");
     const organizer = await User.findById(organizerId).lean();
     if (typeof (organizer as any)?.commissionBps === "number") feeBps = (organizer as any).commissionBps;
-    if ((organizer as any)?.founderVoucher === "FOUNDER100") {
-      waivedQty = Math.min(qty, Math.max(0, 100 - Number((organizer as any).waivedTicketCount || 0)));
+    const founderLimit = founderAllowance((organizer as any)?.founderVoucher);
+    if (founderLimit > 0) {
+      waivedQty = Math.min(qty, Math.max(0, founderLimit - Number((organizer as any).waivedTicketCount || 0)));
     }
   }
   return platformFeeFor(totalKobo, qty, waivedQty, feeBps);

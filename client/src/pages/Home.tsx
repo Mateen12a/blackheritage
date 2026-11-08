@@ -206,9 +206,9 @@ function HeroPosterDeck({ events, loading = false }: { events: Event[]; loading?
         <p className="text-xs text-muted-ink max-w-xs mb-5 leading-relaxed">
           Tickets for upcoming parties, live concerts, and festivals across Nigeria will appear here once published.
         </p>
-        <Link href={user ? "/admin/events/new" : "/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100"}>
+        <Link href={user ? "/admin/events/new" : "/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER50"}>
           <span className="press inline-flex items-center justify-center h-11 px-6 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-gold-soft transition-colors cursor-pointer">
-            List an event · 0% on First 100
+            List an event · 0% on First 50
           </span>
         </Link>
       </div>
@@ -443,12 +443,12 @@ export default function Home() {
                       Book Talent
                     </Button>
                   </Link>
-                  <Link href={user ? "/admin/events/new" : "/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER100"}>
+                  <Link href={user ? "/admin/events/new" : "/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER50"}>
                     <Button
                       variant="outline"
                       className="press h-11 sm:h-12 px-6 sm:px-8 text-sm sm:text-base border-gold/40 bg-gold/10 text-gold hover:bg-gold/20 font-medium rounded-full w-full sm:w-auto backdrop-blur-sm"
                     >
-                      Host an Event · 0% on First 100
+                      Host an Event · 0% on First 50
                     </Button>
                   </Link>
                 </div>
@@ -733,7 +733,7 @@ export default function Home() {
                     <div className="flex items-start gap-3">
                       <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold shrink-0" aria-hidden="true" />
                       <p className="text-xs text-ink/80 leading-relaxed">
-                        <strong className="text-ink font-semibold">Zero platform fee</strong> on your first 100 tickets sold (flat 6% transparent fee after).
+                        <strong className="text-ink font-semibold">Zero platform fee</strong> on your first 50 tickets sold (flat 6% transparent fee after).
                       </p>
                     </div>
                     <div className="flex items-start gap-3">
