@@ -111,3 +111,34 @@ export async function saveUpload(
   await fs.promises.writeFile(path.join(LOCAL_DIR, filename), buffer);
   return { url: `/uploads/portfolio/${filename}`, backend: "disk" };
 }
+
+/**
+ * Remove a file saveUpload stored, so a replaced upload stops taking space.
+ * Only names saveUpload could have produced are touched; anything else
+ * (an outside link, a path with folders in it) is ignored.
+ */
+export async function deleteUpload(url: string): Promise<void> {
+  const SAFE_NAME = /^\d+-[0-9a-f]{8}\.[a-z0-9]{2,5}$/;
+  try {
+    if (url.startsWith("/uploads/portfolio/")) {
+      const name = url.slice("/uploads/portfolio/".length);
+      if (!SAFE_NAME.test(name)) return;
+      await fs.promises.unlink(path.join(LOCAL_DIR, name)).catch((err) => {
+        if (err?.code !== "ENOENT") throw err;
+      });
+      return;
+    }
+    if (r2Ready && url.startsWith(`${publicBase}/portfolio/`)) {
+      const name = url.slice(`${publicBase}/portfolio/`.length);
+      if (!SAFE_NAME.test(name)) return;
+      const res = await (client as AwsClient).fetch(
+        `https://${accountId}.r2.cloudflarestorage.com/${bucket}/portfolio/${name}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok && res.status !== 404) throw new Error(`R2 delete failed (${res.status})`);
+    }
+  } catch (err: any) {
+    // A leftover file wastes space but breaks nothing; never fail the request over it.
+    console.error("[media] delete failed:", err?.message);
+  }
+}

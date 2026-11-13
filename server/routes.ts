@@ -31,6 +31,8 @@ import { saveUpload, MAX_UPLOAD_BYTES } from "./media-storage";
 import { publishToUser, subscribeToStream } from "./realtime";
 import { playbookPdf, PLAYBOOK_FILENAME, PLAYBOOK_PROMO_CODE } from "./playbook";
 import { isEmailConfigured, sendPlaybookEmail } from "./emails";
+import { registerChallengeRoutes } from "./challenges";
+import { isTierOnSale } from "@shared/tiers";
 import crypto from "crypto";
 import { format } from "date-fns";
 
@@ -196,6 +198,9 @@ export async function registerRoutes(
     res.json({ status: "ok" });
   });
 
+  // BH Talent Hunt: online contest entries and judging.
+  registerChallengeRoutes(app);
+
   // ── Launch Video & Stills Export Endpoints ──
   app.post("/api/export-launch-video", express.raw({ type: "*/*", limit: "150mb" }), async (req, res) => {
     try {
@@ -332,7 +337,7 @@ export async function registerRoutes(
         try {
           const tiers = JSON.parse((event as any).ticketTypes || "[]");
           const tierPrices = tiers
-            .filter((t: any) => t && t.saleOpen !== false && Number(t.price) > 0)
+            .filter((t: any) => t && isTierOnSale(t) && Number(t.price) > 0)
             .map((t: any) => Math.round(Number(t.price) / 100));
           if (tierPrices.length) minPrice = Math.min(minPrice === 0 ? Infinity : minPrice, ...tierPrices);
         } catch { /* keep legacy price */ }

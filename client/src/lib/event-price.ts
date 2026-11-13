@@ -1,4 +1,5 @@
 import type { Event } from "@shared/schema";
+import { isTierOnSale } from "@shared/tiers";
 
 /**
  * One place that turns an event's raw tier JSON into the three things every
@@ -17,7 +18,8 @@ interface TicketTier {
   price?: number; // kobo
   capacity?: number;
   sold?: number;
-  saleOpen?: boolean;
+  saleOpen?: boolean | string | null;
+  saleClose?: string | null;
 }
 
 /** Fields the API attaches to event payloads beyond the stored schema. */
@@ -43,7 +45,7 @@ export function formatNaira(kobo: number): string {
 /** Tiers that are actually on sale right now. */
 function openTiers(event: Event): TicketTier[] {
   return parseTiers(event).filter(
-    (t) => t && t.saleOpen !== false && Number(t.capacity || 0) > 0,
+    (t) => t && isTierOnSale(t) && Number(t.capacity || 0) > 0,
   );
 }
 

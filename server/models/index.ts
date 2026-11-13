@@ -859,3 +859,59 @@ EventInviteSchema.index({ eventId: 1, email: 1 });
 export const EventInviteModel =
   mongoose.models.EventInvite ||
   model<IEventInvite>("EventInvite", EventInviteSchema);
+
+// One entry per person per category in an online talent contest (the BH
+// Talent Hunt). The entrant's talent profile is the vendorId: entering also
+// lists them in the talent directory.
+export interface IChallengeEntry extends Document {
+  challengeKey: string;
+  userId: string;
+  vendorId?: string | null;
+  category: 'music' | 'dance' | 'comedy';
+  stageName: string;
+  videoUrl: string;
+  /** "upload": a file we store (counts against the contest's storage budget). "link": an Instagram or TikTok post. */
+  videoSource: 'link' | 'upload';
+  videoBytes: number;
+  about: string;
+  whatsapp: string;
+  instagram?: string;
+  tiktok?: string;
+  city?: string;
+  followsConfirmed: boolean;
+  acceptedRulesAt: Date;
+  status: 'submitted' | 'shortlisted' | 'winner' | 'disqualified';
+  score?: number | null;
+  judgeNote?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const ChallengeEntrySchema: Schema = new Schema({
+  challengeKey: { type: String, required: true, index: true },
+  userId: { type: String, required: true },
+  vendorId: { type: String, default: null },
+  category: { type: String, enum: ['music', 'dance', 'comedy'], required: true },
+  stageName: { type: String, required: true },
+  videoUrl: { type: String, required: true },
+  videoSource: { type: String, enum: ['link', 'upload'], default: 'link' },
+  videoBytes: { type: Number, default: 0 },
+  about: { type: String, required: true },
+  whatsapp: { type: String, required: true },
+  instagram: { type: String, default: '' },
+  tiktok: { type: String, default: '' },
+  city: { type: String, default: '' },
+  followsConfirmed: { type: Boolean, default: false },
+  acceptedRulesAt: { type: Date, required: true },
+  status: { type: String, enum: ['submitted', 'shortlisted', 'winner', 'disqualified'], default: 'submitted' },
+  score: { type: Number, default: null },
+  judgeNote: { type: String, default: '' },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+
+ChallengeEntrySchema.index({ challengeKey: 1, userId: 1, category: 1 }, { unique: true });
+
+export const ChallengeEntryModel =
+  mongoose.models.ChallengeEntry ||
+  model<IChallengeEntry>("ChallengeEntry", ChallengeEntrySchema);

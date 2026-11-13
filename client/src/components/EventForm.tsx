@@ -56,6 +56,13 @@ function withTime(day: Date, hhmm: string): Date {
   return d;
 }
 
+/** A tier's stored ISO sale date as a datetime-local value ("" when unset). */
+function toLocalInput(iso: unknown): string {
+  if (typeof iso !== "string" || !iso) return "";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : format(d, "yyyy-MM-dd'T'HH:mm");
+}
+
 /** End clock time on the start's day; earlier than the start means the next morning. */
 function endAfterStart(start: Date, hhmm: string): Date {
   const d = withTime(start, hhmm);
@@ -773,11 +780,51 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                       />
                     </div>
                     <div className="flex items-end">
-                      <Button type="button" variant="destructive" size="icon" onClick={() => removeTicketType(index)} className="w-full">
+                      <Button type="button" variant="destructive" size="icon" onClick={() => removeTicketType(index)} className="w-full" aria-label={`Remove ${type.name || "tier"}`}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs text-muted-foreground uppercase font-bold" htmlFor={`tier-perks-${index}`}>What's included (optional)</label>
+                      <Input
+                        id={`tier-perks-${index}`}
+                        value={type.description || ""}
+                        maxLength={200}
+                        placeholder="e.g. Front rows, meet the artist"
+                        onChange={(e) => updateTicketType(index, 'description', e.target.value)}
+                        className="bg-background border-white/10"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs text-muted-foreground uppercase font-bold" htmlFor={`tier-open-${index}`}>On sale from (optional)</label>
+                      <Input
+                        id={`tier-open-${index}`}
+                        type="datetime-local"
+                        value={toLocalInput(type.saleOpen)}
+                        onChange={(e) => updateTicketType(index, 'saleOpen', e.target.value ? new Date(e.target.value).toISOString() : null)}
+                        className="bg-background border-white/10 [color-scheme:dark]"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs text-muted-foreground uppercase font-bold" htmlFor={`tier-close-${index}`}>Sales end (optional)</label>
+                      <Input
+                        id={`tier-close-${index}`}
+                        type="datetime-local"
+                        value={toLocalInput(type.saleClose)}
+                        onChange={(e) => updateTicketType(index, 'saleClose', e.target.value ? new Date(e.target.value).toISOString() : null)}
+                        className="bg-background border-white/10 [color-scheme:dark]"
+                      />
+                    </div>
+                  </div>
+                  {typeof type.saleOpen === "string" && type.saleClose && Date.parse(type.saleClose) <= Date.parse(type.saleOpen) ? (
+                    <p className="mt-2 text-xs text-destructive" role="alert">Sales end must be after "On sale from".</p>
+                  ) : (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Leave both dates empty to sell until the event. For an Early Bird, set when sales end; for the Regular that follows, set when it goes on sale.
+                    </p>
+                  )}
                 </Card>
               );
             })}

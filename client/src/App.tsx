@@ -378,6 +378,13 @@ function Router() {
           </PublicLayout>
         )}
       </Route>
+      <Route path="/talent-hunt">
+        {() => (
+          <PublicLayout>
+            <Challenges />
+          </PublicLayout>
+        )}
+      </Route>
       <Route path="/challenges">
         {() => (
           <PublicLayout>

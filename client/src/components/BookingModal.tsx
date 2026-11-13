@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Event } from "@shared/schema";
 import { EMAIL_HINT, isValidEmail } from "@shared/email";
+import { tierSaleState } from "@shared/tiers";
+import { format } from "date-fns";
 import React, { useState, useEffect } from "react";
 import {
   useBookingQuote,
@@ -75,7 +77,12 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
 
   useEffect(() => {
     if (ticketTypes.length > 0 && !selectedTier) {
-      setSelectedTier(ticketTypes[0].name);
+      // Start on the first tier a buyer can actually pick (an ended Early
+      // Bird or a not-yet-open Regular is shown but can't be bought).
+      const buyable = ticketTypes.find(
+        (t: any) => tierSaleState(t) === "on" && Number(t.capacity || 0) - Number(t.sold || 0) > 0,
+      );
+      setSelectedTier((buyable || ticketTypes[0]).name);
     }
   }, [ticketTypes, selectedTier]);
 
@@ -292,14 +299,20 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
               <div role="radiogroup" className="rounded-md border border-hairline divide-y divide-hairline overflow-hidden">
                 {ticketTypes.map((type: any) => {
                   const remaining = Math.max(0, Number(type.capacity || 0) - Number(type.sold || 0));
-                  const saleClosed = type.saleClose && new Date(type.saleClose).getTime() < Date.now();
-                  const unavailable = remaining <= 0 || saleClosed;
+                  const saleState = tierSaleState(type);
+                  const saleClosed = saleState === "closed" || saleState === "off";
+                  const notYet = saleState === "upcoming";
+                  const unavailable = remaining <= 0 || saleClosed || notYet;
                   const selected = selectedTier === type.name;
                   const status = remaining <= 0
                     ? "Sold out"
                     : saleClosed
                       ? "Sales closed"
-                      : showCounts && remaining <= 20
+                      : notYet
+                        ? `On sale ${format(new Date(type.saleOpen), "EEE d MMM, h:mm a")}`
+                        : type.saleClose && !(showCounts && remaining <= 20)
+                          ? `On sale until ${format(new Date(type.saleClose), "EEE d MMM, h:mm a")}`
+                          : showCounts && remaining <= 20
                         ? `Only ${remaining} left`
                         : showCounts
                           ? `${remaining.toLocaleString()} available`
@@ -326,8 +339,11 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
                       </span>
                       <span className="flex-1 min-w-0">
                         <span className="block font-medium text-ink truncate">{type.name}</span>
+                        {type.description && (
+                          <span className="block text-xs text-muted-ink">{type.description}</span>
+                        )}
                         {status && (
-                          <span className={`block text-xs ${remaining > 0 && remaining <= 20 && !saleClosed ? "text-gold" : "text-muted-ink"}`}>
+                          <span className={`block text-xs ${remaining > 0 && remaining <= 20 && !saleClosed && !notYet ? "text-gold" : "text-muted-ink"}`}>
                             {status}
                           </span>
                         )}
