@@ -897,6 +897,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                     <SelectContent>
                       <SelectItem value="unset">Not stated</SelectItem>
                       <SelectItem value="none">No refunds</SelectItem>
+                      <SelectItem value="none_no_transfer">No refunds or transfers</SelectItem>
                       <SelectItem value="7_days">Refunds up to 7 days before</SelectItem>
                       <SelectItem value="contact">Contact the organizer</SelectItem>
                     </SelectContent>

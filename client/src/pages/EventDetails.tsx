@@ -65,6 +65,7 @@ function useEventThemeVars(event: any): React.CSSProperties {
 
 const REFUND_COPY: Record<string, string> = {
   none: "No refunds",
+  none_no_transfer: "No refunds. Tickets can't be transferred or resold.",
   "7_days": "Refunds up to 7 days before the event",
   contact: "Contact the organizer about refunds",
 };

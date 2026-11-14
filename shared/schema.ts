@@ -44,7 +44,7 @@ export const events = pgTable("events", {
   endsText: text("ends_text"), // free text, e.g. "Till dawn", "2am"
   endsAt: timestamp("ends_at"), // when the night ends; ticket sales close here
   dressCode: text("dress_code"),
-  refundPolicy: text("refund_policy"), // "none" | "7_days" | "contact"
+  refundPolicy: text("refund_policy"), // "none" | "none_no_transfer" | "7_days" | "contact"
 
   // ── Organizer branding lite: their identity on their event surfaces ──
   branding: jsonb("branding"), // { logoUrl, accentHex, displayName }

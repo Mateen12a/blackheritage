@@ -194,7 +194,7 @@ export function AdminUsersManager() {
                               </SelectTrigger>
                               <SelectContent className="bg-surface border-hairline text-ink">
                                 <SelectItem value="default">Platform rate</SelectItem>
-                                {["0", "2", "2.5", "3", "3.5", "4", "5", "6"].map((p) => (
+                                {["0", "2", "2.5", "3", "3.5", "4", "5", "6", "7", "8", "10", "12", "15"].map((p) => (
                                   <SelectItem key={p} value={p}>{p}%</SelectItem>
                                 ))}
                               </SelectContent>
