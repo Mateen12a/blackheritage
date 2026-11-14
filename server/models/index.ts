@@ -56,6 +56,7 @@ export interface IUser extends Document {
   verifiedAt?: Date | null;
   founderVoucher?: string | null;
   commissionBps?: number | null; // per-organizer rate set by an admin; null = platform rate
+  manualPayouts?: boolean; // admin-set: skip the automatic Paystack split; money waits in the platform balance until a payout request is approved
   waivedTicketCount?: number;
   createdAt: Date;
 }
@@ -148,6 +149,7 @@ const UserSchema: Schema = new Schema({
   verifiedAt: { type: Date, default: null },
   founderVoucher: { type: String, default: null },
   commissionBps: { type: Number, default: null },
+  manualPayouts: { type: Boolean, default: false },
   payoutRequestedAt: { type: Date, default: null }, // throttles payout request emails
   waivedTicketCount: { type: Number, default: 0 },
   isDemo: { type: Boolean, default: false, index: true },
@@ -174,6 +176,7 @@ export interface IEvent extends Document {
   sponsorsEnabled: boolean;
   vendorsEnabled: boolean;
   ticketTypes: string; // Added ticketTypes
+  galleryKind?: 'past' | 'venue';
   showRemainingCounts?: boolean;
   showAttendeeCount?: boolean;
   waitlistEnabled?: boolean;
@@ -210,6 +213,7 @@ const EventSchema: Schema = new Schema({
   organizerId: { type: String },
   organizerName: { type: String }, // Add organizer name for "Published by"
   gallery: { type: String, default: '[]' }, // JSON string: past event photos
+  galleryKind: { type: String, enum: ['past', 'venue'], default: 'past' },
   pastEventVideos: { type: String, default: '[]' }, // JSON string: video URLs
   promoterName: { type: String, default: null }, // who receives the promoter share
   promoterCommissionBps: { type: Number, default: 0 }, // organizer-chosen share, basis points

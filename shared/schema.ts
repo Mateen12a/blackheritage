@@ -20,6 +20,7 @@ export const events = pgTable("events", {
   status: text("status").notNull().default("published"), // draft, published, unpublished
   organizerId: text("organizer_id"), // Replit Auth ID
   gallery: text("gallery").default("[]"), // JSON string: past event photos
+  galleryKind: text("gallery_kind").default("past"), // what the photos show: "past" editions or the "venue"
   pastEventVideos: text("past_event_videos").default("[]"), // JSON string: video URLs
   promoterName: text("promoter_name"), // who receives the organizer-chosen promoter share
   promoterCommissionBps: integer("promoter_commission_bps").default(0), // basis points of ticket revenue

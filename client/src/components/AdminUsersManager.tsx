@@ -50,6 +50,29 @@ export function AdminUsersManager() {
   });
 
   // Per-organizer commission: "default" follows the platform rate.
+  const payoutModeMutation = useMutation({
+    mutationFn: async ({ id, manual }: { id: string; manual: boolean }) => {
+      const res = await fetch(`/api/admin/users/${id}/payout-mode`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ manual }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || "Failed to change payouts");
+      return res.json();
+    },
+    onSuccess: (_d, v) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: v.manual ? "Manual payouts on" : "Automatic payouts on",
+        description: v.manual
+          ? "New sales wait in the platform balance until you approve a payout request."
+          : "New sales go straight to this organizer's bank through Paystack.",
+      });
+    },
+    onError: (e: Error) => toast({ title: "Could not change payouts", description: e.message, variant: "destructive" }),
+  });
+
   const updateFeeMutation = useMutation({
     mutationFn: async ({ id, percent }: { id: string; percent: number | null }) => {
       const res = await fetch(`/api/admin/users/${id}/commission`, {
@@ -199,6 +222,16 @@ export function AdminUsersManager() {
                                 ))}
                               </SelectContent>
                             </Select>
+                            <label className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted-ink cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="accent-gold"
+                                checked={Boolean(u.manualPayouts)}
+                                disabled={payoutModeMutation.isPending}
+                                onChange={(e) => payoutModeMutation.mutate({ id: u.id, manual: e.target.checked })}
+                              />
+                              Manual payouts
+                            </label>
                           </div>
                         ) : (
                           <span className="text-[11px] text-muted-ink">-</span>

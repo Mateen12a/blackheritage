@@ -172,6 +172,9 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
     }
   });
 
+  const [galleryKind, setGalleryKind] = useState<"past" | "venue">(
+    (initialData as any)?.galleryKind === "venue" ? "venue" : "past",
+  );
   const [galleryUrlDraft, setGalleryUrlDraft] = useState("");
   const [videoUrlDraft, setVideoUrlDraft] = useState("");
   const [isUploadingGallery, setIsUploadingGallery] = useState(false);
@@ -342,6 +345,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
       ticketTypes: JSON.stringify(ticketTypes),
       checkoutFields,
       gallery: JSON.stringify(gallery),
+      galleryKind,
       pastEventVideos: JSON.stringify(pastEventVideos),
     });
   };
@@ -375,6 +379,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
       ticketTypes: JSON.stringify(ticketTypes),
       checkoutFields,
       gallery: JSON.stringify(gallery),
+      galleryKind,
       pastEventVideos: JSON.stringify(pastEventVideos),
     } as InsertEvent);
   };
@@ -1453,17 +1458,37 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
           />
         </div>
 
-        {/* Past Event Media (Optional) */}
+        {/* Event photos and videos (Optional): past editions or the venue */}
         <div className="space-y-4 rounded-xl border border-hairline bg-surface p-6">
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-gold" />
-              Past Event Media (Optional)
+              Photos and videos (Optional)
             </h2>
             <p className="text-xs text-muted-foreground mt-1">
-              Add photos and video recap links from earlier editions to show what the experience looks like.
+              Show guests what to expect: photos from earlier editions, or of the venue if this is the first one.
             </p>
           </div>
+
+          <fieldset className="space-y-2">
+            <legend className="text-xs font-medium text-white">These photos show</legend>
+            <div role="radiogroup" className="flex flex-wrap gap-2">
+              {([["past", "Past editions"], ["venue", "The venue"]] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={galleryKind === value}
+                  onClick={() => setGalleryKind(value)}
+                  className={`h-9 rounded-md border px-4 text-sm transition-colors ${
+                    galleryKind === value ? "border-gold text-gold bg-gold/10" : "border-white/10 text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
 
           {/* Photo gallery */}
           <div className="space-y-3 pt-2">

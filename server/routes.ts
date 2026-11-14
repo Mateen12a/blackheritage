@@ -2164,7 +2164,9 @@ export async function registerRoutes(
           const instant = await instantPayoutsOn();
           if (event.organizerId && !instant) {
             const organizerUser = await User.findById(event.organizerId).lean();
-            if (organizerUser?.isVerified && organizerUser?.bankDetails?.subaccountCode) {
+            // Manual payouts (admin-set): no split, the sale waits in the
+            // platform balance until the team approves a payout request.
+            if (organizerUser?.isVerified && organizerUser?.bankDetails?.subaccountCode && !(organizerUser as any).manualPayouts) {
               const rawSub = organizerUser.bankDetails.subaccountCode;
               const { isTestMode } = await import("./paystack");
               const isSynthetic = rawSub.startsWith("ACCT_DEMO_") || rawSub.startsWith("ACCT_SIM_");
@@ -3295,7 +3297,8 @@ export async function registerRoutes(
       paidKobo: wallet ? wallet.paidKobo : by("settled"),
       isVerified: Boolean((organizer as any)?.isVerified),
       hasBank: Boolean((organizer as any)?.bankDetails?.accountNumber),
-      autoSplit: !instant && Boolean((organizer as any)?.isVerified && (organizer as any)?.bankDetails?.subaccountCode),
+      autoSplit: !instant && !(organizer as any)?.manualPayouts && Boolean((organizer as any)?.isVerified && (organizer as any)?.bankDetails?.subaccountCode),
+      manualPayouts: Boolean((organizer as any)?.manualPayouts),
       lastRequestedAt: (organizer as any)?.payoutRequestedAt || null,
       instant,
       processingKobo: wallet?.processingKobo ?? 0,
@@ -5078,6 +5081,29 @@ export async function registerRoutes(
     } catch (err: any) {
       console.error("Admin users error:", err);
       return res.status(500).json({ error: "Failed to load users." });
+    }
+  });
+
+  // Per-organizer payout mode. Manual: sales skip the automatic Paystack
+  // split and wait in the platform balance; the organizer requests a payout
+  // and an admin sends it. Applies to sales made after the change.
+  app.patch("/api/admin/users/:id/payout-mode", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    if (typeof req.body?.manual !== "boolean") {
+      return res.status(400).json({ message: "Send manual: true or false." });
+    }
+    try {
+      const updated = await User.findByIdAndUpdate(
+        req.params.id,
+        { $set: { manualPayouts: req.body.manual } },
+        { new: true },
+      ).select("-password").lean();
+      if (!updated) return res.status(404).json({ message: "User not found." });
+      return res.json({ ...updated, id: String((updated as any)._id) });
+    } catch {
+      return res.status(500).json({ message: "Could not change the payout mode." });
     }
   });
 

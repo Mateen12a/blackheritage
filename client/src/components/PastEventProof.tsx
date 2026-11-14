@@ -39,6 +39,8 @@ export function PastEventProof({ event }: PastEventProofProps) {
     }
   })();
 
+  const isVenue = event.galleryKind === "venue";
+
   const [activePhotoIndex, setActivePhotoIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -67,9 +69,11 @@ export function PastEventProof({ event }: PastEventProofProps) {
       <div className="rounded-xl border border-hairline/80 bg-surface/60 p-6 sm:p-8">
         <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2">
           <div>
-            <p className="eyebrow">From past editions</p>
+            <p className="eyebrow">{isVenue ? "The venue" : "From past editions"}</p>
             <p className="mt-2 text-sm text-muted-ink max-w-2xl">
-              Photos and footage from previous events organized by this host.
+              {isVenue
+                ? "Where the night happens, so you know what to expect when you arrive."
+                : "Photos and footage from previous events organized by this host."}
             </p>
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-ink">
@@ -141,7 +145,7 @@ export function PastEventProof({ event }: PastEventProofProps) {
                 >
                   <FadeImg
                     src={url}
-                    alt={`Past event photo ${i + 1}`}
+                    alt={`${isVenue ? "Venue" : "Past event"} photo ${i + 1}`}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -169,7 +173,7 @@ export function PastEventProof({ event }: PastEventProofProps) {
               <div className="relative w-full max-h-[75vh] flex items-center justify-center overflow-hidden rounded-md bg-black">
                 <img
                   src={photos[activePhotoIndex]}
-                  alt={`Past event photo ${activePhotoIndex + 1}`}
+                  alt={`${isVenue ? "Venue" : "Past event"} photo ${activePhotoIndex + 1}`}
                   className="max-h-[75vh] max-w-full object-contain"
                 />
               </div>
