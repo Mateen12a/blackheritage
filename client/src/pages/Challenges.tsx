@@ -173,7 +173,7 @@ export default function ChallengesPage() {
             </h1>
             <div className="rule-gold mt-3" />
             <p className="mt-3 text-sm text-muted-ink sm:text-base leading-relaxed">
-              {naira(TALENT_HUNT.prizeNaira)} for the best in Music, Dance and Comedy, and a slot on stage at the{" "}
+              {naira(TALENT_HUNT.prizeNaira * 3)} up for grabs: {naira(TALENT_HUNT.prizeNaira)} each for the best in Music, Dance and Comedy, and a slot on stage at the{" "}
               <Link href={TALENT_HUNT.stage.path} className="text-ink underline decoration-hairline underline-offset-4 hover:text-gold">
                 {TALENT_HUNT.stage.title}
               </Link>

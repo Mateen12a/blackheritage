@@ -28,7 +28,9 @@ export function SalesBySource({ event, bookings }: { event: any; bookings: any[]
     const by = new Map<string, { tickets: number; orders: number; kobo: number }>();
     for (const b of bookings || []) {
       if (b.status !== "paid") continue;
-      const key = b.source || "direct";
+      // No link? A promo code still tells the organizer who sold it. cleanVia never
+      // yields a space, so "code X" cannot collide with a link name.
+      const key = b.source || (b.promoCode ? `code ${String(b.promoCode).toUpperCase()}` : "direct");
       const r = by.get(key) || { tickets: 0, orders: 0, kobo: 0 };
       r.tickets += Number(b.quantity || 0);
       r.orders += 1;
@@ -57,7 +59,7 @@ export function SalesBySource({ event, bookings }: { event: any; bookings: any[]
           <Trophy className="w-4 h-4 text-gold" /> Promoter links &amp; sales
         </CardTitle>
         <CardDescription>
-          Give every promoter or page their own link. Tickets bought through it count for them here, with no promo code needed.
+          Give every promoter or page their own link. Tickets bought through it count for them here, with no promo code needed. Tickets bought with a promo code and no link are listed under that code.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -108,7 +110,7 @@ export function SalesBySource({ event, bookings }: { event: any; bookings: any[]
                     <td className="py-2.5 pr-3 text-right text-ink font-semibold tabular-nums">{r.tickets}</td>
                     <td className="py-2.5 pr-3 text-right text-muted-ink tabular-nums">{naira(r.kobo)}</td>
                     <td className="py-2.5 text-right">
-                      {r.source !== "direct" && (
+                      {r.source !== "direct" && !r.source.startsWith("code ") && (
                         <button
                           type="button"
                           onClick={() => copy(`${base}?via=${r.source}`, r.source)}
