@@ -32,6 +32,7 @@ import { publishToUser, subscribeToStream } from "./realtime";
 import { playbookPdf, PLAYBOOK_FILENAME, PLAYBOOK_PROMO_CODE } from "./playbook";
 import { isEmailConfigured, sendPlaybookEmail } from "./emails";
 import { registerChallengeRoutes } from "./challenges";
+import { TALENT_HUNT } from "@shared/challenge";
 import { isTierOnSale } from "@shared/tiers";
 import crypto from "crypto";
 import { format } from "date-fns";
@@ -408,7 +409,7 @@ export async function registerRoutes(
   // as that organizer or that talent instead of the homepage.
   const sendProfilePageWithMeta = async (
     res: any,
-    load: () => Promise<{ title: string; desc: string; image: string | null; url: string; ld: Record<string, any> } | null>,
+    load: () => Promise<{ title: string; desc: string; image: string | null; url: string; ld: Record<string, any>; ogType?: string } | null>,
   ) => {
     try {
       const indexPath = path.resolve(process.cwd(), "client", "dist", "index.html");
@@ -437,7 +438,7 @@ export async function registerRoutes(
           `<meta property="og:description" content="${escapeHtml(meta.desc)}" />\n` +
           `<meta property="og:image" content="${escapeHtml(image)}" />\n` +
           `<meta property="og:url" content="${escapeHtml(meta.url)}" />\n` +
-          `<meta property="og:type" content="profile" />\n` +
+          `<meta property="og:type" content="${escapeHtml(meta.ogType || "profile")}" />\n` +
           `<meta property="og:site_name" content="Black Heritage Entertainment & Events" />\n` +
           `<meta name="twitter:card" content="summary_large_image" />\n` +
           `<meta name="twitter:title" content="${escapeHtml(meta.title)}" />\n` +
@@ -520,6 +521,20 @@ export async function registerRoutes(
     app.get(p, (req, res) => { void sendProfilePageWithMeta(res, () => talentMeta(String(req.params.key))); });
   }
 
+  // The Talent Hunt page gets its own search listing and link preview, so a
+  // shared /challenges link shows the contest and not the homepage card.
+  app.get("/challenges", (_req, res) => {
+    void sendProfilePageWithMeta(res, async () => {
+      const base = process.env.PUBLIC_APP_URL || "https://blackhevents.com";
+      const pool = `₦${(TALENT_HUNT.prizeNaira * 3).toLocaleString("en-NG")}`;
+      const title = `${TALENT_HUNT.title}: ${pool} up for grabs`;
+      const desc = `Sing, dance or make people laugh. Three winners share ${pool} and perform at the ${TALENT_HUNT.stage.title}, OAU Ile-Ife, ${TALENT_HUNT.stage.date}. Free to enter. Entries close ${TALENT_HUNT.closesOn}.`;
+      return {
+        title, desc, image: "/og-challenges.png", url: `${base}/challenges`, ogType: "website",
+        ld: { "@type": "WebPage", name: title, description: desc },
+      };
+    });
+  });
   app.get("/e/:slug", (req, res) => { void sendEventPageWithMeta(String(req.params.slug), res); });
   app.get("/events/:id", (req, res) => { void sendEventPageWithMeta(String(req.params.id), res); });
 
@@ -4736,6 +4751,7 @@ export async function registerRoutes(
       // Core Static Routes
       addUrl("/", "1.0", "daily");
       addUrl("/events", "0.95", "daily");
+      addUrl("/challenges", "0.9", "daily");
       addUrl("/explore", "0.9", "daily");
       addUrl("/vendors", "0.9", "daily");
       addUrl("/organizers", "0.95", "daily");

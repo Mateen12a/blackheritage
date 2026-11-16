@@ -206,7 +206,7 @@ export function registerChallengeRoutes(app: Express) {
     if (phase !== "open" && !isAdmin(req)) {
       const message = phase === "upcoming"
         ? "Entries open on Monday 16 November. Record your video now so it's ready."
-        : "Entries closed on Sunday 22 November.";
+        : "Entries closed on Tuesday 24 November.";
       return res.status(400).json({ message });
     }
     next();

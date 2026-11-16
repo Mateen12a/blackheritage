@@ -136,7 +136,7 @@ const CATEGORY_COPY: Record<ChallengeCategory, { Icon: typeof Music; line: strin
 
 const PHASE_LINE: Record<ChallengePhase, string> = {
   upcoming: "Entries open Mon 16 Nov",
-  open: "Entries open until Sun 22 Nov, 11:59 PM",
+  open: `Entries open until ${TALENT_HUNT.closesOn}, 11:59 PM`,
   judging: `Entries closed. Top 10 on ${TALENT_HUNT.shortlistOn}, winners on ${TALENT_HUNT.winnersOn}`,
   winners: "Winners announced",
 };
@@ -173,7 +173,7 @@ export default function ChallengesPage() {
             </h1>
             <div className="rule-gold mt-3" />
             <p className="mt-3 text-sm text-muted-ink sm:text-base leading-relaxed">
-              {naira(TALENT_HUNT.prizeNaira * 3)} up for grabs: {naira(TALENT_HUNT.prizeNaira)} each for the best in Music, Dance and Comedy, and a slot on stage at the{" "}
+              {naira(TALENT_HUNT.prizeNaira * 3)} up for grabs for the best in Music, Dance and Comedy, and a slot on stage at the{" "}
               <Link href={TALENT_HUNT.stage.path} className="text-ink underline decoration-hairline underline-offset-4 hover:text-gold">
                 {TALENT_HUNT.stage.title}
               </Link>
@@ -202,8 +202,8 @@ export default function ChallengesPage() {
                   <Icon className="h-4 w-4 text-gold" aria-hidden="true" />
                   {CHALLENGE_CATEGORY_LABEL[c]}
                 </div>
-                <p className="mt-3 font-display text-2xl font-bold text-ink">{naira(TALENT_HUNT.prizeNaira)}</p>
-                <p className="mt-1 text-xs text-muted-ink">+ perform at {TALENT_HUNT.stage.title}</p>
+                <p className="mt-3 font-display text-2xl font-bold text-ink">One winner</p>
+                <p className="mt-1 text-xs text-muted-ink">A share of {naira(TALENT_HUNT.prizeNaira * 3)} + perform at {TALENT_HUNT.stage.title}</p>
                 <p className="mt-3 text-sm text-muted-ink">{line}</p>
               </div>
             );
@@ -262,7 +262,7 @@ export default function ChallengesPage() {
               <dl className="mt-4 space-y-2.5 text-sm">
                 {[
                   ["Entries open", "Mon 16 Nov"],
-                  ["Entries close", "Sun 22 Nov, 11:59 PM"],
+                  ["Entries close", `${TALENT_HUNT.closesOn}, 11:59 PM`],
                   ["Top 10 per category", TALENT_HUNT.shortlistOn],
                   ["Winners announced", TALENT_HUNT.winnersOn],
                   ["Winners perform", `${TALENT_HUNT.stage.date}, OAU Ile-Ife`],
@@ -281,6 +281,7 @@ export default function ChallengesPage() {
                 <li>Open to anyone 16 or older living in Nigeria. One entry per category.</li>
                 <li>Your own original performance, 1 minute or less. Uploads are MP4 or MOV, up to {TALENT_HUNT.maxUploadMB} MB.</li>
                 <li>If you enter with an Instagram or TikTok link, keep the post public until {TALENT_HUNT.winnersOn}.</li>
+                <li>The {naira(TALENT_HUNT.prizeNaira * 3)} prize is shared equally: {naira(TALENT_HUNT.prizeNaira)} to the winner of each category.</li>
                 <li>Judged by a panel of three: talent and skill 50%, originality 30%, stage presence and engagement 20%.</li>
                 <li>Bought likes or views, copied content, or hateful or explicit content means disqualification.</li>
                 <li>Black Heritage may repost your entry, with credit, to promote the contest.</li>
