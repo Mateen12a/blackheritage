@@ -288,7 +288,7 @@ export default function ChallengesPage() {
                 <li>
                   Winners verify their ID and sign the Black Heritage talent agreement before the prize is paid by bank transfer.{" "}
                   <a
-                    href={whatsappLink("Hi Black Heritage, can I see a copy of the BH Talent Hunt winner's agreement?")}
+                    href={whatsappLink("Hi Black Heritage, can I see a copy of the BH Challenge winner's agreement?")}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-ink underline decoration-hairline underline-offset-4 hover:text-gold"
@@ -433,7 +433,7 @@ function EntryPanel({ phase, signedIn, isAdmin, mine }: { phase: ChallengePhase;
   if (!signedIn) {
     return (
       <section className="rounded-md border border-hairline bg-surface p-6">
-        <h2 className="font-display text-xl font-bold text-ink">Enter the Talent Hunt</h2>
+        <h2 className="font-display text-xl font-bold text-ink">Enter the BH Challenge</h2>
         <p className="mt-2 text-sm text-muted-ink leading-relaxed">
           {phase === "upcoming"
             ? "Entries open on Monday 16 November. Create your free account now and record your video (1 minute or less), so you're ready."

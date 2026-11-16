@@ -8,8 +8,8 @@ import { z } from "zod";
  */
 export const TALENT_HUNT = {
   key: "bh-talent-hunt-2026",
-  title: "BH Talent Hunt",
-  hashtag: "#BHTalentHunt",
+  title: "BH Challenge",
+  hashtag: "#BHChallenge",
   opensAt: "2026-11-16T00:00:00+01:00",
   closesAt: "2026-11-24T23:59:59+01:00",
   closesOn: "Tue 24 Nov",
