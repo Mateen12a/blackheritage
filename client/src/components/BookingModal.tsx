@@ -22,6 +22,7 @@ import { Loader2, CreditCard, Tag, Check, AlertTriangle, Ticket, Minus, Plus, Be
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { hostNameFor } from "@/lib/event-price";
 import { TicketReveal, type RevealTicket } from "@/components/TicketReveal";
 import { loadPaystack } from "@/lib/paystack";
 import { currentVia } from "@/lib/via";
@@ -536,8 +537,8 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
                 </span>
                 <span className="mt-0.5 block text-xs leading-relaxed text-muted-ink">
                   {optIn
-                    ? "New shows and early-bird prices land in your inbox first. Leave any time in one tap."
-                    : "New Lagos shows and early-bird prices, straight to your inbox before the timeline catches on."}
+                    ? `New shows${hostNameFor(event) ? ` from ${hostNameFor(event)} and Black Heritage` : " and early-bird prices"} land in your inbox first. Leave any time in one tap.`
+                    : `New shows and early-bird prices${hostNameFor(event) ? ` from ${hostNameFor(event)} and Black Heritage` : ""}, straight to your inbox before the timeline catches on.`}
                 </span>
               </span>
               <span

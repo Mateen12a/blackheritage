@@ -274,31 +274,6 @@ export default function ChallengesPage() {
                 ))}
               </dl>
             </section>
-
-            <section className="rounded-md border border-hairline bg-surface p-6">
-              <h2 className="font-display text-xl font-bold text-ink">Rules</h2>
-              <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-muted-ink leading-relaxed marker:text-hairline">
-                <li>Open to anyone 16 or older living in Nigeria. One entry per category.</li>
-                <li>Your own original performance, 1 minute or less. Uploads are MP4 or MOV, up to {TALENT_HUNT.maxUploadMB} MB.</li>
-                <li>If you enter with an Instagram or TikTok link, keep the post public until {TALENT_HUNT.winnersOn}.</li>
-                <li>The {naira(TALENT_HUNT.prizeNaira * 3)} prize is shared equally: {naira(TALENT_HUNT.prizeNaira)} to the winner of each category.</li>
-                <li>Judged by a panel of three: talent and skill 50%, originality 30%, stage presence and engagement 20%.</li>
-                <li>Bought likes or views, copied content, or hateful or explicit content means disqualification.</li>
-                <li>Black Heritage may repost your entry, with credit, to promote the contest.</li>
-                <li>
-                  Winners verify their ID and sign the Black Heritage talent agreement before the prize is paid by bank transfer.{" "}
-                  <a
-                    href={whatsappLink("Hi Black Heritage, can I see a copy of the BH Challenge winner's agreement?")}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-ink underline decoration-hairline underline-offset-4 hover:text-gold"
-                  >
-                    Ask us for a copy on WhatsApp
-                  </a>
-                  .
-                </li>
-              </ul>
-            </section>
           </div>
 
           {/* Entry */}
@@ -307,6 +282,8 @@ export default function ChallengesPage() {
             <EntryPanel phase={phase} signedIn={!!user} isAdmin={isAdmin} mine={mine} />
           </div>
         </div>
+
+        <RulesSection />
 
         {isAdmin && <JudgingPanel />}
 
@@ -335,6 +312,92 @@ export default function ChallengesPage() {
         </Reveal>
       </div>
     </div>
+  );
+}
+
+/**
+ * The rules, grouped by the question an entrant actually has. Every date and
+ * amount comes from TALENT_HUNT so the page can't drift from the server.
+ */
+function RulesSection() {
+  const pool = naira(TALENT_HUNT.prizeNaira * 3);
+  const groups: { title: string; items: React.ReactNode[] }[] = [
+    {
+      title: "Who can enter",
+      items: [
+        "Anyone 16 or older living in Nigeria.",
+        "One entry per category. You can enter Music, Dance and Comedy, once each.",
+        "Groups and crews are welcome. One person enters for the group and receives the prize for everyone.",
+      ],
+    },
+    {
+      title: "Your video",
+      items: [
+        `${TALENT_HUNT.maxVideoSeconds / 60} minute or less. Any phone camera is fine.`,
+        "It must be your own performance. Covers are fine; reposting someone else's video is not.",
+        `Upload an MP4 or MOV up to ${TALENT_HUNT.maxUploadMB} MB, or paste the link to your public Instagram or TikTok post. Keep that post public until ${TALENT_HUNT.winnersOn}.`,
+        "Keep it clean: no hate, no nudity, and no insults aimed at real people.",
+      ],
+    },
+    {
+      title: "Judging",
+      items: [
+        "A panel of three judges scores every entry: talent and skill 50%, originality 30%, stage presence and engagement 20%.",
+        "Likes and shares only count inside the engagement score. Bought likes, views or followers mean disqualification.",
+        `Top 10 per category on ${TALENT_HUNT.shortlistOn}, winners on ${TALENT_HUNT.winnersOn}. The judges' decision is final.`,
+      ],
+    },
+    {
+      title: "Prizes",
+      items: [
+        `${pool} in total: ${naira(TALENT_HUNT.prizeNaira)} to the winner of each category.`,
+        `Each winner performs at the ${TALENT_HUNT.stage.title}, ${TALENT_HUNT.stage.venue}, ${TALENT_HUNT.stage.date}. You need to be able to get to OAU Ile-Ife that day; we confirm stage times with each winner.`,
+        <>
+          Before the prize is paid by bank transfer, winners verify their ID and sign the Black Heritage talent agreement.{" "}
+          <a
+            href={whatsappLink("Hi Black Heritage, can I see a copy of the BH Challenge winner's agreement?")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-ink underline decoration-hairline underline-offset-4 hover:text-gold"
+          >
+            Ask us for a copy on WhatsApp
+          </a>
+          .
+        </>,
+      ],
+    },
+    {
+      title: "Your content",
+      items: [
+        `You keep the rights to your performance. By entering, you let Black Heritage repost it, with credit, to promote the ${TALENT_HUNT.title} and the ${TALENT_HUNT.stage.title}.`,
+        "An entry that breaks these rules can be removed at any stage, including after winners are announced.",
+        "If a date changes, we post it here and on @blackhevents first.",
+      ],
+    },
+  ];
+
+  return (
+    <section id="rules" aria-labelledby="rules-title" className="mt-8 scroll-mt-24 rounded-md border border-hairline bg-surface p-6 sm:p-8">
+      <h2 id="rules-title" className="font-display text-xl font-bold text-ink sm:text-2xl">
+        Rules
+      </h2>
+      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-ink">
+        The short version: your own performance, {TALENT_HUNT.maxVideoSeconds / 60} minute or less, one entry per category, and no
+        bought likes.
+      </p>
+      <div className="mt-6 grid grid-cols-1 gap-x-10 gap-y-6 md:grid-cols-2">
+        {groups.map((g) => (
+          <div key={g.title} className="min-w-0 border-t border-hairline pt-4">
+            <h3 className="text-sm font-semibold text-ink">{g.title}</h3>
+            <ul className="mt-2.5 list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-ink marker:text-hairline">
+              {g.items.map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -685,7 +748,13 @@ function EntryPanel({ phase, signedIn, isAdmin, mine }: { phase: ChallengePhase;
         </label>
         <label className="flex cursor-pointer items-start gap-3 text-sm text-ink">
           <Checkbox checked={form.acceptsRules} onCheckedChange={(v) => set({ acceptsRules: v === true })} className="mt-0.5" />
-          <span>I accept the rules, and if I win, I'll sign the Black Heritage talent agreement before the prize is paid.</span>
+          <span>
+            I accept the{" "}
+            <a href="#rules" className="underline decoration-hairline underline-offset-4 hover:text-gold">
+              rules
+            </a>
+            , and if I win, I'll sign the Black Heritage talent agreement before the prize is paid.
+          </span>
         </label>
 
         {error && (

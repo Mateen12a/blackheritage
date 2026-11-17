@@ -32,3 +32,17 @@ export function currentVia(): string | null {
     return null;
   }
 }
+
+/**
+ * Store an attribution name directly. For in-app links (the /links page),
+ * where wouter navigates without a reload and captureVia never runs again.
+ */
+export function rememberVia(name: string): void {
+  const v = cleanVia(name);
+  if (!v) return;
+  try {
+    localStorage.setItem(KEY, JSON.stringify({ v, at: Date.now() }));
+  } catch {
+    // storage blocked: attribution is best-effort
+  }
+}

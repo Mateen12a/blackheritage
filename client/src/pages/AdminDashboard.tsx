@@ -5,6 +5,7 @@ import { useVendors } from "@/hooks/use-vendors";
 import { useManagedEvents } from "@/hooks/use-managed-events";
 import { useOrganizerProfile } from "@/hooks/use-organizer";
 import { OrganizerBrandPanel } from "@/components/OrganizerBrandPanel";
+import { OrganizerEmailPanel } from "@/components/OrganizerEmailPanel";
 import { SetupChecklist } from "@/components/SetupChecklist";
 import { AdminVerificationsPanel } from "@/components/AdminVerificationsPanel";
 import { AdminFinancialOverview } from "@/components/AdminFinancialOverview";
@@ -252,11 +253,15 @@ export default function AdminDashboard() {
               <TabsTrigger value="talent">
                 <span>Talent Directory</span>
               </TabsTrigger>
+              <TabsTrigger value="email">
+                <span>Email guests</span>
+              </TabsTrigger>
             </>
           ) : (
             <>
               <TabsTrigger value="events">My Events &amp; Overview</TabsTrigger>
               <TabsTrigger value="brand">Brand &amp; Custom Link</TabsTrigger>
+              <TabsTrigger value="email">Email guests</TabsTrigger>
               <TabsTrigger value="challenges" onClick={() => setLocation("/challenges")}>
                 Creative Challenges
               </TabsTrigger>
@@ -709,6 +714,10 @@ export default function AdminDashboard() {
           <Reveal>
             <OrganizerBrandPanel />
           </Reveal>
+        </TabsContent>
+
+        <TabsContent value="email" className="space-y-6">
+          <OrganizerEmailPanel initialEventId={new URLSearchParams(search).get("event")} />
         </TabsContent>
       </Tabs>
     </div>

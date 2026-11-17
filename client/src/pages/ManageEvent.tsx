@@ -629,14 +629,21 @@ export default function ManageEvent() {
                       : "Everyone holding a paid ticket. Verify admits them and uses up their QR."}
                 </CardDescription>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="border-hairline"
-                onClick={() => exportToCSV(filteredBookings, `attendees-${event.id}.csv`)}
-              >
-                <Download className="w-4 h-4 mr-2" /> Export
-              </Button>
+              <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                <Link href={`/admin?tab=email&event=${event.id}`}>
+                  <Button variant="outline" size="sm" className="border-hairline">
+                    <MailPlus className="w-4 h-4 mr-2" /> Email guests
+                  </Button>
+                </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-hairline"
+                  onClick={() => exportToCSV(filteredBookings, `attendees-${event.id}.csv`)}
+                >
+                  <Download className="w-4 h-4 mr-2" /> Export
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-6 py-4 border-b border-hairline">

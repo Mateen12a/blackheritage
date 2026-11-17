@@ -33,15 +33,24 @@ function absUrl(url: string | undefined | null): string {
  * over the header; the event flyer (when given) sits under it; the footer
  * keeps a linked Black Heritage credit.
  */
-function shell(title: string, bodyHtml: string, branding?: Branding | null, heroUrl?: string | null): string {
+interface ShellOptions {
+  /** Small line under the brand name in the header. */
+  subLabel?: string;
+  /** Replaces the default footer. Must already be escaped HTML. */
+  footerHtml?: string;
+  /** Hidden inbox-preview text. */
+  preheader?: string;
+}
+
+function shell(title: string, bodyHtml: string, branding?: Branding | null, heroUrl?: string | null, opts?: ShellOptions): string {
   const accent = safeHex(branding?.accentHex);
   const hasBrand = Boolean(branding?.displayName || branding?.logoUrl);
   const brandLabel = hasBrand ? esc((branding?.displayName || "").toUpperCase()) : "BLACK HERITAGE";
   const brandLogo = branding?.logoUrl
     ? `<img src="${escAttr(absUrl(branding.logoUrl))}" alt="" width="40" height="40" style="display:block;border-radius:8px;object-fit:cover;" />`
     : "";
-  const subLabel = hasBrand ? "TICKETS BY BLACK HERITAGE" : "ENTERTAINMENT & EVENTS";
-  const footer = hasBrand
+  const subLabel = opts?.subLabel || (hasBrand ? "TICKETS BY BLACK HERITAGE" : "ENTERTAINMENT & EVENTS");
+  const footer = opts?.footerHtml ? opts.footerHtml : hasBrand
     ? `Tickets for ${esc(branding?.displayName || "this event")} by <a href="https://blackhevents.com" style="color:#777;"><strong>Black Heritage</strong></a>. Questions about this ticket? Reply to this email or contact the organizer.`
     : `Sent by <a href="https://blackhevents.com" style="color:#777;"><strong>Black Heritage</strong></a>. Questions? Reply to this email and the team will help.`;
   const hero = heroUrl
@@ -51,6 +60,7 @@ function shell(title: string, bodyHtml: string, branding?: Branding | null, hero
 <html lang="en">
   <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
   <body style="margin:0;padding:0;background:#f4f2ee;">
+    ${opts?.preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(opts.preheader)}</div>` : ""}
     <div style="max-width:560px;margin:0 auto;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;color:#111;">
       <div style="background:#111114;padding:24px 28px;border-radius:12px 12px 0 0;">
         <table style="border-collapse:collapse;"><tr>
@@ -63,7 +73,7 @@ function shell(title: string, bodyHtml: string, branding?: Branding | null, hero
       </div>
       ${hero}
       <div style="background:#ffffff;padding:28px;border:1px solid #e5e2dc;border-top:3px solid ${accent};">
-        <h1 style="margin:0 0 16px;font-size:20px;">${title}</h1>
+        ${title ? `<h1 style="margin:0 0 16px;font-size:20px;">${title}</h1>` : ""}
         ${bodyHtml}
         <p style="margin-top:28px;font-size:12px;color:#777;">
           ${footer}
@@ -661,4 +671,167 @@ export async function sendBusinessApplicationEmail(
       data.branding,
     ),
   });
+}
+
+// ── Organizer email (broadcasts) ──
+// The organizer writes it and their logo, name and colour lead it; the
+// footer and the sending domain stay Black Heritage's. Replies go straight
+// to the organizer. Sent from BROADCAST_FROM_EMAIL (a separate subdomain such
+// as news.blackhevents.com) so a bad list can't hurt ticket delivery.
+
+export type BroadcastReason = "guest" | "follower" | "checkout" | "import" | "test";
+
+const BROADCAST_REASON_LINE: Record<BroadcastReason, string> = {
+  guest: "you have tickets for one of their events",
+  follower: "you follow them on Black Heritage",
+  checkout: "you asked for updates when you bought a ticket",
+  import: "you're on their guest list",
+  test: "this is a test send to the organizer",
+};
+
+export interface BroadcastEmailInput {
+  organizerName: string;
+  branding: Branding | null;
+  subject: string;
+  message: string;
+  recipientName?: string | null;
+  event?: { title: string; date: Date | null; location: string; imageUrl?: string | null } | null;
+  ctaLabel?: string | null;
+  ctaUrl?: string | null;
+  reason: BroadcastReason;
+  unsubscribeUrl: string;
+}
+
+function firstName(name: string | null | undefined): string {
+  const n = String(name || "").trim();
+  if (!n || n.includes("@")) return "";
+  return n.split(/\s+/)[0].slice(0, 30);
+}
+
+/** Escaped plain text to paragraphs; bare links become real links. */
+function messageParagraphs(text: string): string {
+  return text
+    .trim()
+    .split(/\n{2,}/)
+    .map((p) => {
+      const linked = esc(p).replace(/\bhttps?:\/\/[^\s<]+[^\s<.,;:!?)]/g, (u) => `<a href="${u}" style="color:#111;">${u}</a>`);
+      return `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#222;">${linked.replace(/\n/g, "<br />")}</p>`;
+    })
+    .join("");
+}
+
+function eventDateLine(date: Date | null): string {
+  if (!date || isNaN(date.getTime())) return "";
+  return date.toLocaleString("en-NG", { timeZone: "Africa/Lagos", hour12: true,
+    weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit",
+  });
+}
+
+export function renderBroadcastEmail(d: BroadcastEmailInput): { html: string; text: string } {
+  const org = d.organizerName.trim() || "The organizer";
+  const accent = safeHex(d.branding?.accentHex);
+  const branding: Branding = {
+    displayName: d.branding?.displayName || org,
+    logoUrl: d.branding?.logoUrl,
+    accentHex: d.branding?.accentHex,
+  };
+  const hi = firstName(d.recipientName) ? `Hi ${esc(firstName(d.recipientName))},` : "Hi there,";
+  const when = d.event ? eventDateLine(d.event.date) : "";
+  const eventCard = d.event
+    ? `<div style="background:#faf9f7;border:1px solid #e5e2dc;border-left:3px solid ${accent};border-radius:8px;padding:16px;margin:4px 0 20px;">
+        <div style="font-size:16px;font-weight:bold;">${esc(d.event.title)}</div>
+        ${when ? `<div style="font-size:13px;color:#666;margin-top:4px;">${esc(when)}</div>` : ""}
+        ${d.event.location ? `<div style="font-size:13px;color:#666;">${esc(d.event.location)}</div>` : ""}
+      </div>`
+    : "";
+  const button = d.ctaUrl
+    ? `<p style="margin:0 0 20px;font-size:14px;">
+        <a href="${escAttr(d.ctaUrl)}" style="display:inline-block;background:#111114;color:#ffffff;font-weight:bold;font-size:14px;padding:13px 26px;border-radius:8px;text-decoration:none;">${esc(d.ctaLabel || "Get tickets")}</a>
+      </p>`
+    : "";
+  const body = `
+      <p style="margin:0 0 16px;font-size:15px;color:#222;">${hi}</p>
+      ${messageParagraphs(d.message)}
+      ${eventCard}
+      ${button}
+      <p style="margin:0;font-size:15px;color:#222;">${esc(org)}</p>`;
+  const footerHtml = `You're getting this from ${esc(org)} because ${BROADCAST_REASON_LINE[d.reason]}.
+      Sent with <a href="https://blackhevents.com" style="color:#777;"><strong>Black Heritage</strong></a>, where ${esc(org)} sells tickets.
+      Reply to this email to reach ${esc(org)} directly.<br /><br />
+      <a href="${escAttr(d.unsubscribeUrl)}" style="color:#777;">Unsubscribe from ${esc(org)}</a>`;
+  const preheader = d.message.replace(/\s+/g, " ").trim().slice(0, 110);
+  const html = shell("", body, branding, d.event?.imageUrl || null, {
+    subLabel: "VIA BLACK HERITAGE",
+    footerHtml,
+    preheader,
+  });
+
+  const textParts = [
+    firstName(d.recipientName) ? `Hi ${firstName(d.recipientName)},` : "Hi there,",
+    d.message.trim(),
+    d.event ? [d.event.title, when, d.event.location].filter(Boolean).join("\n") : "",
+    d.ctaUrl ? `${d.ctaLabel || "Get tickets"}: ${d.ctaUrl}` : "",
+    org,
+    `--\nYou're getting this from ${org} because ${BROADCAST_REASON_LINE[d.reason]}. Sent with Black Heritage (blackhevents.com).\nUnsubscribe: ${d.unsubscribeUrl}`,
+  ];
+  return { html, text: textParts.filter(Boolean).join("\n\n") };
+}
+
+/** "AfterDark via Black Heritage" <hello@news.blackhevents.com> */
+export function broadcastFrom(organizerName: string): string {
+  const address = (process.env.BROADCAST_FROM_EMAIL || "tickets@blackhevents.com").trim();
+  const name = organizerName.replace(/["<>\r\n\\]/g, "").trim().slice(0, 48) || "Black Heritage";
+  return `"${name} via Black Heritage" <${address}>`;
+}
+
+export interface BroadcastMail {
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  replyTo?: string | null;
+  /** The page link in the footer: asks before unsubscribing. */
+  unsubscribeUrl: string;
+  /** Mail apps' one-click unsubscribe target (RFC 8058): a POST that acts at once. */
+  oneClickUrl: string;
+}
+
+export type BroadcastBatchResult =
+  | { ok: true; results: ({ id: string } | { error: string })[] }
+  | { ok: false; code: string; message: string };
+
+/**
+ * Up to 100 emails in one Resend call. Permissive validation, so one bad
+ * address fails alone instead of sinking the batch. The idempotency key makes
+ * a retried batch a no-op at Resend instead of a double send.
+ */
+export async function sendBroadcastBatch(mails: BroadcastMail[], idempotencyKey: string): Promise<BroadcastBatchResult> {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const payload = mails.map((m) => ({
+    from: m.from,
+    to: [m.to],
+    subject: m.subject,
+    html: m.html,
+    text: m.text,
+    replyTo: m.replyTo || undefined,
+    headers: {
+      "List-Unsubscribe": `<${m.oneClickUrl}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
+  }));
+  const res: any = await resend.batch.send(payload, { batchValidation: "permissive", idempotencyKey });
+  if (res.error) {
+    return { ok: false, code: String(res.error.name || "error"), message: String(res.error.message || "Send failed") };
+  }
+  const failed = new Map<number, string>();
+  for (const e of res.data?.errors || []) failed.set(Number(e.index), String(e.message || "Rejected"));
+  const ids: { id: string }[] = res.data?.data || [];
+  let next = 0;
+  const results = mails.map((_, i) => {
+    if (failed.has(i)) return { error: failed.get(i) as string };
+    const row = ids[next++];
+    return row?.id ? { id: row.id } : { error: "No id returned" };
+  });
+  return { ok: true, results };
 }

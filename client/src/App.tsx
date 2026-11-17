@@ -44,6 +44,8 @@ const NewEvent = lazy(() => import("@/pages/NewEvent"));
 const OrganizerDetails = lazy(() => import("@/pages/OrganizerDetails"));
 const OrganizersLanding = lazy(() => import("@/pages/OrganizersLanding"));
 const Challenges = lazy(() => import("@/pages/Challenges"));
+const Links = lazy(() => import("@/pages/Links"));
+const Unsubscribe = lazy(() => import("@/pages/Unsubscribe"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Terms = lazy(() => import("@/pages/Terms"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
@@ -497,6 +499,27 @@ function Router() {
       {/* Account Settings */}
       <Route path="/settings">
         {() => <ProtectedRoute component={Settings} />}
+      </Route>
+
+      {/* Bio link: /links, /links/ig, /links/tiktok (the suffix tags sales) */}
+      <Route path="/links/:src?">
+        {(params: { src?: string }) => <Links src={params.src} />}
+      </Route>
+
+      {/* Email opt-outs */}
+      <Route path="/unsubscribe">
+        {() => (
+          <PublicLayout>
+            <Unsubscribe />
+          </PublicLayout>
+        )}
+      </Route>
+      <Route path="/unsubscribed">
+        {() => (
+          <PublicLayout>
+            <Unsubscribe />
+          </PublicLayout>
+        )}
       </Route>
 
       {/* Legal */}

@@ -32,6 +32,7 @@ import { publishToUser, subscribeToStream } from "./realtime";
 import { playbookPdf, PLAYBOOK_FILENAME, PLAYBOOK_PROMO_CODE } from "./playbook";
 import { isEmailConfigured, sendPlaybookEmail } from "./emails";
 import { registerChallengeRoutes } from "./challenges";
+import { registerBroadcastRoutes, recordCheckoutOptIn } from "./broadcasts";
 import { TALENT_HUNT } from "@shared/challenge";
 import { isTierOnSale } from "@shared/tiers";
 import crypto from "crypto";
@@ -201,6 +202,7 @@ export async function registerRoutes(
 
   // BH Talent Hunt: online contest entries and judging.
   registerChallengeRoutes(app);
+  registerBroadcastRoutes(app);
 
   // ── Launch Video & Stills Export Endpoints ──
   app.post("/api/export-launch-video", express.raw({ type: "*/*", limit: "150mb" }), async (req, res) => {
@@ -2145,6 +2147,9 @@ export async function registerRoutes(
           { $set: { name: input.name, source: "checkout", eventId: String(event.id), consentAt: new Date(), unsubscribed: false, unsubscribedAt: null }, $addToSet: { topics: "drops" } },
           { upsert: true },
         ).catch((err: any) => console.error("Marketing opt-in save failed:", err?.message));
+        // Same tick lets this event's organizer email them about their next show.
+        recordCheckoutOptIn((event as any).organizerId, input.email, input.name || null)
+          .catch((err: any) => console.error("Organizer opt-in save failed:", err?.message));
       }
 
       // Increment promo usage only when it actually applied

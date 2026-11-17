@@ -919,3 +919,128 @@ ChallengeEntrySchema.index({ challengeKey: 1, userId: 1, category: 1 }, { unique
 export const ChallengeEntryModel =
   mongoose.models.ChallengeEntry ||
   model<IChallengeEntry>("ChallengeEntry", ChallengeEntrySchema);
+
+// ── Organizer email ──
+// An organizer's own mailing list: people they imported (with their word that
+// these people agreed to hear from them) and buyers who ticked "keep me
+// posted" at checkout. A row with unsubscribed=true is a per-organizer
+// opt-out and wins over every other source: followers, ticket holders and
+// re-imports all skip that address for that organizer.
+export interface IOrganizerContact extends Document {
+  organizerId: string;
+  email: string;
+  name?: string | null;
+  source: 'import' | 'checkout' | 'unsubscribe';
+  consentAt?: Date | null;
+  unsubscribed: boolean;
+  unsubscribedAt?: Date | null;
+  createdAt: Date;
+}
+
+const OrganizerContactSchema: Schema = new Schema({
+  organizerId: { type: String, required: true, index: true },
+  email: { type: String, required: true, lowercase: true, trim: true },
+  name: { type: String, default: null },
+  source: { type: String, enum: ['import', 'checkout', 'unsubscribe'], default: 'import' },
+  consentAt: { type: Date, default: null },
+  unsubscribed: { type: Boolean, default: false },
+  unsubscribedAt: { type: Date, default: null },
+  createdAt: { type: Date, default: Date.now },
+});
+OrganizerContactSchema.index({ organizerId: 1, email: 1 }, { unique: true });
+
+export const OrganizerContactModel =
+  mongoose.models.OrganizerContact ||
+  model<IOrganizerContact>("OrganizerContact", OrganizerContactSchema);
+
+// One email an organizer wrote, and its delivery counters. Recipients live in
+// BroadcastRecipient so a send larger than today's cap can finish tomorrow.
+export interface IBroadcast extends Document {
+  organizerId: string;
+  createdBy: string;
+  subject: string;
+  message: string;
+  eventId?: string | null;
+  ctaLabel?: string | null;
+  ctaUrl?: string | null;
+  replyTo?: string | null;
+  status: 'sending' | 'sent' | 'stopped';
+  recipientCount: number;
+  sentCount: number;
+  failedCount: number;
+  createdAt: Date;
+  completedAt?: Date | null;
+}
+
+const BroadcastSchema: Schema = new Schema({
+  organizerId: { type: String, required: true, index: true },
+  createdBy: { type: String, required: true },
+  subject: { type: String, required: true },
+  message: { type: String, required: true },
+  eventId: { type: String, default: null },
+  ctaLabel: { type: String, default: null },
+  ctaUrl: { type: String, default: null },
+  replyTo: { type: String, default: null },
+  status: { type: String, enum: ['sending', 'sent', 'stopped'], default: 'sending' },
+  recipientCount: { type: Number, default: 0 },
+  sentCount: { type: Number, default: 0 },
+  failedCount: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now },
+  completedAt: { type: Date, default: null },
+});
+
+export const BroadcastModel =
+  mongoose.models.Broadcast || model<IBroadcast>("Broadcast", BroadcastSchema);
+
+// One row per address per broadcast (test sends have broadcastId null).
+// Sent rows are also the daily-cap ledger, so the counters never drift.
+export interface IBroadcastRecipient extends Document {
+  broadcastId?: string | null;
+  organizerId: string;
+  email: string;
+  name?: string | null;
+  reason: 'guest' | 'follower' | 'checkout' | 'import' | 'test';
+  status: 'queued' | 'sent' | 'failed' | 'skipped';
+  resendId?: string | null;
+  error?: string | null;
+  sentAt?: Date | null;
+  createdAt: Date;
+}
+
+const BroadcastRecipientSchema: Schema = new Schema({
+  broadcastId: { type: String, default: null, index: true },
+  organizerId: { type: String, required: true },
+  email: { type: String, required: true, lowercase: true, trim: true },
+  name: { type: String, default: null },
+  reason: { type: String, enum: ['guest', 'follower', 'checkout', 'import', 'test'], default: 'import' },
+  status: { type: String, enum: ['queued', 'sent', 'failed', 'skipped'], default: 'queued' },
+  resendId: { type: String, default: null, index: { sparse: true } },
+  error: { type: String, default: null },
+  sentAt: { type: Date, default: null },
+  createdAt: { type: Date, default: Date.now },
+});
+BroadcastRecipientSchema.index({ status: 1, createdAt: 1 });
+BroadcastRecipientSchema.index({ organizerId: 1, sentAt: 1 });
+BroadcastRecipientSchema.index({ sentAt: 1 });
+
+export const BroadcastRecipientModel =
+  mongoose.models.BroadcastRecipient ||
+  model<IBroadcastRecipient>("BroadcastRecipient", BroadcastRecipientSchema);
+
+// Platform-wide do-not-send list, fed by Resend's bounce and complaint
+// webhooks. Protects the sending domain for every organizer at once.
+export interface IEmailSuppression extends Document {
+  email: string;
+  reason: 'bounce' | 'complaint';
+  createdAt: Date;
+}
+
+const EmailSuppressionSchema: Schema = new Schema({
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  reason: { type: String, enum: ['bounce', 'complaint'], required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+export const EmailSuppressionModel =
+  mongoose.models.EmailSuppression ||
+  model<IEmailSuppression>("EmailSuppression", EmailSuppressionSchema);

@@ -7,6 +7,7 @@ import { mediaBackend } from "./media-storage";
 import { setupAuth } from "./auth";
 import { setupGoogleAuth } from "./google-auth";
 import { startReminderScheduler } from "./reminders";
+import { startBroadcastWorker } from "./broadcasts";
 import https from "https";
 import cors from "cors";
 import { serveFrontend } from "./static";
@@ -231,6 +232,7 @@ app.use((req, res, next) => {
       // paid bookings their 7-day, 1-day, and 2-hour touches. The dedupe
       // ledger in Mongo makes restarts safe.
       startReminderScheduler();
+      startBroadcastWorker();
     },
   );
 })();
