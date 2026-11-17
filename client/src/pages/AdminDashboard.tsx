@@ -6,6 +6,7 @@ import { useManagedEvents } from "@/hooks/use-managed-events";
 import { useOrganizerProfile } from "@/hooks/use-organizer";
 import { OrganizerBrandPanel } from "@/components/OrganizerBrandPanel";
 import { OrganizerEmailPanel } from "@/components/OrganizerEmailPanel";
+import { AdminSponsorSpotsPanel } from "@/components/AdminSponsorSpotsPanel";
 import { SetupChecklist } from "@/components/SetupChecklist";
 import { AdminVerificationsPanel } from "@/components/AdminVerificationsPanel";
 import { AdminFinancialOverview } from "@/components/AdminFinancialOverview";
@@ -256,6 +257,9 @@ export default function AdminDashboard() {
               <TabsTrigger value="email">
                 <span>Email guests</span>
               </TabsTrigger>
+              <TabsTrigger value="sponsor_spots">
+                <span>Sponsor spots</span>
+              </TabsTrigger>
             </>
           ) : (
             <>
@@ -299,6 +303,12 @@ export default function AdminDashboard() {
             <TabsContent value="users" className="space-y-6">
               <Reveal>
                 <AdminUsersManager />
+              </Reveal>
+            </TabsContent>
+
+            <TabsContent value="sponsor_spots" className="space-y-6">
+              <Reveal>
+                <AdminSponsorSpotsPanel />
               </Reveal>
             </TabsContent>
 

@@ -4644,7 +4644,9 @@ export async function registerRoutes(
       if (placement && typeof placement === "string") {
         filter.placement = placement;
       }
-      const sponsors = await NativeSponsorModel.find(filter).sort({ createdAt: -1 }).limit(10).lean();
+      // The spotlight shows one sponsor per placement, so only that one is
+      // counted as seen: sponsors get these numbers, they must be honest.
+      const sponsors = await NativeSponsorModel.find(filter).sort({ createdAt: -1 }).limit(filter.placement ? 1 : 10).lean();
       if (sponsors.length > 0) {
         NativeSponsorModel.updateMany(
           { _id: { $in: sponsors.map((s: any) => s._id) } },
@@ -4723,6 +4725,32 @@ export async function registerRoutes(
       active: active !== false,
     });
     res.status(201).json({ id: String(sponsor._id) });
+  });
+
+  // Edit, pause/resume, or remove a sponsor spot. Counts are never editable.
+  app.patch("/api/sponsors/:id", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ message: "This area is for platform admins." });
+    }
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: "Sponsor not found" });
+    const patch: Record<string, any> = {};
+    for (const k of ["title", "sponsorName", "tagline", "badgeText", "imageUrl", "targetUrl"] as const) {
+      if (typeof req.body?.[k] === "string" && req.body[k].trim()) patch[k] = req.body[k].trim().slice(0, 300);
+    }
+    if (typeof req.body?.active === "boolean") patch.active = req.body.active;
+    if (["home_spotlight", "explore_feed", "events_sidebar"].includes(req.body?.placement)) patch.placement = req.body.placement;
+    const updated = await NativeSponsorModel.findByIdAndUpdate(req.params.id, { $set: patch }, { new: true });
+    if (!updated) return res.status(404).json({ message: "Sponsor not found" });
+    res.json({ ok: true });
+  });
+
+  app.delete("/api/sponsors/:id", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ message: "This area is for platform admins." });
+    }
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: "Sponsor not found" });
+    await NativeSponsorModel.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
   });
 
   // ── Dynamic Sitemap XML ──
