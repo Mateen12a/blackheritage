@@ -353,7 +353,7 @@ function RulesSection() {
         `${pool} in total: ${naira(TALENT_HUNT.prizeNaira)} to the winner of each category.`,
         `Each winner performs at the ${TALENT_HUNT.stage.title}, ${TALENT_HUNT.stage.venue}, ${TALENT_HUNT.stage.date}. You need to be able to get to OAU Ile-Ife that day; we confirm stage times with each winner.`,
         <>
-          Before the prize is paid by bank transfer, winners verify their ID and sign the Black Heritage talent agreement.{" "}
+          Winners verify their ID and sign the Black Heritage talent agreement. We pay the prize by bank transfer within 7 days of that, and announce each payment with the winner's permission.{" "}
           <a
             href={whatsappLink("Hi Black Heritage, can I see a copy of the BH Challenge winner's agreement?")}
             target="_blank"
