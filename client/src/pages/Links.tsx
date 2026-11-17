@@ -100,7 +100,7 @@ export default function LinksPage({ src }: { src?: string }) {
             >
               <Trophy className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-bold">{TALENT_HUNT.title}: {pool} up for grabs</span>
+                <span className="block text-sm font-bold">{TALENT_HUNT.title}: {pool} in prizes up for grabs</span>
                 <span className="block text-xs opacity-80">{challengeLine}</span>
               </span>
               <ArrowUpRight className="h-4 w-4 shrink-0" aria-hidden="true" />

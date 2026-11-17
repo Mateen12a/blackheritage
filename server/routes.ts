@@ -529,7 +529,7 @@ export async function registerRoutes(
     void sendProfilePageWithMeta(res, async () => {
       const base = process.env.PUBLIC_APP_URL || "https://blackhevents.com";
       const pool = `₦${(TALENT_HUNT.prizeNaira * 3).toLocaleString("en-NG")}`;
-      const title = `${TALENT_HUNT.title}: ${pool} up for grabs`;
+      const title = `${TALENT_HUNT.title}: ${pool} in prizes up for grabs`;
       const desc = `Sing, dance or make people laugh. Three winners share ${pool} and perform at the ${TALENT_HUNT.stage.title}, OAU Ile-Ife, ${TALENT_HUNT.stage.date}. Free to enter. Entries close ${TALENT_HUNT.closesOn}.`;
       return {
         title, desc, image: "/og-challenges.png", url: `${base}/challenges`, ogType: "website",
