@@ -85,6 +85,7 @@ export async function runReminderSweepOnce(): Promise<{ sent: number; skipped: n
             bookingId: String(booking._id),
             icsBase64: Buffer.from(ics, "utf8").toString("base64"),
             branding: (event as any).branding || null,
+            presenter: (event as any).partnerSettings?.presenter || null,
           },
         );
 

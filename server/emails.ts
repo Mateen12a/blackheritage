@@ -120,6 +120,26 @@ function ticketRowsHtml(
     .join("");
 }
 
+export interface PresenterLine {
+  name: string;
+  offer?: string;
+  url?: string;
+}
+
+// "Presented by" block for ticket and reminder emails. Shown only when the
+// organizer named a partner; the offer line is what makes it useful to guests.
+function presenterHtml(p?: PresenterLine | null): string {
+  if (!p || !p.name || !p.name.trim()) return "";
+  const name = p.url && /^https:\/\//.test(p.url)
+    ? `<a href="${escAttr(p.url)}" style="color:#111;font-weight:bold;">${esc(p.name)}</a>`
+    : `<strong>${esc(p.name)}</strong>`;
+  return `
+      <div style="border-top:1px solid #eee;margin-top:20px;padding-top:14px;font-size:13px;color:#444;">
+        <div style="font-size:11px;letter-spacing:1px;color:#8a6a1f;">PRESENTED BY</div>
+        <div style="margin-top:4px;">${name}${p.offer ? `: ${esc(p.offer)}` : ""}</div>
+      </div>`;
+}
+
 export interface TicketEmailData {
   eventTitle: string;
   eventDate: Date;
@@ -133,6 +153,7 @@ export interface TicketEmailData {
   icsBase64?: string; // calendar file, attached when provided
   branding?: Branding | null;
   imageUrl?: string | null; // the event flyer, shown under the header
+  presenter?: PresenterLine | null;
 }
 
 export async function sendTicketEmail(to: EmailAddress, data: TicketEmailData): Promise<void> {
@@ -174,7 +195,7 @@ export async function sendTicketEmail(to: EmailAddress, data: TicketEmailData): 
       </p>
       <p style="margin:8px 0 0;font-size:13px;color:#444;">
         Find your next night out: <a href="${COMMUNITY_URL}" style="color:#111;">join the Black Heritage WhatsApp community</a>.
-      </p>`,
+      </p>${presenterHtml(data.presenter)}`,
       data.branding,
       data.imageUrl,
     ),
@@ -395,6 +416,7 @@ export async function sendEventReminderEmail(
     bookingId: string;
     icsBase64?: string;
     branding?: Branding | null;
+    presenter?: PresenterLine | null;
   },
 ): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY);
@@ -425,7 +447,7 @@ export async function sendEventReminderEmail(
       <p style="margin:16px 0 0;font-size:12px;color:#777;">
         Your calendar file is attached, one tap adds the event to your phone.
         <a href="${escAttr(data.ticketsUrl || `${appUrl}/my-tickets`)}" style="color:#111;">Your tickets live here any time.</a>
-      </p>
+      </p>${presenterHtml(data.presenter)}
       <p style="margin:12px 0 0;font-size:11px;color:#999;">
         <a href="${escAttr(`${appUrl}/api/bookings/${data.bookingId}/reminders/unsubscribe`)}" style="color:#999;">Stop reminder emails for this event</a>.
       </p>`,

@@ -441,6 +441,16 @@ export const partnerPackageSchema = z.object({
 });
 export type PartnerPackage = z.infer<typeof partnerPackageSchema>;
 
+// A presenting partner rides the guest's whole journey: the ticket email and
+// the 7-day, 1-day and 2-hour reminders. One offer line makes it useful to the
+// guest (a free drink at the gate, a discount) rather than just a logo.
+export const presenterSchema = z.object({
+  name: z.string().trim().min(1, "Name the partner").max(60),
+  offer: z.string().trim().max(160).optional().default(""),
+  url: z.string().trim().max(300).regex(/^https:\/\//, "Start the link with https://").optional().or(z.literal("")).default(""),
+});
+export type Presenter = z.infer<typeof presenterSchema>;
+
 export const partnerSettingsSchema = z.object({
   types: z.array(z.enum(partnerTypes)).max(3).default([]),
   headline: z.string().trim().max(80).optional().default(""),
@@ -449,6 +459,7 @@ export const partnerSettingsSchema = z.object({
   // Optional direct line: digits only, shown as a WhatsApp button.
   whatsapp: z.string().trim().max(20).optional().default(""),
   closesAt: z.string().optional().nullable(),
+  presenter: presenterSchema.nullable().optional(),
 });
 export type PartnerSettings = z.infer<typeof partnerSettingsSchema>;
 

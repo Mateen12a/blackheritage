@@ -38,13 +38,22 @@ export function PartnerSettingsEditor({
   const addPkg = () =>
     set({ packages: [...draft.packages, { type: draft.types[0] || "vendor", name: "", priceKobo: null, details: "" }] });
 
+  const presenter = draft.presenter || { name: "", offer: "", url: "" };
+  const setPresenter = (patch: Partial<NonNullable<PartnerSettings["presenter"]>>) => set({ presenter: { ...presenter, ...patch } });
+  const presenterLinkOk = !presenter.url.trim() || /^https:\/\//.test(presenter.url.trim());
+
   const usable = draft.packages.filter((p) => p.name.trim() && draft.types.includes(p.type));
-  const canSave = !enabled || draft.types.length > 0;
+  const canSave = (!enabled || draft.types.length > 0) && presenterLinkOk;
 
   const save = () =>
     onSave({
       businessApplicationsEnabled: enabled && draft.types.length > 0,
-      partnerSettings: { ...draft, packages: usable, whatsapp: draft.whatsapp.replace(/[^\d+]/g, "") },
+      partnerSettings: {
+        ...draft,
+        packages: usable,
+        whatsapp: draft.whatsapp.replace(/[^\d+]/g, ""),
+        presenter: presenter.name.trim() ? { name: presenter.name.trim(), offer: presenter.offer.trim(), url: presenter.url.trim() } : null,
+      },
     });
 
   const field = "h-11 bg-background border-hairline text-ink";
@@ -149,6 +158,28 @@ export function PartnerSettingsEditor({
           </div>
         </>
       )}
+
+      <div className="border-t border-hairline pt-5">
+        <p className="font-medium text-ink">Presented by</p>
+        <p className="text-sm text-muted-ink mt-0.5">
+          A partner who rides along with every guest: named in the ticket email and in the reminders 7 days, 1 day and 2 hours before. Give guests something useful, like a free drink at the gate.
+        </p>
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-ink">Partner name</Label>
+            <Input value={presenter.name} maxLength={60} placeholder="e.g. Kola's Kitchen" onChange={(e) => setPresenter({ name: e.target.value })} className={field} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-ink">Link (optional)</Label>
+            <Input value={presenter.url} maxLength={300} placeholder="https://" onChange={(e) => setPresenter({ url: e.target.value })} className={field} />
+            {presenter.url && !presenterLinkOk && <p className="text-xs text-gold">Start the link with https://</p>}
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label className="text-xs text-muted-ink">Their offer for guests (optional)</Label>
+            <Input value={presenter.offer} maxLength={160} placeholder="e.g. Free cold drink at our stand by the gate. Show this email." onChange={(e) => setPresenter({ offer: e.target.value })} className={field} />
+          </div>
+        </div>
+      </div>
 
       <div className="flex justify-end">
         <Button type="button" onClick={save} disabled={saving || !canSave} className="press bg-primary text-primary-foreground hover:bg-gold-soft h-10">

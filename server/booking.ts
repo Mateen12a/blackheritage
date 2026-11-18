@@ -608,6 +608,7 @@ export async function sendBookingTicketsEmail(booking: any, event: any, tickets:
         eventLocation: (event as any)?.location || "To be announced",
         branding: (event as any)?.branding || null,
         imageUrl: (event as any)?.imageUrl || null,
+        presenter: (event as any)?.partnerSettings?.presenter || null,
         tickets: tickets.map((t: any) => ({
           code: t.code,
           tierName: t.tierName,
