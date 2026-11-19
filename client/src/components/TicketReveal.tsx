@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TicketQR } from "@/components/TicketQR";
 import { motion } from "framer-motion";
 import { CalendarPlus, Check, Copy, MessageCircle, PartyPopper, Image as ImageIcon } from "lucide-react";
@@ -9,7 +9,7 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { EASE_OUT } from "@/components/motion";
+import { EASE_OUT, buzz, prefersReducedMotion } from "@/components/motion";
 import { ShareFlyerModal } from "@/components/ShareFlyerModal";
 
 export interface RevealTicket {
@@ -121,6 +121,14 @@ export function TicketReveal({
     window.setTimeout(() => setCopied((c) => (c === code ? null : c)), 1600);
   };
 
+  // The ticket-issued moment: one short buzz as the first ticket prints.
+  const calm = prefersReducedMotion();
+  useEffect(() => {
+    if (!open || tickets.length === 0) return;
+    const t = window.setTimeout(() => buzz(35), 450);
+    return () => window.clearTimeout(t);
+  }, [open, tickets.length]);
+
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -134,9 +142,20 @@ export function TicketReveal({
                 initial={{ opacity: 0, scale: 0.25 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.4, ease: EASE_OUT }}
-                className="w-14 h-14 shrink-0 rounded-full flex items-center justify-center"
+                className="relative w-14 h-14 shrink-0 rounded-full flex items-center justify-center"
                 style={{ backgroundColor: accent + "1f", color: accent }}
               >
+                {/* One ring goes out from the badge, once: the "you're in" beat. */}
+                {!calm && (
+                  <motion.span
+                    aria-hidden="true"
+                    className="absolute inset-0 rounded-full pointer-events-none"
+                    style={{ border: `2px solid ${accent}` }}
+                    initial={{ opacity: 0.7, scale: 1 }}
+                    animate={{ opacity: 0, scale: 2.1 }}
+                    transition={{ duration: 0.9, delay: 0.25, ease: EASE_OUT }}
+                  />
+                )}
                 {logoUrl ? (
                   <img
                     src={logoUrl}
@@ -172,15 +191,39 @@ export function TicketReveal({
               transition={{ duration: 0.45, delay: 0.22, ease: EASE_OUT }}
               className="space-y-2"
             >
+              {/* The printer slot the tickets come out of. */}
+              <div
+                aria-hidden="true"
+                className="h-1.5 mx-3 rounded-full"
+                style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }}
+              />
               {tickets.map((t, i) => (
                 <motion.div
                   key={t.code}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.45, delay: 0.3 + i * 0.08, ease: EASE_OUT }}
-                  className="flex items-center gap-3 rounded-md border border-hairline bg-surface-2/60 px-4 py-3"
+                  // Each ticket prints downward out of the slot, then a
+                  // single glint passes over it. Reduced motion: it is just there.
+                  initial={calm ? false : { opacity: 0, y: -14, clipPath: "inset(0 0 100% 0)" }}
+                  animate={{ opacity: 1, y: 0, clipPath: "inset(0 0 0% 0)" }}
+                  transition={{ duration: 0.7, delay: 0.35 + i * 0.22, ease: EASE_OUT }}
+                  className="relative overflow-hidden flex items-center gap-3 rounded-md border border-hairline bg-surface-2/60 px-4 py-3"
                 >
-                  <TicketQR code={t.code} size={88} />
+                  {!calm && (
+                    <motion.span
+                      aria-hidden="true"
+                      className="absolute inset-y-0 w-1/3 pointer-events-none"
+                      style={{ background: `linear-gradient(100deg, transparent, ${accent}33, transparent)` }}
+                      initial={{ left: "-40%" }}
+                      animate={{ left: "120%" }}
+                      transition={{ duration: 0.9, delay: 1.05 + i * 0.22, ease: "easeInOut" }}
+                    />
+                  )}
+                  <motion.div
+                    initial={calm ? false : { opacity: 0, filter: "blur(6px)" }}
+                    animate={{ opacity: 1, filter: "blur(0px)" }}
+                    transition={{ duration: 0.5, delay: 0.75 + i * 0.22, ease: EASE_OUT }}
+                  >
+                    <TicketQR code={t.code} size={88} />
+                  </motion.div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-ink truncate">{t.attendeeName}</p>
                     <p className="text-xs text-muted-ink">{t.tierName}</p>

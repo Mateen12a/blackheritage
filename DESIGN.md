@@ -105,7 +105,9 @@ and laid out by design. Add a face or palette here deliberately, not by drift.
   call to action, and never show an inventory number (shows on sale, vendors
   listed, cheapest ticket) until the numbers are large enough to impress.
 
-## Motion: two signature moments, then quiet
+## Motion: two signature moments, quiet by default, and action moments
+
+(See "Moments" at the end of this section for the action-driven motion added 19 Nov 2026.)
 
 The product has exactly **two** deliberate motion moments:
 
@@ -149,6 +151,43 @@ and stays within these tiers:
   for it, including the ken-burns and photo zoom.
 - Keyboard focus is always visible: global `:focus-visible` gold outline with
   offset (index.css). Do not remove it or override with `outline-none`.
+
+### Moments: motion that answers an action (added 19 Nov 2026)
+
+Quiet stays the default, but the product felt flat at the exact moments
+people care most about. The rule: **ambient motion stays capped (above);
+motion is welcome when it answers something the person just did or a real
+number that just changed.** If nothing happened, nothing moves.
+
+The moments, and where they live:
+
+| Moment | What moves | Where |
+|---|---|---|
+| **Ticket issued** | One gold ring goes out from the badge; each ticket "prints" down out of a gold slot (clip reveal), its QR sharpens from a blur, one glint passes over it; one 35ms buzz | `TicketReveal.tsx` (both inline checkout and the redirect return use it) |
+| **Gate scan** | Valid: the card settles in and a green ring pulses off the tick, 40ms buzz. Rejected: the card shakes once, double buzz. Every scan replays (keyed per scan). Checked-in and flagged counts roll to their new value | `Verify.tsx` |
+| **Organiser numbers** | Revenue, tickets sold and checked-in roll up to the real value with `CountUp`; the revenue sales line draws left to right once (`SalesLine`, real paid bookings, hidden under 2 sales); each tier's sold bar fills to its real share | `ManageEvent.tsx`, `SalesLine.tsx` |
+
+Rules for adding another moment:
+
+1. **Real data only.** `CountUp` and fill bars animate true values. Never
+   animate a made-up or rounded-up number to look busy ("selling fast" only
+   when it is).
+2. **Once per action.** A moment plays when its action happens and does not
+   loop. Key it to the action (as the scan card is) so a repeat action replays it.
+3. **Under a second, ease-out.** Use `EASE_OUT`. The one exception to "no
+   bounce" is the rejected-scan shake: it is information, not decoration.
+4. **Feel it, don't just see it.** `buzz()` for physical confirmations
+   (ticket issued, scan). Never for anything routine.
+5. **Reduced motion wins.** Use `prefersReducedMotion()` (or framer's
+   `MotionConfig`) so every moment lands in its final state instantly.
+   `buzz()` also stays silent then.
+6. **Cheap phones first.** Animate `transform`, `opacity`, `clip-path`,
+   SVG `pathLength`. No animated box-shadows, no large blurs on lists, no
+   video. Helpers live in `client/src/components/motion.tsx`
+   (`CountUp`, `buzz`, `prefersReducedMotion`).
+
+Candidates for next (after 3 Dec): challenge entry submitted (gold burst,
+entry card appears), and a payout landing in the wallet.
 
 ## Voice & copy (locked)
 

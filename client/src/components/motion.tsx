@@ -13,6 +13,10 @@ import type { TemplateMotion } from "@shared/themes";
  * sections (small 14px rise, once), `FadeImg` for images fading in, and
  * the `press` utility for button feedback. Nothing bounces, nothing lifts.
  * `MotionProvider` maps `prefers-reduced-motion` to instant states.
+ *
+ * Beyond those, "moments" (DESIGN.md → "Moments") answer an action or a real
+ * number changing: ticket issued, gate scan, organiser counts. They use the
+ * helpers at the bottom of this file: `CountUp`, `buzz`, `prefersReducedMotion`.
  */
 
 export const EASE_OUT = [0.22, 1, 0.36, 1] as const;
@@ -107,4 +111,66 @@ export function FadeImg({ src, alt, className, onLoad, onError, ...rest }: FadeI
       {...rest}
     />
   );
+}
+
+// ── Moments: motion that answers something the user just did ──
+// See DESIGN.md → "Motion: moments, not decoration". These are for real
+// state changes only (a ticket issued, a scan, a number that changed).
+
+/** True when the visitor asked the OS for less motion. */
+export function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+}
+
+/**
+ * A real number rolling up to its value: on first view from 0, and from
+ * the previous value whenever it changes (a new sale, a new check-in).
+ * Only for true counts; never animate a number that is not real.
+ */
+export function CountUp({
+  value,
+  format = (n) => Math.round(n).toLocaleString(),
+  duration = 0.9,
+  className,
+}: {
+  value: number;
+  format?: (n: number) => string;
+  duration?: number;
+  className?: string;
+}) {
+  const [shown, setShown] = useState(prefersReducedMotion() ? value : 0);
+  const from = useRef(prefersReducedMotion() ? value : 0);
+  useEffect(() => {
+    const target = Number.isFinite(value) ? value : 0;
+    if (prefersReducedMotion() || from.current === target) {
+      from.current = target;
+      setShown(target);
+      return;
+    }
+    const start = performance.now();
+    const a = from.current;
+    let raf = 0;
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / (duration * 1000));
+      const eased = 1 - Math.pow(1 - p, 3);
+      setShown(a + (target - a) * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+      else from.current = target;
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      from.current = target;
+    };
+  }, [value, duration]);
+  return <span className={className} style={{ fontVariantNumeric: "tabular-nums" }}>{format(shown)}</span>;
+}
+
+/** A short vibration on phones that support it (gate scans, ticket issued). */
+export function buzz(pattern: number | number[]) {
+  try {
+    if (!prefersReducedMotion()) navigator.vibrate?.(pattern);
+  } catch {
+    // Unsupported or blocked: the visual feedback carries it.
+  }
 }

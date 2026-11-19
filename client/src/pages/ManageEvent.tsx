@@ -20,6 +20,9 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { SalesBySource } from "@/components/SalesBySource";
+import { SalesLine } from "@/components/SalesLine";
+import { CountUp, EASE_OUT, prefersReducedMotion } from "@/components/motion";
+import { motion } from "framer-motion";
 import { DuplicateEventDialog } from "@/components/DuplicateEventDialog";
 import {
   usePromos, useCreatePromo, useDeletePromo, useIssueManualTickets,
@@ -602,9 +605,18 @@ export default function ManageEvent() {
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold text-ink">
-                        {type.capacity - (type.sold || 0)} / {type.capacity}
+                        <CountUp value={type.capacity - (type.sold || 0)} /> / {type.capacity}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">Remaining availability</p>
+                      {/* How full the tier is, filling to the real share sold. */}
+                      <div className="mt-3 h-1.5 rounded-full bg-surface-2 overflow-hidden" aria-hidden="true">
+                        <motion.div
+                          className="h-full rounded-full bg-gold"
+                          initial={prefersReducedMotion() ? false : { width: 0 }}
+                          animate={{ width: `${Math.min(100, Math.max(0, ((type.sold || 0) / Math.max(1, type.capacity)) * 100))}%` }}
+                          transition={{ duration: 0.9, ease: EASE_OUT }}
+                        />
+                      </div>
                     </CardContent>
                   </Card>
                 ));
@@ -1013,8 +1025,11 @@ function OrganizerTools({ event, bookings }: { event: any; bookings: any[] }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-display font-bold text-gold">{naira(revenue)}</div>
+            <div className="text-2xl font-display font-bold text-gold">
+              <CountUp value={revenue} format={(n) => naira(Math.round(n))} />
+            </div>
             <p className="text-xs text-muted-ink mt-1">Paid bookings</p>
+            <SalesLine bookings={bookings} className="mt-2 w-full h-10" />
           </CardContent>
         </Card>
         <Card className="bg-surface border-hairline">
@@ -1022,7 +1037,7 @@ function OrganizerTools({ event, bookings }: { event: any; bookings: any[] }) {
             <CardTitle className="text-xs font-medium text-muted-ink uppercase tracking-wider">Tickets sold</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-display font-bold text-ink">{ticketsSold}</div>
+            <div className="text-2xl font-display font-bold text-ink"><CountUp value={ticketsSold} /></div>
             <p className="text-xs text-muted-ink mt-1">Across all tiers</p>
           </CardContent>
         </Card>
@@ -1034,7 +1049,11 @@ function OrganizerTools({ event, bookings }: { event: any; bookings: any[] }) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-display font-bold text-ink">
-              {stats.data ? `${stats.data.checkedIn} / ${stats.data.expected}` : "0 / 0"}
+              {stats.data ? (
+                <>
+                  <CountUp value={Number(stats.data.checkedIn) || 0} duration={0.6} /> / {stats.data.expected}
+                </>
+              ) : "0 / 0"}
             </div>
             <p className="text-xs text-muted-ink mt-1">
               {stats.data?.flagged

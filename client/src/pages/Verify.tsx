@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { ScanLine, CheckCircle2, XCircle, AlertTriangle, WifiOff, CloudUpload, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { QrScanner } from "@/components/QrScanner";
+import { motion } from "framer-motion";
+import { CountUp, EASE_OUT, buzz, prefersReducedMotion } from "@/components/motion";
 
 type ScanResult = "ok" | "duplicate" | "invalid" | "void" | "override";
 
@@ -37,6 +39,15 @@ export default function Verify() {
   const { user } = useAuth();
   const [code, setCode] = useState("");
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  // Every scan gets its own key so the result card re-plays its moment even
+  // when two scans in a row return the same result. Staff feel it in the
+  // hand too: one short buzz for in, a double buzz for stop.
+  const [scanKey, setScanKey] = useState(0);
+  useEffect(() => {
+    if (!outcome) return;
+    setScanKey((k) => k + 1);
+    buzz(outcome.result === "ok" || outcome.result === "override" ? 40 : [90, 60, 90]);
+  }, [outcome]);
   const [busy, setBusy] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   const [tally, setTally] = useState({ ok: 0, flagged: 0 });
@@ -276,7 +287,7 @@ export default function Verify() {
         </div>
         <div className="text-right">
           <p className="font-display text-3xl font-bold text-gold tabular-nums">
-            {tally.ok}
+            <CountUp value={tally.ok} duration={0.5} />
             <span className="text-muted-ink text-lg">/{cache ? cache.length : ""}</span>
           </p>
           <p className="text-xs text-muted-ink flex items-center justify-end gap-1.5">
@@ -335,13 +346,38 @@ export default function Verify() {
         </p>
       )}
 
-      {outcome && (
-        <div
-          className={`mt-5 rounded-lg border-2 p-6 text-center ${resultStyles[outcome.result].wrap}`}
+      {outcome && (() => {
+        const good = outcome.result === "ok" || outcome.result === "override";
+        const calm = prefersReducedMotion();
+        return (
+        <motion.div
+          key={scanKey}
+          className={`relative mt-5 rounded-lg border-2 p-6 text-center ${resultStyles[outcome.result].wrap}`}
           role="status"
           aria-live="polite"
+          initial={calm ? false : good ? { opacity: 0, scale: 0.96 } : { opacity: 0 }}
+          animate={good || calm ? { opacity: 1, scale: 1 } : { opacity: 1, x: [0, -12, 11, -8, 6, -3, 0] }}
+          transition={good ? { duration: 0.35, ease: EASE_OUT } : { duration: 0.45, ease: "easeOut" }}
         >
-          <div className="flex justify-center">{resultStyles[outcome.result].icon}</div>
+          <div className="relative flex justify-center">
+            {good && !calm && (
+              // A green pulse leaves the tick once: readable from arm's length at a dark gate.
+              <motion.span
+                aria-hidden="true"
+                className="absolute top-1/2 left-1/2 w-12 h-12 -mt-6 -ml-6 rounded-full border-2 border-green-400 pointer-events-none"
+                initial={{ opacity: 0.8, scale: 1 }}
+                animate={{ opacity: 0, scale: 2.6 }}
+                transition={{ duration: 0.7, ease: EASE_OUT }}
+              />
+            )}
+            <motion.div
+              initial={calm ? false : { scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.3, ease: EASE_OUT }}
+            >
+              {resultStyles[outcome.result].icon}
+            </motion.div>
+          </div>
           <p className="mt-3 text-xs font-bold tracking-[0.2em]">{resultStyles[outcome.result].label}</p>
           {outcome.attendeeName && (
             <p className="mt-2 font-display text-2xl font-bold text-ink">{outcome.attendeeName}</p>
@@ -362,16 +398,17 @@ export default function Verify() {
               Supervisor Override
             </Button>
           )}
-        </div>
-      )}
+        </motion.div>
+        );
+      })()}
 
       <div className="mt-6 grid grid-cols-3 gap-3 text-center">
         <div className="border border-hairline rounded-md bg-surface p-3">
-          <p className="font-display text-xl font-bold text-green-400">{tally.ok}</p>
+          <p className="font-display text-xl font-bold text-green-400"><CountUp value={tally.ok} duration={0.5} /></p>
           <p className="text-xs text-muted-ink">Checked in</p>
         </div>
         <div className="border border-hairline rounded-md bg-surface p-3">
-          <p className="font-display text-xl font-bold text-red-400">{tally.flagged}</p>
+          <p className="font-display text-xl font-bold text-red-400"><CountUp value={tally.flagged} duration={0.5} /></p>
           <p className="text-xs text-muted-ink">Flagged</p>
         </div>
         <div className="border border-hairline rounded-md bg-surface p-3">
