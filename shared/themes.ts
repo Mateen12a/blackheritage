@@ -158,8 +158,13 @@ export function accentOverrides(themeKey: string | null | undefined, accentHex: 
   const accentHexSafe = effective;
   const onLight = preset.key === "ivory-editorial";
   const lum = luminance(accentHexSafe);
-  const contrastWithInk = (lum + 0.05) / (luminance(onLight ? "#221A12" : "#F7F5EF") + 0.05);
-  const textOnAccent = contrastWithInk >= 3 ? (onLight ? "#221A12" : "#F7F5EF") : onLight ? "#FBF8F2" : "#12100B";
+  // Button text on the accent: whichever of a light or dark ink reads
+  // better. The old check divided the accent by the light ink, so a dark
+  // accent (deep purple) always got dark text and the button went unreadable.
+  const ratio = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  const lightInk = onLight ? "#FBF8F2" : "#F7F5EF";
+  const darkInk = onLight ? "#221A12" : "#12100B";
+  const textOnAccent = ratio(lum, luminance(lightInk)) > ratio(lum, luminance(darkInk)) ? lightInk : darkInk;
   const mix = (hex: string, white: number, black = 0): string => {
     const to255 = (v: number) => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, "0");
     const c = [channel(hex, 0), channel(hex, 1), channel(hex, 2)].map((v) => v * (1 - white - black) + white + black);

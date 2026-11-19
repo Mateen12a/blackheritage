@@ -63,6 +63,8 @@ export default function OrganizerDetails() {
   const [followEmail, setFollowEmail] = useState("");
   const [isStoryFlyerOpen, setIsStoryFlyerOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState<string>("all");
+  // A logo file that no longer exists falls back to initials, not a broken image.
+  const [logoFailed, setLogoFailed] = useState(false);
 
   const organizer = data?.organizer;
   const upcomingEvents = data?.upcomingEvents || [];
@@ -215,10 +217,11 @@ export default function OrganizerDetails() {
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
               {/* Brand Logo / Avatar */}
               <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-2 border-gold/40 bg-surface-2 p-0.5 shrink-0 shadow-lg">
-                {organizer.logoUrl ? (
+                {organizer.logoUrl && !logoFailed ? (
                   <img
                     src={organizer.logoUrl}
                     alt={organizer.displayName}
+                    onError={() => setLogoFailed(true)}
                     className="w-full h-full object-cover rounded-[14px]"
                   />
                 ) : (
@@ -243,7 +246,7 @@ export default function OrganizerDetails() {
                 </div>
 
                 <div className="flex items-center gap-3 text-xs text-muted-ink mt-1.5 font-mono flex-wrap">
-                  <span className="text-ink font-semibold">{organizer.followersCount || 0} followers</span>
+                  <span className="text-ink font-semibold">{organizer.followersCount || 0} {(organizer.followersCount || 0) === 1 ? "follower" : "followers"}</span>
                   <span>&middot;</span>
                   <span>/o/{organizer.slug}</span>
                   <span>&middot;</span>
