@@ -530,7 +530,9 @@ export default function OrganizerDetails() {
                   Past Event Highlights and Archives
                 </h2>
                 <p className="text-xs sm:text-sm text-muted-ink mt-1">
-                  Footage and attendee photography from earlier events produced by {organizer.displayName}.
+                  {pastEvents.length > 0
+                    ? `${pastEvents.length} past show${pastEvents.length === 1 ? "" : "s"} produced by ${organizer.displayName} on Black Heritage${archivePhotos.length + archiveVideos.length > 0 ? ", with footage and photos from the night" : ""}.`
+                    : `Footage and attendee photography from earlier events produced by ${organizer.displayName}.`}
                 </p>
               </div>
 
@@ -549,6 +551,52 @@ export default function OrganizerDetails() {
                 )}
               </div>
             </div>
+
+            {/* Past shows: the organizer's track record, newest first */}
+            {pastEvents.length > 0 && (
+              <div className="mb-8 space-y-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-ink">
+                  Past Shows
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {pastEvents.map((ev: any) => {
+                    const eventLink = ev.slug ? `/e/${ev.slug}` : `/events/${ev.id}`;
+                    return (
+                      <Link
+                        key={ev.id}
+                        href={eventLink}
+                        className="press group flex gap-3 rounded-xl border border-hairline bg-surface p-3 hover:border-gold/50 transition-colors"
+                      >
+                          <div className="relative w-24 h-24 shrink-0 rounded-lg overflow-hidden bg-surface-2">
+                            {ev.imageUrl && (
+                              <img
+                                src={ev.imageUrl}
+                                alt={ev.title}
+                                loading="lazy"
+                                className="w-full h-full object-cover saturate-[.85] transition-transform duration-500 group-hover:scale-105"
+                              />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex flex-col justify-center">
+                            <span className="text-[10px] uppercase font-mono tracking-wider text-gold">
+                              {format(new Date(ev.date), "EEE d MMM yyyy")}
+                            </span>
+                            <h3 className="font-display text-base font-bold text-ink line-clamp-2 mt-0.5 group-hover:text-gold transition-colors">
+                              {ev.title}
+                            </h3>
+                            {ev.location && (
+                              <p className="mt-1 text-xs text-muted-ink flex items-center gap-1 min-w-0">
+                                <MapPin className="w-3 h-3 text-gold shrink-0" />
+                                <span className="truncate">{ev.location}</span>
+                              </p>
+                            )}
+                          </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Video Highlights */}
             {archiveVideos.length > 0 && (
