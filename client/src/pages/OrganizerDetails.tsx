@@ -455,9 +455,17 @@ export default function OrganizerDetails() {
                 return (
                   <div
                     key={ev.id}
-                    className="group rounded-xl border border-hairline bg-surface overflow-hidden flex flex-col hover:border-gold/50 transition-all duration-300 shadow-sm hover:shadow-md"
+                    className="group relative rounded-xl border border-hairline bg-surface overflow-hidden flex flex-col hover:border-gold/50 transition-all duration-300 shadow-sm hover:shadow-md"
                   >
-                    <div className="relative aspect-[16/9] w-full overflow-hidden bg-surface-2">
+                    {/* The whole card opens the event; the button stays on top of it. */}
+                    <Link
+                      href={eventLink}
+                      className="absolute inset-0 z-[1] rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold"
+                    >
+                      <span className="sr-only">{ev.title}: see details and tickets</span>
+                    </Link>
+                    {/* Flyers are portrait; show the whole poster, not a strip of it. */}
+                    <div className="relative aspect-[4/5] w-full overflow-hidden bg-surface-2">
                       <img
                         src={ev.imageUrl}
                         alt={ev.title}
@@ -497,9 +505,10 @@ export default function OrganizerDetails() {
                           </span>
                         </div>
 
-                        <Link href={eventLink}>
+                        <Link href={eventLink} className="relative z-[2]" tabIndex={-1}>
                           <Button
                             size="sm"
+                            tabIndex={-1}
                             className="press bg-primary text-primary-foreground hover:bg-gold-soft font-semibold text-xs h-8 px-3"
                           >
                             Get tickets
