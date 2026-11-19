@@ -229,9 +229,12 @@ server {
         try_files $uri /index.html;
     }
 
-    # Event pages MUST hit Node, not the static fallback: Express injects
-    # per-event OG tags (WhatsApp/X preview cards) into the HTML shell.
-    location ~ ^/(e/.+|events/.+)$ {
+    # Pages with their own link preview MUST hit Node, not the static
+    # fallback: Express injects per-page OG tags (WhatsApp/X/IG preview
+    # cards) into the HTML shell. Events, organizer hubs (/o/), talent and
+    # vendor profiles, and the /challenges page. Anything missing here
+    # previews as the homepage card when shared.
+    location ~ ^/(e/.+|events/.+|o/.+|t/.+|v/.+|talent/.+|vendors/.+|challenges/?)$ {
         proxy_pass http://127.0.0.1:3001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<!-- Source for og-home.png (1200x630). Render with Playwright at 2x and save to
+     client/public/og-home.png. Shows only what the product really does: no
+     third-party event posters or artist names we don't ticket. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;700;800&family=Playfair+Display:ital,wght@0,800;0,900;1,800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1200px;height:630px;overflow:hidden;background:#0F0F14;color:#F7F5EF;font-family:'DM Sans',sans-serif;position:relative}
+.glow{position:absolute;right:-120px;top:-80px;width:820px;height:820px;border-radius:50%;background:radial-gradient(circle,rgba(227,178,60,.16) 0%,rgba(227,178,60,0) 62%)}
+.frame{position:absolute;inset:22px;border:1px solid #23232C;border-radius:8px}
+.l{position:absolute;left:72px;top:58px;width:620px}
+.brand{display:flex;align-items:center;gap:14px}
+.brand img{height:46px}
+.brand span{font-weight:800;letter-spacing:.26em;font-size:15px;color:#9EA0AD}
+h1{font-family:'Playfair Display',serif;font-weight:900;font-size:66px;line-height:1.02;margin-top:34px}
+h1 em{font-style:italic;color:#E3B23C;font-weight:800}
+.rule{width:64px;height:3px;background:#E3B23C;margin:24px 0 20px}
+.pts{display:flex;flex-direction:column;gap:8px;font-size:20px;color:#D9D6CC}
+.pts b{color:#E3B23C;margin-right:10px}
+.url{position:absolute;left:72px;bottom:48px;font-weight:800;font-size:22px;color:#E3B23C}
+.url span{color:#9EA0AD;font-weight:700;font-size:14px;letter-spacing:.22em;margin-left:16px}
+/* A real product moment: the ticket that lands after checkout */
+.tk{position:absolute;right:86px;top:96px;width:370px;height:440px;transform:rotate(4deg);display:flex;flex-direction:column;filter:drop-shadow(0 30px 40px rgba(0,0,0,.55))}
+.tk .top{flex:1;background:#F7F5EF;color:#0F0F14;border-radius:18px 18px 0 0;padding:28px 30px;display:flex;flex-direction:column;gap:6px}
+.tk .lab{font-weight:800;font-size:13px;letter-spacing:.22em;color:#8A6A1E}
+.tk .t{font-family:'Playfair Display',serif;font-weight:900;font-size:34px;line-height:1.05;margin-top:4px}
+.tk .m{font-size:15px;color:#4A473F;margin-top:2px}
+.tk .qr{margin-top:auto;display:flex;align-items:center;gap:16px}
+.tk .qr svg{width:110px;height:110px}
+.tk .qr div{font-size:13px;font-weight:700;color:#4A473F;line-height:1.5}
+.tk .qr div b{display:block;font-family:monospace;font-size:16px;color:#0F0F14;letter-spacing:.08em}
+.tk .perf{height:0;border-top:3px dashed #0F0F14;margin:0 14px;position:relative;background:#F7F5EF}
+.tk .bot{height:78px;background:#E3B23C;color:#0F0F14;border-radius:0 0 18px 18px;display:flex;align-items:center;justify-content:center;gap:12px;font-weight:800;font-size:20px}
+.tk .bot i{font-style:normal;width:32px;height:32px;border-radius:50%;background:#0F0F14;color:#E3B23C;display:flex;align-items:center;justify-content:center;font-size:18px}
+</style>
+</head>
+<body>
+<div class="glow"></div><div class="frame"></div>
+<div class="l">
+  <div class="brand"><img src="../src/assets/logo_transparent.png" alt=""><span>BLACK HERITAGE</span></div>
+  <h1>Where Nigeria<br>books its <em>parties.</em></h1>
+  <div class="rule"></div>
+  <div class="pts">
+    <div><b>✓</b>QR e-ticket in under a minute</div>
+    <div><b>✓</b>Tables, group passes, promoter links</div>
+    <div><b>✓</b>Organisers list free, payouts to your bank</div>
+  </div>
+</div>
+<div class="url">blackhevents.com<span>TICKETS · TABLES · TALENT</span></div>
+<div class="tk">
+  <div class="top">
+    <div class="lab">ADMIT ONE · YOU'RE IN</div>
+    <div class="t">Your night,<br>confirmed.</div>
+    <div class="m">Show this at the gate. One scan, you're in.</div>
+    <div class="qr">
+      <svg viewBox="0 0 21 21" shape-rendering="crispEdges"><rect width="21" height="21" fill="#F7F5EF"/><path fill="#0F0F14" d="M0 0h7v7H0zM1 1v5h5V1zM2 2h3v3H2zM14 0h7v7h-7zM15 1v5h5V1zM16 2h3v3h-3zM0 14h7v7H0zM1 15v5h5v-5zM2 16h3v3H2zM8 0h1v2H8zM10 1h2v1h-2zM9 3h3v1H9zM8 5h2v2H8zM11 5h1v3h-1zM8 8h2v1H8zM0 8h2v1H0zM3 8h3v2H3zM12 9h2v1h-2zM15 8h2v2h-2zM18 8h3v1h-3zM9 10h2v2H9zM13 11h3v1h-3zM17 11h2v3h-2zM8 13h1v3H8zM10 14h3v1h-3zM14 13h2v2h-2zM19 15h2v2h-2zM8 17h3v1H8zM12 16h1v3h-1zM14 17h3v1h-3zM18 18h3v3h-3zM9 19h2v2H9zM14 19h2v2h-2zM1 10h1v2H1zM4 11h2v2H4z"/></svg>
+      <div>Ticket code<b>BH-7Q4K2M</b>Instant, by email</div>
+    </div>
+  </div>
+  <div class="perf"></div>
+  <div class="bot"><i>✓</i>Valid at the gate</div>
+</div>
+</body>
+</html>

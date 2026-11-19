@@ -425,7 +425,7 @@ export async function registerRoutes(
         const base = process.env.PUBLIC_APP_URL || "https://blackhevents.com";
         const image = meta.image
           ? /^https?:\/\//.test(meta.image) ? meta.image : `${base}${meta.image}`
-          : `${base}/og-home.png`;
+          : `${base}/og-home-v2.jpg`;
         html = html
           .replace(/<meta\s[^>]*property="(?:og|twitter):[^"]*"[^>]*>/gi, "")
           .replace(/<meta\s[^>]*name="(?:og|twitter):[^"]*"[^>]*>/gi, "")
