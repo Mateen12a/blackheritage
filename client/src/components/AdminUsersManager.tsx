@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Search, Users, Shield, BadgeCheck, Check, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { FOUNDER_CODE, LEGACY_FOUNDER_CODE, founderAllowance } from "@shared/founder";
 
 export function AdminUsersManager() {
   const [search, setSearch] = useState("");
@@ -89,6 +90,27 @@ export function AdminUsersManager() {
       toast({ title: v.percent === null ? "Platform rate restored" : `Fee set to ${v.percent}%`, description: "Applies to this organizer's next sales." });
     },
     onError: (err: any) => toast({ variant: "destructive", title: "Rate not changed", description: err.message }),
+  });
+
+  const founderMutation = useMutation({
+    mutationFn: async ({ id, voucher }: { id: string; voucher: string | null }) => {
+      const res = await fetch(`/api/admin/users/${id}/founder`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ voucher }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message || "Failed to change the perk");
+      return res.json();
+    },
+    onSuccess: (_d, v) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({
+        title: v.voucher ? `Founder perk: ${founderAllowance(v.voucher)} tickets` : "Founder perk removed",
+        description: "Tickets already waived stay counted against the new limit.",
+      });
+    },
+    onError: (e: Error) => toast({ variant: "destructive", title: "Perk not changed", description: e.message }),
   });
 
   return (
@@ -232,6 +254,27 @@ export function AdminUsersManager() {
                               />
                               Manual payouts
                             </label>
+                            <Select
+                              value={u.founderVoucher === FOUNDER_CODE || u.founderVoucher === LEGACY_FOUNDER_CODE ? u.founderVoucher : "none"}
+                              onValueChange={(v) => founderMutation.mutate({ id: u.id, voucher: v === "none" ? null : v })}
+                              disabled={founderMutation.isPending}
+                            >
+                              <SelectTrigger className="mt-1.5 h-7 text-xs bg-surface-2 border-hairline text-ink" aria-label="Founder perk">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent className="bg-surface border-hairline text-ink">
+                                <SelectItem value={FOUNDER_CODE}>Founder 50</SelectItem>
+                                <SelectItem value={LEGACY_FOUNDER_CODE}>Founder 100</SelectItem>
+                                <SelectItem value="none">No perk</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <div className="mt-1 text-[11px] text-muted-ink tabular-nums">
+                              {(() => {
+                                const limit = founderAllowance(u.founderVoucher);
+                                const used = Number(u.waivedTicketCount || 0);
+                                return limit > 0 ? `${used}/${limit} fee-free used · ${Math.max(0, limit - used)} left` : `${used} fee-free used`;
+                              })()}
+                            </div>
                           </div>
                         ) : (
                           <span className="text-[11px] text-muted-ink">-</span>

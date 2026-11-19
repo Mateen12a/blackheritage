@@ -5179,6 +5179,31 @@ export async function registerRoutes(
     }
   });
 
+  // Per-organizer Founder perk: FOUNDER50, the legacy FOUNDER100, or none.
+  // Tickets already waived stay counted, so moving 100 → 50 leaves
+  // max(0, 50 - used) fee-free tickets.
+  app.patch("/api/admin/users/:id/founder", async (req, res) => {
+    if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+    const { FOUNDER_CODE, LEGACY_FOUNDER_CODE } = await import("@shared/founder");
+    const voucher = req.body?.voucher ?? null;
+    if (voucher !== null && voucher !== FOUNDER_CODE && voucher !== LEGACY_FOUNDER_CODE) {
+      return res.status(400).json({ message: "Use FOUNDER50, FOUNDER100 or none." });
+    }
+    try {
+      const updated = await User.findByIdAndUpdate(
+        req.params.id,
+        { $set: { founderVoucher: voucher } },
+        { new: true },
+      ).select("-password").lean();
+      if (!updated) return res.status(404).json({ message: "User not found." });
+      return res.json({ ...updated, id: String((updated as any)._id) });
+    } catch {
+      return res.status(500).json({ message: "Could not change the Founder perk." });
+    }
+  });
+
   app.patch("/api/admin/users/:id/role", async (req, res) => {
     if (!req.isAuthenticated() || (req.user as any).role !== "admin") {
       return res.status(403).json({ error: "Admin access required." });
