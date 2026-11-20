@@ -138,7 +138,7 @@ async function attachTalentProfile(
     businessName: input.stageName,
     category: map.category,
     categoryLabel: map.categoryLabel,
-    bio: input.about,
+    bio: input.about || `${map.categoryLabel} in the ${TALENT_HUNT.title}.`,
     city: input.city || undefined,
     whatsapp: input.whatsapp,
     videos: JSON.stringify([videoUrl]),
@@ -147,6 +147,33 @@ async function attachTalentProfile(
     ownerId: userId,
   });
   return String(doc._id);
+}
+
+/**
+ * A free attendee account made from a challenge entry. The password is random
+ * and never shown: the entrant sets their own with "Forgot password" when
+ * they first want to sign in, which also proves they own the email.
+ */
+async function guestAccount(email: string, stageName: string, whatsapp: string) {
+  const bcrypt = (await import("bcryptjs")).default;
+  const crypto = await import("crypto");
+  const base = (stageName || email.split("@")[0]).toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 16) || "talent";
+  let username = base;
+  for (let i = 0; i < 5 && (await User.exists({ username })); i++) {
+    username = `${base}${crypto.randomInt(100, 9999)}`;
+  }
+  if (await User.exists({ username })) username = `${base}${crypto.randomBytes(4).toString("hex")}`;
+  const user = new User({
+    username,
+    email,
+    password: await bcrypt.hash(crypto.randomBytes(24).toString("hex"), 10),
+    role: "user",
+    displayName: stageName.slice(0, 80),
+    phone: whatsapp.slice(0, 24),
+    termsAcceptedAt: new Date(),
+  } as any);
+  await user.save();
+  return user;
 }
 
 function publicEntry(e: any) {
@@ -198,10 +225,9 @@ export function registerChallengeRoutes(app: Express) {
 
   // Who may send an entry, checked before any upload is read, so a signed-out
   // visitor or a closed contest never makes the server hold a 50 MB body.
+  // Signed-out visitors may enter too: the entry form creates their free
+  // account from the email they give (see guestAccount below).
   const entryGate = (req: Request, res: Response, next: NextFunction) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Create a free account or sign in to enter." });
-    }
     const phase = challengePhase();
     if (phase !== "open" && !isAdmin(req)) {
       const message = phase === "upcoming"
@@ -227,6 +253,29 @@ export function registerChallengeRoutes(app: Express) {
     } catch (err) {
       if (err instanceof z.ZodError) return res.status(400).json(friendlyZod(err));
       throw err;
+    }
+    // First-time entrants: make their free account from the form and sign
+    // them in, so entering is one form, not sign-up → log-in → come back.
+    // An email that already has an account must sign in: we never attach an
+    // entry (or a talent profile) to someone else's account.
+    let createdAccount = false;
+    if (!req.isAuthenticated()) {
+      const email = String(body.email || "").trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+        return res.status(400).json({ message: "Add your email so we can send your confirmation" });
+      }
+      const taken = await User.findOne({ email: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") }).select("_id").lean();
+      if (taken) {
+        return res.status(409).json({ needsSignIn: true, message: "This email already has a Black Heritage account. Sign in (or tap Forgot password), then send your video." });
+      }
+      try {
+        const user = await guestAccount(email, input.stageName, input.whatsapp);
+        await new Promise<void>((resolve, reject) => req.login(user, (err) => (err ? reject(err) : resolve())));
+        createdAccount = true;
+      } catch (err: any) {
+        console.error("[challenges] guest account failed:", err?.message);
+        return res.status(500).json({ message: "Your entry didn't save. Try again in a moment." });
+      }
     }
     const userId = String((req.user as any)._id);
     const file = req.file;
@@ -283,7 +332,7 @@ export function registerChallengeRoutes(app: Express) {
         videoUrl,
         videoSource,
         videoBytes,
-        about: input.about,
+        about: input.about || "",
         whatsapp: input.whatsapp,
         instagram: cleanHandle(input.instagram),
         tiktok: cleanHandle(input.tiktok),
@@ -304,7 +353,7 @@ export function registerChallengeRoutes(app: Express) {
       if (previousWasUpload && previousUrl && previousUrl !== videoUrl) {
         await deleteUpload(previousUrl);
       }
-      res.status(existing ? 200 : 201).json({ updated: Boolean(existing), entry: publicEntry(entry) });
+      res.status(existing ? 200 : 201).json({ updated: Boolean(existing), createdAccount, entry: publicEntry(entry) });
     } catch (err: any) {
       console.error("[challenges] entry failed:", err?.message);
       // Don't leave an orphaned file behind a failed save.

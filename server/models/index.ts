@@ -900,7 +900,7 @@ const ChallengeEntrySchema: Schema = new Schema({
   videoUrl: { type: String, required: true },
   videoSource: { type: String, enum: ['link', 'upload'], default: 'link' },
   videoBytes: { type: Number, default: 0 },
-  about: { type: String, required: true },
+  about: { type: String, default: '' }, // optional since 20 Nov: the video speaks first
   whatsapp: { type: String, required: true },
   instagram: { type: String, default: '' },
   tiktok: { type: String, default: '' },

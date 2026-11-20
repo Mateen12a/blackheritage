@@ -25,8 +25,6 @@ import {
   type ChallengePhase,
 } from "@shared/challenge";
 import {
-  ArrowUpRight,
-  CalendarDays,
   CheckCircle2,
   Download,
   ExternalLink,
@@ -39,6 +37,7 @@ import {
   Music,
   Trophy,
   Upload,
+  Video,
 } from "lucide-react";
 
 const API = "/api/challenges/talent-hunt";
@@ -152,7 +151,6 @@ function errorText(err: any): string {
   }
 }
 
-const SIGNUP_HREF = `/auth?tab=register&returnTo=${encodeURIComponent("/challenges")}`;
 const SIGNIN_HREF = `/auth?returnTo=${encodeURIComponent("/challenges")}`;
 
 export default function ChallengesPage() {
@@ -165,31 +163,46 @@ export default function ChallengesPage() {
   return (
     <div className="min-h-screen bg-background pb-20 pt-8">
       <div className="container mx-auto px-4 max-w-5xl">
-        <Reveal>
-          <header className="mb-8 max-w-3xl">
-            <p className="eyebrow">Open call · Music, Dance, Comedy</p>
-            <h1 className="mt-2 font-display text-3xl font-bold text-ink sm:text-4xl md:text-5xl">
-              {TALENT_HUNT.title}
-            </h1>
-            <div className="rule-gold mt-3" />
-            <p className="mt-3 text-sm text-muted-ink sm:text-base leading-relaxed">
-              {naira(TALENT_HUNT.prizeNaira * 3)} in prizes up for grabs for the best in Music, Dance and Comedy, and a slot on stage at the{" "}
-              <Link href={TALENT_HUNT.stage.path} className="text-ink underline decoration-hairline underline-offset-4 hover:text-gold">
-                {TALENT_HUNT.stage.title}
-              </Link>
-              , {TALENT_HUNT.stage.venue}, {TALENT_HUNT.stage.date}. Free to enter.
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-surface px-2.5 py-1 text-xs font-medium text-ink">
-                <CalendarDays className="h-3.5 w-3.5 text-gold" aria-hidden="true" />
-                {PHASE_LINE[phase]}
-              </span>
-              {data && data.total >= 25 && (
-                <span className="text-xs text-muted-ink">{data.total} entries so far</span>
-              )}
-            </div>
-          </header>
-        </Reveal>
+        {/* Said simply: anyone should get it in five seconds, reading or not. */}
+        <header className="mx-auto mb-6 max-w-2xl text-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary-foreground">
+            {TALENT_HUNT.title} · Free
+          </span>
+          <h1 className="mt-4 font-display text-4xl font-bold leading-tight text-ink sm:text-5xl">
+            Sing. Dance. Make us laugh.
+          </h1>
+          <p className="mt-3 text-lg text-ink">
+            <span className="font-bold text-gold">{naira(TALENT_HUNT.prizeNaira * 3)}</span> in prizes up for grabs.
+          </p>
+          <p className="mt-1 text-sm text-muted-ink">
+            Winners perform live at OAU on {TALENT_HUNT.stage.date}. {PHASE_LINE[phase]}.
+          </p>
+          {data && data.total >= 25 && (
+            <p className="mt-2 text-xs text-muted-ink">{data.total} entries so far</p>
+          )}
+        </header>
+
+        <ol className="mx-auto mb-6 grid max-w-2xl grid-cols-3 gap-2 text-center" aria-label="How it works">
+          {[
+            { Icon: Video, top: "Film 1 minute", sub: "on your phone" },
+            { Icon: Upload, top: "Send it here", sub: "no payment" },
+            { Icon: Trophy, top: "Win + perform", sub: `at OAU, ${TALENT_HUNT.stage.date}` },
+          ].map(({ Icon, top, sub }, i) => (
+            <li key={top} className="rounded-lg border border-hairline bg-surface px-2 py-3">
+              <Icon className="mx-auto h-6 w-6 text-gold" aria-hidden="true" />
+              <p className="mt-1.5 text-sm font-semibold text-ink"><span className="sr-only">Step {i + 1}: </span>{top}</p>
+              <p className="text-xs text-muted-ink">{sub}</p>
+            </li>
+          ))}
+        </ol>
+
+        {/* The form comes first: it's why people are here. */}
+        <div className="mx-auto max-w-2xl space-y-6">
+          <EntryPanel phase={phase} signedIn={!!user} isAdmin={isAdmin} mine={mine} />
+          {mine.length > 0 && <MyEntries entries={mine} />}
+        </div>
+
+        <h2 className="mt-12 mb-4 font-display text-2xl font-bold text-ink">The details</h2>
 
         {/* Prizes */}
         <section aria-labelledby="prizes" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -210,53 +223,9 @@ export default function ChallengesPage() {
           })}
         </section>
 
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+        <div className="mt-6">
           {/* How to enter + dates + rules */}
           <div className="space-y-6 min-w-0">
-            <section className="rounded-md border border-hairline bg-surface p-6">
-              <h2 className="font-display text-xl font-bold text-ink">How to enter</h2>
-              <ol className="mt-4 space-y-4">
-                <li className="flex gap-3">
-                  <span className="mt-0.5 w-5 shrink-0 text-sm font-semibold text-muted-ink">1</span>
-                  <p className="text-sm text-ink leading-relaxed">
-                    Record your performance, 1 minute or less. Your phone camera is fine.
-                  </p>
-                </li>
-                <li className="flex gap-3">
-                  <span className="mt-0.5 w-5 shrink-0 text-sm font-semibold text-muted-ink">2</span>
-                  <div className="text-sm text-ink leading-relaxed">
-                    <p>Follow @blackhevents on Instagram and TikTok.</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <a href={TALENT_HUNT.instagram} target="_blank" rel="noopener noreferrer">
-                        <Button type="button" variant="outline" className="h-9 border-hairline px-3 text-xs text-ink hover:text-gold">
-                          <Instagram className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                          Follow on Instagram
-                        </Button>
-                      </a>
-                      <a href={TALENT_HUNT.tiktok} target="_blank" rel="noopener noreferrer">
-                        <Button type="button" variant="outline" className="h-9 border-hairline px-3 text-xs text-ink hover:text-gold">
-                          <ArrowUpRight className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
-                          Follow on TikTok
-                        </Button>
-                      </a>
-                    </div>
-                  </div>
-                </li>
-                <li className="flex gap-3">
-                  <span className="mt-0.5 w-5 shrink-0 text-sm font-semibold text-muted-ink">3</span>
-                  <div className="text-sm text-ink leading-relaxed">
-                    <p>
-                      Create your free Black Heritage account and upload your video here. Your entry also gives you a talent profile, so organizers can find and book you.
-                    </p>
-                    <p className="mt-2 text-muted-ink">
-                      Posting it too? Add <span className="font-semibold text-ink">{TALENT_HUNT.hashtag}</span> and tag{" "}
-                      <span className="font-semibold text-ink">@blackhevents</span> so more people see you. You can enter with the link to that post instead of uploading.
-                    </p>
-                  </div>
-                </li>
-              </ol>
-            </section>
-
             <section className="rounded-md border border-hairline bg-surface p-6">
               <h2 className="font-display text-xl font-bold text-ink">Dates</h2>
               <dl className="mt-4 space-y-2.5 text-sm">
@@ -276,11 +245,6 @@ export default function ChallengesPage() {
             </section>
           </div>
 
-          {/* Entry */}
-          <div className="space-y-6 min-w-0">
-            {mine.length > 0 && <MyEntries entries={mine} />}
-            <EntryPanel phase={phase} signedIn={!!user} isAdmin={isAdmin} mine={mine} />
-          </div>
         </div>
 
         <RulesSection />
@@ -447,8 +411,16 @@ const EMPTY_FORM = {
   instagram: "",
   tiktok: "",
   city: "",
+  email: "",
   followsConfirmed: false,
   acceptsRules: false,
+};
+
+/** Plain words for each category: what people actually do, not a label. */
+const CATEGORY_WORDS: Record<ChallengeCategory, string> = {
+  music: "I sing or rap",
+  dance: "I dance",
+  comedy: "I make people laugh",
 };
 
 function EntryPanel({ phase, signedIn, isAdmin, mine }: { phase: ChallengePhase; signedIn: boolean; isAdmin: boolean; mine: MyEntry[] }) {
@@ -462,6 +434,8 @@ function EntryPanel({ phase, signedIn, isAdmin, mine }: { phase: ChallengePhase;
   const [clip, setClip] = useState<{ file: File; seconds: number | null } | null>(null);
   const [checking, setChecking] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
+  const [done, setDone] = useState<null | { category: ChallengeCategory; createdAccount: boolean; email: string }>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const set = (patch: Partial<typeof EMPTY_FORM>) => setForm((f) => ({ ...f, ...patch }));
   const updating = form.category ? mine.find((m) => m.category === form.category) : undefined;
@@ -493,26 +467,32 @@ function EntryPanel({ phase, signedIn, isAdmin, mine }: { phase: ChallengePhase;
     setClip({ file, seconds });
   };
 
-  if (!signedIn) {
+  if (done) {
     return (
-      <section className="rounded-md border border-hairline bg-surface p-6">
-        <h2 className="font-display text-xl font-bold text-ink">Enter the BH Challenge</h2>
-        <p className="mt-2 text-sm text-muted-ink leading-relaxed">
-          {phase === "upcoming"
-            ? "Entries open on Monday 16 November. Create your free account now and record your video (1 minute or less), so you're ready."
-            : phase === "open"
-            ? "Create your free account, then come back here to upload your video. It takes about two minutes."
-            : "Entries are closed. Create a free account to hear about the next open call."}
+      <section id="enter" className="scroll-mt-24 rounded-xl border-2 border-gold/60 bg-surface p-6 text-center" role="status">
+        <CheckCircle2 className="mx-auto h-12 w-12 text-gold" aria-hidden="true" />
+        <h2 className="mt-3 font-display text-2xl font-bold text-ink">You're in! 🎉</h2>
+        <p className="mt-2 text-base text-ink">
+          Your {CHALLENGE_CATEGORY_LABEL[done.category]} video is with the judges.
         </p>
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          <Link href={SIGNUP_HREF}>
-            <Button className="press h-10 bg-primary px-5 text-sm font-medium text-primary-foreground hover:bg-gold-soft">
-              Create free account
+        <p className="mt-2 text-sm text-muted-ink">
+          Top 10 comes out on {TALENT_HUNT.shortlistOn}. If you make it, we'll message you on WhatsApp.
+        </p>
+        {done.createdAccount && (
+          <p className="mt-4 rounded-md bg-surface-2 p-3 text-xs text-muted-ink">
+            We made your free Black Heritage account with <span className="text-ink">{done.email}</span>. To sign in later,
+            tap "Forgot password" and set your own.
+          </p>
+        )}
+        <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
+          <a href={`https://wa.me/?text=${encodeURIComponent(`I just entered the ${TALENT_HUNT.title}! ${naira(TALENT_HUNT.prizeNaira * 3)} in prizes up for grabs, free to enter: https://blackhevents.com/challenges`)}`} target="_blank" rel="noopener noreferrer">
+            <Button className="press h-11 w-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-gold-soft">
+              <MessageCircle className="mr-2 h-4 w-4" aria-hidden="true" /> Tell your friends
             </Button>
-          </Link>
-          <Link href={SIGNIN_HREF} className="text-sm text-ink underline decoration-hairline underline-offset-4 hover:text-gold">
-            I have an account
-          </Link>
+          </a>
+          <Button variant="outline" className="h-11 border-hairline text-ink" onClick={() => setDone(null)}>
+            Enter another category
+          </Button>
         </div>
       </section>
     );
@@ -536,15 +516,25 @@ function EntryPanel({ phase, signedIn, isAdmin, mine }: { phase: ChallengePhase;
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!form.category) return setError("Pick Music, Dance or Comedy");
-    if (mode === "upload" && !clip && !keepsUpload) return setError("Choose your video to upload");
-    if (mode === "link" && !form.videoUrl.trim() && !updating) return setError("Paste the link to your Instagram or TikTok post");
-    if (!form.followsConfirmed) return setError("Follow @blackhevents on Instagram and TikTok, then tick the box");
-    if (!form.acceptsRules) return setError("Tick the box to accept the rules and the winner's agreement");
+    setNeedsSignIn(false);
+    if (!form.category) return setError("Step 1: tap what you do");
+    if (mode === "upload" && !clip && !keepsUpload) return setError("Step 2: choose your video");
+    if (mode === "link" && !form.videoUrl.trim() && !updating) return setError("Step 2: paste your TikTok or Instagram link");
+    if (form.stageName.trim().length < 2) return setError("Step 3: write your name");
+    if (form.whatsapp.replace(/\D/g, "").length < 7) return setError("Step 3: add your WhatsApp number");
+    if (!signedIn && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) return setError("Step 3: add your email");
+    if (!form.acceptsRules) return setError("Tick the box at the bottom");
     setSaving(true);
     try {
       // An empty videoUrl with no file keeps the video already on the entry.
-      const fields = { ...form, videoUrl: mode === "link" ? form.videoUrl.trim() : "" };
+      // One tick covers following us and the rules; signed-in entrants send no email.
+      const fields: Record<string, unknown> = {
+        ...form,
+        followsConfirmed: form.acceptsRules,
+        videoUrl: mode === "link" ? form.videoUrl.trim() : "",
+      };
+      if (signedIn) delete fields.email;
+      else fields.email = form.email.trim();
       let body: any;
       if (mode === "upload" && clip) {
         const data = new FormData();
@@ -557,16 +547,20 @@ function EntryPanel({ phase, signedIn, isAdmin, mine }: { phase: ChallengePhase;
         body = await res.json();
       }
       await queryClient.invalidateQueries({ queryKey: [API] });
-      toast({
-        title: body.updated ? "Entry updated" : "You're in",
-        description: body.updated
-          ? `Your ${CHALLENGE_CATEGORY_LABEL[form.category as ChallengeCategory]} entry is updated.`
-          : "Your entry is in and your talent profile is live. Share your video to get noticed.",
-      });
+      // A first-time entrant is now signed in; refresh who the app thinks we are.
+      if (body.createdAccount) await queryClient.invalidateQueries({ queryKey: [`${BASE_URL}/api/auth/user`] });
+      if (body.updated) {
+        toast({ title: "Entry updated", description: `Your ${CHALLENGE_CATEGORY_LABEL[form.category as ChallengeCategory]} entry is updated.` });
+      } else {
+        setDone({ category: form.category as ChallengeCategory, createdAccount: Boolean(body.createdAccount), email: form.email.trim() });
+        requestAnimationFrame(() => document.getElementById("enter")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      }
       setClip(null);
       setForm((f) => ({ ...EMPTY_FORM, stageName: f.stageName, whatsapp: f.whatsapp, instagram: f.instagram, tiktok: f.tiktok, city: f.city }));
     } catch (err: any) {
-      setError(errorText(err) || "Your entry didn't save. Try again in a moment.");
+      const msg = errorText(err) || "Your entry didn't save. Try again in a moment.";
+      if (/already has a Black Heritage account/i.test(msg)) setNeedsSignIn(true);
+      setError(msg);
     } finally {
       setSaving(false);
       setProgress(null);
@@ -576,15 +570,20 @@ function EntryPanel({ phase, signedIn, isAdmin, mine }: { phase: ChallengePhase;
   const field = "border-hairline bg-background text-ink h-11";
 
   return (
-    <section className="rounded-md border border-hairline bg-surface p-6">
-      <h2 className="font-display text-xl font-bold text-ink">Submit your entry</h2>
+    <section id="enter" className="scroll-mt-24 rounded-xl border-2 border-gold/40 bg-surface p-5 sm:p-6">
+      <h2 className="font-display text-2xl font-bold text-ink">Enter now. It's free.</h2>
+      <p className="mt-1 text-sm text-muted-ink">3 quick steps. No payment.</p>
       {isAdmin && phase !== "open" && (
         <p className="mt-2 text-xs text-muted-ink">Admin: you can submit outside the entry window to test.</p>
       )}
-      <form onSubmit={submit} className="mt-5 space-y-4" noValidate>
+      <form onSubmit={submit} className="mt-5 space-y-6" noValidate>
+        {/* Step 1 */}
         <fieldset>
-          <legend className="text-sm text-ink">Category</legend>
-          <div className="mt-2 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Category">
+          <legend className="flex items-center gap-2 text-base font-semibold text-ink">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">1</span>
+            What do you do?
+          </legend>
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="What do you do?">
             {challengeCategories.map((c) => {
               const on = form.category === c;
               const { Icon } = CATEGORY_COPY[c];
@@ -596,74 +595,54 @@ function EntryPanel({ phase, signedIn, isAdmin, mine }: { phase: ChallengePhase;
                   aria-checked={on}
                   onClick={() => {
                     set({ category: c });
+                    setError("");
                     // Editing an entry starts from how that entry's video was sent.
                     const previous = mine.find((m) => m.category === c);
                     if (previous) setMode(previous.videoSource);
                   }}
                   className={cn(
-                    "inline-flex h-11 items-center justify-center gap-1.5 rounded-md border text-sm transition-colors",
-                    on ? "border-gold/60 bg-gold/10 text-gold" : "border-hairline text-muted-ink hover:text-ink",
+                    "press flex h-16 items-center gap-3 rounded-lg border-2 px-4 text-left text-base font-semibold transition-colors sm:h-24 sm:flex-col sm:justify-center sm:gap-1.5 sm:text-center sm:text-sm",
+                    on ? "border-gold bg-gold/15 text-gold" : "border-hairline text-ink hover:border-gold/50",
                   )}
                 >
-                  <Icon className="h-4 w-4" aria-hidden="true" />
-                  {CHALLENGE_CATEGORY_LABEL[c]}
+                  <Icon className="h-6 w-6 shrink-0" aria-hidden="true" />
+                  {CATEGORY_WORDS[c]}
+                  {on && <CheckCircle2 className="ml-auto h-5 w-5 sm:hidden" aria-hidden="true" />}
                 </button>
               );
             })}
           </div>
           {updating && (
-            <p className="mt-2 text-xs text-muted-ink">You've already entered {CHALLENGE_CATEGORY_LABEL[updating.category]}. Submitting again updates that entry.</p>
+            <p className="mt-2 text-xs text-muted-ink">You've already entered {CHALLENGE_CATEGORY_LABEL[updating.category]}. Sending again updates that entry.</p>
           )}
         </fieldset>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="th-name" className="text-sm text-ink">Stage name</Label>
-          <Input id="th-name" value={form.stageName} maxLength={60} autoComplete="nickname" onChange={(e) => set({ stageName: e.target.value })} className={field} />
-        </div>
-
+        {/* Step 2 */}
         <fieldset>
-          <legend className="text-sm text-ink">Your video</legend>
-          <div className="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-label="How you're sending your video">
-            {([["upload", "Upload video"], ["link", "Paste a link"]] as const).map(([value, label]) => {
-              const on = mode === value;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => {
-                    setMode(value);
-                    setError("");
-                  }}
-                  className={cn(
-                    "inline-flex h-10 items-center justify-center rounded-md border text-sm transition-colors",
-                    on ? "border-gold/60 bg-gold/10 text-gold" : "border-hairline text-muted-ink hover:text-ink",
-                  )}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
+          <legend className="flex items-center gap-2 text-base font-semibold text-ink">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">2</span>
+            Add your video ({MAX_LENGTH} or less)
+          </legend>
           {mode === "upload" ? (
             <div className="mt-3 space-y-2">
               <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={onPick} />
               {clip ? (
-                <div className="flex items-center justify-between gap-3 rounded-md border border-hairline bg-background px-3 py-2.5">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm text-ink">{clip.file.name}</p>
-                    <p className="text-xs text-muted-ink">
-                      {clip.seconds !== null ? `${formatClipLength(clip.seconds)} · ` : ""}
-                      {sizeLabel(clip.file.size)}
-                    </p>
+                <div className="flex items-center justify-between gap-3 rounded-lg border-2 border-gold/50 bg-gold/10 px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-gold" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-ink">Video added</p>
+                      <p className="text-xs text-muted-ink">
+                        {clip.seconds !== null ? `${formatClipLength(clip.seconds)} · ` : ""}
+                        {sizeLabel(clip.file.size)}
+                      </p>
+                    </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => fileRef.current?.click()}
                     disabled={saving}
-                    className="shrink-0 text-xs text-ink underline decoration-hairline underline-offset-4 hover:text-gold"
+                    className="shrink-0 text-sm text-ink underline decoration-hairline underline-offset-4 hover:text-gold"
                   >
                     Change
                   </button>
@@ -673,109 +652,142 @@ function EntryPanel({ phase, signedIn, isAdmin, mine }: { phase: ChallengePhase;
                   type="button"
                   onClick={() => fileRef.current?.click()}
                   disabled={checking}
-                  className="flex w-full flex-col items-center justify-center gap-1 rounded-md border border-dashed border-hairline bg-background px-4 py-5 text-sm text-ink transition-colors hover:border-gold/60"
+                  className="press flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-gold/50 bg-background px-4 py-7 text-base font-semibold text-ink transition-colors hover:border-gold"
                 >
                   {checking ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-gold" aria-hidden="true" />
+                    <Loader2 className="h-7 w-7 animate-spin text-gold" aria-hidden="true" />
                   ) : (
-                    <Upload className="h-4 w-4 text-gold" aria-hidden="true" />
+                    <Upload className="h-7 w-7 text-gold" aria-hidden="true" />
                   )}
-                  <span>{checking ? "Checking your video…" : keepsUpload ? "Choose a new video" : "Choose your video"}</span>
-                  <span className="text-xs text-muted-ink">
-                    MP4 or MOV · {MAX_LENGTH} or less · up to {TALENT_HUNT.maxUploadMB} MB
-                  </span>
+                  <span>{checking ? "Checking your video…" : keepsUpload ? "Choose a new video" : "Tap to choose your video"}</span>
+                  <span className="text-xs font-normal text-muted-ink">From your phone gallery</span>
                 </button>
               )}
               {keepsUpload && !clip && (
                 <p className="text-xs text-muted-ink">Your uploaded video stays unless you choose a new one.</p>
               )}
+              <button type="button" onClick={() => { setMode("link"); setError(""); }} className="text-xs text-muted-ink underline decoration-hairline underline-offset-4 hover:text-gold">
+                Already posted it on TikTok or Instagram? Paste the link instead
+              </button>
             </div>
           ) : (
-            <div className="mt-3 space-y-1.5">
-              <Label htmlFor="th-video" className="sr-only">Link to your Instagram or TikTok post</Label>
+            <div className="mt-3 space-y-2">
+              <Label htmlFor="th-video" className="sr-only">Link to your TikTok or Instagram post</Label>
               <Input
                 id="th-video"
                 type="url"
                 inputMode="url"
                 value={form.videoUrl}
-                placeholder="https://www.tiktok.com/@you/video/..."
+                placeholder="Paste your TikTok or Instagram link"
                 onChange={(e) => set({ videoUrl: e.target.value })}
                 className={field}
               />
               <p className="text-xs text-muted-ink">
-                {updating ? "Leave it empty to keep your current video." : "Your Instagram or TikTok post, set to public."}
+                {updating ? "Leave it empty to keep your current video." : "The post must be public."}
               </p>
+              <button type="button" onClick={() => { setMode("upload"); setError(""); }} className="text-xs text-muted-ink underline decoration-hairline underline-offset-4 hover:text-gold">
+                Upload the video from my phone instead
+              </button>
             </div>
           )}
         </fieldset>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="th-about" className="text-sm text-ink">A line or two about you</Label>
-          <Textarea
-            id="th-about"
-            value={form.about}
-            maxLength={300}
-            rows={3}
-            placeholder="e.g. Afro-soul singer from Ile-Ife. I write my own songs."
-            onChange={(e) => set({ about: e.target.value })}
-            className="border-hairline bg-background text-ink"
-          />
-          <p className="text-xs text-muted-ink">This also goes on your talent profile.</p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Step 3 */}
+        <fieldset className="space-y-3">
+          <legend className="flex items-center gap-2 text-base font-semibold text-ink">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">3</span>
+            Your details
+          </legend>
+          <div className="space-y-1.5">
+            <Label htmlFor="th-name" className="text-sm text-ink">Your name (or stage name)</Label>
+            <Input id="th-name" value={form.stageName} maxLength={60} autoComplete="nickname" placeholder="e.g. Tobi Vibes" onChange={(e) => set({ stageName: e.target.value })} className={field} />
+          </div>
           <div className="space-y-1.5">
             <Label htmlFor="th-wa" className="text-sm text-ink">WhatsApp number</Label>
-            <Input id="th-wa" inputMode="tel" autoComplete="tel" value={form.whatsapp} placeholder="0803 123 4567" onChange={(e) => set({ whatsapp: e.target.value })} className={field} />
+            <Input id="th-wa" type="tel" inputMode="tel" autoComplete="tel" value={form.whatsapp} placeholder="0803 123 4567" onChange={(e) => set({ whatsapp: e.target.value })} className={field} />
+            <p className="text-xs text-muted-ink">We message you here if you make the Top 10.</p>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="th-city" className="text-sm text-ink">City or school (optional)</Label>
-            <Input id="th-city" value={form.city} maxLength={60} placeholder="e.g. OAU, Ile-Ife" onChange={(e) => set({ city: e.target.value })} className={field} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="th-ig" className="text-sm text-ink">Instagram handle</Label>
-            <Input id="th-ig" value={form.instagram} placeholder="@yourname" onChange={(e) => set({ instagram: e.target.value })} className={field} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="th-tt" className="text-sm text-ink">TikTok handle</Label>
-            <Input id="th-tt" value={form.tiktok} placeholder="@yourname" onChange={(e) => set({ tiktok: e.target.value })} className={field} />
-          </div>
-        </div>
+          {!signedIn && (
+            <div className="space-y-1.5">
+              <Label htmlFor="th-email" className="text-sm text-ink">Email</Label>
+              <Input id="th-email" type="email" inputMode="email" autoComplete="email" value={form.email} placeholder="you@gmail.com" onChange={(e) => set({ email: e.target.value })} className={field} />
+              <p className="text-xs text-muted-ink">
+                Your confirmation comes here. Already have an account?{" "}
+                <Link href={SIGNIN_HREF} className="text-ink underline decoration-hairline underline-offset-4 hover:text-gold">Sign in</Link>
+              </p>
+            </div>
+          )}
 
-        <label className="flex cursor-pointer items-start gap-3 text-sm text-ink">
-          <Checkbox checked={form.followsConfirmed} onCheckedChange={(v) => set({ followsConfirmed: v === true })} className="mt-0.5" />
-          <span>I follow @blackhevents on Instagram and TikTok.</span>
-        </label>
-        <label className="flex cursor-pointer items-start gap-3 text-sm text-ink">
-          <Checkbox checked={form.acceptsRules} onCheckedChange={(v) => set({ acceptsRules: v === true })} className="mt-0.5" />
+          <details className="group rounded-lg border border-hairline bg-background/60 px-4 py-3">
+            <summary className="cursor-pointer list-none text-sm text-ink">
+              <span className="underline decoration-hairline underline-offset-4 group-open:no-underline">Add more about you</span>{" "}
+              <span className="text-muted-ink">(optional, helps the judges)</span>
+            </summary>
+            <div className="mt-3 space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="th-about" className="text-sm text-ink">A line about you</Label>
+                <Textarea
+                  id="th-about"
+                  value={form.about}
+                  maxLength={300}
+                  rows={2}
+                  placeholder="e.g. Afro-soul singer from Ile-Ife"
+                  onChange={(e) => set({ about: e.target.value })}
+                  className="border-hairline bg-background text-ink"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="th-city" className="text-sm text-ink">City or school</Label>
+                  <Input id="th-city" value={form.city} maxLength={60} placeholder="e.g. OAU" onChange={(e) => set({ city: e.target.value })} className={field} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="th-ig" className="text-sm text-ink">Instagram</Label>
+                  <Input id="th-ig" value={form.instagram} placeholder="@yourname" onChange={(e) => set({ instagram: e.target.value })} className={field} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="th-tt" className="text-sm text-ink">TikTok</Label>
+                  <Input id="th-tt" value={form.tiktok} placeholder="@yourname" onChange={(e) => set({ tiktok: e.target.value })} className={field} />
+                </div>
+              </div>
+            </div>
+          </details>
+        </fieldset>
+
+        <label className="flex cursor-pointer items-start gap-3 rounded-lg bg-surface-2 p-3 text-sm text-ink">
+          <Checkbox checked={form.acceptsRules} onCheckedChange={(v) => set({ acceptsRules: v === true, followsConfirmed: v === true })} className="mt-0.5 h-5 w-5" />
           <span>
-            I accept the{" "}
-            <a href="#rules" className="underline decoration-hairline underline-offset-4 hover:text-gold">
-              rules
-            </a>
-            , and if I win, I'll sign the Black Heritage talent agreement before the prize is paid.
+            I follow{" "}
+            <a href={TALENT_HUNT.instagram} target="_blank" rel="noopener noreferrer" className="font-semibold underline decoration-hairline underline-offset-4 hover:text-gold">@blackhevents</a>{" "}
+            on Instagram and TikTok, and I agree to the{" "}
+            <a href="#rules" className="underline decoration-hairline underline-offset-4 hover:text-gold">rules</a>.
           </span>
         </label>
 
         {error && (
-          <p className="text-sm text-destructive" role="alert">{error}</p>
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+            {error}
+            {needsSignIn && (
+              <Link href={SIGNIN_HREF} className="ml-1 font-semibold underline underline-offset-4">Sign in now</Link>
+            )}
+          </div>
         )}
 
-        <Button type="submit" disabled={saving || checking} className="press h-11 w-full bg-primary text-sm font-medium text-primary-foreground hover:bg-gold-soft">
+        <Button type="submit" disabled={saving || checking} className="press h-14 w-full bg-primary text-base font-bold text-primary-foreground hover:bg-gold-soft">
           {saving && progress !== null ? (
-            progress < 100 ? `Uploading ${progress}%` : "Saving your entry…"
+            progress < 100 ? `Sending your video… ${progress}%` : "Almost done…"
           ) : saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-label="Saving" />
+            <Loader2 className="h-5 w-5 animate-spin" aria-label="Saving" />
           ) : updating ? (
             "Update my entry"
           ) : (
-            "Submit my entry"
+            "Send my video"
           )}
         </Button>
         {progress !== null && (
           <div className="space-y-1.5">
             <div
-              className="h-1 w-full overflow-hidden rounded-full bg-hairline"
+              className="h-1.5 w-full overflow-hidden rounded-full bg-hairline"
               role="progressbar"
               aria-label="Upload progress"
               aria-valuemin={0}

@@ -114,11 +114,13 @@ export const challengeEntrySchema = z.object({
     .optional()
     .or(z.literal(""))
     .refine((v) => !v || isEntryVideoUrl(v), "Paste the link to your Instagram or TikTok post"),
+  // Optional: the video speaks for itself. Many entrants are not writers.
   about: z
     .string()
     .trim()
-    .min(10, "Tell the judges a line or two about you")
-    .max(300, "Keep it under 300 characters"),
+    .max(300, "Keep it under 300 characters")
+    .optional()
+    .or(z.literal("")),
   whatsapp: z
     .string()
     .trim()
