@@ -53,10 +53,38 @@ export default function LinksPage({ src }: { src?: string }) {
           </p>
         </header>
 
+        {/* While the challenge is running it is the first and biggest thing
+            here, and it says FREE in words: people coming to enter were
+            tapping the ticket card above it and thinking entry cost ₦2,000. */}
+        {(phase === "open" || phase === "upcoming") && (
+          <Link
+            href="/challenges"
+            className="press mt-8 block rounded-xl bg-primary p-5 text-primary-foreground shadow-lg transition-colors hover:bg-gold-soft"
+          >
+            <span className="flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em]">
+                <Trophy className="h-4 w-4" aria-hidden="true" /> {TALENT_HUNT.title}
+              </span>
+              <span className="rounded-full bg-background/90 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-gold">
+                Free to enter
+              </span>
+            </span>
+            <span className="mt-3 block font-display text-2xl font-bold leading-tight">
+              Sing, dance or make us laugh. {pool} in prizes up for grabs.
+            </span>
+            <span className="mt-2 block text-sm opacity-90">
+              {phase === "open" ? `One 1-minute video. No payment. ${challengeLine}.` : challengeLine}
+            </span>
+            <span className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-background px-4 py-2.5 text-sm font-bold text-gold">
+              Enter the challenge free <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+            </span>
+          </Link>
+        )}
+
         {onSale.length > 0 && (
           <section className="mt-8" aria-labelledby="on-sale">
             <h2 id="on-sale" className="eyebrow">
-              On sale now
+              Event tickets · to attend
             </h2>
             <ul className="mt-3 space-y-2.5">
               {onSale.map((e) => (
@@ -93,7 +121,7 @@ export default function LinksPage({ src }: { src?: string }) {
         )}
 
         <section className="mt-8 space-y-2.5" aria-label="More from Black Heritage">
-          {phase !== "winners" && (
+          {phase === "judging" && (
             <Link
               href="/challenges"
               className="press flex items-center gap-3 rounded-md bg-primary px-4 py-3.5 text-primary-foreground transition-colors hover:bg-gold-soft"
