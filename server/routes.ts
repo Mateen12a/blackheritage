@@ -2402,6 +2402,7 @@ export async function registerRoutes(
         return res.json({
           bookingId: String(booking._id ?? booking.id),
           status: "paid",
+          totalKobo: Number(booking.totalAmount) || 0,
           tickets: existing.map((t: any) => ({ code: t.code, tierName: t.tierName, attendeeName: t.attendeeName, seat: t.seat })),
         });
       }
@@ -2433,6 +2434,7 @@ export async function registerRoutes(
       res.json({
         bookingId: fulfillment.bookingId,
         status: "paid" as const,
+        totalKobo: expected || 0,
         tickets: fulfillment.tickets,
       });
     } catch (err) {

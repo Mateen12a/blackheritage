@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { captureVia } from "@/lib/via";
+import { initPixel, trackPageView } from "@/lib/pixel";
 import { Loader2, Sparkles, ArrowRight } from "lucide-react";
 import NotFound from "@/pages/not-found";
 
@@ -295,6 +296,7 @@ function ScrollToTop() {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
+    trackPageView(path);
   }, [path]);
 
   return null;
@@ -603,7 +605,10 @@ function Router() {
 }
 
 // Remember a promoter's ?via= link before any route renders.
-if (typeof window !== "undefined") captureVia();
+if (typeof window !== "undefined") {
+  captureVia();
+  initPixel();
+}
 
 function App() {
   return (

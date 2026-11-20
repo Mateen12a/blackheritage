@@ -137,6 +137,8 @@ export function useInitiateBooking() {
 export interface FinalizeResult {
   bookingId: string;
   status: "paid";
+  /** Order total in kobo, for the ad pixel's Purchase value. */
+  totalKobo?: number;
   tickets: { code: string; tierName: string; attendeeName: string; seat: number }[];
 }
 

@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { pixel } from "@/lib/pixel";
 import { Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -552,6 +553,7 @@ function EntryPanel({ phase, signedIn, isAdmin, mine }: { phase: ChallengePhase;
       if (body.updated) {
         toast({ title: "Entry updated", description: `Your ${CHALLENGE_CATEGORY_LABEL[form.category as ChallengeCategory]} entry is updated.` });
       } else {
+        pixel.challengeEntry(form.category as string);
         setDone({ category: form.category as ChallengeCategory, createdAccount: Boolean(body.createdAccount), email: form.email.trim() });
         requestAnimationFrame(() => document.getElementById("enter")?.scrollIntoView({ behavior: "smooth", block: "start" }));
       }

@@ -1,4 +1,5 @@
 import { useEvent } from "@/hooks/use-events";
+import { pixel } from "@/lib/pixel";
 import { salesCloseAt } from "@shared/schema";
 import { lazy, Suspense } from "react";
 // Checkout, the share studio and the partner form load on first use, not with the page.
@@ -88,6 +89,12 @@ export default function EventDetails() {
   const [bookingMounted, setBookingMounted] = useState(false);
   const [businessMounted, setBusinessMounted] = useState(false);
   const [shareMounted, setShareMounted] = useState(false);
+  // Ad pixel: one ViewContent per event opened.
+  const pixelEventId = (event as any)?.id;
+  useEffect(() => {
+    if (pixelEventId) pixel.viewEvent(event as any);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pixelEventId]);
   useEffect(() => { if (isBookingOpen) setBookingMounted(true); }, [isBookingOpen]);
   useEffect(() => { if (isBusinessModalOpen) setBusinessMounted(true); }, [isBusinessModalOpen]);
   useEffect(() => { if (isFlyerModalOpen) setShareMounted(true); }, [isFlyerModalOpen]);

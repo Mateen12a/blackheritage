@@ -25,6 +25,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { hostNameFor } from "@/lib/event-price";
 import { TicketReveal, type RevealTicket } from "@/components/TicketReveal";
 import { loadPaystack } from "@/lib/paystack";
+import { pixel } from "@/lib/pixel";
 import { currentVia } from "@/lib/via";
 
 declare global {
@@ -169,6 +170,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
       return;
     }
 
+    pixel.startCheckout(event, pricing?.totalKobo, quantity);
     try {
       const init = await initiate({
         eventId: String(event.id),
@@ -188,7 +190,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
       // Free tickets (₦0) or dev simulated gateway: confirmed immediately without opening payment gateway
       if (init.isFree || init.status === "paid" || init.simulated || !init.paymentUrl) {
         if (init.tickets && init.tickets.length > 0) {
-          showSuccess({ tickets: init.tickets });
+          showSuccess({ tickets: init.tickets, bookingId: init.bookingId, totalKobo: init.totalKobo });
           return;
         }
         const result = await finalize(init.reference);
@@ -259,7 +261,8 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
     }
   };
 
-  const showSuccess = (result: { tickets: RevealTicket[] }) => {
+  const showSuccess = (result: { tickets: RevealTicket[]; bookingId?: string; totalKobo?: number }) => {
+    pixel.purchase(event, result.bookingId, result.totalKobo ?? pricing?.totalKobo, result.tickets?.length || quantity);
     // Confirmation moment replaces the old toast-and-close: the guest sees
     // their codes immediately, with calendar and share one tap away.
     setRevealedTickets(result.tickets);

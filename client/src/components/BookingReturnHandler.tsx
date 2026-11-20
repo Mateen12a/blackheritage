@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useFinalizeBooking } from "@/hooks/use-bookings";
 import { TicketReveal, type RevealTicket } from "@/components/TicketReveal";
+import { pixel } from "@/lib/pixel";
 
 /**
  * The landing spot for a hosted-checkout redirect (gateway sends the buyer
@@ -32,6 +33,7 @@ export function BookingReturnHandler({ event }: { event: any }) {
       onSuccess: async (result) => {
         // Tier counts changed; refresh whatever is cached.
         queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+        pixel.purchase(event || {}, result.bookingId, result.totalKobo, result.tickets?.length || 1);
         setRevealed(result.tickets);
       },
       onError: () => setFailed(true),
