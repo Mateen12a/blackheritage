@@ -9,7 +9,7 @@
  *   MIGRATE_SOURCE_URI=mongodb+srv://.../BlacHeritage      (copy FROM, read only)
  *   MIGRATE_TARGET_URI=mongodb+srv://.../BlacHeritage      (copy TO)
  * The database name is the path part of each URI. If a URI has no path, the
- * name falls back to MIGRATE_SOURCE_DB / MIGRATE_TARGET_DB.
+ * name comes from MIGRATE_SOURCE_DB / MIGRATE_TARGET_DB when set (e.g. BlacHeritage_dev), else the URI path.
  *
  * Safety:
  *  - The source is only ever read. Nothing is deleted from it.
@@ -51,11 +51,13 @@ function where(uri) {
     return "(unparseable URI)";
   }
 }
-function dbNameOf(uri, fallback) {
+/** MIGRATE_*_DB, when set, wins over the URI path (lets one pair of URIs copy prod or dev). */
+function dbNameOf(uri, override) {
+  if (override) return override;
   try {
     const u = new URL(uri.replace(/^mongodb(\+srv)?:\/\//, "http://"));
     const name = decodeURIComponent(u.pathname.replace(/^\//, ""));
-    return name || fallback || "";
+    return name || "";
   } catch {
     return fallback || "";
   }
