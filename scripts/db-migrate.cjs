@@ -4,6 +4,8 @@
  *   node scripts/db-migrate.cjs            dry run: connects to both, lists what would move
  *   node scripts/db-migrate.cjs --run      copies every collection + its indexes, then verifies counts
  *   node scripts/db-migrate.cjs --run --overwrite   also replaces collections that already have data in the target
+ *   node scripts/db-migrate.cjs --run --sync        brings a target up to date: every source document is
+ *                                                   inserted or replaced by _id; documents only the target has are kept
  *
  * Connection strings come from .env (never typed on the command line, never printed):
  *   MIGRATE_SOURCE_URI=mongodb+srv://.../BlacHeritage      (copy FROM, read only)
@@ -40,6 +42,11 @@ loadEnv();
 
 const RUN = process.argv.includes("--run");
 const OVERWRITE = process.argv.includes("--overwrite");
+const SYNC = process.argv.includes("--sync");
+if (SYNC && OVERWRITE) {
+  console.error("Use --sync or --overwrite, not both.");
+  process.exit(1);
+}
 const BATCH = 1000;
 
 /** Host only, so a log never shows a username or password. */
@@ -59,7 +66,7 @@ function dbNameOf(uri, override) {
     const name = decodeURIComponent(u.pathname.replace(/^\//, ""));
     return name || "";
   } catch {
-    return fallback || "";
+    return "";
   }
 }
 
@@ -83,7 +90,7 @@ async function main() {
 
   console.log(`FROM  ${where(srcUri)} / ${srcDb}   (read only)`);
   console.log(`TO    ${where(dstUri)} / ${dstDb}`);
-  console.log(RUN ? (OVERWRITE ? "MODE  copy, replacing target collections that already have data\n" : "MODE  copy (target collections with data are skipped)\n") : "MODE  dry run (nothing is written). Add --run to copy.\n");
+  console.log(RUN && SYNC ? "MODE  sync: insert/replace every source document by _id, keep target-only documents\n" : RUN ? (OVERWRITE ? "MODE  copy, replacing target collections that already have data\n" : "MODE  copy (target collections with data are skipped)\n") : "MODE  dry run (nothing is written). Add --run to copy.\n");
 
   const src = new MongoClient(srcUri, { readPreference: "secondaryPreferred" });
   const dst = new MongoClient(dstUri);
@@ -104,7 +111,31 @@ async function main() {
     const dstCount = existing.length ? await d.collection(name).countDocuments() : 0;
 
     if (!RUN) {
-      report.push({ name, srcCount, dstCount, action: dstCount > 0 ? (OVERWRITE ? "would replace" : "would skip (target has data)") : "would copy" });
+      report.push({ name, srcCount, dstCount, action: dstCount > 0 ? (OVERWRITE ? "would replace" : SYNC ? "would sync" : "would skip (target has data)") : "would copy" });
+      continue;
+    }
+    if (dstCount > 0 && SYNC) {
+      let done = 0;
+      let ops = [];
+      const flush = async () => {
+        if (!ops.length) return;
+        await d.collection(name).bulkWrite(ops, { ordered: false });
+        done += ops.length;
+        ops = [];
+        process.stdout.write(`  ${name}: ${done}/${srcCount} synced`);
+      };
+      for await (const doc of s.collection(name).find({}, { batchSize: BATCH })) {
+        ops.push({ replaceOne: { filter: { _id: doc._id }, replacement: doc, upsert: true } });
+        if (ops.length >= BATCH) await flush();
+      }
+      await flush();
+      process.stdout.write("\n");
+      // Every source _id must now exist in the target.
+      const exact = await s.collection(name).countDocuments();
+      const ids = await s.collection(name).distinct("_id");
+      const present = await d.collection(name).countDocuments({ _id: { $in: ids } });
+      const after = await d.collection(name).countDocuments();
+      report.push({ name, srcCount: exact, dstCount: after, action: present === exact ? `synced (${after - exact} target-only kept)` : "COUNT MISMATCH" });
       continue;
     }
     if (dstCount > 0 && !OVERWRITE) {
