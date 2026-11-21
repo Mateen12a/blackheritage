@@ -129,7 +129,7 @@ function postWithProgress(url: string, body: FormData, onProgress: (pct: number)
 }
 
 const CATEGORY_COPY: Record<ChallengeCategory, { Icon: typeof Music; line: string }> = {
-  music: { Icon: Music, line: "Sing, rap, or play an instrument." },
+  music: { Icon: Music, line: "Sing a cover of a song by your favourite artist." },
   dance: { Icon: Footprints, line: "Solo or crew, any style." },
   comedy: { Icon: Laugh, line: "Stand-up, a skit, crowd work." },
 };
@@ -299,7 +299,8 @@ function RulesSection() {
       title: "Your video",
       items: [
         `${TALENT_HUNT.maxVideoSeconds / 60} minute or less. Any phone camera is fine.`,
-        "It must be your own performance. Covers are fine; reposting someone else's video is not.",
+        "Music: sing (or rap) a cover of a song by your favourite artist, not your own song. Everyone performs a song people already know, so the judges compare voices fairly.",
+        "It must be you performing. Reposting someone else's video is not allowed.",
         `Upload an MP4 or MOV up to ${TALENT_HUNT.maxUploadMB} MB, or paste the link to your public Instagram or TikTok post. Keep that post public until ${TALENT_HUNT.winnersOn}.`,
         "Keep it clean: no hate, no nudity, and no insults aimed at real people.",
       ],
@@ -307,7 +308,7 @@ function RulesSection() {
     {
       title: "Judging",
       items: [
-        "A panel of three judges scores every entry: talent and skill 50%, originality 30%, stage presence and engagement 20%.",
+        "A panel of three judges scores every entry: talent and skill 50%, originality 30%, stage presence and engagement 20%. For Music covers, originality means your own style on the song.",
         "Likes and shares only count inside the engagement score. Bought likes, views or followers mean disqualification.",
         `Top 10 per category on ${TALENT_HUNT.shortlistOn}, winners on ${TALENT_HUNT.winnersOn}. The judges' decision is final.`,
       ],
@@ -614,6 +615,11 @@ function EntryPanel({ phase, signedIn, isAdmin, mine }: { phase: ChallengePhase;
               );
             })}
           </div>
+          {form.category === "music" && (
+            <p className="mt-2 rounded-md bg-gold/10 px-3 py-2 text-sm text-ink">
+              🎤 Sing a cover of a song by your favourite artist. Not your own song.
+            </p>
+          )}
           {updating && (
             <p className="mt-2 text-xs text-muted-ink">You've already entered {CHALLENGE_CATEGORY_LABEL[updating.category]}. Sending again updates that entry.</p>
           )}
