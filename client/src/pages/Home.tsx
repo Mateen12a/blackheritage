@@ -14,6 +14,8 @@ import { cn, eventPath } from "@/lib/utils";
 import type { Event } from "@shared/schema";
 import { NativeSponsorSpotlight } from "@/components/NativeSponsorSpotlight";
 import { MostBooked } from "@/components/MostBooked";
+import { EventCard } from "@/components/EventCard";
+import { TALENT_HUNT, challengePhase } from "@shared/challenge";
 import { WHATSAPP_DISPLAY, whatsappLink } from "@/lib/contact";
 import { Footer } from "@/components/Footer";
 import logoImg from "../assets/logo.png";
@@ -356,6 +358,13 @@ export default function Home() {
     events?.slice(0, 3);
 
   const posterDeck = (events ?? []).slice(0, 4);
+  // Not yet started (from midnight today), soonest first, at most 8.
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const upcoming = (events ?? [])
+    .filter((e) => e.date && new Date(e.date).getTime() >= startOfToday.getTime())
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 8);
   const vendorsWithWork = (vendors ?? []).filter((v) => {
     try {
       const g = JSON.parse(v.gallery || "[]");
@@ -568,6 +577,66 @@ export default function Home() {
             the deck is the hero's event surface, the ranked rail below is the
             list, and "See all events" is the way into the directory. */}
       </section>
+
+      {/* Every event on sale, as cards. The hero deck shows one flyer at a
+          time, so without this a visitor who doesn't tap the dots never sees
+          that there is more than one event on the platform. */}
+      {upcoming.length > 0 && (
+        <section aria-label="Upcoming events" className="border-t border-hairline py-14 md:py-16">
+          <div className="container mx-auto px-4">
+            <Reveal>
+              <div className="flex items-end justify-between gap-6 mb-8">
+                <div>
+                  <p className="eyebrow">On sale now</p>
+                  <h2 className="mt-3 font-display text-2xl min-[360px]:text-3xl md:text-4xl font-bold text-ink tracking-tight">
+                    Upcoming events
+                  </h2>
+                  <div className="mt-4 h-0.5 w-16 bg-gold" aria-hidden="true" />
+                </div>
+                <Link href="/events" className="shrink-0">
+                  <span className="text-sm font-medium text-gold hover:text-gold-soft transition-colors cursor-pointer">
+                    See all →
+                  </span>
+                </Link>
+              </div>
+            </Reveal>
+            <div className={cn("grid grid-cols-2 gap-3 sm:gap-5", upcoming.length >= 4 ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
+              {upcoming.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* BH Challenge: only while entries are open. Dates and prize come from
+          shared/challenge.ts, so this strip never disagrees with the rules. */}
+      {challengePhase() === "open" && (
+        <section aria-label="BH Challenge" className="pb-14 md:pb-16">
+          <div className="container mx-auto px-4">
+            <Link href="/challenges?via=home">
+              <div className="press group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-gold/30 bg-gradient-to-r from-gold/15 via-gold/5 to-transparent px-5 py-5 sm:px-8 sm:py-6 cursor-pointer hover:border-gold/60 transition-colors">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-gold">
+                    {TALENT_HUNT.title} · free entry
+                  </p>
+                  <p className="mt-1.5 font-display text-xl sm:text-2xl font-bold text-ink leading-snug">
+                    Sing, dance or make us laugh.{" "}
+                    <span className="text-gold">₦{(TALENT_HUNT.prizeNaira * 3).toLocaleString("en-NG")} in prizes up for grabs.</span>
+                  </p>
+                  <p className="mt-1 text-sm text-muted-ink">
+                    60-second video. Entries close {TALENT_HUNT.closesOn}. Winners perform at OAU on {TALENT_HUNT.stage.date}.
+                  </p>
+                </div>
+                <span className="shrink-0 inline-flex items-center justify-center gap-1.5 h-11 px-6 rounded-full bg-primary text-primary-foreground text-sm font-semibold group-hover:bg-gold-soft transition-colors">
+                  Enter now
+                  <ArrowUpRight className="w-4 h-4" strokeWidth={2} aria-hidden="true" />
+                </span>
+              </div>
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* What is actually filling up, ranked from real tier data */}
       {events && events.length > 0 && <MostBooked events={events} />}
