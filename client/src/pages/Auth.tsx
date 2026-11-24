@@ -1,4 +1,4 @@
-import { FOUNDER_CODE, isFounderCode } from "@shared/founder";
+import { FOUNDER_CODE, FOUNDER_OFFER_OPEN, isFounderCode } from "@shared/founder";
 import { useState, useEffect, FormEvent } from "react";
 import { useLocation, useSearch, Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,7 @@ const AUDIENCES: {
     key: "organizer",
     icon: CalendarDays,
     label: "I run events",
-    benefit: "Sell tickets with 0% platform fee on your first 50 paid tickets. Real-time payouts to your Nigerian bank.",
+    benefit: "Sell tickets online, scan QR tickets at the gate, and get paid to your Nigerian bank.",
     cta: "Start Selling Tickets",
     success: "Welcome! Your dashboard is ready.",
   },
@@ -127,8 +127,11 @@ export default function AuthPage() {
   )
     .toUpperCase()
     .trim();
-  const initialVoucher =
-    isFounderCode(rawPromo) || (initialAudience === "organizer" && rawPromo !== "NONE")
+  // The Founder offer is closed (shared/founder.ts): an old FOUNDER50 link
+  // still works as a sign-up link, it just carries no perk.
+  const initialVoucher = !FOUNDER_OFFER_OPEN
+    ? (isFounderCode(rawPromo) ? "" : rawPromo)
+    : isFounderCode(rawPromo) || (initialAudience === "organizer" && rawPromo !== "NONE")
       ? FOUNDER_CODE
       : rawPromo;
 
@@ -150,7 +153,7 @@ export default function AuthPage() {
 
   const handleAudienceChange = (nextAudience: Audience) => {
     setAudience(nextAudience);
-    if (nextAudience === "organizer" && !founderVoucher) {
+    if (FOUNDER_OFFER_OPEN && nextAudience === "organizer" && !founderVoucher) {
       setFounderVoucher(FOUNDER_CODE);
     }
   };
@@ -472,7 +475,7 @@ export default function AuthPage() {
               </div>
 
               {/* Founder Perk Badge for Organizers */}
-              {audience === "organizer" && (
+              {FOUNDER_OFFER_OPEN && audience === "organizer" && (
                 <p className="text-xs text-muted-ink leading-relaxed border-l-2 border-gold pl-3">
                   <span className="text-ink font-medium">Founder perk applied.</span> No platform fee on your first 50 paid tickets.
                 </p>

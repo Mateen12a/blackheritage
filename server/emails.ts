@@ -464,7 +464,7 @@ export async function sendEventReminderEmail(
 // attachment is stripped or the reader is on a phone with no PDF viewer.
 export async function sendPlaybookEmail(
   to: EmailAddress,
-  data: { promoCode: string; playbookUrl: string; pdfBase64: string },
+  data: { playbookUrl: string; pdfBase64: string },
 ): Promise<void> {
   const resend = new Resend(process.env.RESEND_API_KEY);
   await resend.emails.send({
@@ -476,12 +476,6 @@ export async function sendPlaybookEmail(
       `
       <p style="margin:0 0 4px;font-size:14px;">Hi ${esc(to.name)},</p>
       <p style="margin:0 0 20px;font-size:14px;color:#444;">Thanks for asking. The gate-fraud playbook is attached as a PDF, and it opens at the link below.</p>
-
-      <div style="background:#faf9f7;border:1px solid #e5e2dc;border-radius:8px;padding:16px;margin-bottom:20px;">
-        <div style="font-size:11px;letter-spacing:1px;color:#666;text-transform:uppercase;">Voucher code</div>
-        <div style="font-size:22px;font-weight:bold;letter-spacing:2px;margin-top:6px;">${esc(data.promoCode)}</div>
-        <div style="font-size:13px;color:#666;margin-top:6px;">Waives the platform fee on your first 50 paid tickets. Enter it when you create your organizer account.</div>
-      </div>
 
       <p style="margin:0 0 8px;font-size:14px;"><strong>Inside the playbook.</strong> The 12-point gate checklist, the six fraud plays you will actually see, the sponsor pitch outline, and the numbers worth writing down after every show.</p>
       <p style="margin:16px 0 0;font-size:13px;">

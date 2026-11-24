@@ -26,7 +26,6 @@ const PAGE_H = 841.89;
 const MARGIN = 56;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 
-const PROMO_CODE = "FOUNDER50";
 
 function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): string[] {
   const lines: string[] = [];
@@ -436,15 +435,7 @@ async function build(): Promise<Uint8Array> {
   L.bullet("Staff on the gate, and incidents logged. Staffing and incidents move together.");
   L.body("Keep the same sheet for every show. Two shows of history makes the third one predictable.");
 
-  L.heading("Your code");
-  L.callout(
-    "Founder voucher",
-    PROMO_CODE,
-    "Waives the Black Heritage platform fee on your first 50 paid tickets. Enter it when you create your organizer account.",
-  );
-  L.body(
-    "Your payment processor's own charge still applies, and the code covers paid tickets only. Comps, sponsor bands and guest lists already carry no platform fee.",
-  );
+  L.body("Comps, sponsor bands and guest lists carry no platform fee on Black Heritage; the fee applies to paid tickets only.");
   L.body("Questions about your gate setup? Reply to the email this came from. A person reads it.");
 
   L.footer();
@@ -465,4 +456,3 @@ export function playbookPdf(): Promise<Uint8Array> {
 }
 
 export const PLAYBOOK_FILENAME = "black-heritage-gate-fraud-playbook.pdf";
-export const PLAYBOOK_PROMO_CODE = PROMO_CODE;

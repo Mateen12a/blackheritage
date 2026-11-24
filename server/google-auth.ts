@@ -12,7 +12,7 @@
  * http://localhost:3001 (the registered dev redirect URI) and land back on
  * http://localhost:5000; everything else uses the production domain.
  */
-import { FOUNDER_CODE, isFounderCode } from "@shared/founder";
+import { FOUNDER_CODE, FOUNDER_OFFER_OPEN, isFounderCode } from "@shared/founder";
 import type { Express, Request } from "express";
 import bcrypt from "bcryptjs";
 import { User } from "./models";
@@ -87,7 +87,7 @@ export function setupGoogleAuth(app: Express) {
     const rawAudience = typeof req.query.audience === "string" ? req.query.audience : typeof req.query.role === "string" ? req.query.role : "";
     const audience = rawAudience === "organizer" || (returnTo && returnTo.startsWith("/admin")) ? "organizer" : rawAudience;
     const rawVoucher = typeof req.query.founderVoucher === "string" ? req.query.founderVoucher : typeof req.query.promo === "string" ? req.query.promo : "";
-    const founderVoucher = isFounderCode(rawVoucher) || (audience === "organizer" && rawVoucher !== "NONE") ? FOUNDER_CODE : undefined;
+    const founderVoucher = FOUNDER_OFFER_OPEN && (isFounderCode(rawVoucher) || (audience === "organizer" && rawVoucher !== "NONE")) ? FOUNDER_CODE : undefined;
     const role = audience === "organizer" ? "organizer" : "user";
 
     // Store state and redirectUri with a 10-minute expiry

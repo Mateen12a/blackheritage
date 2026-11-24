@@ -29,7 +29,7 @@ import { extractEventFromFile, isAIConfigured, aiUploadLimiter, suggestEventCopy
 import { rateLimit } from "./auth";
 import { saveUpload, MAX_UPLOAD_BYTES } from "./media-storage";
 import { publishToUser, subscribeToStream } from "./realtime";
-import { playbookPdf, PLAYBOOK_FILENAME, PLAYBOOK_PROMO_CODE } from "./playbook";
+import { playbookPdf, PLAYBOOK_FILENAME } from "./playbook";
 import { isEmailConfigured, sendPlaybookEmail } from "./emails";
 import { registerChallengeRoutes } from "./challenges";
 import { registerBroadcastRoutes, recordCheckoutOptIn } from "./broadcasts";
@@ -4872,7 +4872,6 @@ export async function registerRoutes(
           await sendPlaybookEmail(
             { name: lead.name, email: lead.email },
             {
-              promoCode: PLAYBOOK_PROMO_CODE,
               playbookUrl: `${process.env.PUBLIC_APP_URL || "http://localhost:5000"}/api/playbook.pdf`,
               pdfBase64: Buffer.from(pdf).toString("base64"),
             },
@@ -4886,7 +4885,6 @@ export async function registerRoutes(
       return res.status(201).json({
         success: true,
         message: "Playbook sent to your email.",
-        promoCode: PLAYBOOK_PROMO_CODE,
         playbookUrl: "/api/playbook.pdf",
         leadId: lead._id,
       });

@@ -1,4 +1,4 @@
-import { FOUNDER_CODE, isFounderCode } from "@shared/founder";
+import { FOUNDER_CODE, FOUNDER_OFFER_OPEN, isFounderCode } from "@shared/founder";
 import { Express } from "express";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
@@ -233,12 +233,10 @@ export function setupAuth(app: Express) {
           // A bad referral code never blocks a signup.
         }
       }
-      // Every new organizer gets the Founder perk. It used to depend
-      // on the sign-up form sending the code, so any path that did not
-      // (an older form, a direct link) silently missed it.
+      // The Founder offer is closed (see shared/founder.ts): new accounts get
+      // no perk unless it is reopened there.
       const founderVoucher =
-        role === "organizer" ||
-        isFounderCode(req.body.founderVoucher)
+        FOUNDER_OFFER_OPEN && (role === "organizer" || isFounderCode(req.body.founderVoucher))
           ? FOUNDER_CODE
           : undefined;
 
@@ -398,8 +396,8 @@ export function setupAuth(app: Express) {
 
     if (user.role === "user") {
       user.role = "organizer";
-      // Auto-apply the Founder perk on activation if not already present
-      if (!user.founderVoucher) {
+      // Founder perk on activation, only while the offer is open.
+      if (FOUNDER_OFFER_OPEN && !user.founderVoucher) {
         user.founderVoucher = FOUNDER_CODE;
         user.waivedTicketCount = 0;
       }

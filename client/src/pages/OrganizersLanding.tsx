@@ -50,10 +50,6 @@ const FAQS = [
     q: "Do comps and guest lists cost anything?",
     a: "No. Free passes, sponsor wristbands, and artist guest lists cost nothing from your dashboard. You pay the platform fee on paid tickets only.",
   },
-  {
-    q: "How does the 0% fee on the first 50 tickets work?",
-    a: "Download the playbook or sign up with the code FOUNDER50 and we waive the platform fee on your first 50 paid tickets. The payment processor's own charge still applies.",
-  },
 ];
 
 export default function OrganizersLanding() {
@@ -135,7 +131,7 @@ export default function OrganizersLanding() {
       setSubmitted(true);
       toast({
         title: "Playbook sent",
-        description: "Check your email for the PDF. Your code FOUNDER50 is ready to use.",
+        description: "Check your email for the PDF.",
       });
     } catch (err) {
       toast({
@@ -184,9 +180,9 @@ export default function OrganizersLanding() {
 
           <Reveal y={14} delay={0.35} duration={0.55}>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER50">
+              <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new">
                 <Button className="press h-13 px-8 bg-primary text-primary-foreground hover:bg-gold-soft font-semibold text-sm rounded-full w-full sm:w-auto shadow-lg shadow-gold/10">
-                  Start selling tickets · 0% on first 50
+                  Start selling tickets
                   <ArrowUpRight className="w-4 h-4 ml-1.5" />
                 </Button>
               </Link>
@@ -462,10 +458,6 @@ export default function OrganizersLanding() {
                     <CheckCircle className="w-4 h-4 text-gold shrink-0 mt-0.5" />
                     <span>A sponsor pitch outline for alcohol brands and banks</span>
                   </div>
-                  <div className="flex items-start gap-2.5 text-xs sm:text-sm text-ink/90">
-                    <CheckCircle className="w-4 h-4 text-gold shrink-0 mt-0.5" />
-                    <span>A code for 0% platform fee on your first 50 tickets</span>
-                  </div>
                 </div>
               </div>
 
@@ -478,7 +470,7 @@ export default function OrganizersLanding() {
                     </div>
                     <h3 className="font-display text-lg font-bold text-ink">Check your email</h3>
                     <p className="text-xs text-ink/80 mt-1">
-                      The playbook PDF is on its way to your inbox. Your code <span className="font-mono text-gold font-bold">FOUNDER50</span> waives the platform fee on your first 50 tickets.
+                      The playbook PDF is on its way to your inbox.
                     </p>
                     <p className="text-xs mt-2">
                       <a
@@ -660,7 +652,7 @@ export default function OrganizersLanding() {
             Add your tiers and your page link, then put the event on sale. It takes a few minutes.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new&promo=FOUNDER50">
+            <Link href="/auth?tab=register&role=organizer&returnTo=/admin/events/new">
               <Button className="press h-13 px-8 bg-primary text-primary-foreground hover:bg-gold-soft font-semibold text-sm rounded-full w-full sm:w-auto">
                 Create an organizer account
                 <ArrowUpRight className="w-4 h-4 ml-1.5" />
