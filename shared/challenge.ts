@@ -30,7 +30,7 @@ export const TALENT_HUNT = {
     title: "NANS National Talent Hunt",
     path: "/e/nans-national-talent-hunt",
     venue: "Amphitheatre, Oduduwa Hall, OAU Ile-Ife",
-    date: "Thu 3 Dec",
+    date: "Tue 8 Dec",
   },
   instagram: "https://www.instagram.com/blackhevents",
   tiktok: "https://www.tiktok.com/@blackhevents",
