@@ -8,7 +8,7 @@ const ShareFlyerModal = lazy(() => import("@/components/ShareFlyerModal").then((
 import { FlyerLightbox } from "@/components/FlyerLightbox";
 import { Button } from "@/components/ui/button";
 import { useRoute } from "wouter";
-import { Loader2, Calendar, MapPin, Users, Share2, ArrowLeft, Tag, Clock, MessageCircle, Copy } from "lucide-react";
+import { Loader2, Calendar, MapPin, Share2, ArrowLeft, Tag, Clock, MessageCircle, Copy } from "lucide-react";
 import { format } from "date-fns";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ import { Navbar } from "@/components/Navbar";
 const BookingReturnHandler = lazy(() => import("@/components/BookingReturnHandler").then((m) => ({ default: m.BookingReturnHandler })));
 import { getTemplate, accentOverrides, templateFor } from "@shared/themes";
 import { useEventPulse } from "@/hooks/use-pulse";
-import { useCountdown } from "@/hooks/use-countdown";
+import { useFlyerColor, NightCountdown, TicketStubs, earlyBirdOf } from "@/components/EventExperience";
 
 interface PublicPromo {
   code: string;
@@ -105,12 +105,9 @@ export default function EventDetails() {
   // between a loading render and a loaded one.
   const showAttendeeCountEarly = (event as any)?.showAttendeeCount === true;
   const pulse = useEventPulse(event ? String((event as any).id) : undefined, showAttendeeCountEarly);
-  const earlyTiers: any[] = event ? parseTiersSafe((event as any).ticketTypes) : [];
-  const earlyClose = earlyTiers
-    .map((t: any) => (t.saleClose ? new Date(t.saleClose).getTime() : 0))
-    .filter((ms) => ms > Date.now())
-    .sort((a: number, b: number) => a - b)[0] ?? null;
-  const countdown = useCountdown(earlyClose);
+  // The flyer's own colour lights the page when the organizer has not
+  // picked an accent: NANS glows green, a beach day glows sunset.
+  const flyerHex = useFlyerColor((event as any)?.imageUrl);
   // Same close time the server's checkout uses, so the page and the
   // checkout agree: the organizer's end time, else six hours after start.
   const closesAt = event ? salesCloseAt(event as any) : null;
@@ -147,9 +144,12 @@ export default function EventDetails() {
     (!partner.closesAt || new Date(partner.closesAt).getTime() > Date.now()),
   );
 
-  const heroAccent = /^#[0-9a-fA-F]{6}$/.test((event as any)?.branding?.accentHex || "")
-    ? (event as any).branding.accentHex
-    : "#E3B23C";
+  // An organizer accent wins, except the platform gold, which is only the
+  // form's default and says nothing about this event.
+  const chosenAccent = String((event as any)?.branding?.accentHex || "");
+  const heroAccent = /^#[0-9a-fA-F]{6}$/.test(chosenAccent) && chosenAccent.toUpperCase() !== "#E3B23C"
+    ? chosenAccent
+    : flyerHex || "#E3B23C";
 
   const handleShare = () => {
     if (!event) return;
@@ -282,14 +282,21 @@ export default function EventDetails() {
     ticketTypes.length > 0 &&
     ticketTypes.every((t: any) => Math.max(0, Number(t.capacity || 0) - Number(t.sold || 0)) <= 0);
 
-  // `pulse` and `countdown` are computed above the early returns; the
+  // `pulse` is computed above the early returns; the
   // organizer's showAttendeeCount flag decides whether any of it renders.
 
   return (
     <div
-      className="min-h-screen bg-background pb-32 lg:pb-24"
+      className="relative min-h-screen bg-background pb-32 lg:pb-24 overflow-x-clip"
       style={themeVars}
     >
+      {/* The flyer's colour washes down the top of the page, so the details
+          and tickets sit inside the event's atmosphere, not on a blank page. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[1500px] transition-[background] duration-700"
+        style={{ background: `radial-gradient(120% 60% at 50% 0%, ${heroAccent}38 0%, ${heroAccent}18 40%, transparent 78%)` }}
+      />
       {/* Event-branded navbar when the organizer set a name/logo; the
           platform default renders elsewhere. Brand links still go home. */}
       <Navbar eventBrand={brand} overMedia />
@@ -306,15 +313,15 @@ export default function EventDetails() {
           src={event.imageUrl}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover scale-125 blur-3xl opacity-30"
+          className="absolute inset-0 w-full h-full object-cover scale-125 blur-3xl opacity-60 animate-kenburns"
         />
-        <div aria-hidden="true" className="absolute inset-0 bg-background/70" />
+        <div aria-hidden="true" className="absolute inset-0 bg-background/50" />
         <div
           aria-hidden="true"
           className="absolute inset-0"
           style={{ background: `radial-gradient(60% 50% at 50% 45%, ${heroAccent}38 0%, transparent 70%)` }}
         />
-        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent" />
+        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-background via-background/60 to-transparent" />
 
         {/* Back and share sit above the flyer, not over its edges */}
         <div className="relative z-20 flex items-center justify-between px-3 sm:px-4">
@@ -372,8 +379,8 @@ export default function EventDetails() {
 
       {/* Wide screens: the same lit stage, behind the whole top of the page */}
       <div aria-hidden="true" className="hidden lg:block absolute inset-x-0 top-0 h-[820px] overflow-hidden pointer-events-none">
-        <img src={event.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover scale-125 blur-3xl opacity-25" />
-        <div className="absolute inset-0 bg-background/75" />
+        <img src={event.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover scale-125 blur-3xl opacity-45 animate-kenburns" />
+        <div className="absolute inset-0 bg-background/60" />
         <div className="absolute inset-0" style={{ background: `radial-gradient(40% 55% at 22% 38%, ${heroAccent}33 0%, transparent 70%)` }} />
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-background to-transparent" />
       </div>
@@ -429,6 +436,14 @@ export default function EventDetails() {
                     </span>
                   </Link>
                 </div>
+              )}
+              {!eventEnded && (
+                <NightCountdown
+                  startsAt={new Date(event.date).getTime()}
+                  endsAt={closesAt}
+                  accent={heroAccent}
+                  earlyBird={earlyBirdOf(ticketTypes, new Date(event.date).getTime())}
+                />
               )}
               {showAttendeeCount && pulse.data && pulse.data.going > 0 && (
                 <p className="mt-3 sm:mt-4 flex items-center gap-2 text-xs sm:text-sm text-muted-ink">
@@ -532,38 +547,22 @@ export default function EventDetails() {
                   </div>
                 </div>
 
-                {showCounts && (
-                  <div className="flex items-start gap-4 py-5 border-b border-hairline">
-                    <Users className="w-5 h-5 text-gold shrink-0 mt-0.5" aria-hidden="true" />
-                    <div className="min-w-0 flex-1">
-                      <dt className="eyebrow">Availability</dt>
-                      <dd className="mt-2">
-                        {ticketTypes.length === 0 ? (
-                          <span className="text-ink text-sm">
-                            {event.capacity} regular tickets remaining
-                          </span>
-                        ) : (
-                          <div className="flex flex-wrap gap-2">
-                            {ticketTypes.map((type: any) => {
-                              const remaining = Math.max(0, type.capacity - (type.sold || 0));
-                              return (
-                                <span
-                                  key={type.name}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface-2 border border-hairline text-xs"
-                                >
-                                  <span className="text-gold font-bold">{remaining}</span>
-                                  <span className="text-muted-ink">{type.name} left</span>
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </dd>
-                    </div>
-                  </div>
-                )}
               </dl>
             </Reveal>
+
+            {/* Tickets as tickets: tap any stub to check out. */}
+            {ticketTypes.length > 0 && (
+              <Reveal className="mt-8" variant={motionVariant}>
+                <p className="eyebrow">Choose your ticket</p>
+                <TicketStubs
+                  tiers={ticketTypes}
+                  showCounts={showCounts}
+                  accent={heroAccent}
+                  onPick={() => setIsBookingOpen(true)}
+                  disabled={eventEnded}
+                />
+              </Reveal>
+            )}
 
             {/* Public promo codes, only when the organizer advertises them */}
             {publicPromos.length > 0 && (
@@ -659,12 +658,6 @@ export default function EventDetails() {
                   )}
                 </div>
 
-                {!countdown.expired && countdown.short && (
-                  <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/[0.07] px-3 py-1.5 text-xs text-gold">
-                    <Clock className="w-3.5 h-3.5" aria-hidden="true" />
-                    Sales close in {countdown.short}
-                  </div>
-                )}
                 {showAttendeeCount && pulse.data && pulse.data.going > 0 && (
                   <p className="mt-3 text-xs sm:text-sm text-muted-ink">
                     <span className="text-ink font-medium">{pulse.data.going}</span> going
@@ -827,15 +820,6 @@ export default function EventDetails() {
  * Waitlist capture for sold-out events, shown only when the organizer turned
  * waitlists on. One input row, inline confirmation, no page jump.
  */
-function parseTiersSafe(raw: unknown): any[] {
-  try {
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
 function WaitlistInline({ eventId, compact = false }: { eventId: string; compact?: boolean }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

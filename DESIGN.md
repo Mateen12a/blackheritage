@@ -189,6 +189,27 @@ Rules for adding another moment:
 Candidates for next (after 3 Dec): challenge entry submitted (gold burst,
 entry card appears), and a payout landing in the wallet.
 
+### Event page: the night, not the ticket (added 25 Nov 2026)
+
+People buy the experience, so the event page wears the event, not the
+platform. All of it lives in `client/src/components/EventExperience.tsx`:
+
+- **The flyer's colour lights the page.** `useFlyerColor` samples the flyer
+  (24x24, strongest hue family) and that colour drives the hero glow, a wash
+  down the top of the page, the countdown and the ticket stubs. An
+  organizer's own accent wins, except platform gold (the form default).
+  Glows only: text and the primary CTA keep the theme tokens for contrast.
+  The blurred hero backdrop drifts with `animate-kenburns` (the event page's
+  one ambient motion).
+- **The night counts down.** `NightCountdown` ticks to the real start time
+  (seconds included, a real number changing), turns into "Happening now"
+  during the event and disappears after. The Early Bird line shows only for
+  a tier with a genuine early window (closes more than a day before start).
+- **Tickets look like tickets.** `TicketStubs`: tier, what it includes,
+  price, a perforated tear line; tap opens checkout. Counts and the fill bar
+  appear only when a tier is genuinely low (20 or fewer, or under 15% left)
+  and the organizer allows counts. Never invent scarcity.
+
 ## Voice & copy (locked)
 
 The product is a **Nigerian marketplace for entertainment and events** (rooted in Lagos, reaching Abuja, Port Harcourt, and nationwide),
