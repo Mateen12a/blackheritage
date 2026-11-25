@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FlyerExtractPanel } from "@/components/FlyerExtractPanel";
+import { EventPreview } from "@/components/EventPreview";
 import { CopySuggest } from "@/components/CopySuggest";
 // The studio pulls in Konva and the flyer fonts: load it only when an organizer opens it.
 const FlyerStudio = lazy(() => import("@/components/FlyerStudio").then((m) => ({ default: m.FlyerStudio })));
@@ -16,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { CalendarIcon, Loader2, Image as ImageIcon, X, Plus, Trash2, Video, Upload, Check, AlertCircle, CheckCircle2, Link as LinkIcon, MessageCircle } from "lucide-react";
+import { CalendarIcon, Loader2, Image as ImageIcon, X, Plus, Trash2, Eye, Video, Upload, Check, AlertCircle, CheckCircle2, Link as LinkIcon, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -276,6 +277,8 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
   const watchedImageUrl = form.watch("imageUrl");
   const watchedDescription = form.watch("description");
   const watchedEventType = form.watch("eventType");
+  // Phones get the live preview as a full-screen sheet; wide screens show it beside the form.
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Date and start time live in one Date value. The calendar used to save
   // midnight, so an event created today for 8pm stopped selling at 6am.
@@ -431,18 +434,33 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
     </div>
   );
 
+  const previewEl = (
+    <EventPreview
+      title={watchedTitle}
+      date={watchedDate as any}
+      location={watchedLocation}
+      imageUrl={watchedImageUrl as any}
+      ticketTypes={ticketTypes}
+      accentHex={branding.accentHex}
+      displayName={branding.displayName}
+      typeLabel={EVENT_TYPES.find((t) => t.value === (watchedEventType || "party"))?.label}
+    />
+  );
+
   return (
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10 lg:items-start">
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-        <FlyerExtractPanel />
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6 min-w-0">
+        {/* Auto-fill from a flyer helps a new event; on edit it would sit on top of the real flyer upload. */}
+        {!initialData && <FlyerExtractPanel />}
         {/* Section bar: jump straight to what you came to change, and save
             from anywhere instead of scrolling to the bottom. */}
         <div className="sticky top-[4.25rem] z-30 -mx-1 flex items-center gap-2 rounded-xl border border-white/10 bg-background/90 px-2 py-2 backdrop-blur-xl">
           <nav aria-label="Form sections" className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto no-scrollbar">
             {[
+              ["ef-flyer", "Flyer"],
               ["ef-basics", "Basics"],
               ["ef-tickets", "Tickets"],
-              ["ef-flyer", "Flyer"],
               ["ef-about", "About"],
               ["ef-settings", "Settings"],
               ["ef-look", "Page look"],
@@ -457,6 +475,15 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
               </button>
             ))}
           </nav>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setPreviewOpen(true)}
+            className="press h-8 shrink-0 rounded-md border-white/15 px-2.5 text-xs text-ink hover:text-gold lg:hidden"
+            aria-label="Preview the event page"
+          >
+            <Eye className="w-3.5 h-3.5" />
+          </Button>
           {initialData && (
             <Button
               type="submit"
@@ -467,6 +494,138 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
             </Button>
           )}
         </div>
+        {/* The flyer leads: it is the ad, it sets the page's colour, and guests
+            judge the night by it. */}
+        <div id="ef-flyer" className="scroll-mt-36" aria-hidden="true" />
+        <FormField
+          control={form.control}
+          name="imageUrl"
+          render={({ field }) => (
+            <FormItem>
+              <div className="flex items-center justify-between mb-2">
+                <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">
+                  Event Flyer / Cover Image (start here)
+                </FormLabel>
+                <div className="flex items-center gap-1 rounded-lg border border-hairline p-0.5 bg-surface-2">
+                  <button
+                    type="button"
+                    onClick={() => setFlyerTab("upload")}
+                    className={cn(
+                      "px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors",
+                      flyerTab === "upload"
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-muted-ink hover:text-white"
+                    )}
+                  >
+                    Upload File
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFlyerTab("url")}
+                    className={cn(
+                      "px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors",
+                      flyerTab === "url"
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-muted-ink hover:text-white"
+                    )}
+                  >
+                    Image URL
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {flyerTab === "upload" ? (
+                  <div className="relative">
+                    <input
+                      id="event-form-flyer-file-upload"
+                      type="file"
+                      accept="image/*"
+                      disabled={isUploadingFlyer}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadFlyerFile(file, field.onChange);
+                        e.target.value = "";
+                      }}
+                      className="sr-only"
+                    />
+                    <label
+                      htmlFor="event-form-flyer-file-upload"
+                      className={cn(
+                        "flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors text-center",
+                        isUploadingFlyer
+                          ? "border-gold/50 bg-gold/5 opacity-70"
+                          : "border-hairline hover:border-gold/50 bg-surface-2/60 hover:bg-surface-2"
+                      )}
+                    >
+                      {isUploadingFlyer ? (
+                        <>
+                          <Loader2 className="w-7 h-7 text-gold animate-spin mb-2" />
+                          <p className="text-sm font-medium text-white">Uploading flyer to secure storage...</p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-10 h-10 rounded-full bg-gold/10 text-gold flex items-center justify-center mb-2">
+                            <Upload className="w-5 h-5" />
+                          </div>
+                          <p className="text-sm font-medium text-white">
+                            Click to upload event flyer
+                          </p>
+                          <p className="text-xs text-muted-ink mt-1">
+                            PNG, JPG, or WEBP up to 50MB (portrait 9:16 or square 1:1 works best)
+                          </p>
+                        </>
+                      )}
+                    </label>
+                  </div>
+                ) : (
+                  <FormControl>
+                    <Input
+                      {...field}
+                      placeholder="https://... direct image URL"
+                      className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-base"
+                    />
+                  </FormControl>
+                )}
+
+                <div className="flex items-center justify-between gap-3 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setStudioOpen(true)}
+                    className="press flex-1 h-10 border-gold/40 text-gold hover:bg-gold/10 rounded-lg text-xs font-medium"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                    Design in Studio, no flyer needed
+                  </Button>
+                </div>
+
+                {field.value && (
+                  <div className="relative h-56 rounded-xl overflow-hidden border border-hairline group bg-surface-2">
+                    <img src={field.value} alt="Event flyer preview" className="w-full h-full object-contain" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-3">
+                      <span className="text-xs text-white/90 font-medium truncate max-w-[80%]">
+                        {field.value.startsWith("http") || field.value.startsWith("/uploads") ? field.value : "Attached Flyer"}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="h-7 w-7 rounded-full"
+                        onClick={() => field.onChange("")}
+                        aria-label="Remove flyer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <div id="ef-basics" className="scroll-mt-36" aria-hidden="true" />
         <FormField
           control={form.control}
@@ -1058,135 +1217,6 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
         </div>
         )}
 
-        <div id="ef-flyer" className="scroll-mt-36" aria-hidden="true" />
-        <FormField
-          control={form.control}
-          name="imageUrl"
-          render={({ field }) => (
-            <FormItem>
-              <div className="flex items-center justify-between mb-2">
-                <FormLabel className="text-white font-bold uppercase tracking-wider text-xs">
-                  Event Flyer / Cover Image
-                </FormLabel>
-                <div className="flex items-center gap-1 rounded-lg border border-hairline p-0.5 bg-surface-2">
-                  <button
-                    type="button"
-                    onClick={() => setFlyerTab("upload")}
-                    className={cn(
-                      "px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors",
-                      flyerTab === "upload"
-                        ? "bg-primary text-primary-foreground font-semibold"
-                        : "text-muted-ink hover:text-white"
-                    )}
-                  >
-                    Upload File
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFlyerTab("url")}
-                    className={cn(
-                      "px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors",
-                      flyerTab === "url"
-                        ? "bg-primary text-primary-foreground font-semibold"
-                        : "text-muted-ink hover:text-white"
-                    )}
-                  >
-                    Image URL
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {flyerTab === "upload" ? (
-                  <div className="relative">
-                    <input
-                      id="event-form-flyer-file-upload"
-                      type="file"
-                      accept="image/*"
-                      disabled={isUploadingFlyer}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) uploadFlyerFile(file, field.onChange);
-                        e.target.value = "";
-                      }}
-                      className="sr-only"
-                    />
-                    <label
-                      htmlFor="event-form-flyer-file-upload"
-                      className={cn(
-                        "flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-xl cursor-pointer transition-colors text-center",
-                        isUploadingFlyer
-                          ? "border-gold/50 bg-gold/5 opacity-70"
-                          : "border-hairline hover:border-gold/50 bg-surface-2/60 hover:bg-surface-2"
-                      )}
-                    >
-                      {isUploadingFlyer ? (
-                        <>
-                          <Loader2 className="w-7 h-7 text-gold animate-spin mb-2" />
-                          <p className="text-sm font-medium text-white">Uploading flyer to secure storage...</p>
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-10 h-10 rounded-full bg-gold/10 text-gold flex items-center justify-center mb-2">
-                            <Upload className="w-5 h-5" />
-                          </div>
-                          <p className="text-sm font-medium text-white">
-                            Click to upload event flyer
-                          </p>
-                          <p className="text-xs text-muted-ink mt-1">
-                            PNG, JPG, or WEBP up to 50MB (portrait 9:16 or square 1:1 works best)
-                          </p>
-                        </>
-                      )}
-                    </label>
-                  </div>
-                ) : (
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="https://... direct image URL"
-                      className="h-12 bg-white/5 border-white/10 text-white rounded-xl focus:border-primary text-base"
-                    />
-                  </FormControl>
-                )}
-
-                <div className="flex items-center justify-between gap-3 pt-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setStudioOpen(true)}
-                    className="press flex-1 h-10 border-gold/40 text-gold hover:bg-gold/10 rounded-lg text-xs font-medium"
-                  >
-                    <ImageIcon className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-                    Design in Studio, no flyer needed
-                  </Button>
-                </div>
-
-                {field.value && (
-                  <div className="relative aspect-video max-h-56 rounded-xl overflow-hidden border border-hairline group bg-surface-2">
-                    <img src={field.value} alt="Event flyer preview" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-3">
-                      <span className="text-xs text-white/90 font-medium truncate max-w-[80%]">
-                        {field.value.startsWith("http") || field.value.startsWith("/uploads") ? field.value : "Attached Flyer"}
-                      </span>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="h-7 w-7 rounded-full"
-                        onClick={() => field.onChange("")}
-                        aria-label="Remove flyer"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
 
         {studioOpen && (
           <Suspense fallback={null}>
@@ -1853,5 +1883,22 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
         </div>
       </form>
     </Form>
+    <aside className="hidden lg:block sticky top-24">{previewEl}</aside>
+    {previewOpen && (
+      <div
+        className="fixed inset-0 z-[60] flex flex-col bg-background/95 backdrop-blur-xl lg:hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Event page preview"
+      >
+        <div className="flex items-center justify-end px-4 pt-4" style={{ paddingTop: "calc(env(safe-area-inset-top) + 1rem)" }}>
+          <Button type="button" variant="outline" onClick={() => setPreviewOpen(false)} className="press h-9 border-white/15 text-ink">
+            <X className="w-4 h-4 mr-1" /> Back to editing
+          </Button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-4">{previewEl}</div>
+      </div>
+    )}
+    </div>
   );
 }

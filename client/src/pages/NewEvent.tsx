@@ -42,7 +42,7 @@ export default function NewEvent() {
     <div className="min-h-screen bg-background pb-20">
       {/* AdminRoute provides DashboardLayout (with its brand bar); a second
           Navbar here would stack two headers on the page. */}
-      <div className="container mx-auto px-4 pt-10 max-w-2xl">
+      <div className="container mx-auto px-4 pt-10 max-w-2xl lg:max-w-6xl">
         <Link href={"/admin"} className="press inline-flex items-center gap-1.5 text-sm text-muted-ink hover:text-gold mb-4">
           <ArrowLeft className="w-4 h-4" aria-hidden="true" /> Dashboard
         </Link>
