@@ -82,6 +82,8 @@ export default function EventDetails() {
   const cameFromApp = typeof window !== "undefined" && window.history.length > 1 && document.referrer.includes(window.location.host);
   const { data: event, isLoading } = useEvent(id as any);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  // The ticket stub the guest tapped; checkout opens straight on it.
+  const [pickedTier, setPickedTier] = useState<string | null>(null);
   const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
   const [isFlyerModalOpen, setIsFlyerModalOpen] = useState(false);
   const [isFlyerZoomOpen, setIsFlyerZoomOpen] = useState(false);
@@ -558,7 +560,7 @@ export default function EventDetails() {
                   tiers={ticketTypes}
                   showCounts={showCounts}
                   accent={heroAccent}
-                  onPick={() => setIsBookingOpen(true)}
+                  onPick={(tier) => { setPickedTier(tier); setIsBookingOpen(true); }}
                   disabled={eventEnded}
                 />
               </Reveal>
@@ -670,7 +672,7 @@ export default function EventDetails() {
                   </div>
                 ) : (
                   <Button
-                    onClick={() => setIsBookingOpen(true)}
+                    onClick={() => { setPickedTier(null); setIsBookingOpen(true); }}
                     className="press mt-5 sm:mt-6 w-full h-11 sm:h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md text-sm"
                   >
                     Get tickets
@@ -761,7 +763,7 @@ export default function EventDetails() {
             </div>
           ) : (
             <Button
-              onClick={() => setIsBookingOpen(true)}
+              onClick={() => { setPickedTier(null); setIsBookingOpen(true); }}
               className="press flex-1 h-10 sm:h-12 bg-primary text-primary-foreground hover:bg-gold-soft font-medium rounded-md text-xs sm:text-sm"
             >
               Get tickets
@@ -785,6 +787,7 @@ export default function EventDetails() {
             event={event}
             isOpen={isBookingOpen}
             onClose={() => setIsBookingOpen(false)}
+            initialTier={pickedTier}
           />
         </Suspense>
       )}

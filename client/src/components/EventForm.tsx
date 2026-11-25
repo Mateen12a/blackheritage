@@ -146,8 +146,28 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
     setTicketTypes([...ticketTypes, { name: "Free RSVP", price: 0, capacity: 50, sold: 0 }]);
   };
 
+  // Editing: saved tiers fold into one-line summaries so the page is not a
+  // wall of inputs; a tier opens when tapped, and new tiers start open.
+  const [collapsedTiers, setCollapsedTiers] = useState<Set<number>>(() => {
+    if (!initialData?.ticketTypes) return new Set();
+    try {
+      const saved = JSON.parse(initialData.ticketTypes);
+      return new Set(Array.isArray(saved) ? saved.map((_: any, i: number) => i) : []);
+    } catch {
+      return new Set();
+    }
+  });
+  const setTierOpen = (index: number, open: boolean) =>
+    setCollapsedTiers((prev) => {
+      const next = new Set(prev);
+      if (open) next.delete(index); else next.add(index);
+      return next;
+    });
+
   const removeTicketType = (index: number) => {
     setTicketTypes(ticketTypes.filter((_, i) => i !== index));
+    // Keep the folded state attached to the right tiers after the shift.
+    setCollapsedTiers((prev) => new Set(Array.from(prev).filter((i) => i !== index).map((i) => (i > index ? i - 1 : i))));
   };
 
   const updateTicketType = (index: number, field: string, value: any) => {
@@ -415,6 +435,39 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
         <FlyerExtractPanel />
+        {/* Section bar: jump straight to what you came to change, and save
+            from anywhere instead of scrolling to the bottom. */}
+        <div className="sticky top-[4.25rem] z-30 -mx-1 flex items-center gap-2 rounded-xl border border-white/10 bg-background/90 px-2 py-2 backdrop-blur-xl">
+          <nav aria-label="Form sections" className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto no-scrollbar">
+            {[
+              ["ef-basics", "Basics"],
+              ["ef-tickets", "Tickets"],
+              ["ef-flyer", "Flyer"],
+              ["ef-about", "About"],
+              ["ef-settings", "Settings"],
+              ["ef-look", "Page look"],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="press shrink-0 rounded-full border border-white/10 px-3 py-1.5 text-xs text-ink hover:border-gold/50 hover:text-gold"
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+          {initialData && (
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="press h-8 shrink-0 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-gold-soft"
+            >
+              {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
+            </Button>
+          )}
+        </div>
+        <div id="ef-basics" className="scroll-mt-36" aria-hidden="true" />
         <FormField
           control={form.control}
           name="title"
@@ -689,7 +742,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
             )}
           />
         )}
-        <div className="space-y-4">
+        <div id="ef-tickets" className="space-y-4 scroll-mt-36">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div>
               <h3 className="text-white font-bold uppercase tracking-wider text-sm">Ticket Types</h3>
@@ -719,6 +772,34 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
           <div className="space-y-4">
             {ticketTypes.map((type, index) => {
               const isFreeTier = Number(type.price || 0) === 0;
+              const badWindow = typeof type.saleOpen === "string" && !!type.saleClose && Date.parse(type.saleClose) <= Date.parse(type.saleOpen);
+              if (collapsedTiers.has(index) && !badWindow && type.name?.trim()) {
+                const sold = Number(type.sold || 0);
+                const windowText = type.saleClose
+                  ? `Sales end ${new Date(type.saleClose).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}`
+                  : typeof type.saleOpen === "string" && type.saleOpen
+                    ? `On sale ${new Date(type.saleOpen).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}`
+                    : "Sells until the event";
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setTierOpen(index, true)}
+                    className="press flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left hover:border-gold/40"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-ink">{type.name}</span>
+                      <span className="block text-xs text-muted-ink">
+                        {isFreeTier ? "Free" : `₦${Math.round(Number(type.price) / 100).toLocaleString("en-NG")}`}
+                        {" · "}{Number(type.capacity || 0).toLocaleString("en-NG")} tickets
+                        {sold > 0 ? ` · ${sold.toLocaleString("en-NG")} sold` : ""}
+                        {" · "}{windowText}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-xs font-medium text-gold">Edit</span>
+                  </button>
+                );
+              }
               return (
                 <Card key={index} className="bg-white/5 border-white/10 p-4">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -784,8 +865,25 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                         className="bg-background border-white/10"
                       />
                     </div>
-                    <div className="flex items-end">
-                      <Button type="button" variant="destructive" size="icon" onClick={() => removeTicketType(index)} className="w-full" aria-label={`Remove ${type.name || "tier"}`}>
+                    <div className="flex items-end gap-2">
+                      {type.name?.trim() && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setTierOpen(index, false)}
+                          className="press h-10 flex-1 border-white/15 text-ink hover:text-gold text-xs"
+                        >
+                          Done
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => removeTicketType(index)}
+                        className="press h-10 w-10 shrink-0 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                        aria-label={`Remove ${type.name || "tier"}`}
+                      >
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -823,7 +921,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
                       />
                     </div>
                   </div>
-                  {typeof type.saleOpen === "string" && type.saleClose && Date.parse(type.saleClose) <= Date.parse(type.saleOpen) ? (
+                  {badWindow ? (
                     <p className="mt-2 text-xs text-destructive" role="alert">Sales end must be after "On sale from".</p>
                   ) : (
                     <p className="mt-2 text-xs text-muted-foreground">
@@ -960,6 +1058,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
         </div>
         )}
 
+        <div id="ef-flyer" className="scroll-mt-36" aria-hidden="true" />
         <FormField
           control={form.control}
           name="imageUrl"
@@ -1112,6 +1211,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
           </Suspense>
         )}
 
+        <div id="ef-about" className="scroll-mt-36" aria-hidden="true" />
         <FormField
           control={form.control}
           name="description"
@@ -1145,7 +1245,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
         />
 
         {/* ── Selling preferences: what guests see and how checkout works ── */}
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div id="ef-settings" className="scroll-mt-36 rounded-xl border border-white/10 bg-white/[0.03] p-5">
           <h3 className="text-white font-bold uppercase tracking-wider text-sm">Selling preferences</h3>
           <p className="text-xs text-muted-foreground mt-1 mb-2">Your event, your rules. Change these any time.</p>
           <FormField
@@ -1248,7 +1348,7 @@ export function EventForm({ initialData, onSubmit, isLoading, allowDraft = true 
         </div>
 
         {/* ── Template: layout + motion, one pick ── */}
-        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+        <div id="ef-look" className="scroll-mt-36 rounded-xl border border-white/10 bg-white/[0.03] p-5">
           <h3 className="text-white font-bold uppercase tracking-wider text-sm">Page template</h3>
           <p className="text-xs text-muted-foreground mt-1 mb-4">
             Choose how your event page is built. Each template has its own layout and entrance animation. Your brand color sets the colors; if you skip it, the Black Heritage gold shows.

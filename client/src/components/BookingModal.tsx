@@ -38,11 +38,13 @@ interface BookingModalProps {
   event: Event;
   isOpen: boolean;
   onClose: () => void;
+  /** The tier the guest tapped on the event page: checkout opens on it. */
+  initialTier?: string | null;
 }
 
 const naira = (kobo: number) => `₦${(kobo / 100).toLocaleString("en-NG")}`;
 
-export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
+export function BookingModal({ event, isOpen, onClose, initialTier }: BookingModalProps) {
   const { user } = useAuth();
   // The reveal state lives here so the buy sheet can hand off to it:
   // confirm, close the buy sheet, open the moment.
@@ -54,6 +56,18 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
   const [promoTouched, setPromoTouched] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("");
   const [tableNote, setTableNote] = useState("");
+  // When the guest already picked a ticket on the page, checkout shows just
+  // that ticket with a "Change" link instead of asking them to choose again.
+  const [tierLocked, setTierLocked] = useState(false);
+  useEffect(() => {
+    if (!isOpen) return;
+    if (initialTier) {
+      setSelectedTier(initialTier);
+      setTierLocked(true);
+    } else {
+      setTierLocked(false);
+    }
+  }, [isOpen, initialTier]);
   // Marketing consent must be an active choice, so this starts off.
   const [optIn, setOptIn] = useState(false);
   const { mutateAsync: initiate, isPending: isInitiating } = useInitiateBooking();
@@ -78,7 +92,8 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
   }, [isOpen]);
 
   useEffect(() => {
-    if (ticketTypes.length > 0 && !selectedTier) {
+    // A tier tapped on the event page wins over the default pick.
+    if (ticketTypes.length > 0 && !selectedTier && !(isOpen && initialTier)) {
       // Start on the first tier a buyer can actually pick (an ended Early
       // Bird or a not-yet-open Regular is shown but can't be bought).
       const buyable = ticketTypes.find(
@@ -86,7 +101,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
       );
       setSelectedTier((buyable || ticketTypes[0]).name);
     }
-  }, [ticketTypes, selectedTier]);
+  }, [ticketTypes, selectedTier, isOpen, initialTier]);
 
   // Prefill for signed-in users: display name (falls back to username) and
   // the account email. Guests type their details in.
@@ -295,7 +310,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
                 {event.title}
               </DialogTitle>
               <DialogDescription className="text-sm text-muted-ink">
-                Choose your ticket. It arrives by email the moment you pay.
+                {tierLocked ? "Your ticket arrives by email the moment you pay." : "Choose your ticket. It arrives by email the moment you pay."}
               </DialogDescription>
             </DialogHeader>
 
@@ -308,6 +323,7 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
                   const notYet = saleState === "upcoming";
                   const unavailable = remaining <= 0 || saleClosed || notYet;
                   const selected = selectedTier === type.name;
+                  if (tierLocked && !selected) return null;
                   const status = remaining <= 0
                     ? "Sold out"
                     : saleClosed
@@ -359,6 +375,15 @@ export function BookingModal({ event, isOpen, onClose }: BookingModalProps) {
                   );
                 })}
               </div>
+              {tierLocked && ticketTypes.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setTierLocked(false)}
+                  className="text-xs text-gold hover:underline underline-offset-4"
+                >
+                  Change ticket
+                </button>
+              )}
 
               <div className="flex items-center justify-between pt-2">
                 <span className="text-sm text-muted-ink">How many?</span>

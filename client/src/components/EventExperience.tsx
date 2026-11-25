@@ -222,7 +222,7 @@ export function TicketStubs({
   tiers: any[];
   showCounts: boolean;
   accent: string;
-  onPick: () => void;
+  onPick: (tierName: string) => void;
   disabled?: boolean;
 }) {
   if (tiers.length === 0) return null;
@@ -249,7 +249,7 @@ export function TicketStubs({
           <button
             key={`${t.name}-${i}`}
             type="button"
-            onClick={onPick}
+            onClick={() => onPick(String(t.name))}
             disabled={disabled || unavailable}
             className={cn(
               "press group relative flex w-full items-stretch overflow-hidden rounded-md border text-left transition-colors",
