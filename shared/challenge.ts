@@ -11,11 +11,13 @@ export const TALENT_HUNT = {
   title: "BH Challenge",
   hashtag: "#BHChallenge",
   opensAt: "2026-11-16T00:00:00+01:00",
-  closesAt: "2026-11-27T23:59:59+01:00",
-  closesOn: "Fri 27 Nov",
-  shortlistOn: "Sun 29 Nov",
-  winnersAt: "2026-12-01T00:00:00+01:00",
-  winnersOn: "Tue 1 Dec",
+  // Extended on 26 Nov 2026 (was Fri 27 Nov / Sun 29 Nov / Tue 1 Dec) to give dance and
+  // comedy time to come in; winners still get 4 days before the 8 Dec stage.
+  closesAt: "2026-12-01T23:59:59+01:00",
+  closesOn: "Tue 1 Dec",
+  shortlistOn: "Thu 3 Dec",
+  winnersAt: "2026-12-04T00:00:00+01:00",
+  winnersOn: "Fri 4 Dec",
   prizeNaira: 50_000,
   maxVideoSeconds: 60,
   /** Per uploaded file. Matches the site-wide upload limit (Nginx allows 60 MB). */
