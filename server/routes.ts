@@ -27,7 +27,7 @@ import { seedPlatform } from "./seed";
 import { sendManualTicketEmail, sendRefundEmail, sendFollowerDropEmail } from "./emails";
 import { extractEventFromFile, isAIConfigured, aiUploadLimiter, suggestEventCopy, generateFlyerArt, FLYER_ART_STYLES } from "./ai";
 import { rateLimit } from "./auth";
-import { saveUpload, MAX_UPLOAD_BYTES } from "./media-storage";
+import { saveUpload, optimizeImage, MAX_UPLOAD_BYTES } from "./media-storage";
 import { publishToUser, subscribeToStream } from "./realtime";
 import { playbookPdf, PLAYBOOK_FILENAME } from "./playbook";
 import { isEmailConfigured, sendPlaybookEmail } from "./emails";
@@ -3747,7 +3747,8 @@ export async function registerRoutes(
       if (!req.file) {
         return res.status(400).json({ message: "Choose a file to upload" });
       }
-      saveUpload(req.file.buffer, req.file.originalname, req.file.mimetype)
+      optimizeImage(req.file.buffer, req.file.originalname, req.file.mimetype)
+        .then((img) => saveUpload(img.buffer, img.originalName, img.mime))
         .then(({ url, backend }) => {
           res.status(201).json({
             url,

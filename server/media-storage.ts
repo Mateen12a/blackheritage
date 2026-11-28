@@ -90,6 +90,55 @@ async function putToR2(key: string, body: Buffer, mime: string): Promise<void> {
 }
 
 /**
+ * Shrink a large photo or flyer before it is stored.
+ *
+ * Organizers upload 2-5 MB PNG exports straight from Canva. WhatsApp shows no
+ * preview image for files that big (an AfterDark flyer at 4.5 MB went out as
+ * a bare link), and the event page preloads the flyer, so guests on mobile
+ * data waited on it too. Images are capped at 1600 px wide and saved as a
+ * high-quality JPEG, which keeps flyer text sharp at a few hundred KB. Images
+ * with transparency stay PNG so logos keep their cut-out. GIF, SVG and AVIF
+ * pass through untouched, as does anything already small.
+ *
+ * Never fails an upload: if sharp is missing or the image will not decode,
+ * the original bytes are stored as before.
+ */
+const OPTIMIZE_MIN_BYTES = 300 * 1024;
+const MAX_IMAGE_WIDTH = 1600;
+
+export async function optimizeImage(
+  buffer: Buffer,
+  originalName: string,
+  mime: string,
+): Promise<{ buffer: Buffer; originalName: string; mime: string }> {
+  const unchanged = { buffer, originalName, mime };
+  if (!/^image\/(png|jpe?g|webp)$/i.test(mime)) return unchanged;
+  try {
+    const sharp = (await import("sharp")).default;
+    const meta = await sharp(buffer).metadata();
+    const width = meta.width || 0;
+    if (buffer.length < OPTIMIZE_MIN_BYTES && width <= MAX_IMAGE_WIDTH) return unchanged;
+
+    // rotate() applies the phone's EXIF orientation before the tag is dropped.
+    const base = sharp(buffer).rotate().resize({ width: MAX_IMAGE_WIDTH, withoutEnlargement: true });
+    const stem = path.basename(originalName || "image", path.extname(originalName || ""));
+
+    if (meta.hasAlpha) {
+      const png = await base.png({ compressionLevel: 9, adaptiveFiltering: true }).toBuffer();
+      return png.length < buffer.length ? { buffer: png, originalName: `${stem}.png`, mime: "image/png" } : unchanged;
+    }
+    const jpg = await base
+      .flatten({ background: "#ffffff" })
+      .jpeg({ quality: 86, mozjpeg: true, chromaSubsampling: "4:4:4" })
+      .toBuffer();
+    return jpg.length < buffer.length ? { buffer: jpg, originalName: `${stem}.jpg`, mime: "image/jpeg" } : unchanged;
+  } catch (err) {
+    console.warn("Image optimize skipped:", (err as Error)?.message || err);
+    return unchanged;
+  }
+}
+
+/**
  * Store one upload and return the URL to persist.
  *
  * R2 returns an absolute URL. Disk returns the /uploads/portfolio path the app
